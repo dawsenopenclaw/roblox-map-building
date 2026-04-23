@@ -322,7 +322,7 @@ function CodeFeedbackButtons({ code }: { code: string }) {
           style={{
             fontSize: 10,
             color: 'rgba(74,222,128,0.7)',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           }}
         >
           Thanks for the feedback!
@@ -345,7 +345,7 @@ function CodeFeedbackButtons({ code }: { code: string }) {
         style={{
           fontSize: 10,
           color: 'rgba(255,255,255,0.3)',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           marginRight: 2,
         }}
       >
@@ -366,7 +366,7 @@ function CodeFeedbackButtons({ code }: { code: string }) {
           background: 'rgba(74,222,128,0.06)',
           color: 'rgba(74,222,128,0.7)',
           cursor: feedbackState === 'submitting' ? 'wait' : 'pointer',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           transition: 'all 0.15s',
           opacity: feedbackState === 'submitting' ? 0.5 : 1,
         }}
@@ -401,7 +401,7 @@ function CodeFeedbackButtons({ code }: { code: string }) {
           background: 'rgba(239,68,68,0.06)',
           color: 'rgba(239,68,68,0.7)',
           cursor: feedbackState === 'submitting' ? 'wait' : 'pointer',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           transition: 'all 0.15s',
           opacity: feedbackState === 'submitting' ? 0.5 : 1,
         }}
@@ -473,7 +473,7 @@ function ConversationFeedbackButtons({
   if (feedbackState === 'done') {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', marginTop: 4 }}>
-        <span style={{ fontSize: 10, color: 'rgba(212,175,55,0.6)', fontFamily: 'Inter, sans-serif' }}>
+        <span style={{ fontSize: 10, color: 'rgba(212,175,55,0.6)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)' }}>
           Thanks! That helps me get better.
         </span>
       </div>
@@ -496,7 +496,7 @@ function ConversationFeedbackButtons({
                 border: '1px solid rgba(212,175,55,0.15)',
                 color: 'rgba(212,175,55,0.8)',
                 fontSize: 11,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
                 textAlign: 'left',
@@ -520,7 +520,7 @@ function ConversationFeedbackButtons({
       )}
       {/* Thumbs up/down */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: 'Inter, sans-serif', marginRight: 2 }}>
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', marginRight: 2 }}>
           Helpful?
         </span>
         <button
@@ -538,7 +538,7 @@ function ConversationFeedbackButtons({
             background: feedbackState === 'thumbsUp' ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.03)',
             color: feedbackState === 'thumbsUp' ? 'rgba(74,222,128,0.9)' : 'rgba(255,255,255,0.35)',
             cursor: feedbackState !== 'idle' ? 'default' : 'pointer',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
             transition: 'all 0.2s',
           }}
           onMouseEnter={(e) => {
@@ -575,7 +575,7 @@ function ConversationFeedbackButtons({
             background: feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.03)',
             color: feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.9)' : 'rgba(255,255,255,0.35)',
             cursor: feedbackState !== 'idle' ? 'default' : 'pointer',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
             transition: 'all 0.2s',
           }}
           onMouseEnter={(e) => {
@@ -671,7 +671,7 @@ function LuauCodeBlock({
                 background: sent ? 'rgba(74,222,128,0.1)' : 'rgba(212,175,55,0.1)',
                 color: sent ? 'rgba(74,222,128,0.85)' : 'rgba(212,175,55,0.85)',
                 cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 transition: 'all 0.15s',
               }}
             >
@@ -688,7 +688,7 @@ function LuauCodeBlock({
               background: copied ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.04)',
               color: copied ? 'rgba(74,222,128,0.8)' : 'rgba(255,255,255,0.35)',
               cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               transition: 'all 0.15s',
             }}
           >
@@ -934,7 +934,7 @@ function SignupPromptCard() {
           boxShadow: '0 0 0 1px rgba(212,175,55,0.08) inset, 0 8px 32px rgba(0,0,0,0.35)',
           maxWidth: 380,
           width: '100%',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           display: 'flex',
           flexDirection: 'column',
           gap: 14,
@@ -1116,7 +1116,7 @@ function MessageBubbleImpl({
         <p style={{
           color: 'rgba(255,255,255,0.6)',
           fontSize: 13,
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           margin: '0 0 10px 0',
         }}>
           Pick a direction for your build:
@@ -1141,7 +1141,7 @@ function MessageBubbleImpl({
                 cursor: 'pointer',
                 textAlign: 'left',
                 transition: 'all 0.2s',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'rgba(212,175,55,0.08)'
@@ -1223,7 +1223,7 @@ function MessageBubbleImpl({
             borderRadius: 14,
             padding: '16px 20px',
             maxWidth: 460,
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           }}
         >
           <p style={{ color: '#f87171', fontWeight: 700, fontSize: 14, margin: '0 0 8px 0' }}>
@@ -1263,7 +1263,7 @@ function MessageBubbleImpl({
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               }}
             >
               Try again
@@ -1279,7 +1279,7 @@ function MessageBubbleImpl({
                 fontSize: 12,
                 fontWeight: 500,
                 cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               }}
             >
               Build it differently
@@ -1294,7 +1294,7 @@ function MessageBubbleImpl({
                 borderRadius: 8,
                 fontSize: 12,
                 cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               }}
             >
               Skip this
@@ -1373,7 +1373,7 @@ function MessageBubbleImpl({
               style={{
                 fontSize: 12,
                 color: 'rgba(74,222,128,0.9)',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 fontWeight: 500,
                 animation: isBuildSent ? 'goldTextPulse 0.8s ease-out forwards' : undefined,
               }}
@@ -1387,7 +1387,7 @@ function MessageBubbleImpl({
               style={{
                 fontSize: 12,
                 color: 'rgba(255,255,255,0.4)',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               }}
             >
               {msg.content}
@@ -1408,7 +1408,7 @@ function MessageBubbleImpl({
                   borderRadius: 6,
                   padding: '3px 10px',
                   textDecoration: 'none',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 }}
               >
                 Pair Studio →
@@ -1426,7 +1426,7 @@ function MessageBubbleImpl({
                   borderRadius: 6,
                   padding: '3px 10px',
                   cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 }}
               >
                 Retry push
@@ -1449,7 +1449,7 @@ function MessageBubbleImpl({
           border: '1px solid rgba(212,175,55,0.25)',
           fontSize: 13,
           color: 'rgba(255,255,255,0.85)',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           display: 'flex',
           flexDirection: 'column',
           gap: 10,
@@ -1517,7 +1517,7 @@ function MessageBubbleImpl({
           background: 'rgba(255,255,255,0.03)',
           fontSize: 11,
           color: 'rgba(255,255,255,0.3)',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           textAlign: 'center',
         }}
       >
@@ -1642,7 +1642,7 @@ function MessageBubbleImpl({
                   border: '1.5px solid #D4AF37',
                   color: 'var(--text-primary, rgba(255,255,255,0.9))',
                   fontSize: 14,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                   lineHeight: 1.5,
                   resize: 'none',
                   outline: 'none',
@@ -1662,7 +1662,7 @@ function MessageBubbleImpl({
                     background: 'transparent',
                     color: 'rgba(255,255,255,0.45)',
                     fontSize: 12,
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                     cursor: 'pointer',
                     transition: 'color 0.15s, border-color 0.15s',
                   }}
@@ -1688,7 +1688,7 @@ function MessageBubbleImpl({
                     color: editValue.trim() ? '#030712' : 'rgba(3,7,18,0.5)',
                     fontSize: 12,
                     fontWeight: 600,
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                     cursor: editValue.trim() ? 'pointer' : 'not-allowed',
                     transition: 'background 0.15s, color 0.15s',
                   }}
@@ -1710,7 +1710,7 @@ function MessageBubbleImpl({
                 boxShadow: '0 4px 16px rgba(212,175,55,0.06), 0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,230,160,0.06)',
               }}
             >
-              <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.95)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontWeight: 500 }}>
+              <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.95)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontWeight: 500 }}>
                 {displayContent}
               </p>
             </div>
@@ -1807,7 +1807,7 @@ function MessageBubbleImpl({
             }}
           />
         )}
-        <div style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6 }}>
+        <div style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', lineHeight: 1.6 }}>
           {msg.streaming
             ? (msg.content
                 ? <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{stripCodeBlocksForDisplay(msg.content)}</span>
@@ -1868,7 +1868,7 @@ function MessageBubbleImpl({
                 background: 'rgba(212,175,55,0.08)',
                 color: '#D4AF37',
                 fontSize: 10,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.15s',
@@ -1892,7 +1892,7 @@ function MessageBubbleImpl({
             <ShareBuildButton prompt={userPrompt} />
           )}
           {msg.tokensUsed !== undefined && (
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: 'Inter, sans-serif' }}>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)' }}>
               {msg.tokensUsed.toLocaleString()} tokens
             </span>
           )}
@@ -1911,7 +1911,7 @@ function MessageBubbleImpl({
                 background: copied ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.04)',
                 color: copied ? 'rgba(74,222,128,0.85)' : 'rgba(255,255,255,0.3)',
                 fontSize: 10,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
                 opacity: hovered ? 1 : 0,
@@ -1995,7 +1995,7 @@ function MeshResultCard({
         border: '1px solid rgba(212,175,55,0.2)',
         background: 'rgba(212,175,55,0.04)',
         overflow: 'hidden',
-        fontFamily: 'Inter, sans-serif',
+        fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
       }}
     >
       {/* Preview row — 3D when GLB is available, thumbnail fallback otherwise */}
@@ -2088,7 +2088,7 @@ function MeshResultCard({
                 color: 'rgba(212,175,55,0.85)',
                 border: '1px solid rgba(212,175,55,0.25)',
                 textDecoration: 'none',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}
@@ -2117,7 +2117,7 @@ function MeshResultCard({
                 color: 'rgba(212,175,55,0.85)',
                 border: '1px solid rgba(212,175,55,0.25)',
                 textDecoration: 'none',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 cursor: 'pointer',
               }}
             >
@@ -2143,7 +2143,7 @@ function MeshResultCard({
                 background: luauCopied ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.05)',
                 color: luauCopied ? 'rgba(74,222,128,0.85)' : 'rgba(255,255,255,0.5)',
                 border: luauCopied ? '1px solid rgba(74,222,128,0.25)' : '1px solid rgba(255,255,255,0.08)',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}
@@ -2181,7 +2181,7 @@ function MeshResultCard({
                 background: 'rgba(99,102,241,0.12)',
                 color: 'rgba(165,180,252,0.85)',
                 border: '1px solid rgba(99,102,241,0.25)',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}
@@ -2237,7 +2237,7 @@ function ShareBuildButton({ prompt }: { prompt?: string }) {
         background: shared ? 'rgba(212,175,55,0.15)' : 'rgba(212,175,55,0.08)',
         color: shared ? 'rgba(212,175,55,0.9)' : 'rgba(212,175,55,0.6)',
         border: `1px solid ${shared ? 'rgba(212,175,55,0.3)' : 'rgba(212,175,55,0.15)'}`,
-        fontFamily: 'Inter, sans-serif',
+        fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
         cursor: 'pointer',
         transition: 'all 0.15s',
         flexShrink: 0,
@@ -2309,7 +2309,7 @@ function CodePreviewBadge({ luauCode, previousCode, executedInStudio }: { luauCo
           borderRadius: 4,
           background: executedInStudio ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
           color: executedInStudio ? 'rgba(34,197,94,0.8)' : 'rgba(255,255,255,0.5)',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           border: 'none',
           cursor: luauCode ? 'pointer' : 'default',
           transition: 'all 0.15s',
@@ -2365,7 +2365,7 @@ function CodePreviewBadge({ luauCode, previousCode, executedInStudio }: { luauCo
                       ? 'rgba(212,175,55,0.9)'
                       : 'rgba(255,255,255,0.35)',
                     cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                     transition: 'all 0.15s',
                   }}
                 >
@@ -2382,7 +2382,7 @@ function CodePreviewBadge({ luauCode, previousCode, executedInStudio }: { luauCo
                 border: 'none',
                 cursor: 'pointer',
                 padding: '2px 6px',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               }}
             >
               {copied ? 'Copied!' : 'Copy'}
@@ -2550,7 +2550,7 @@ function ShowcaseCard({
           fontWeight: 600,
           letterSpacing: '0.06em',
           color: example.color,
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           opacity: hovered ? 1 : 0,
           transition: 'opacity 0.18s ease-out',
           pointerEvents: 'none',
@@ -2581,7 +2581,7 @@ function ShowcaseCard({
           fontSize: 12,
           fontWeight: 600,
           color: hovered ? '#fafafa' : '#a1a1aa',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           lineHeight: 1.3,
           transition: 'color 0.18s',
         }}>
@@ -2590,7 +2590,7 @@ function ShowcaseCard({
         <div style={{
           fontSize: 11,
           color: '#3f3f46',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           lineHeight: 1.4,
           marginTop: 2,
         }}>
@@ -2760,7 +2760,7 @@ function EmptyState({ onQuickAction, onBuildGame }: { onQuickAction: (prompt: st
                   background: 'rgba(212,175,55,0.04)',
                   color: '#D4AF37',
                   fontSize: 11,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.15s',
@@ -2804,7 +2804,7 @@ function EmptyState({ onQuickAction, onBuildGame }: { onQuickAction: (prompt: st
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 8,
                       border: '1px solid rgba(139,92,246,0.15)', background: 'rgba(139,92,246,0.04)',
-                      color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'Inter, sans-serif',
+                      color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                       cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left' as const,
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(139,92,246,0.12)'; e.currentTarget.style.borderColor = 'rgba(139,92,246,0.4)' }}
@@ -2830,7 +2830,7 @@ function EmptyState({ onQuickAction, onBuildGame }: { onQuickAction: (prompt: st
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 8,
                       border: '1px solid rgba(34,197,94,0.15)', background: 'rgba(34,197,94,0.04)',
-                      color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'Inter, sans-serif',
+                      color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                       cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left' as const,
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.12)'; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.4)' }}
@@ -2882,7 +2882,7 @@ function EmptyState({ onQuickAction, onBuildGame }: { onQuickAction: (prompt: st
               background: ex.bg,
               color: ex.color,
               fontSize: 13,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.15s ease-out',
@@ -2960,7 +2960,7 @@ export function TipOfTheDay() {
         <path d="M6 1a4 4 0 0 1 2.5 7.1V10H3.5V8.1A4 4 0 0 1 6 1z" fill="#D4AF37" opacity="0.85"/>
         <path d="M4 11.5h4M4.5 13h3" stroke="#D4AF37" strokeWidth="1.1" strokeLinecap="round" opacity="0.6"/>
       </svg>
-      <span style={{ flex: 1, fontSize: 11, color: 'rgba(255,255,255,0.45)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
+      <span style={{ flex: 1, fontSize: 11, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', lineHeight: 1.4 }}>
         <span style={{ color: 'rgba(212,175,55,0.75)', fontWeight: 600, marginRight: 4 }}>Tip:</span>
         {tip}
       </span>
@@ -3150,7 +3150,7 @@ function ModelSelector({
           color: 'rgba(255,255,255,0.6)',
           fontSize: 12,
           fontWeight: 500,
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           cursor: 'pointer',
           whiteSpace: 'nowrap',
         }}
@@ -3193,7 +3193,7 @@ function ModelSelector({
               fontSize: 10,
               fontWeight: 600,
               color: 'rgba(255,255,255,0.35)',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
             }}>
@@ -3215,7 +3215,7 @@ function ModelSelector({
                   background: selected === model.id ? 'rgba(255,255,255,0.06)' : 'transparent',
                   color: selected === model.id ? 'white' : 'rgba(255,255,255,0.55)',
                   fontSize: 13,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'all 0.1s',
@@ -3273,7 +3273,7 @@ function ModelSelector({
               padding: '8px 10px 4px',
               fontSize: 10,
               color: 'rgba(255,255,255,0.2)',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               borderTop: '1px solid rgba(255,255,255,0.05)',
               marginTop: 4,
             }}>
@@ -3361,7 +3361,7 @@ function McpQuickActions({ onAction }: { onAction: (prompt: string) => void }) {
             letterSpacing: '0.09em',
             textTransform: 'uppercase',
             color: 'rgba(255,255,255,0.18)',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
             marginRight: 2,
             userSelect: 'none',
             flexShrink: 0,
@@ -3384,7 +3384,7 @@ function McpQuickActions({ onAction }: { onAction: (prompt: string) => void }) {
               border: `1px solid ${action.border}`,
               color: action.color,
               fontSize: 11,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               fontWeight: 500,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
@@ -3441,7 +3441,7 @@ function McpToolIndicator({ toolName }: { toolName: string }) {
       <span
         style={{
           fontSize: 10,
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           color: 'rgba(212,175,55,0.8)',
           fontWeight: 500,
         }}
@@ -3875,7 +3875,7 @@ export function ChatPanel({
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease-out',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
                   boxShadow: active ? `0 0 16px ${color}10` : 'none',
@@ -4004,7 +4004,7 @@ export function ChatPanel({
               minWidth: 16, height: 16, borderRadius: 8,
               background: '#FF4444', border: '1.5px solid #0c1024',
               color: '#fff', fontSize: 9, fontWeight: 700,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '0 3px', lineHeight: 1, pointerEvents: 'none',
             }}>
@@ -4045,7 +4045,7 @@ export function ChatPanel({
                   color: 'rgba(212,175,55,0.9)',
                   fontSize: 12,
                   fontWeight: 500,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                   cursor: 'pointer',
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   whiteSpace: 'nowrap',
@@ -4104,7 +4104,7 @@ export function ChatPanel({
                     border: `1px solid ${imageOptions.removeBackground ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
                     background: imageOptions.removeBackground ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
                     color: imageOptions.removeBackground ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
-                    cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                    cursor: 'pointer', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                   }}
                 >
                   {imageOptions.removeBackground ? '✓ ' : ''}Remove BG
@@ -4117,7 +4117,7 @@ export function ChatPanel({
                     border: `1px solid ${imageOptions.upscale ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
                     background: imageOptions.upscale ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
                     color: imageOptions.upscale ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
-                    cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                    cursor: 'pointer', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                   }}
                 >
                   {imageOptions.upscale ? '✓ ' : ''}HD Upscale
@@ -4150,32 +4150,40 @@ export function ChatPanel({
             display: 'flex',
             flexDirection: 'column',
             gap: 0,
-            background: 'linear-gradient(135deg, rgba(12,15,28,0.75) 0%, rgba(18,22,38,0.7) 50%, rgba(12,15,28,0.75) 100%)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: 22,
-            padding: '12px 16px',
+            background: 'linear-gradient(135deg, rgba(15,20,40,0.65) 0%, rgba(20,25,50,0.55) 50%, rgba(15,20,40,0.65) 100%)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            borderRadius: 24,
+            padding: '14px 18px',
             transition: 'border-color 0.3s ease-out, box-shadow 0.3s ease-out',
-            backdropFilter: 'blur(24px) saturate(1.2)',
-            WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(212,175,55,0.02), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(255,255,255,0.02)',
+            backdropFilter: 'blur(30px) saturate(1.4)',
+            WebkitBackdropFilter: 'blur(30px) saturate(1.4)',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)',
             position: 'relative',
             overflow: 'hidden',
           }}
           onFocusCapture={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)'
-            e.currentTarget.style.boxShadow = '0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.06), 0 0 60px rgba(212,175,55,0.04), inset 0 1px 0 rgba(255,230,160,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)'
+            e.currentTarget.style.borderColor = 'rgba(212,175,55,0.30)'
+            e.currentTarget.style.boxShadow = '0 8px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(212,175,55,0.10), 0 0 80px rgba(212,175,55,0.06), inset 0 1px 0 rgba(255,230,160,0.12), inset 0 -1px 0 rgba(255,255,255,0.04)'
           }}
           onBlurCapture={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
-            e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(212,175,55,0.02), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(255,255,255,0.02)'
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'
+            e.currentTarget.style.boxShadow = '0 8px 40px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)'
           }}
         >
-          {/* Cyberglass shimmer overlay */}
+          {/* Cyberglass animated shimmer */}
           <div aria-hidden style={{
             position: 'absolute', inset: 0,
-            background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.015) 45%, rgba(212,175,55,0.02) 50%, rgba(255,255,255,0.015) 55%, transparent 70%)',
+            background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.03) 40%, rgba(212,175,55,0.04) 50%, rgba(255,255,255,0.03) 60%, transparent 80%)',
+            backgroundSize: '200% 100%',
+            animation: 'glassShimmer 6s ease-in-out infinite',
             pointerEvents: 'none',
             borderRadius: 'inherit',
+          }} />
+          {/* Top highlight edge */}
+          <div aria-hidden style={{
+            position: 'absolute', top: 0, left: '10%', right: '10%', height: 1,
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)',
+            pointerEvents: 'none',
           }} />
           {/* Attached image preview */}
           {(imagePreviewUrl || pastedImagePreview) && (
@@ -4194,7 +4202,7 @@ export function ChatPanel({
                   border: '1px solid rgba(212,175,55,0.3)',
                 }}
               />
-              <span style={{ fontSize: 11, color: '#A1A1AA', fontFamily: 'Inter, sans-serif', flex: 1 }}>
+              <span style={{ fontSize: 11, color: '#A1A1AA', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', flex: 1 }}>
                 {imageFile?.name || 'Pasted image'}
               </span>
               {imageFile && (
@@ -4338,7 +4346,7 @@ export function ChatPanel({
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {/* Saved indicator */}
               <span style={{
-                fontSize: 10, color: 'rgba(74,222,128,0.55)', fontFamily: 'Inter, sans-serif',
+                fontSize: 10, color: 'rgba(74,222,128,0.55)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                 opacity: showSaved ? 1 : 0, transition: 'opacity 0.35s ease',
                 pointerEvents: 'none',
               }}>Saved</span>
@@ -4346,7 +4354,7 @@ export function ChatPanel({
               {aiMode !== 'build' && (
                 <span style={{
                   fontSize: 10, color: modeConfig.color,
-                  fontFamily: 'Inter, sans-serif', opacity: 0.7,
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', opacity: 0.7,
                 }}>
                   {modeConfig.label} mode
                 </span>
@@ -4367,7 +4375,7 @@ export function ChatPanel({
                 <span style={{
                   fontSize: 10,
                   color: charCountWarning ? 'rgba(249,115,22,0.8)' : 'rgba(255,255,255,0.15)',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                   fontVariantNumeric: 'tabular-nums',
                 }}>
                   {input.length} / {MAX_INPUT}
@@ -4376,14 +4384,14 @@ export function ChatPanel({
               {showSlashHint && (
                 <span style={{
                   fontSize: 10, color: 'rgba(139,92,246,0.8)',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                   animation: 'msgFadeUp 0.15s ease-out forwards',
                 }}>
                   /build · /script · /terrain · /think · /plan
                 </span>
               )}
               {!showCharCount && !showSlashHint && (
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.12)', fontFamily: 'Inter, sans-serif' }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.12)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)' }}>
                   Enter to send
                 </span>
               )}
@@ -4396,6 +4404,11 @@ export function ChatPanel({
         @keyframes spin {
           from { transform: rotate(0deg); }
           to   { transform: rotate(360deg); }
+        }
+        @keyframes glassShimmer {
+          0%   { background-position: 200% center; }
+          50%  { background-position: -200% center; }
+          100% { background-position: 200% center; }
         }
       `}</style>
     </div>

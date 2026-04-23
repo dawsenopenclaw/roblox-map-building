@@ -414,46 +414,60 @@ function EditorInner() {
         minHeight: 0,
         background: 'linear-gradient(180deg, #050810 0%, #070B1A 50%, #050810 100%)',
         color: '#FAFAFA',
-        fontFamily: 'var(--font-inter, Inter, sans-serif)',
+        fontFamily: 'var(--font-geist-sans, Inter, -apple-system, BlinkMacSystemFont, sans-serif)',
         position: 'relative',
+        letterSpacing: '-0.01em',
       }}
     >
       {/* ── Floating background orbs — visible everywhere ── */}
       <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+        {/* Large gold orb — top left */}
         <div style={{
-          position: 'absolute', top: '8%', left: '5%',
-          width: 220, height: 220, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(212,175,55,0.06) 0%, rgba(212,175,55,0.015) 50%, transparent 70%)',
-          filter: 'blur(45px)',
+          position: 'absolute', top: '5%', left: '2%',
+          width: 350, height: 350, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(212,175,55,0.10) 0%, rgba(212,175,55,0.03) 40%, transparent 70%)',
+          filter: 'blur(60px)',
           animation: 'editorOrbDrift1 28s ease-in-out infinite, editorOrbPulse 9s ease-in-out infinite',
         }} />
+        {/* Blue orb — top right */}
         <div style={{
-          position: 'absolute', top: '3%', right: '10%',
-          width: 280, height: 280, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(96,165,250,0.04) 0%, rgba(96,165,250,0.01) 50%, transparent 70%)',
-          filter: 'blur(55px)',
+          position: 'absolute', top: '0%', right: '5%',
+          width: 400, height: 400, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(96,165,250,0.07) 0%, rgba(96,165,250,0.02) 40%, transparent 70%)',
+          filter: 'blur(70px)',
           animation: 'editorOrbDrift2 35s ease-in-out infinite, editorOrbPulse 11s ease-in-out 3s infinite',
         }} />
+        {/* Purple orb — center */}
         <div style={{
-          position: 'absolute', top: '45%', left: '40%',
-          width: 200, height: 200, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(124,58,237,0.035) 0%, transparent 60%)',
-          filter: 'blur(50px)',
+          position: 'absolute', top: '35%', left: '30%',
+          width: 300, height: 300, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(124,58,237,0.06) 0%, rgba(124,58,237,0.015) 40%, transparent 70%)',
+          filter: 'blur(65px)',
           animation: 'editorOrbDrift3 22s ease-in-out infinite, editorOrbPulse 8s ease-in-out 1.5s infinite',
         }} />
+        {/* Gold orb — bottom right */}
         <div style={{
-          position: 'absolute', bottom: '12%', right: '18%',
-          width: 260, height: 260, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(212,175,55,0.05) 0%, rgba(212,175,55,0.01) 50%, transparent 70%)',
-          filter: 'blur(50px)',
+          position: 'absolute', bottom: '5%', right: '10%',
+          width: 380, height: 380, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(212,175,55,0.08) 0%, rgba(212,175,55,0.02) 40%, transparent 70%)',
+          filter: 'blur(65px)',
           animation: 'editorOrbDrift1 32s ease-in-out infinite reverse, editorOrbPulse 10s ease-in-out 5s infinite',
         }} />
+        {/* Cyan orb — bottom left */}
         <div style={{
-          position: 'absolute', bottom: '8%', left: '12%',
-          width: 180, height: 180, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(6,182,212,0.035) 0%, transparent 60%)',
-          filter: 'blur(40px)',
+          position: 'absolute', bottom: '10%', left: '8%',
+          width: 280, height: 280, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(6,182,212,0.06) 0%, rgba(6,182,212,0.015) 40%, transparent 70%)',
+          filter: 'blur(55px)',
           animation: 'editorOrbDrift2 26s ease-in-out infinite reverse, editorOrbPulse 7s ease-in-out 2s infinite',
+        }} />
+        {/* Small warm orb — mid right */}
+        <div style={{
+          position: 'absolute', top: '55%', right: '25%',
+          width: 200, height: 200, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(245,158,11,0.05) 0%, transparent 60%)',
+          filter: 'blur(45px)',
+          animation: 'editorOrbDrift3 18s ease-in-out infinite reverse, editorOrbPulse 6s ease-in-out 4s infinite',
         }} />
       </div>
       <style>{`
@@ -480,6 +494,11 @@ function EditorInner() {
         @keyframes editorOrbPulse {
           0%, 100% { opacity: 0.5; }
           50% { opacity: 0.8; }
+        }
+        @keyframes welcomeGlassShimmer {
+          0%   { background-position: 200% center; }
+          50%  { background-position: -200% center; }
+          100% { background-position: 200% center; }
         }
       `}</style>
 
@@ -533,30 +552,38 @@ function EditorInner() {
                   <div
                     style={{
                       display: 'flex', gap: 8, alignItems: 'flex-end',
-                      background: 'linear-gradient(135deg, rgba(12,15,28,0.75) 0%, rgba(18,22,38,0.7) 50%, rgba(12,15,28,0.75) 100%)',
-                      border: '1px solid rgba(255,255,255,0.07)',
-                      borderRadius: 22, padding: '12px 14px 12px 20px',
+                      background: 'linear-gradient(135deg, rgba(15,20,40,0.65) 0%, rgba(20,25,50,0.55) 50%, rgba(15,20,40,0.65) 100%)',
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      borderRadius: 24, padding: '14px 16px 14px 22px',
                       transition: 'border-color 0.3s ease-out, box-shadow 0.3s ease-out',
-                      backdropFilter: 'blur(24px) saturate(1.2)',
-                      WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(212,175,55,0.02), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(255,255,255,0.02)',
+                      backdropFilter: 'blur(30px) saturate(1.4)',
+                      WebkitBackdropFilter: 'blur(30px) saturate(1.4)',
+                      boxShadow: '0 8px 40px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)',
                       position: 'relative',
                       overflow: 'hidden',
                     }}
                     onFocusCapture={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)'
-                      e.currentTarget.style.boxShadow = '0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.06), 0 0 60px rgba(212,175,55,0.04), inset 0 1px 0 rgba(255,230,160,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)'
+                      e.currentTarget.style.borderColor = 'rgba(212,175,55,0.30)'
+                      e.currentTarget.style.boxShadow = '0 8px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(212,175,55,0.10), 0 0 80px rgba(212,175,55,0.06), inset 0 1px 0 rgba(255,230,160,0.12), inset 0 -1px 0 rgba(255,255,255,0.04)'
                     }}
                     onBlurCapture={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
-                      e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(212,175,55,0.02), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(255,255,255,0.02)'
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'
+                      e.currentTarget.style.boxShadow = '0 8px 40px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)'
                     }}
                   >
-                    {/* Cyberglass shimmer */}
+                    {/* Animated glass shimmer */}
                     <div aria-hidden style={{
                       position: 'absolute', inset: 0,
-                      background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.015) 45%, rgba(212,175,55,0.02) 50%, rgba(255,255,255,0.015) 55%, transparent 70%)',
+                      background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.03) 40%, rgba(212,175,55,0.04) 50%, rgba(255,255,255,0.03) 60%, transparent 80%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'welcomeGlassShimmer 6s ease-in-out infinite',
                       pointerEvents: 'none', borderRadius: 'inherit',
+                    }} />
+                    {/* Top highlight edge */}
+                    <div aria-hidden style={{
+                      position: 'absolute', top: 0, left: '10%', right: '10%', height: 1,
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)',
+                      pointerEvents: 'none',
                     }} />
                     {/* Attach */}
                     <label

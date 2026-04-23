@@ -62,7 +62,7 @@ export function EditorTopBar({
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         flexShrink: 0,
-        fontFamily: 'var(--font-inter, Inter, sans-serif)',
+        fontFamily: 'var(--font-geist-sans, Inter, -apple-system, BlinkMacSystemFont, sans-serif)',
         zIndex: 20,
         boxShadow: '0 1px 20px rgba(212,175,55,0.03), 0 4px 40px rgba(0,0,0,0.4)',
         position: 'relative',
