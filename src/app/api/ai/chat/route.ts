@@ -3640,11 +3640,28 @@ Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE
       }
     }
 
-    // Enrich with experience memory (past successful builds)
+    // Enrich with experience memory (past builds — both successes AND failures)
     try {
-      const pastSuccesses = await findSimilarSuccesses(message)
+      const buildType = detectBuildType(message, intent)
+      const [pastSuccesses, pastFailures, patterns] = await Promise.all([
+        findSimilarSuccesses(message, 3, buildType),
+        findAntiPatterns(message, 2, buildType),
+        getAggregatePatterns(detectCategory(message) ?? undefined, buildType),
+      ])
       if (pastSuccesses.length > 0) {
         enrichedCodePrompt += formatAsExamples(pastSuccesses)
+        console.log(`[ExperienceMemory] Injected ${pastSuccesses.length} successful examples (scores: ${pastSuccesses.map(s => s.score).join(', ')})`)
+      }
+      if (pastFailures.length > 0) {
+        enrichedCodePrompt += formatAntiPatterns(pastFailures)
+        console.log(`[ExperienceMemory] Injected ${pastFailures.length} anti-patterns to avoid`)
+      }
+      if (patterns.length > 0) {
+        const patternStr = patterns.map(p =>
+          `Category "${p.category}": avg score ${p.avgScore}/100, ${p.successRate}% success rate, best materials: ${p.topMaterials?.join(', ') || 'varied'}, avg parts: ${p.avgPartCount || 'unknown'}${p.commonFailures.length > 0 ? `, common failures: ${p.commonFailures.join('; ')}` : ''}`
+        ).join('\n')
+        enrichedCodePrompt += `\n\n=== QUALITY PATTERNS FROM PAST BUILDS ===\n${patternStr}\n=== END PATTERNS ===`
+        console.log(`[ExperienceMemory] Injected ${patterns.length} aggregate quality patterns`)
       }
     } catch (expErr) {
       console.warn('[ExperienceMemory] Failed in freeModelTwoPass (non-blocking):', expErr instanceof Error ? expErr.message : expErr)
@@ -7354,6 +7371,7 @@ type IntentKey =
   | 'marketplace'
   | 'analysis'
   | 'chat'
+  | 'image'
   | 'undo'
   | 'help'
   | 'publish'
@@ -7408,6 +7426,7 @@ const INTENT_TOKEN_COST: Record<IntentKey, number> = {
   fullgame: 0,
   mesh: 0,
   texture: 0,
+  image: 0,
 }
 
 const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
@@ -7903,6 +7922,13 @@ Roblox usage:
 Token cost: 20 tokens
 
 Tip: Add FAL_API_KEY to generate real textures. Demo shows a preview tile.`,
+
+  image: `Image generated successfully! Check the preview above.
+
+[SUGGESTIONS]
+Generate a game icon
+Create a thumbnail
+Make a texture`,
 
   terrain: `✓ Volcanic Island Terrain Generated
 
