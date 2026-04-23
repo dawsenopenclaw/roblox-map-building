@@ -35,18 +35,24 @@ import { UpgradeNudge } from '@/components/editor/UpgradeNudge'
 
 // ─── Right Sidebar — AI Context Panel ────────────────────────────────────
 
+import type { StudioContext } from './hooks/useStudioConnection'
+
 function RightSidebar({
   studioContext,
   open,
   onToggle,
   isMobile,
 }: {
-  studioContext: { cameraPosition?: string; selectedObjects?: string[]; sceneTree?: string; scripts?: { name: string; source?: string }[]; partCount?: number; modelCount?: number } | null
+  studioContext: StudioContext
   open: boolean
   onToggle: () => void
   isMobile: boolean
 }) {
   if (isMobile && !open) return null
+
+  const cameraStr = studioContext.camera
+    ? `${studioContext.camera.posX.toFixed(1)}, ${studioContext.camera.posY.toFixed(1)}, ${studioContext.camera.posZ.toFixed(1)}`
+    : null
 
   return (
     <>
@@ -105,7 +111,6 @@ function RightSidebar({
             animation: 'sidebarSlideIn 0.2s ease-out',
           }}
         >
-          {/* Mobile close button */}
           {isMobile && (
             <button
               onClick={onToggle}
@@ -132,59 +137,41 @@ function RightSidebar({
             AI Context
           </h3>
 
-          {studioContext ? (
-            <>
-              {/* Camera position */}
-              {studioContext.cameraPosition && (
-                <SidebarSection title="Camera" value={studioContext.cameraPosition} />
-              )}
+          {/* Camera position */}
+          {cameraStr && (
+            <SidebarSection title="Camera" value={cameraStr} />
+          )}
 
-              {/* Selected objects */}
-              {studioContext.selectedObjects && studioContext.selectedObjects.length > 0 && (
-                <SidebarSection title="Selected">
-                  {studioContext.selectedObjects.map((obj, i) => (
-                    <div key={i} style={{
-                      fontSize: 11, color: '#A1A1AA', padding: '2px 0',
-                      fontFamily: "'JetBrains Mono', monospace",
-                    }}>
-                      {obj}
-                    </div>
-                  ))}
-                </SidebarSection>
-              )}
+          {/* Part count */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <StatBadge label="Parts" value={studioContext.partCount} />
+            <StatBadge label="Nearby" value={studioContext.nearbyParts.length} />
+          </div>
 
-              {/* Stats */}
-              <div style={{ display: 'flex', gap: 8 }}>
-                {studioContext.partCount !== undefined && (
-                  <StatBadge label="Parts" value={studioContext.partCount} />
-                )}
-                {studioContext.modelCount !== undefined && (
-                  <StatBadge label="Models" value={studioContext.modelCount} />
-                )}
-              </div>
+          {/* Nearby parts */}
+          {studioContext.nearbyParts.length > 0 && (
+            <SidebarSection title={`Nearby Parts (${studioContext.nearbyParts.length})`}>
+              {studioContext.nearbyParts.slice(0, 12).map((part, i) => (
+                <div key={i} style={{
+                  fontSize: 11, color: '#71717A',
+                  padding: '3px 6px', marginBottom: 2,
+                  borderRadius: 4, background: 'rgba(255,255,255,0.02)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  display: 'flex', justifyContent: 'space-between',
+                }}>
+                  <span style={{ color: '#A1A1AA' }}>{part.name}</span>
+                  <span style={{ color: '#3F3F46', fontSize: 10 }}>{part.className}</span>
+                </div>
+              ))}
+            </SidebarSection>
+          )}
 
-              {/* Scripts */}
-              {studioContext.scripts && studioContext.scripts.length > 0 && (
-                <SidebarSection title={`Scripts (${studioContext.scripts.length})`}>
-                  {studioContext.scripts.slice(0, 10).map((script, i) => (
-                    <div key={i} style={{
-                      fontSize: 11, color: '#71717A',
-                      padding: '3px 6px', marginBottom: 2,
-                      borderRadius: 4, background: 'rgba(255,255,255,0.02)',
-                      fontFamily: "'JetBrains Mono', monospace",
-                    }}>
-                      {script.name}
-                    </div>
-                  ))}
-                </SidebarSection>
-              )}
-            </>
-          ) : (
+          {studioContext.partCount === 0 && !cameraStr && (
             <p style={{
               fontSize: 12, color: '#3F3F46', lineHeight: 1.6,
               margin: 0,
             }}>
-              Connect Roblox Studio to see your scene context here — camera position, selected objects, scripts, and part counts.
+              Scene data will appear here once Studio syncs context.
             </p>
           )}
         </div>
