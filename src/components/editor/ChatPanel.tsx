@@ -2381,10 +2381,11 @@ function MeshResultCard({
     <div
       style={{
         marginTop: 10,
+        maxWidth: '100%',
+        overflow: 'hidden',
         borderRadius: 10,
         border: '1px solid rgba(212,175,55,0.2)',
         background: 'rgba(212,175,55,0.04)',
-        overflow: 'hidden',
         fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
       }}
     >
@@ -4797,7 +4798,20 @@ export function ChatPanel({
                 </span>
               )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {/* Token cost estimate — shows before sending */}
+              {input.trim().length > 5 && !loading && (
+                <span style={{
+                  fontSize: 10,
+                  color: 'rgba(212,175,55,0.5)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  ~{Math.max(1, Math.ceil(input.split(/\s+/).length * (
+                    aiMode === 'image' ? 3 : aiMode === 'mesh' ? 5 : aiMode === 'think' ? 2 : aiMode === 'terrain' ? 2 : 1
+                  )))} tokens · ~{aiMode === 'mesh' ? '30-60s' : aiMode === 'image' ? '10-20s' : input.length > 100 ? '15-30s' : '5-15s'}
+                </span>
+              )}
               {totalTokens > 0 && (
                 <span style={{
                   fontSize: 10,
@@ -4805,7 +4819,7 @@ export function ChatPanel({
                   fontFamily: "'JetBrains Mono', monospace",
                   fontVariantNumeric: 'tabular-nums',
                 }}>
-                  {totalTokens.toLocaleString()} tokens
+                  {totalTokens.toLocaleString()} used
                 </span>
               )}
               {showCharCount && (
