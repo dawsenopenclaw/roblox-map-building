@@ -359,18 +359,13 @@ async function run(postToDiscord: boolean) {
       body: JSON.stringify(leaderboardPayload),
     });
 
-    // Post new bugs as individual embeds
+    // NOTE: No longer posting individual bug embeds to bug channels.
+    // Per Vyren's instruction: only post consolidated updates to #announcements.
+    // The leaderboard above still posts to #leaderboard.
     if (newBugs.length > 0) {
-      console.log(`Posting ${newBugs.length} new bug embeds...`);
-      for (const bug of newBugs) {
-        const bugPayload = buildNewBugEmbed(bug);
-        await discordFetch(`/channels/${BUG_LOG_CHANNEL}/messages`, {
-          method: "POST",
-          body: JSON.stringify(bugPayload),
-        });
-      }
+      console.log(`Found ${newBugs.length} new bugs — tracked internally (not posting to bug channels).`);
     }
-    console.log("Posted!");
+    console.log("Posted leaderboard!");
   }
 
   // Save state
