@@ -2936,6 +2936,8 @@ async function freeModelTwoPass(
   executedInStudio: boolean
   suggestions: string[]
   model: string
+  qualityScore?: number
+  buildPartCount?: number
 } | null> {
   const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace'].includes(intent)
   const modelNames = ['gemini-2.0-flash', 'llama-3.3-70b']
@@ -2949,7 +2951,7 @@ async function freeModelTwoPass(
     )
     if (!convRace) return null
     const { message: cleanConv, suggestions } = extractSuggestions(convRace.result)
-    return { conversationText: cleanConv, luauCode: null, executedInStudio: false, suggestions, model: modelNames[convRace.index], qualityScore: undefined as number | undefined, buildPartCount: undefined as number | undefined }
+    return { conversationText: cleanConv, luauCode: null, executedInStudio: false, suggestions, model: modelNames[convRace.index] }
   }
 
   // ── BUILD/SCRIPT INTENTS: Single-pass — generate description + code in ONE call ──
