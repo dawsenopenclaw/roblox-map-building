@@ -1187,6 +1187,49 @@ const SCRIPT_INTENTS = new Set(['script', 'combat', 'economy', 'quest', 'npc', '
 // ─── Keywords that force script mode even if intent classifier says 'building' ──
 const SCRIPT_KEYWORDS = /\b(script|leaderboard|datastore|save data|currency|coins?|cash|shop system|buy system|purchase|remote ?event|remote ?function|day.?night cycle|flicker|door.?open|pathfind|health ?bar|damage system|respawn|teleport|badge|gamepass|game ?pass|admin|kick|ban|chat|command|round system|timer|countdown|inventory|loot|drop|spawn system|wave system|kill ?brick|checkpoint|npc.*ai|pet system|trading|auction|shop ?ui|gui|screen ?gui|hud|menu ?ui|settings ?ui|settings ?menu|inventory ?ui|ui ?system|ui ?design|interface|popup|dialog|notification ?system|stamina ?bar|xp ?bar|level ?bar|progress ?bar|minimap|scoreboard|kill ?feed|chat ?system|lobby|voting|spectate|class ?select|team ?select|character ?select|car ?select|upgrade ?ui|skill ?tree|crafting ?menu|quest ?log|map ?screen|pause ?menu|game ?over|win ?screen|loading ?screen|main ?menu|title ?screen|tycoon|dropper|conveyor|rebirth|obby|obstacle ?course|parkour|simulator|daily ?reward|login ?reward|streak|weather ?system|rain|snow|particle ?effect|animation ?system|animate|vehicle ?system|car ?system|drive|racing|trading ?system|trade|leaderboard|leaderstats|spawn|respawn ?system|xp|level ?up|progression)\b/i
 
+// ── Standalone script template matcher (used by fallback paths outside freeModelTwoPass) ──
+function getScriptTemplateStandalone(msg: string): string | null {
+  const lower = msg.toLowerCase()
+  try {
+    if (/\b(tycoon|factory|idle|clicker)\b/.test(lower))
+      return tycoonGame({ plotSize: 60, dropperInterval: 2, baseIncome: 5, upgradeCosts: [100, 500, 2000] })
+    if (/\b(obby|obstacle|parkour|platformer)\b/.test(lower))
+      return obbyGame({ checkpointCount: 8, difficulty: 'medium', includeTimer: true })
+    if (/\b(simulator|sim|collect|grind)\b/.test(lower))
+      return simulatorGame({ collectibleName: 'Gems', backpackSize: 100, sellMultiplier: 1, rebirthCost: 10000 })
+    if (/\b(economy|currency|coins|cash|shop system|buy system|purchase)\b/.test(lower))
+      return economySystem({ currencies: ['Coins'], startingCash: 100, shopItems: [{ name: 'Speed Boost', price: 200 }, { name: 'Double Jump', price: 500 }] })
+    if (/\b(combat|fight|sword|damage|weapon|attack|pvp)\b/.test(lower))
+      return basicCombat({ clickDamage: 25, attackCooldown: 0.5, attackRange: 8 })
+    if (/\b(inventory|backpack|items|slots|equip)\b/.test(lower))
+      return inventorySystem({ maxSlots: 20, categories: ['Weapons', 'Tools', 'Consumables'] })
+    if (/\b(vehicle|car|drive|racing|boat)\b/.test(lower))
+      return vehicleSystem({ vehicleName: 'Car', speed: 80, turnSpeed: 5, seatCount: 1 })
+    if (/\b(daily rewards?|login rewards?|streak)\b/.test(lower))
+      return dailyRewardsSystem({ rewards: [{ day: 1, currency: 'Coins', amount: 100 }, { day: 7, currency: 'Coins', amount: 1000 }], resetHours: 24 })
+    if (/\b(npc|dialog|dialogue|shopkeeper)\b/.test(lower))
+      return npcDialogSystem({ npcName: 'Shopkeeper', dialogLines: ['Welcome!', 'What would you like?', 'Come back soon!'] })
+    if (/\b(leaderboard|leaderstats|xp|level|progression)\b/.test(lower))
+      return leaderboardProgression({ stats: [{ name: 'Coins', startValue: 0 }, { name: 'Level', startValue: 1 }, { name: 'XP', startValue: 0, isXP: true }], maxLevel: 100 })
+    if (/\b(trading|trade|auction)\b/.test(lower))
+      return tradingSystem({ tradingEnabled: true, maxTradeSlots: 6, tradeRange: 30 })
+    // UI templates
+    if (/\b(shop|store|buy|purchase|shop ui|shop gui)\b/.test(lower))
+      return SHOP_UI_TEMPLATE
+    if (/\b(settings|options|config|settings ui)\b/.test(lower))
+      return SETTINGS_UI_TEMPLATE
+    if (/\b(hud|health ?bar|stamina|game ui)\b/.test(lower))
+      return HUD_UI_TEMPLATE
+    if (/\b(character|customiz|avatar|outfit)\b/.test(lower))
+      return CHARACTER_CUSTOMIZATION_TEMPLATE
+    if (/\b(select|selector|choose|pick|car select)\b/.test(lower))
+      return SELECTION_UI_TEMPLATE
+    if (/\b(gui|ui|screen|menu|interface)\b/.test(lower))
+      return SHOP_UI_TEMPLATE
+  } catch { /* skip */ }
+  return null
+}
+
 // ── UI Template Constants — complete working ScreenGui code for reference injection ──
 const SHOP_UI_TEMPLATE = `-- Shop UI System (LocalScript → StarterGui)
 -- Complete shop with item grid, categories, currency display, purchase flow
@@ -3845,14 +3888,27 @@ ${effectiveInstruction}`
       // Still no code — try template fallback
       if (!luauCode) {
         console.warn('[SinglePass] Lightweight retry also failed — trying template fallback')
-        const templateCode = generateFallbackBuild(message)
-        if (templateCode) {
-          luauCode = templateCode
-          model = 'template'
-          conversationText = `Here's a template build for "${message}". The AI models are experiencing high demand right now, so I used a pre-built template as a starting point. Let me know what you'd like to change!`
-        } else {
-          model = 'failed'
-          conversationText = `I'm having trouble generating that build right now. The AI is experiencing high demand — please try again in a moment, or try a simpler prompt first.`
+        // For script intents, use the script template first (ScreenGui, game systems, etc.)
+        if (isScriptIntent) {
+          const scriptFallback = getScriptTemplate(message)
+          if (scriptFallback) {
+            luauCode = scriptFallback
+            model = 'script-template'
+            conversationText = `Here's a complete ${intent} system for "${message}". This includes all the game logic, UI, and server-client communication. Paste it into Studio's command bar to install. Let me know what you'd like to change!`
+            console.log('[ScriptFallback] Used script template instead of build fallback')
+          }
+        }
+        // If no script template matched, or it's a build intent, use build fallback
+        if (!luauCode) {
+          const templateCode = generateFallbackBuild(message)
+          if (templateCode) {
+            luauCode = templateCode
+            model = 'template'
+            conversationText = `Here's a template build for "${message}". The AI models are experiencing high demand right now, so I used a pre-built template as a starting point. Let me know what you'd like to change!`
+          } else {
+            model = 'failed'
+            conversationText = `I'm having trouble generating that build right now. The AI is experiencing high demand — please try again in a moment, or try a simpler prompt first.`
+          }
         }
       }
     }
@@ -11188,7 +11244,10 @@ Set m.PrimaryPart to the base part. No explanation.`,
 
     // Final fallback — generate a template-based Luau build from the user's message
     // This ensures EVERY build request produces actual code, even when AI APIs are down
-    const fallbackLuau = generateFallbackBuild(message)
+    // For script intents, prefer the script template over the build fallback
+    const isScriptFinalFallback = SCRIPT_INTENTS.has(intent) || SCRIPT_KEYWORDS.test(message)
+    const scriptFinalFallback = isScriptFinalFallback ? getScriptTemplateStandalone(message) : null
+    const fallbackLuau = scriptFinalFallback || generateFallbackBuild(message)
     let fbExecuted = false
     if (fallbackLuau && sessionId) {
       fbExecuted = await sendCodeToStudio(sessionId, fallbackLuau)
