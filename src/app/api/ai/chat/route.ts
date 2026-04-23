@@ -3906,8 +3906,12 @@ Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE
     let model = 'gemini-2.0-flash'
     let finalVerificationScore = 0
 
-    // ── STAGED PIPELINE: use for complex VISUAL builds only (NOT script/game system requests) ──
-    const isComplexBuild = !isScriptIntent && /\b(game|map|city|village|town|world|scene|island|station|course|track)\b/i.test(message)
+    // ── STAGED PIPELINE: enforced multi-step decomposition for complex requests ──
+    const isComplexBuild = !isScriptIntent && (
+      /\b(game|map|city|village|town|world|scene|island|station|course|track|tycoon|simulator|obby|rpg|arena|kingdom|castle|mansion|hospital|school|restaurant|factory|farm|theme.?park|complete|full|entire|whole)\b/i.test(message)
+      || /\b(with|and|plus|also|include).*(shop|leaderboard|currency|combat|quest|inventory|pet|npc|teleport|spawn|checkpoint|timer|team|vehicle|weapon|gui|menu|trading|crafting|skill|level|upgrade|rebirth)/i.test(message)
+      || message.split(/\band\b|\bwith\b|\bplus\b/i).length >= 4
+    )
     if (isComplexBuild && !luauCode) {
       console.log('[StagedPipeline] Complex build detected, using staged pipeline for:', message.slice(0, 50))
       try {
