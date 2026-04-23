@@ -3870,6 +3870,19 @@ Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE
       if (!conversationText || conversationText.length < 20) {
         conversationText = `Here's what I'm setting up for "${message}". Check your Studio — the build should appear near your camera. Let me know what you'd like to change!`
       }
+      // ── UI INTENT HARD CHECK — if intent is 'ui' the code MUST contain ScreenGui ──
+      if (luauCode && intent === 'ui') {
+        const hasAnyGui = /ScreenGui|Instance\.new\s*\(\s*["'](Frame|TextButton|TextLabel|LocalScript)["']\s*\)/.test(luauCode)
+        if (!hasAnyGui) {
+          console.warn(`[UI-HardCheck] UI intent but code has NO GUI elements — force replacing with SHOP_UI_TEMPLATE`)
+          const uiTemplate = getScriptTemplate(message)
+          if (uiTemplate) {
+            luauCode = uiTemplate
+            conversationText = `Here's a complete shop UI system. It creates a ScreenGui with item cards, category tabs, currency display, and purchase flow. Paste it into Studio's command bar — press Play to see it in action.`
+          }
+        }
+      }
+
       // ── SCRIPT INTENT SAFETY NET ──
       // If the AI was supposed to generate scripts but produced Part-heavy build code instead,
       // catch this and either retry or fall back to the template
