@@ -320,10 +320,22 @@ function scoreQuality(code: string, errors: VerificationError[]): { score: numbe
     code.includes('TextChatService') || code.includes('PathfindingService') ||
     code.includes('TeleportService') || code.includes('BadgeService') ||
     code.includes('game:GetService("Players")') ||
-    // Pure GUI/menu scripts
-    (code.includes('ScreenGui') && !code.includes('Instance.new("Part")')) ||
+    // GUI/menu scripts (ANY ScreenGui creation = script, not build)
+    code.includes('ScreenGui') || code.includes('BillboardGui') || code.includes('SurfaceGui') ||
+    // Script source pattern (creating scripts with .Source)
+    code.includes('.Source') || code.includes('ServerScriptService') ||
+    code.includes('StarterPlayerScripts') || code.includes('StarterGui') ||
+    code.includes('ReplicatedStorage') || code.includes('StarterPack') ||
+    // UI element creation (TextButton, Frame, etc)
+    code.includes('TextButton') || code.includes('TextLabel') || code.includes('TextBox') ||
+    code.includes('ImageButton') || code.includes('ImageLabel') || code.includes('ScrollingFrame') ||
+    code.includes('UIListLayout') || code.includes('UIGridLayout') || code.includes('UICorner') ||
     // Leaderstats / progression scripts
-    code.includes('leaderstats') || code.includes('IntValue') || code.includes('NumberValue')
+    code.includes('leaderstats') || code.includes('IntValue') || code.includes('NumberValue') ||
+    // ProximityPrompt / interactive scripts
+    code.includes('ProximityPrompt') || code.includes('ClickDetector') ||
+    // Tween/animation scripts
+    (code.includes('TweenService') && !code.includes('Instance.new("Part")'))
   if (!isScriptCode && totalParts < 8 && code.includes('Instance.new')) {
     score -= 50
     warnings.push({ type: 'complexity', message: `Only ${totalParts} parts — builds MUST have 15+ parts. Single-brick output.` })

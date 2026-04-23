@@ -2450,17 +2450,41 @@ GO ALL OUT. The user expects to be impressed. A "house" should have a porch with
     // ── SCRIPT INTENT: use script generation prompt instead of build prompt ──
     const scriptInstruction = `Script/System: ${message}${continuationContext}
 
-Generate a COMPLETE, RUNNABLE Luau script for this request. This is a SCRIPTING task, NOT a visual build.
-- Create Script/LocalScript/ModuleScript instances with actual game logic in their .Source property
-- Parent scripts to the correct services (ServerScriptService, StarterPlayerScripts, ReplicatedStorage)
-- Include RemoteEvents/RemoteFunctions for client-server communication if needed
-- Wrap everything in ChangeHistoryService recording
-- Use pcall for DataStore operations, task.wait() not wait(), --!strict
-- Output COMPLETE code — no placeholders, no "implement here" comments
-- The code must be paste-ready for Studio's command bar
+THIS IS A SCRIPTING REQUEST. DO NOT BUILD PARTS. DO NOT CREATE WALLS, FLOORS, OR FURNITURE.
+Generate GAME LOGIC — scripts that run inside Roblox.
+
+WHAT YOU MUST DO:
+1. Create Script instances (Instance.new("Script")) and set their .Source property with REAL Luau code
+2. Create LocalScript instances for client-side code and set their .Source property
+3. Parent scripts to CORRECT services: Server→ServerScriptService, Client→StarterPlayerScripts or StarterGui, Shared→ReplicatedStorage
+4. Create RemoteEvents/RemoteFunctions in ReplicatedStorage for client-server communication
+5. Create ScreenGui/Frame/TextButton/TextLabel hierarchies for UI (NOT Parts with SurfaceGui on them)
+6. Wrap EVERYTHING in ChangeHistoryService recording for undo support
+
+WHAT YOU MUST NOT DO:
+- DO NOT use Instance.new("Part") — this is NOT a build request
+- DO NOT create walls, floors, roofs, chairs, tables, or any physical objects
+- DO NOT use P(), W(), Cyl(), Ball() helper functions
+- DO NOT place anything in workspace as a physical structure
+- The ONLY Parts you may create are: tool handles, projectiles, or visual indicators that are part of game mechanics
+
+FOR UI/GUI REQUESTS (shop, menu, HUD, inventory):
+- Create a LocalScript in StarterGui
+- Inside the .Source, create ScreenGui → Frame hierarchy
+- Use TextButton for clickable buttons (NOT ClickDetectors on Parts)
+- Use UICorner, UIStroke, UIListLayout for layout
+- Colors: bg=15,18,30 | card=25,28,40 | gold=212,175,55 | text=250,250,250
+- Font: Enum.Font.GothamBold for titles, GothamMedium for body
+- ALWAYS add close button, hover effects, smooth animations
+
+FOR GAME SYSTEMS (combat, economy, vehicle, pet):
+- Server Script in ServerScriptService handles logic
+- LocalScript in StarterPlayerScripts handles input/display
+- RemoteEvent in ReplicatedStorage connects them
+- VALIDATE everything on server — never trust client
 
 First write 3-5 sentences explaining what this script does and how to test it.
-Then output the code in a \`\`\`lua block.`
+Then output the COMPLETE code in a \`\`\`lua block. The code must work when pasted into Studio's command bar.`
 
     // Select the right prompt and instruction based on intent type
     const effectivePrompt = isScriptIntent ? SCRIPT_GENERATION_PROMPT : codePrompt
