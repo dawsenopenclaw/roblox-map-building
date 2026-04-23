@@ -28,7 +28,12 @@ import { queueCommand, getSession, createSession } from '@/lib/studio-session'
 import { validateAndFixLuau } from '@/lib/luau-validator'
 import { luauToStructuredCommands } from '@/lib/ai/structured-commands'
 import { verifyLuauCode } from '@/lib/ai/luau-verifier'
-import { tycoonGame, obbyGame, simulatorGame } from '@/lib/ai/luau-templates'
+import {
+  tycoonGame, obbyGame, simulatorGame,
+  economySystem, basicCombat, inventorySystem,
+  obbyCheckpoints, petFollowSystem, vehicleSystem,
+  dailyRewardsSystem, npcDialogSystem,
+} from '@/lib/ai/luau-templates'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/lib/ai/game-knowledge'
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
@@ -2197,8 +2202,43 @@ USE THIS DATA:
 
     // Detect specific game type and get pre-built template as few-shot reference
     const fullGameDetection = intent === 'fullgame' ? detectFullGameType(message) : null
-    const templateReference = fullGameDetection?.templateCode
-      ? `\n\n=== REFERENCE TEMPLATE (adapt and customize, do NOT copy verbatim) ===\nThis is a working ${fullGameDetection.type} game skeleton. Use its STRUCTURE and PATTERNS as a guide, but customize names, values, and layout to match the user's specific request:\n\`\`\`lua\n${fullGameDetection.templateCode.slice(0, 3000)}\n\`\`\`\n=== END REFERENCE ===`
+
+    // Script template injection — also fires for script intents, not just fullgame
+    function getScriptTemplate(msg: string): string | null {
+      const lower = msg.toLowerCase()
+      try {
+        if (/\b(tycoon|factory|idle|clicker)\b/.test(lower))
+          return tycoonGame({ plotSize: 60, dropperInterval: 2, baseIncome: 5, upgradeCosts: [100, 500, 2000] })
+        if (/\b(obby|obstacle|parkour|platformer)\b/.test(lower))
+          return obbyGame({ checkpointCount: 8, difficulty: 'medium', includeTimer: true })
+        if (/\b(simulator|sim|collect|grind)\b/.test(lower))
+          return simulatorGame({ collectibleName: 'Gems', backpackSize: 100, sellMultiplier: 1, rebirthCost: 10000 })
+        if (/\b(economy|currency|coins|cash|shop system|buy system|purchase)\b/.test(lower))
+          return economySystem({ currencies: ['Coins'], startingCash: 100, shopItems: [{ name: 'Speed', price: 200 }, { name: 'Jump', price: 500 }] })
+        if (/\b(combat|fight|sword|damage|weapon|attack|pvp)\b/.test(lower))
+          return basicCombat({ clickDamage: 25, attackCooldown: 0.5, attackRange: 8 })
+        if (/\b(inventory|backpack|items|slots|equip)\b/.test(lower))
+          return inventorySystem({ maxSlots: 20, categories: ['Weapons', 'Tools', 'Consumables'] })
+        if (/\b(checkpoint|stage|progress|save point)\b/.test(lower))
+          return obbyCheckpoints({ totalCheckpoints: 10 })
+        if (/\b(pet|follow|companion)\b/.test(lower))
+          return petFollowSystem({ petName: 'Pet', followDistance: 5, followSpeed: 20 })
+        if (/\b(vehicle|car|drive|racing|boat)\b/.test(lower))
+          return vehicleSystem({ vehicleName: 'Car', speed: 80, turnSpeed: 5, seatCount: 1 })
+        if (/\b(daily reward|login reward|streak|daily bonus)\b/.test(lower))
+          return dailyRewardsSystem({ rewards: [{ day: 1, currency: 'Coins', amount: 100 }, { day: 2, currency: 'Coins', amount: 200 }, { day: 3, currency: 'Coins', amount: 300 }, { day: 7, currency: 'Coins', amount: 1000 }], resetHours: 24 })
+        if (/\b(npc|dialog|dialogue|talk|conversation|shopkeeper)\b/.test(lower))
+          return npcDialogSystem({ npcName: 'Shopkeeper', dialogLines: ['Welcome!', 'What would you like to buy?', 'Come back soon!'] })
+      } catch { /* template params mismatch — skip */ }
+      return null
+    }
+
+    const scriptTemplate = (isScriptIntent || intent === 'fullgame') ? getScriptTemplate(message) : null
+    const fullGameTemplate = fullGameDetection?.templateCode || null
+
+    const templateCode = scriptTemplate || fullGameTemplate
+    const templateReference = templateCode
+      ? `\n\n=== WORKING REFERENCE TEMPLATE (adapt to match user's request) ===\nThis is PROVEN WORKING CODE for this type of system. Use its structure, patterns, and API calls. Customize names, values, colors, and layout to match what the user asked for. Do NOT copy verbatim — adapt it.\n\`\`\`lua\n${templateCode.slice(0, 4000)}\n\`\`\`\n=== END REFERENCE ===`
       : ''
 
     // For fullgame intent, force a single executable world-building Luau script
@@ -2431,6 +2471,13 @@ Then output the code in a \`\`\`lua block.`
 
     // Enrich with object blueprints (for builds) or script patterns (for scripts)
     let enrichedCodePrompt = effectivePrompt
+
+    // Inject working template reference for script intents
+    if (templateReference && isScriptIntent) {
+      enrichedCodePrompt += templateReference
+      console.log('[ScriptTemplate] Injected working template reference for script intent')
+    }
+
     if (isScriptIntent) {
       const scriptRefs = findScriptPatterns(message, 2)
       if (scriptRefs.length > 0) {
