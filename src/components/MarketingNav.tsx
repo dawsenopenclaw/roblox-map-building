@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth, SignInButton, SignUpButton } from '@clerk/nextjs'
-import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy, BookOpen, Activity, Rocket, LayoutDashboard } from 'lucide-react'
+import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy, BookOpen, Activity, Rocket, LayoutDashboard, Settings } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 // Language switcher removed until translations are complete

@@ -510,6 +510,6 @@ export const config = {
      * the middleware so the CORS preflight handler runs, but isPublicRoute() exempts
      * them from Clerk auth so Stripe/Clerk can always fire.
      */
-    '/((?!_next/static|_next/image|.*\\.(?:ico|png|jpe?g|webp|svg|gif|woff2?|ttf|otf|mp4|mp3|json|html|webmanifest)$).*)',
+    '/((?!_next/static|_next/image|.*\\.(?:ico|png|jpe?g|webp|svg|gif|woff2?|ttf|otf|mp4|mp3|json|html|webmanifest|txt|xml|css|js|map)$).*)',
   ],
 }
