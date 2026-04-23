@@ -111,7 +111,7 @@ export function EditorTopBar({
       <div style={{ flex: 1 }} />
 
       {/* Right: Studio + Tokens + Avatar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, overflow: 'hidden' }}>
         {/* Studio connection */}
         {studioConnected ? (
           <button
@@ -152,9 +152,9 @@ export function EditorTopBar({
           </button>
         )}
 
-        {/* Usage + Tokens — compact */}
+        {/* Usage + Tokens — always compact in top bar */}
         {!isMobile && <UsageMeter />}
-        <TokenBalanceWidget />
+        <TokenBalanceWidget compact />
 
         {/* More menu (API Keys + Publish) */}
         <button

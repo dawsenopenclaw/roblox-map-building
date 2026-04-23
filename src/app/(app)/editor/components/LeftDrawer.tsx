@@ -27,6 +27,19 @@ export function LeftDrawer({
 
   if (!open) return null
 
+  // Safe wrappers to prevent crashes from bubbling up
+  const safeLoadSession = (id: string) => {
+    try { onLoadSession(id) } catch (e) { console.error('[LeftDrawer] Load session error:', e) }
+    onClose()
+  }
+  const safeDeleteSession = (id: string) => {
+    try { onDeleteSession(id) } catch (e) { console.error('[LeftDrawer] Delete session error:', e) }
+  }
+  const safeNewChat = () => {
+    try { onNewChat() } catch (e) { console.error('[LeftDrawer] New chat error:', e) }
+    onClose()
+  }
+
   return (
     <>
       {/* Backdrop */}
@@ -121,7 +134,7 @@ export function LeftDrawer({
           {tab === 'history' && (
             <>
               <button
-                onClick={() => { onNewChat(); onClose() }}
+                onClick={safeNewChat}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
@@ -160,7 +173,7 @@ export function LeftDrawer({
                     cursor: 'pointer',
                     transition: 'all 0.15s',
                   }}
-                  onClick={() => { onLoadSession(s.id); onClose() }}
+                  onClick={() => safeLoadSession(s.id)}
                   onMouseEnter={(e) => {
                     if (s.id !== currentSessionId) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
                   }}
@@ -185,7 +198,7 @@ export function LeftDrawer({
                     </p>
                   </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); onDeleteSession(s.id) }}
+                    onClick={(e) => { e.stopPropagation(); safeDeleteSession(s.id) }}
                     style={{
                       background: 'transparent',
                       border: 'none',
