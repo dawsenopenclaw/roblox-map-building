@@ -14,6 +14,7 @@ import {
   Building2,
   Sparkles,
   Crown,
+  Hammer,
   Shield,
   AlertTriangle,
   Mail,
@@ -57,9 +58,11 @@ const EMPTY_CONFIG: BillingConfig = {
 
 // Tier prices: $10–$200 fixed, $10–$1000 custom (1M tokens), enterprise above
 const ANNUAL_TOTALS = {
-  HOBBY: 96.00,    // $8/mo annual = $96/year (saves $24)
-  CREATOR: 480.00,   // $40/mo annual = $480/year (saves $120)
-  STUDIO:  1920.00,  // $160/mo annual = $1920/year (saves $480)
+  STARTER: 96.00,    // $8/mo annual = $96/year
+  BUILDER: 240.00,   // $20/mo annual = $240/year
+  CREATOR: 480.00,   // $40/mo annual = $480/year
+  PRO: 1440.00,      // $120/mo annual = $1440/year
+  STUDIO:  1920.00,  // $160/mo annual = $1920/year
 }
 
 const TIERS = [
@@ -77,35 +80,53 @@ const TIERS = [
     ctaHref: '/editor',
     features: [
       '1,000 tokens / month',
-      '1 project',
-      'AI script generation',
+      '5 builds per day',
       'Basic terrain generation',
-      'Live Studio sync',
-      'Basic templates',
       'Community support',
       'COPPA compliant',
     ],
   },
   {
-    key: 'HOBBY',
+    key: 'STARTER',
     name: 'Starter',
     icon: Star,
     priceMonthly: 10,
     priceYearly: 8,
-    yearlyTotal: ANNUAL_TOTALS.HOBBY,
-    tagline: 'For hobbyists leveling up',
+    yearlyTotal: ANNUAL_TOTALS.STARTER,
+    tagline: 'For hobbyists getting started',
     highlight: false,
     badge: null,
     cta: 'Get Starter',
     ctaHref: '/sign-up?plan=starter',
     features: [
       '5,000 tokens / month',
-      '5 projects',
+      '25 builds per day',
       'Voice-to-game',
       'Image-to-map',
-      'Terrain generation',
       '3D asset generation',
       'Email support',
+    ],
+  },
+  {
+    key: 'BUILDER',
+    name: 'Builder',
+    icon: Hammer,
+    priceMonthly: 25,
+    priceYearly: 20,
+    yearlyTotal: ANNUAL_TOTALS.BUILDER,
+    tagline: 'For creators who build daily',
+    highlight: false,
+    badge: null,
+    cta: 'Get Builder',
+    ctaHref: '/sign-up?plan=builder',
+    features: [
+      '15,000 tokens / month',
+      '50 builds per day',
+      'All Starter features',
+      'UI builder',
+      'Game system templates',
+      'Script generation',
+      'Priority support',
     ],
   },
   {
@@ -121,16 +142,37 @@ const TIERS = [
     cta: 'Get Creator',
     ctaHref: '/sign-up?plan=creator',
     features: [
-      '30,000 tokens / month',
-      'Unlimited projects',
-      'Voice-to-game + image-to-map',
-      'Terrain & 3D asset generation',
-      'UI builder & economy design',
+      '40,000 tokens / month',
+      'Unlimited builds',
+      'All Builder features',
       'Marketplace access + selling',
-      'Team collaboration (3 members)',
       'Game DNA scanner',
-      'Priority support',
+      'Team collaboration (3 members)',
+      'Full game orchestrator',
       'Advanced analytics',
+    ],
+  },
+  {
+    key: 'PRO',
+    name: 'Pro',
+    icon: Crown,
+    priceMonthly: 150,
+    priceYearly: 120,
+    yearlyTotal: ANNUAL_TOTALS.PRO,
+    tagline: 'For power users and small teams',
+    highlight: false,
+    badge: null,
+    cta: 'Get Pro',
+    ctaHref: '/sign-up?plan=pro',
+    features: [
+      '100,000 tokens / month',
+      'Unlimited everything',
+      'All Creator features',
+      'Bulk 3D generation',
+      'Advanced analytics',
+      'Team collaboration (10 members)',
+      'Priority AI queue',
+      'Custom AI training',
     ],
   },
   {
@@ -146,32 +188,31 @@ const TIERS = [
     cta: 'Get Studio',
     ctaHref: '/sign-up?plan=studio',
     features: [
-      '150,000 tokens / month',
-      'Unlimited projects',
-      'All Creator features',
-      'Full terrain & world generation',
-      'Bulk 3D asset generation',
+      '200,000 tokens / month',
+      'Unlimited everything',
+      'All Pro features',
       'Full API access + SDKs',
-      'White-label exports',
+      'White-label builds',
       'Team collaboration (50 members)',
       'Dedicated support',
-      'Priority AI queue',
       'Custom integrations',
+      'SLA guarantee',
     ],
   },
 ] as const
 
-// Feature matrix for comparison table (4 tiers, 9 rows)
+// Feature matrix for comparison table (6 tiers)
 const COMPARE_FEATURES = [
-  { label: 'Tokens / month',     free: '1,000',     starter: '5,000',     creator: '30,000',   studio: '150,000'   },
-  { label: 'AI Models',          free: 'Basic',     starter: 'Standard',  creator: 'Advanced', studio: 'Advanced'  },
-  { label: 'Voice Commands',     free: false,       starter: true,        creator: true,       studio: true        },
-  { label: 'Image-to-Map',       free: false,       starter: true,        creator: true,       studio: true        },
-  { label: 'Game DNA',           free: false,       starter: false,       creator: true,       studio: true        },
-  { label: 'Marketplace',        free: false,       starter: false,       creator: true,       studio: true        },
-  { label: 'Team Members',       free: 'Solo',      starter: 'Solo',      creator: '3',        studio: '50'        },
-  { label: 'API Access',         free: false,       starter: false,       creator: false,      studio: true        },
-  { label: 'Support Level',      free: 'Community', starter: 'Email',     creator: 'Priority', studio: 'Dedicated' },
+  { label: 'Tokens / month',     free: '1,000',     starter: '5,000',     builder: '15,000',    creator: '40,000',    pro: '100,000',   studio: '200,000'   },
+  { label: 'Daily Builds',       free: '5',         starter: '25',        builder: '50',        creator: 'Unlimited', pro: 'Unlimited', studio: 'Unlimited' },
+  { label: 'Voice Commands',     free: false,       starter: true,        builder: true,        creator: true,        pro: true,        studio: true        },
+  { label: 'Image-to-Map',       free: false,       starter: true,        builder: true,        creator: true,        pro: true,        studio: true        },
+  { label: 'Script Generation',  free: false,       starter: false,       builder: true,        creator: true,        pro: true,        studio: true        },
+  { label: 'Game DNA',           free: false,       starter: false,       builder: false,       creator: true,        pro: true,        studio: true        },
+  { label: 'Marketplace',        free: false,       starter: false,       builder: false,       creator: true,        pro: true,        studio: true        },
+  { label: 'Team Members',       free: 'Solo',      starter: 'Solo',      builder: 'Solo',      creator: '3',         pro: '10',        studio: '50'        },
+  { label: 'API Access',         free: false,       starter: false,       builder: false,       creator: false,       pro: false,       studio: true        },
+  { label: 'Support Level',      free: 'Community', starter: 'Email',     builder: 'Priority',  creator: 'Priority',  pro: 'Priority',  studio: 'Dedicated' },
 ]
 
 const TOKEN_PACKS = [
