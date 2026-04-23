@@ -1100,11 +1100,13 @@ export function useChat(options: UseChatOptions = {}) {
                 }
                 style = styleMap[imageMode] || 'roblox-icon'
               }
-              // Try Nano Banana (Gemini) first — faster and uses existing key
-              apiUrl = '/api/ai/image-nano'
+              // Unified image engine: auto-picks GPT/Nano/FAL based on style
+              apiUrl = '/api/ai/generate-image'
               apiBody = {
                 prompt: trimmed,
                 style,
+                provider: 'auto',
+                size: 'auto',
               }
             } else if (aiMode === 'mesh') {
               apiUrl = '/api/ai/mesh'
