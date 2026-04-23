@@ -45,7 +45,7 @@ const TIMELINE = [
     date: 'Mar 29, 2026',
     event: 'General availability',
     detail:
-      '55 agents, Studio Plugin, Voice Commands, Image-to-Map, Game DNA Scanner — all live.',
+      '200+ agents, Studio Plugin, Voice Commands, Image-to-Map, Game DNA Scanner — all live.',
   },
 ]
 
@@ -218,7 +218,7 @@ export default function AboutPage() {
             every technical barrier between an idea and a published Roblox game.
           </p>
           <p>
-            Today, ForjeGames ships with 55 AI agents, voice input, image-to-map, 3D generation, a
+            Today, ForjeGames ships with 200+ AI agents, voice input, image-to-map, 3D generation, a
             Studio Plugin, UI builder, economy designer, and a marketplace browser — all in a single
             editor. We&apos;re the only platform that covers every layer. And we&apos;re just
             getting started.

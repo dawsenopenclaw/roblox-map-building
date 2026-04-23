@@ -5,7 +5,7 @@ import { createMetadata } from '@/lib/metadata'
 export const metadata: Metadata = createMetadata({
   title: 'Introducing ForjeGames: AI-Powered Roblox Development',
   description:
-    'ForjeGames is officially live. Describe any Roblox game in plain English and watch 55 AI agents build it in real time — terrain, scripts, assets, and all.',
+    'ForjeGames is officially live. Describe any Roblox game in plain English and watch 200+ AI agents build it in real time — terrain, scripts, assets, and all.',
   path: '/blog/forjegames-launch',
   keywords: ['ForjeGames launch', 'AI Roblox builder', 'Roblox game development platform'],
 })
@@ -23,7 +23,7 @@ const jsonLd = {
     logo: { '@type': 'ImageObject', url: 'https://forjegames.com/logo.png', width: 400, height: 400 },
   },
   description:
-    'ForjeGames is officially live. Describe any Roblox game in plain English and watch 55 AI agents build it in real time — terrain, scripts, assets, and all.',
+    'ForjeGames is officially live. Describe any Roblox game in plain English and watch 200+ AI agents build it in real time — terrain, scripts, assets, and all.',
   isPartOf: { '@type': 'WebSite', name: 'ForjeGames', url: 'https://forjegames.com' },
 }
 
@@ -75,7 +75,7 @@ export default function LaunchBlogPost() {
           </p>
 
           <p>
-            ForjeGames closes that gap. You describe what you want. Our 55 AI agents — each
+            ForjeGames closes that gap. You describe what you want. Our 200+ AI agents — each
             specialized for a different part of game development — collaborate to build it. Terrain
             agent handles the map. Scripting agent writes the Luau. Economy agent balances the
             numbers. NPC agent writes the dialogue. All working in parallel, all streaming into your

@@ -201,7 +201,7 @@ export default function AIRobloxBlogPost() {
           </p>
 
           <p>
-            ForjeGames is trying to get there faster. The platform ships with 55 agents today.
+            ForjeGames is trying to get there faster. The platform ships with 200+ agents today.
             That number will grow. The quality will improve. The barriers will keep falling.
           </p>
         </div>
