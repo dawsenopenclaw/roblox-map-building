@@ -2252,6 +2252,15 @@ NPC AI SYSTEM:
 CURRENCY/ECONOMY:
   Server Script: ModuleScript "Economy" in ReplicatedStorage with functions: addCoins(player, amount), removeCoins(player, amount), getBalance(player). DataStore persistence. RemoteFunction for client balance queries.
 
+FOLDER ORGANIZATION — for ANY multi-script system:
+  Create organized folders so the user's Explorer stays clean:
+  -- ServerScriptService/ForjeAI_SystemName/Server (Script)
+  -- ServerScriptService/ForjeAI_SystemName/Config (ModuleScript — shared settings)
+  -- StarterGui/ForjeAI_SystemName/Client (LocalScript — UI + input)
+  -- ReplicatedStorage/ForjeAI_SystemName/Remotes/ (RemoteEvents)
+  -- ReplicatedStorage/ForjeAI_SystemName/SharedModules/ (ModuleScripts used by both)
+  This keeps the Explorer organized and makes it easy to find/edit scripts later.
+
 SCRIPTED LIGHTING EFFECTS:
   Edit Mode or Server Script: Dynamic lighting via TweenService on PointLight properties. Patterns:
   - FLICKERING TORCH: loop TweenService Brightness between 1-3, Range 15-25, random delay 0.05-0.2s
@@ -3497,40 +3506,102 @@ GO ALL OUT. The user expects to be impressed. A "house" should have a porch with
     const scriptInstruction = `Script/System: ${message}${continuationContext}
 
 THIS IS A SCRIPTING REQUEST. DO NOT BUILD PARTS. DO NOT CREATE WALLS, FLOORS, OR FURNITURE.
-Generate GAME LOGIC — scripts that run inside Roblox.
+Generate COMPLETE, ORGANIZED GAME SYSTEMS with proper folder structure.
 
-WHAT YOU MUST DO:
-1. Create Script instances (Instance.new("Script")) and set their .Source property with REAL Luau code
-2. Create LocalScript instances for client-side code and set their .Source property
-3. Parent scripts to CORRECT services: Server→ServerScriptService, Client→StarterPlayerScripts or StarterGui, Shared→ReplicatedStorage
-4. Create RemoteEvents/RemoteFunctions in ReplicatedStorage for client-server communication
-5. Create ScreenGui/Frame/TextButton/TextLabel hierarchies for UI (NOT Parts with SurfaceGui on them)
-6. Wrap EVERYTHING in ChangeHistoryService recording for undo support
+═══════════════════════════════════════════════════════════════
+FOLDER STRUCTURE — CREATE THIS EXACT HIERARCHY FOR EVERY SYSTEM:
+═══════════════════════════════════════════════════════════════
+
+-- 1. Create the system folder in each service
+local systemName = "ForjeAI_ShopSystem" -- descriptive name
+local serverFolder = Instance.new("Folder")
+serverFolder.Name = systemName
+serverFolder.Parent = game:GetService("ServerScriptService")
+
+local clientFolder = Instance.new("Folder")
+clientFolder.Name = systemName
+clientFolder.Parent = game:GetService("StarterGui")
+
+local sharedFolder = Instance.new("Folder")
+sharedFolder.Name = systemName
+sharedFolder.Parent = game:GetService("ReplicatedStorage")
+
+-- 2. Create RemoteEvents/Functions in the shared folder
+local remotes = Instance.new("Folder")
+remotes.Name = "Remotes"
+remotes.Parent = sharedFolder
+local purchaseEvent = Instance.new("RemoteEvent")
+purchaseEvent.Name = "Purchase"
+purchaseEvent.Parent = remotes
+
+-- 3. Create a config ModuleScript in shared folder
+local configModule = Instance.new("ModuleScript")
+configModule.Name = "Config"
+configModule.Source = [==[return { ... }]==]
+configModule.Parent = sharedFolder
+
+-- 4. Server Script with .Source containing FULL game logic
+local serverScript = Instance.new("Script")
+serverScript.Name = "Server"
+serverScript.Source = [==[ ... FULL server code here ... ]==]
+serverScript.Parent = serverFolder
+
+-- 5. Client LocalScript with .Source containing FULL UI + input
+local clientScript = Instance.new("LocalScript")
+clientScript.Name = "Client"
+clientScript.Source = [==[ ... FULL client code here ... ]==]
+clientScript.Parent = clientFolder
+
+WHAT EACH SCRIPT MUST CONTAIN:
+
+SERVER SCRIPT (.Source):
+- Full game logic with DataStoreService for persistence
+- pcall() around ALL DataStore operations
+- Input validation on ALL RemoteEvent handlers
+- Anti-exploit checks (rate limiting, value validation)
+- Leaderstats setup if applicable
+- Print statements for debugging: print("[SystemName] Loaded")
+
+CLIENT SCRIPT (.Source — for UI systems):
+- Complete ScreenGui creation with FULL visual hierarchy
+- Dark theme: bg=Color3.fromRGB(15,18,30), card=Color3.fromRGB(25,28,45), gold=Color3.fromRGB(212,175,55)
+- Fonts: Enum.Font.GothamBold for headings, GothamMedium for body
+- UICorner (8-12px radius), UIStroke (1-2px, gold or dim), UIListLayout/UIGridLayout
+- TweenService animations on EVERY interaction (hover, click, open, close)
+- Close button (X) with hover effect
+- Sound feedback on button clicks (optional but nice)
+- Connect to RemoteEvents for server communication
+- Responsive sizing using UDim2 scale values (not fixed pixels)
+- ScrollingFrame for long content with styled scrollbar
+
+CONFIG MODULE (.Source):
+- Return a table with all tunable values (prices, names, colors, timings)
+- Both server and client require() this module for consistency
+
+QUALITY REQUIREMENTS:
+- Every UI element needs: Name, Size, Position, BackgroundColor3, BorderSizePixel=0, Font, TextSize, TextColor3
+- Every button needs: hover effect (BackgroundColor3 tween), click feedback (scale tween or color flash)
+- Every panel needs: open/close animation (slide or fade), close button, title bar
+- Category tabs/filters when there are 4+ items
+- Currency/balance display that updates live from leaderstats
+- Item cards with icon, name, description, price, and buy button
+- Loading states and error handling for server responses
 
 WHAT YOU MUST NOT DO:
 - DO NOT use Instance.new("Part") — this is NOT a build request
-- DO NOT create walls, floors, roofs, chairs, tables, or any physical objects
+- DO NOT create walls, floors, roofs, furniture, or physical objects
 - DO NOT use P(), W(), Cyl(), Ball() helper functions
-- DO NOT place anything in workspace as a physical structure
-- The ONLY Parts you may create are: tool handles, projectiles, or visual indicators that are part of game mechanics
+- The ONLY Parts allowed: tool handles, projectiles, or visual indicators that are part of game mechanics
 
-FOR UI/GUI REQUESTS (shop, menu, HUD, inventory):
-- Create a LocalScript in StarterGui
-- Inside the .Source, create ScreenGui → Frame hierarchy
-- Use TextButton for clickable buttons (NOT ClickDetectors on Parts)
-- Use UICorner, UIStroke, UIListLayout for layout
-- Colors: bg=15,18,30 | card=25,28,40 | gold=212,175,55 | text=250,250,250
-- Font: Enum.Font.GothamBold for titles, GothamMedium for body
-- ALWAYS add close button, hover effects, smooth animations
+WRAP EVERYTHING in ChangeHistoryService:
+local CH = game:GetService("ChangeHistoryService")
+local rid = CH:TryBeginRecording("ForjeAI ${message.slice(0, 40)}")
+-- ... all your code here ...
+if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
 
-FOR GAME SYSTEMS (combat, economy, vehicle, pet):
-- Server Script in ServerScriptService handles logic
-- LocalScript in StarterPlayerScripts handles input/display
-- RemoteEvent in ReplicatedStorage connects them
-- VALIDATE everything on server — never trust client
-
-First write 3-5 sentences explaining what this script does and how to test it.
-Then output the COMPLETE code in a \`\`\`lua block. The code must work when pasted into Studio's command bar.`
+First write 3-5 sentences explaining what this system does, how players interact with it, and what to test.
+Then output the COMPLETE code in a \`\`\`lua block. The code must work when pasted into Studio's command bar.
+Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE implementation only.`
 
     // Select the right prompt and instruction based on intent type
     const effectivePrompt = isScriptIntent ? SCRIPT_GENERATION_PROMPT : codePrompt
