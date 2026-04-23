@@ -1102,7 +1102,7 @@ After response add BOTH sections:
 const SCRIPT_INTENTS = new Set(['script', 'combat', 'economy', 'quest', 'npc', 'datasave', 'networking', 'multiscript', 'ui', 'debug'])
 
 // ─── Keywords that force script mode even if intent classifier says 'building' ──
-const SCRIPT_KEYWORDS = /\b(script|leaderboard|datastore|save data|currency|coins?|cash|shop system|buy system|purchase|remote ?event|remote ?function|day.?night cycle|flicker|door.?open|pathfind|health ?bar|damage system|respawn|teleport|badge|gamepass|game ?pass|admin|kick|ban|chat|command|round system|timer|countdown|inventory|loot|drop|spawn system|wave system|kill ?brick|checkpoint|npc.*ai|pet system|trading|auction)\b/i
+const SCRIPT_KEYWORDS = /\b(script|leaderboard|datastore|save data|currency|coins?|cash|shop system|buy system|purchase|remote ?event|remote ?function|day.?night cycle|flicker|door.?open|pathfind|health ?bar|damage system|respawn|teleport|badge|gamepass|game ?pass|admin|kick|ban|chat|command|round system|timer|countdown|inventory|loot|drop|spawn system|wave system|kill ?brick|checkpoint|npc.*ai|pet system|trading|auction|shop ?ui|gui|screen ?gui|hud|menu ?ui|settings ?ui|settings ?menu|inventory ?ui|ui ?system|ui ?design|interface|popup|dialog|notification ?system|stamina ?bar|xp ?bar|level ?bar|progress ?bar|minimap|scoreboard|kill ?feed|chat ?system|lobby|voting|spectate|class ?select|team ?select|character ?select|car ?select|upgrade ?ui|skill ?tree|crafting ?menu|quest ?log|map ?screen|pause ?menu|game ?over|win ?screen|loading ?screen|main ?menu|title ?screen)\b/i
 
 const SCRIPT_GENERATION_PROMPT = `You are Forje — an expert Roblox Luau scripting engine. You generate RUNNABLE game scripts, NOT visual part builds.
 
@@ -1185,8 +1185,28 @@ SCRIPTED LIGHTING EFFECTS:
   - EMERGENCY LIGHTS: alternate red/blue PointLights with 0.5s toggle
   - SUNRISE/SUNSET TINT: TweenService on ColorCorrectionEffect.TintColor matching time of day
 
-GUI/UI SYSTEM:
-  LocalScript in StarterGui: ScreenGui → Frame hierarchy with UICorner, UIStroke, UIListLayout. Use TextButton.Activated for clicks. Fire RemoteEvents for server actions. Use TweenService for smooth transitions.
+GUI/UI SYSTEM — THIS IS THE MOST IMPORTANT PATTERN. When user asks for ANY UI, menu, HUD, shop, inventory:
+  Create a LocalScript in StarterGui. Inside the Source, create a ScreenGui and build the ENTIRE UI hierarchy.
+  ALWAYS use this structure:
+  local player = game:GetService("Players").LocalPlayer
+  local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+  gui.Name = "ForjeUI"; gui.ResetOnSpawn = false
+
+  -- Main container
+  local main = Instance.new("Frame", gui)
+  main.Size = UDim2.new(0.8,0,0.75,0); main.Position = UDim2.new(0.5,0,0.5,0); main.AnchorPoint = Vector2.new(0.5,0.5)
+  main.BackgroundColor3 = Color3.fromRGB(15,18,30); main.BorderSizePixel = 0
+  Instance.new("UICorner", main).CornerRadius = UDim.new(0,16)
+  local stroke = Instance.new("UIStroke", main); stroke.Color = Color3.fromRGB(212,175,55); stroke.Thickness = 1.5
+
+  FOR SHOPS: Grid of item cards. Each card = Frame with UICorner + image + name label + price label + buy button (gold bg, dark text). Category tabs at top. Currency display top-right.
+  FOR HUDS: Transparent background frames anchored to screen edges. Health bar = container Frame + inner fill Frame (width tweened). Use Color3.fromRGB(34,197,94) for health, gold for XP, blue for stamina.
+  FOR MENUS: Centered modal with title, subtitle, vertical button list (UIListLayout). Dark glassmorphism. Smooth open/close via TweenService (scale 0→1).
+  FOR INVENTORY: ScrollingFrame with UIGridLayout. Each slot = Frame + ImageLabel. Click to select → show details panel.
+
+  DESIGN COLORS: bg=15,18,30 | card=25,28,40 | gold=212,175,55 | white=250,250,250 | muted=113,113,122
+  FONTS: Enum.Font.GothamBold (titles), Enum.Font.GothamMedium (body), sizes 24/16/14/11
+  ALWAYS: UICorner on everything (8-16px), UIStroke for borders, UIPadding(16px), close button, hover effects via MouseEnter/MouseLeave → TweenService
 
 STAMINA/ENERGY BAR:
   LocalScript in StarterPlayerScripts: ScreenGui with bar Frame, inner fill Frame width = stamina/maxStamina. UserInputService Shift sprint → deplete, idle → regen. TweenService smooth width + color (green→yellow→red based on %). Camera FOV 70→85 when sprinting.

@@ -101,15 +101,17 @@ const INTENT_DEFINITIONS: IntentDefinition[] = [
   },
   {
     intent: 'ui',
-    weight: 2,
+    weight: 4, // Higher than building (2) so "shop UI" → ui, not building
     patterns: [
       /\b(ui|gui|hud|menu|screen|button|label|frame|panel|overlay|interface|leaderboard)\b/i,
       /\b(screengui|surfacegui|billboardgui|textlabel|textbutton|imagebutton|imagelabel|frame|scrollingframe)\b/i,
       /\b(tweenservice|tween).{0,20}\b(ui|gui|button|frame|label)\b/i,
       /\b(create|make|build|design|add)\b.{0,30}\b(gui|ui|hud|menu|interface|screen|panel)\b/i,
       /\b\w+\s+(gui|ui|hud)\b/i,
+      /\b(shop|store|inventory|settings|pause|game.?over|loading|title|lobby|select|upgrade)\s*(ui|menu|screen|gui|interface|system)\b/i,
+      /\b(health|stamina|mana|xp|level|progress|energy)\s*(bar|display|meter|indicator)\b/i,
     ],
-    keywords: ['ui', 'gui', 'hud', 'menu', 'button', 'label', 'frame', 'screen', 'panel', 'overlay', 'leaderboard', 'screengui', 'billboard', 'interface', 'popup', 'modal', 'toolbar', 'sidebar', 'notification', 'tooltip', 'dropdown'],
+    keywords: ['ui', 'gui', 'hud', 'menu', 'button', 'label', 'frame', 'screen', 'panel', 'overlay', 'leaderboard', 'screengui', 'billboard', 'interface', 'popup', 'modal', 'toolbar', 'sidebar', 'notification', 'tooltip', 'dropdown', 'dialog', 'scoreboard', 'minimap', 'hotbar', 'crosshair', 'nameplate', 'healthbar', 'prompt'],
   },
   {
     intent: 'audio',
