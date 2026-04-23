@@ -55,6 +55,10 @@ local MIN_INTERVAL       = 5    -- seconds (was 2 — burned through Upstash fre
 local MAX_INTERVAL       = 30   -- seconds (backoff ceiling)
 local HEARTBEAT_INTERVAL = 30   -- seconds between keepalive POSTs
 local MAX_RECONNECT      = 10   -- give up after this many consecutive reconnect attempts
+local CONTEXT_INTERVAL   = 10   -- seconds between scene-graph context pushes
+local CONSOLE_INTERVAL   = 5    -- seconds between console log pushes
+local CONTEXT_MAX_DEPTH  = 8    -- max recursion depth for workspace walk
+local CONSOLE_BUFFER_MAX = 50   -- max buffered log entries
 
 -- ============================================================
 -- Internal state
@@ -78,6 +82,11 @@ local _baseUrl             = nil
 local _reconnectAttempts   = 0
 local _updateNotified      = false   -- only show update banner once per session
 local _reAuthCallback      = nil     -- set by Sync.start, called when re-auth is needed
+local _timeSinceContext    = 0       -- timer for scene-graph push
+local _timeSinceConsole    = 0       -- timer for console log push
+local _consoleBuffer       = {}      -- ring buffer of recent LogService messages
+local _consoleHooked       = false   -- true once we connect LogService.MessageOut
+local _lastContextSnapshot = nil     -- previous scene snapshot for delta detection
 
 -- ============================================================
 -- Resolve base URL (production default, dev override via settings)
@@ -2170,6 +2179,269 @@ local function applyChanges(changes)
 end
 
 -- ============================================================
+-- Scene-graph context gathering
+-- Walks workspace recursively (max depth 8) and captures
+-- instance metadata for AI context awareness.
+-- ============================================================
+
+local function getInstancePath(inst)
+  local parts = {}
+  local current = inst
+  while current and current ~= game do
+    table.insert(parts, 1, current.Name)
+    current = current.Parent
+  end
+  return table.concat(parts, ".")
+end
+
+local function walkInstance(inst, depth, tree, counts)
+  if depth > CONTEXT_MAX_DEPTH then return end
+
+  local entry = {
+    name      = inst.Name,
+    className = inst.ClassName,
+    childCount = #inst:GetChildren(),
+  }
+
+  -- BasePart properties: position, size, material, color
+  if inst:IsA("BasePart") then
+    counts.parts = counts.parts + 1
+    local pos = inst.Position
+    entry.position = { x = math.floor(pos.X * 10) / 10, y = math.floor(pos.Y * 10) / 10, z = math.floor(pos.Z * 10) / 10 }
+    local sz = inst.Size
+    entry.size = { x = math.floor(sz.X * 10) / 10, y = math.floor(sz.Y * 10) / 10, z = math.floor(sz.Z * 10) / 10 }
+    entry.material = tostring(inst.Material)
+    local col = inst.Color
+    entry.color = { r = math.floor(col.R * 255), g = math.floor(col.G * 255), b = math.floor(col.B * 255) }
+  end
+
+  -- Script metadata: source preview, disabled state, parent path
+  if inst:IsA("LuaSourceContainer") then
+    counts.scripts = counts.scripts + 1
+    local srcOk, src = pcall(function() return inst.Source end)
+    if srcOk and type(src) == "string" then
+      entry.source = string.sub(src, 1, 500)
+    end
+    entry.disabled = inst:IsA("Script") and inst.Disabled or false
+    entry.parentPath = getInstancePath(inst.Parent)
+  end
+
+  -- Lights
+  if inst:IsA("Light") then
+    counts.lights = counts.lights + 1
+  end
+
+  -- Models
+  if inst:IsA("Model") then
+    counts.models = counts.models + 1
+  end
+
+  -- Recurse into children
+  local children = {}
+  for _, child in ipairs(inst:GetChildren()) do
+    walkInstance(child, depth + 1, children, counts)
+  end
+  if #children > 0 then
+    entry.children = children
+  end
+
+  table.insert(tree, entry)
+end
+
+--- Gathers a full scene-graph snapshot of workspace.
+--- Returns a JSON-encodable table with counts and the tree.
+function Sync.gatherFullContext()
+  local tree = {}
+  local counts = { parts = 0, scripts = 0, lights = 0, models = 0 }
+
+  local ok, err = pcall(function()
+    for _, child in ipairs(game.Workspace:GetChildren()) do
+      walkInstance(child, 1, tree, counts)
+    end
+  end)
+
+  if not ok then
+    warn("[ForjeGames] gatherFullContext error: " .. tostring(err))
+  end
+
+  return {
+    partCount   = counts.parts,
+    scriptCount = counts.scripts,
+    lightCount  = counts.lights,
+    modelCount  = counts.models,
+    tree        = tree,
+    timestamp   = os.time(),
+  }
+end
+
+-- ============================================================
+-- Console log mirroring
+-- Hooks LogService.MessageOut to buffer the last N log entries
+-- ============================================================
+
+local function hookConsoleLog()
+  if _consoleHooked then return end
+  _consoleHooked = true
+
+  pcall(function()
+    LogService.MessageOut:Connect(function(message, messageType)
+      local entry = {
+        message   = string.sub(tostring(message), 1, 500),
+        type      = tostring(messageType),
+        timestamp = os.time(),
+      }
+
+      table.insert(_consoleBuffer, entry)
+
+      -- Trim to max buffer size (ring buffer)
+      while #_consoleBuffer > CONSOLE_BUFFER_MAX do
+        table.remove(_consoleBuffer, 1)
+      end
+    end)
+  end)
+end
+
+--- Returns the current console buffer (array of {message, type, timestamp}).
+function Sync.getConsoleBuffer()
+  return _consoleBuffer
+end
+
+-- ============================================================
+-- Build delta detection
+-- Compares a before-state snapshot to the current state to find
+-- what changed (new parts, modified scripts, errors).
+-- ============================================================
+
+local function indexSnapshot(snapshot)
+  local index = {}
+  if not snapshot or not snapshot.tree then return index end
+
+  local function walk(nodes, parentPath)
+    for _, node in ipairs(nodes) do
+      local path = parentPath .. "/" .. node.name
+      index[path] = node
+      if node.children then
+        walk(node.children, path)
+      end
+    end
+  end
+
+  walk(snapshot.tree, "")
+  return index
+end
+
+--- Takes a before-state snapshot and compares to current workspace.
+--- Returns a delta table: { newParts, modifiedScripts, removedParts, errors, summary }
+function Sync.gatherBuildDelta(beforeState)
+  local afterState = Sync.gatherFullContext()
+  local beforeIndex = indexSnapshot(beforeState)
+  local afterIndex = indexSnapshot(afterState)
+
+  local newParts = {}
+  local modifiedScripts = {}
+  local removedParts = {}
+
+  -- Find new and modified items
+  for path, afterNode in pairs(afterIndex) do
+    local beforeNode = beforeIndex[path]
+    if not beforeNode then
+      table.insert(newParts, { path = path, className = afterNode.className, name = afterNode.name })
+    elseif afterNode.source and beforeNode.source and afterNode.source ~= beforeNode.source then
+      table.insert(modifiedScripts, { path = path, name = afterNode.name, newSource = afterNode.source })
+    end
+  end
+
+  -- Find removed items
+  for path, beforeNode in pairs(beforeIndex) do
+    if not afterIndex[path] then
+      table.insert(removedParts, { path = path, className = beforeNode.className, name = beforeNode.name })
+    end
+  end
+
+  -- Collect recent errors from console buffer
+  local errors = {}
+  for _, entry in ipairs(_consoleBuffer) do
+    if entry.type == "Enum.MessageType.MessageError" or entry.type == "MessageError" then
+      table.insert(errors, entry.message)
+    end
+  end
+
+  return {
+    newParts        = newParts,
+    modifiedScripts = modifiedScripts,
+    removedParts    = removedParts,
+    errors          = errors,
+    partCountBefore = beforeState and beforeState.partCount or 0,
+    partCountAfter  = afterState.partCount,
+    scriptCountBefore = beforeState and beforeState.scriptCount or 0,
+    scriptCountAfter  = afterState.scriptCount,
+    timestamp       = os.time(),
+  }
+end
+
+-- ============================================================
+-- Push scene-graph context to server (every CONTEXT_INTERVAL seconds)
+-- Uses the existing /api/studio/update endpoint with event type.
+-- ============================================================
+local function pushContext()
+  if not _token or not _sessionId then return end
+
+  task.spawn(function()
+    local snapshot = Sync.gatherFullContext()
+    _lastContextSnapshot = snapshot
+
+    local payload = {
+      event     = "workspace_snapshot",
+      sessionId = _sessionId,
+      timestamp = os.time(),
+      placeId   = game.PlaceId,
+      snapshot  = snapshot,
+      -- Include summary counts at top level for the update route
+      partCount  = snapshot.partCount,
+      modelCount = snapshot.modelCount,
+      lightCount = snapshot.lightCount,
+      sceneTree  = snapshot.tree,
+    }
+
+    local result, netErr = httpPost("/api/studio/update", payload)
+    if not result or (result and result.StatusCode ~= 200) then
+      -- Silent failure — context push is non-critical
+      if netErr ~= "http_disabled" then
+        -- Only warn once, not every 10s
+      end
+    end
+  end)
+end
+
+-- ============================================================
+-- Push console logs to server (every CONSOLE_INTERVAL seconds)
+-- Uses the existing /api/studio/update endpoint with event type.
+-- ============================================================
+local function pushConsoleLogs()
+  if not _token or not _sessionId then return end
+  if #_consoleBuffer == 0 then return end
+
+  task.spawn(function()
+    -- Snapshot the buffer and send
+    local logsToSend = {}
+    for _, entry in ipairs(_consoleBuffer) do
+      table.insert(logsToSend, entry)
+    end
+
+    local payload = {
+      event     = "output_log",
+      sessionId = _sessionId,
+      timestamp = os.time(),
+      placeId   = game.PlaceId,
+      outputLog = logsToSend,
+    }
+
+    local result, netErr = httpPost("/api/studio/update", payload)
+    -- Silent failure — console push is non-critical
+  end)
+end
+
+-- ============================================================
 -- Announce connection to the server
 -- ============================================================
 local function sendConnect()
@@ -2417,11 +2689,25 @@ local function onHeartbeat(dt)
 
   _timeSinceLastPoll  = _timeSinceLastPoll  + dt
   _timeSinceHeartbeat = _timeSinceHeartbeat + dt
+  _timeSinceContext   = _timeSinceContext   + dt
+  _timeSinceConsole   = _timeSinceConsole   + dt
 
   -- Dedicated keepalive heartbeat
   if _timeSinceHeartbeat >= HEARTBEAT_INTERVAL then
     _timeSinceHeartbeat = 0
     sendHeartbeat()
+  end
+
+  -- Scene-graph context push (every 10 seconds)
+  if _timeSinceContext >= CONTEXT_INTERVAL then
+    _timeSinceContext = 0
+    pushContext()
+  end
+
+  -- Console log push (every 5 seconds)
+  if _timeSinceConsole >= CONSOLE_INTERVAL then
+    _timeSinceConsole = 0
+    pushConsoleLogs()
   end
 
   -- Poll + push cycle
@@ -2580,8 +2866,13 @@ function Sync.start(opts)
   _backoffInterval    = MIN_INTERVAL
   _timeSinceLastPoll  = 0
   _timeSinceHeartbeat = 0
+  _timeSinceContext   = 0
+  _timeSinceConsole   = 0
   _reconnectAttempts  = 0
   _running            = true
+
+  -- Hook LogService for console mirroring
+  hookConsoleLog()
 
   task.spawn(function()
     resolveBaseUrl()
