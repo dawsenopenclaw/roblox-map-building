@@ -422,6 +422,23 @@ export function useChat(options: UseChatOptions = {}) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [streaming, setStreaming] = useState(false)
+
+  // Global abort controller for stopping generation
+  const activeAbortRef = useRef<AbortController | null>(null)
+  useEffect(() => {
+    const handler = () => {
+      if (activeAbortRef.current) {
+        activeAbortRef.current.abort()
+        activeAbortRef.current = null
+      }
+      setLoading(false)
+      setStreaming(false)
+      // Remove the status message
+      setMessages(prev => prev.filter(m => m.role !== 'status'))
+    }
+    window.addEventListener('forje-stop-generating', handler)
+    return () => window.removeEventListener('forje-stop-generating', handler)
+  }, [])
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [lastMcpResult, setLastMcpResult] = useState<McpAgentResult | null>(null)
   const [selectedModel, setSelectedModelRaw] = useState<ModelId>(() => {
@@ -1723,7 +1740,9 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
         // Client-side timeout: abort if the server doesn't respond within 90s.
         // Vercel can hang for up to 300s — we'd rather show an error and let
         // the user retry than freeze the UI for 5 minutes.
+        // Also wired to the stop button via activeAbortRef.
         const fetchAbort = new AbortController()
+        activeAbortRef.current = fetchAbort
         const fetchTimeout = setTimeout(() => fetchAbort.abort(), 90000)
 
         const chatPromise = fetch('/api/ai/chat', {

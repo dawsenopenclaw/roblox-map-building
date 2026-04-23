@@ -1820,6 +1820,20 @@ function MessageBubbleImpl({
           <MeshResultCard mesh={msg.meshResult} onSendToStudio={onSendToStudio} />
         )}
         {/* Conversation feedback — thumbs up/down + follow-up questions for non-code messages */}
+        {/* Timestamp */}
+        {!msg.streaming && msg.timestamp && (
+          <span style={{
+            display: 'block',
+            fontSize: 10,
+            color: 'rgba(255,255,255,0.2)',
+            fontFamily: 'var(--font-geist-mono, monospace)',
+            marginTop: 4,
+          }}>
+            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {msg.model && msg.role === 'assistant' && ` · ${msg.model}`}
+            {msg.tokensUsed && msg.role === 'assistant' ? ` · ${msg.tokensUsed} tokens` : ''}
+          </span>
+        )}
         {!msg.streaming && msg.role === 'assistant' && !msg.hasCode && onSend && (
           <ConversationFeedbackButtons
             messageId={msg.id}
@@ -4301,41 +4315,69 @@ export function ChatPanel({
               <VoiceInputButton onSubmit={handleVoiceSubmit} disabled={loading} />
             </div>
 
-            {/* Send button */}
-            <button
-              onClick={handleSend}
-              disabled={(!input.trim() && !imageFile) || loading}
-              aria-label="Send message"
-              style={{
-                width: 38, height: 38, borderRadius: 12,
-                border: 'none',
-                background: (input.trim() || imageFile) && !loading
-                  ? 'linear-gradient(135deg, #D4AF37 0%, #C49B2F 100%)'
-                  : 'rgba(255,255,255,0.04)',
-                color: (input.trim() || imageFile) && !loading
-                  ? '#09090b' : '#3F3F46',
-                cursor: (input.trim() || imageFile) && !loading
-                  ? 'pointer' : 'default',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: sendPressed ? 'scale(0.88)' : 'scale(1)',
-                boxShadow: (input.trim() || imageFile) && !loading
-                  ? '0 0 20px rgba(212,175,55,0.25), 0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,230,160,0.3)'
-                  : 'none',
-              }}
-            >
-              {loading ? (
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ animation: 'spin 0.8s linear infinite' }}>
-                  <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.8" strokeDasharray="8 8"/>
+            {/* Send / Stop button */}
+            {loading ? (
+              <button
+                onClick={() => {
+                  // Trigger page-level abort by reloading chat state
+                  // The AbortController in useChat will clean up the fetch
+                  window.dispatchEvent(new CustomEvent('forje-stop-generating'))
+                }}
+                aria-label="Stop generating"
+                title="Stop generating"
+                style={{
+                  width: 38, height: 38, borderRadius: 12,
+                  border: '1.5px solid rgba(239,68,68,0.4)',
+                  background: 'rgba(239,68,68,0.1)',
+                  color: '#EF4444',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(239,68,68,0.2)'
+                  e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'rgba(239,68,68,0.1)'
+                  e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+                  <rect x="3" y="3" width="8" height="8" rx="1.5" />
                 </svg>
-              ) : (
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() && !imageFile}
+                aria-label="Send message"
+                style={{
+                  width: 38, height: 38, borderRadius: 12,
+                  border: 'none',
+                  background: (input.trim() || imageFile)
+                    ? 'linear-gradient(135deg, #D4AF37 0%, #C49B2F 100%)'
+                    : 'rgba(255,255,255,0.04)',
+                  color: (input.trim() || imageFile)
+                    ? '#09090b' : '#3F3F46',
+                  cursor: (input.trim() || imageFile)
+                    ? 'pointer' : 'default',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: sendPressed ? 'scale(0.88)' : 'scale(1)',
+                  boxShadow: (input.trim() || imageFile)
+                    ? '0 0 20px rgba(212,175,55,0.25), 0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,230,160,0.3)'
+                    : 'none',
+                }}
+              >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" y1="19" x2="12" y2="5" />
                   <polyline points="5 12 12 5 19 12" />
                 </svg>
-              )}
-            </button>
+              </button>
+            )}
           </div>
 
           {/* Bottom info row */}
