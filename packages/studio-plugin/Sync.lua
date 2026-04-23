@@ -1960,6 +1960,16 @@ local function handleScanWorkspace(data)
       }
     end
 
+    -- Capture script Source so AI can read and edit existing scripts
+    if instance:IsA("LuaSourceContainer") then
+      local ok, src = pcall(function() return instance.Source end)
+      if ok and src and #src > 0 then
+        -- Cap at 2000 chars per script to keep payload reasonable
+        node.source = #src > 2000 and string.sub(src, 1, 2000) .. "\n-- [truncated]" or src
+        node.scriptType = instance.ClassName -- Script, LocalScript, or ModuleScript
+      end
+    end
+
     if depth < maxDepth then
       local children = {}
       for _, child in ipairs(instance:GetChildren()) do

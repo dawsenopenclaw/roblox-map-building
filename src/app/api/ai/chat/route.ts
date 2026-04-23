@@ -1171,6 +1171,18 @@ SCRIPTED LIGHTING EFFECTS:
 GUI/UI SYSTEM:
   LocalScript in StarterGui: ScreenGui → Frame hierarchy with UICorner, UIStroke, UIListLayout. Use TextButton.Activated for clicks. Fire RemoteEvents for server actions. Use TweenService for smooth transitions.
 
+STAMINA/ENERGY BAR:
+  LocalScript in StarterPlayerScripts: ScreenGui with bar Frame, inner fill Frame width = stamina/maxStamina. UserInputService Shift sprint → deplete, idle → regen. TweenService smooth width + color (green→yellow→red based on %). Camera FOV 70→85 when sprinting.
+
+SETTINGS MENU:
+  LocalScript: ScreenGui dark Frame, sections for Graphics/Audio/Controls. Slider = track Frame + fill Frame + handle Frame, drag with InputBegan/InputChanged. Brightness → Lighting.Brightness, FOV → Camera.FieldOfView, Volume → SoundService volume.
+
+VEHICLE SELECTION:
+  LocalScript: ScreenGui grid of vehicle cards (Frame + ViewportFrame preview + name + stats). Click → fire RemoteEvent → server spawns vehicle Model at pad, welds VehicleSeat, destroys previous.
+
+FARMING SYSTEM:
+  Server Script: ClickDetector on dirt Parts → BillboardGui with crop buttons appears. Player clicks crop → RemoteEvent → server changes dirt Color darker, starts growth timer, after N seconds crop Model appears above dirt. Harvest with ProximityPrompt → add currency, reset dirt.
+
 RULES:
 - --!strict at top of every script Source
 - Type-annotate ALL function params and returns
@@ -1183,7 +1195,38 @@ RULES:
 - Use Debris:AddItem() for temporary instances
 - ALWAYS output complete, runnable code — never "-- implement here" placeholders
 
+EDITING EXISTING SCRIPTS (when EXISTING SCRIPTS are shown in studio context):
+- If the user says "make it better" / "improve" / "fix" → READ the existing script source shown in the context, then OUTPUT a replacement that keeps the working logic and improves it
+- To EDIT an existing script: find it by name and replace its Source
+  local existing = game:GetService("ServerScriptService"):FindFirstChild("ScriptName")
+  if existing then existing.Source = [=[ IMPROVED CODE HERE ]=] end
+- To edit a LocalScript in StarterPlayer:
+  local lsc = game:GetService("StarterPlayer"):FindFirstChild("StarterPlayerScripts")
+  local existing = lsc and lsc:FindFirstChild("ScriptName")
+  if existing then existing.Source = [=[ IMPROVED CODE HERE ]=] end
+- ALWAYS preserve the original functionality when editing — add to it, don't break it
+- When improving UI: keep the layout structure, upgrade visuals (UICorner, UIGradient, hover effects, TweenService animations)
+- When improving scripts: keep the game logic, add error handling, better variable names, type annotations
+
 VOICE: Friendly, brief. Explain what the script does and how to test it. Don't list function names. Under 60 words.
+
+GUI/UI QUALITY STANDARDS — EVERY ScreenGui must meet these:
+- Dark theme: BackgroundColor3 = Color3.fromRGB(25, 25, 30), text white/light gray
+- UICorner CornerRadius = UDim.new(0, 12) on ALL frames and buttons
+- UIStroke Color = Color3.fromRGB(60, 60, 65), Thickness = 1 on containers
+- UIGradient on accent elements for depth (not flat colors)
+- Font: Enum.Font.GothamBold for headers, GothamMedium for body, size 14-18
+- TweenService hover on ALL buttons: MouseEnter → lighter bg, MouseLeave → original
+- TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) for all UI animations
+- Close button: top-right "X", TextButton with hover red
+- Proper layout: AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0)
+- ScrollingFrame for any list with UIListLayout + UIPadding(8px)
+- Size with Scale not Offset for responsive: UDim2.new(0.35, 0, 0.6, 0)
+- BorderSizePixel = 0 on everything
+- BackgroundTransparency = 0 on containers (not transparent)
+- Item cards: Frame with icon ImageLabel + TextLabel name + TextLabel price + buy TextButton
+- Slider pattern: Frame track + Frame fill + drag handle, value TextLabel
+- Toggle pattern: Frame bg + inner circle, TweenService position toggle left/right
 
 After response add:
 [SUGGESTIONS]
@@ -8108,7 +8151,7 @@ DAMAGE MODULE:
     }
 
     // Scene tree — top-level workspace structure
-    const tree = bodyStudioCtx.sceneTree ?? []
+    const tree = bodyStudioCtx.sceneTree ?? [] as Array<Record<string, unknown>>
     if (tree.length > 0) {
       parts.push(``)
       parts.push(`SCENE TREE — top-level workspace objects (${tree.length} total):`)
@@ -8122,6 +8165,31 @@ DAMAGE MODULE:
           .join(' | ')
         parts.push(`  • ${t.name} (${t.className}) ${info}`)
       }
+    }
+
+    // Existing scripts — let AI read and edit game code (like Lemonade.gg does)
+    const scripts: Array<{ name: string; scriptType: string; source: string; path?: string }> = []
+    function findScripts(nodes: Array<Record<string, unknown>>, path = '') {
+      for (const node of nodes) {
+        const nodePath = path ? `${path}.${node.name}` : String(node.name)
+        if (node.source && typeof node.source === 'string') {
+          scripts.push({ name: String(node.name), scriptType: String(node.scriptType || node.className), source: String(node.source), path: nodePath })
+        }
+        if (Array.isArray(node.children)) {
+          findScripts(node.children as Array<Record<string, unknown>>, nodePath)
+        }
+      }
+    }
+    findScripts(tree as Array<Record<string, unknown>>)
+    if (scripts.length > 0) {
+      parts.push(``)
+      parts.push(`EXISTING SCRIPTS IN GAME (${scripts.length} found) — you can READ and EDIT these:`)
+      for (const s of scripts.slice(0, 8)) {
+        parts.push(`  ── ${s.scriptType}: ${s.path || s.name} ──`)
+        parts.push(`  ${s.source.split('\n').slice(0, 30).join('\n  ')}`)
+        parts.push(``)
+      }
+      parts.push(`To EDIT an existing script, use: local existing = game:GetService("ServerScriptService"):FindFirstChild("${scripts[0]?.name || 'ScriptName'}"); if existing then existing.Source = [=[ NEW CODE HERE ]=] end`)
     }
 
     // Nearby parts — closest objects for spatial awareness
