@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from 'react'
 import type { Checkpoint } from '@/lib/checkpoints'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
 interface CheckpointPanelProps {
   checkpoints: Checkpoint[]
@@ -24,6 +25,8 @@ export function CheckpointPanel({
   onDelete,
   loading,
 }: CheckpointPanelProps) {
+  const isMobile = useIsMobile()
+  const [collapsed, setCollapsed] = useState(true)
   const [showInput, setShowInput] = useState(false)
   const [labelInput, setLabelInput] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -47,6 +50,9 @@ export function CheckpointPanel({
 
   if (messageCount < 1) return null
 
+  // On mobile, default to collapsed to save screen space
+  const showBody = isMobile ? !collapsed : true
+
   return (
     <div style={{
       padding: '8px 10px',
@@ -58,8 +64,11 @@ export function CheckpointPanel({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: checkpoints.length > 0 || showInput ? 6 : 0,
-      }}>
+        marginBottom: showBody && (checkpoints.length > 0 || showInput) ? 6 : 0,
+        cursor: isMobile ? 'pointer' : 'default',
+      }}
+        onClick={isMobile ? () => setCollapsed(v => !v) : undefined}
+      >
         <span style={{
           fontSize: 10,
           fontWeight: 600,
@@ -67,39 +76,55 @@ export function CheckpointPanel({
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
           fontFamily: 'Inter, sans-serif',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
         }}>
+          {isMobile && (
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none"
+              style={{ transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)', transition: 'transform 0.15s' }}>
+              <path d="M2 1l4 3-4 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
           Checkpoints
+          {isMobile && checkpoints.length > 0 && collapsed && (
+            <span style={{ fontSize: 9, color: 'rgba(212,175,55,0.4)', fontWeight: 400 }}>
+              ({checkpoints.length})
+            </span>
+          )}
         </span>
-        <button
-          onClick={() => setShowInput((v) => !v)}
-          disabled={loading}
-          title="Save checkpoint"
-          style={{
-            height: 22,
-            padding: '0 8px',
-            borderRadius: 6,
-            border: '1px solid rgba(212,175,55,0.25)',
-            background: 'rgba(212,175,55,0.08)',
-            color: loading ? 'rgba(255,255,255,0.2)' : 'rgba(212,175,55,0.85)',
-            fontSize: 10,
-            fontWeight: 500,
-            fontFamily: 'Inter, sans-serif',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            transition: 'all 0.15s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-            <path d="M3 8h10M8 3v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          Save
-        </button>
+        {showBody && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowInput((v) => !v) }}
+            disabled={loading}
+            title="Save checkpoint"
+            style={{
+              height: 22,
+              padding: '0 8px',
+              borderRadius: 6,
+              border: '1px solid rgba(212,175,55,0.25)',
+              background: 'rgba(212,175,55,0.08)',
+              color: loading ? 'rgba(255,255,255,0.2)' : 'rgba(212,175,55,0.85)',
+              fontSize: 10,
+              fontWeight: 500,
+              fontFamily: 'Inter, sans-serif',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+              <path d="M3 8h10M8 3v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Save
+          </button>
+        )}
       </div>
 
       {/* Create checkpoint input */}
-      {showInput && (
+      {showBody && showInput && (
         <div style={{
           display: 'flex',
           gap: 4,
@@ -148,7 +173,7 @@ export function CheckpointPanel({
       )}
 
       {/* Checkpoint list */}
-      {checkpoints.length > 0 && (
+      {showBody && checkpoints.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 140, overflowY: 'auto' }}>
           {checkpoints.map((cp) => (
             <div

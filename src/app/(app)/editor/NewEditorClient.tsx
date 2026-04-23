@@ -3472,7 +3472,7 @@ function EditorInner() {
         {/* Main workspace: layout-conditional */}
         {effectiveLayout === 'minimal' ? (
           /* ── Minimal: clean full-screen chat ─────────────────────────────── */
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, padding: '0 6px 6px' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', padding: isMobile ? '0 2px 2px' : '0 6px 6px' }}>
             <ChatPanel
               messages={chat.messages}
               input={chat.input}
@@ -3613,10 +3613,12 @@ function EditorInner() {
               style={{
                 flex: 1,
                 display: 'flex',
-                flexDirection: effectiveLayout === 'chat-focus' || effectiveLayout === 'split' ? 'row' : 'column',
+                flexDirection: (!isMobile && (effectiveLayout === 'chat-focus' || effectiveLayout === 'split')) ? 'row' : 'column',
                 minWidth: 0,
+                minHeight: 0,
+                overflow: 'hidden',
                 padding: isMobile ? 0 : '6px 0 6px 6px',
-                gap: effectiveLayout === 'chat-focus' || effectiveLayout === 'split' ? 2 : 0,
+                gap: (!isMobile && (effectiveLayout === 'chat-focus' || effectiveLayout === 'split')) ? 2 : 0,
               }}
             >
               {effectiveLayout === 'default' ? (
@@ -3731,9 +3733,9 @@ function EditorInner() {
                 /* ── Chat-focus: chat left (60%), viewport right (40%) on desktop;
                      full-screen chat on mobile ──────────────────────────────── */
                 <>
-                  <div style={{ flex: 3, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ flex: 3, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <AgentStrip loading={chat.loading} mcpResult={chat.lastMcpResult} />
-                    <div style={{ flex: 1, minHeight: 0 }}>
+                    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                       <ChatPanel
                         messages={chat.messages}
                         input={chat.input}
@@ -3793,9 +3795,9 @@ function EditorInner() {
               ) : (
                 /* ── Split: 50/50 chat left, viewport right ──────────────── */
                 <>
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <AgentStrip loading={chat.loading} mcpResult={chat.lastMcpResult} />
-                    <div style={{ flex: 1, minHeight: 0 }}>
+                    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                       <ChatPanel
                         messages={chat.messages}
                         input={chat.input}

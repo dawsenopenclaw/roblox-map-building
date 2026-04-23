@@ -252,6 +252,7 @@ function AccountStatsCard() {
   const { data, isLoading } = useSWR<AccountStats>('/api/settings/stats', fetcher, {
     revalidateOnFocus: false,
   })
+  const [mobileExpanded, setMobileExpanded] = useState(false)
 
   const s = data
   const tierColor = s?.tierColor ?? '#60A5FA'
@@ -269,7 +270,18 @@ function AccountStatsCard() {
 
   return (
     <div className="card-premium rounded-xl p-6">
-      <h3 className="text-white font-semibold mb-5">Account Stats</h3>
+      {/* Collapsible header on mobile to prevent covering profile fields */}
+      <button
+        className="w-full flex items-center justify-between sm:pointer-events-none"
+        onClick={() => setMobileExpanded(v => !v)}
+      >
+        <h3 className="text-white font-semibold mb-0 sm:mb-5">Account Stats</h3>
+        <ChevronDown
+          size={16}
+          className={`text-gray-400 sm:hidden transition-transform ${mobileExpanded ? 'rotate-180' : ''}`}
+        />
+      </button>
+      <div className={`${mobileExpanded ? 'block' : 'hidden'} sm:block mt-4 sm:mt-0`}>
       {/* Tier badge row */}
       <div
         className="flex items-center gap-3 p-4 rounded-xl mb-4"
@@ -339,6 +351,7 @@ function AccountStatsCard() {
           Share to earn 500 tokens per friend who signs up.
         </p>
       </div>
+      </div>{/* End collapsible wrapper */}
     </div>
   )
 }
