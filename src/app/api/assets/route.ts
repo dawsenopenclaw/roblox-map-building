@@ -17,6 +17,7 @@ type SortDir = (typeof VALID_SORT_DIRS)[number]
 // ─── GET /api/assets — list user's generated assets (paginated) ───────────────
 
 export async function GET(req: NextRequest) {
+  try {
   const { userId: clerkId } = await auth()
   if (!clerkId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -96,4 +97,8 @@ export async function GET(req: NextRequest) {
     hasNextPage,
     limit,
   })
+  } catch (err) {
+    console.error('[/api/assets] Error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
