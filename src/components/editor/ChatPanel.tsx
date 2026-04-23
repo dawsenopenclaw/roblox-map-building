@@ -1956,6 +1956,36 @@ function MessageBubbleImpl({
           {msg.hasCode && (
             <CodePreviewBadge luauCode={msg.luauCode} previousCode={previousCode} executedInStudio={msg.executedInStudio} />
           )}
+          {/* Quality score badge — post-build feedback */}
+          {!msg.streaming && msg.qualityScore !== undefined && msg.qualityScore > 0 && (
+            <span
+              title={`Build quality: ${msg.qualityScore}/100`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '3px 8px',
+                borderRadius: 6,
+                fontSize: 10,
+                fontWeight: 600,
+                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                border: `1px solid ${msg.qualityScore >= 80 ? 'rgba(74,222,128,0.3)' : msg.qualityScore >= 60 ? 'rgba(212,175,55,0.3)' : 'rgba(249,115,22,0.3)'}`,
+                background: msg.qualityScore >= 80 ? 'rgba(74,222,128,0.08)' : msg.qualityScore >= 60 ? 'rgba(212,175,55,0.08)' : 'rgba(249,115,22,0.08)',
+                color: msg.qualityScore >= 80 ? 'rgba(74,222,128,0.9)' : msg.qualityScore >= 60 ? 'rgba(212,175,55,0.9)' : 'rgba(249,115,22,0.9)',
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                {msg.qualityScore >= 80 ? (
+                  <polyline points="2 8 6 12 14 4" />
+                ) : msg.qualityScore >= 60 ? (
+                  <path d="M8 3v6M8 12v1" />
+                ) : (
+                  <path d="M4 4l8 8M12 4l-8 8" />
+                )}
+              </svg>
+              {msg.qualityScore}/100
+            </span>
+          )}
           {/*
             Replay-to-Studio button — appears on any assistant message that
             has luauCode stored AND Studio is connected. This is the escape

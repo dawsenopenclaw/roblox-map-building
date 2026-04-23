@@ -4005,6 +4005,7 @@ ${effectiveInstruction}`
       executedInStudio,
       suggestions,
       model,
+      qualityScore: luauCode ? finalVerificationScore : undefined,
     }
 }
 
@@ -9318,6 +9319,7 @@ interface StreamResponseMeta {
   textureResult?: unknown
   mcpResult?: unknown
   buildPlan?: unknown
+  qualityScore?: number
 }
 
 function toStreamResponse(text: string, meta: StreamResponseMeta): Response {
@@ -10350,6 +10352,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           tokensUsed: 0,
           executedInStudio: twoPassResult.executedInStudio,
           model: 'gemini-flash',
+          qualityScore: twoPassResult.qualityScore,
         }) as unknown as NextResponse
       }
       return NextResponse.json({
@@ -10361,6 +10364,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         model: 'gemini-flash',
         executedInStudio: twoPassResult.executedInStudio,
         suggestions: twoPassResult.suggestions,
+        qualityScore: twoPassResult.qualityScore,
       })
     }
     // If Gemini failed, fall through to cascade
@@ -11050,6 +11054,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           tokensUsed: tokenCost,
           executedInStudio: twoPassResult.executedInStudio,
           model: twoPassResult.model,
+          qualityScore: twoPassResult.qualityScore,
           ...(freeModelBuildPlan ? { buildPlan: freeModelBuildPlan } : {}),
         }) as unknown as NextResponse
       }
@@ -11062,6 +11067,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         model: twoPassResult.model,
         executedInStudio: twoPassResult.executedInStudio,
         suggestions: twoPassResult.suggestions,
+        qualityScore: twoPassResult.qualityScore,
         ...(freeModelBuildPlan ? { buildPlan: freeModelBuildPlan } : {}),
       })
     }
