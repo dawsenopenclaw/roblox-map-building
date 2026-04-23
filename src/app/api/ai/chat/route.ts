@@ -41,6 +41,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/lib/ai/game-knowledge'
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
 import { findSimilarSuccesses, findAntiPatterns, formatAsExamples, formatAntiPatterns, recordBuildOutcome, detectCategory, detectBuildType, countPartsInCode, getAggregatePatterns, getConfidence } from '@/lib/ai/experience-memory'
+import { getLearnedRules, learnFromFailure } from '@/lib/ai/self-improve'
 import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
 import { scoreOutput, isObviouslyBroken } from '@/lib/ai/quality-scorer'
 import { getTierPromptModifier, getTierFromSubscription, type QualityTier } from '@/lib/ai/quality-tiers'
@@ -3641,13 +3642,21 @@ Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE
     }
 
     // Enrich with experience memory (past builds — both successes AND failures)
+    // AND inject learned rules from the self-improvement engine
     try {
       const buildType = detectBuildType(message, intent)
-      const [pastSuccesses, pastFailures, patterns] = await Promise.all([
+      const detectedCategory = detectCategory(message)
+      const [pastSuccesses, pastFailures, patterns, learnedRules] = await Promise.all([
         findSimilarSuccesses(message, 3, buildType),
         findAntiPatterns(message, 2, buildType),
-        getAggregatePatterns(detectCategory(message) ?? undefined, buildType),
+        getAggregatePatterns(detectedCategory ?? undefined, buildType),
+        getLearnedRules(detectedCategory ?? undefined),
       ])
+      // Inject self-learned rules FIRST (highest priority)
+      if (learnedRules) {
+        enrichedCodePrompt += learnedRules
+        console.log(`[SelfImprove] Injected learned rules into prompt`)
+      }
       if (pastSuccesses.length > 0) {
         enrichedCodePrompt += formatAsExamples(pastSuccesses)
         console.log(`[ExperienceMemory] Injected ${pastSuccesses.length} successful examples (scores: ${pastSuccesses.map(s => s.score).join(', ')})`)
@@ -3818,9 +3827,11 @@ Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE
             console.log('[Verify] Using auto-fixed code')
             luauCode = verification.fixedCode
           }
-          // If score is very low (< 50), discard entirely
+          // If score is very low (< 50), discard entirely AND learn from failure
           if (verification.score < 50) {
             console.warn('[Verify] Score too low, discarding code')
+            // Self-improvement: learn what went wrong
+            void learnFromFailure(message, luauCode, verification.score, verification.errors.map(e => typeof e === 'string' ? e : String(e)), detectCategory(message)).catch(() => {})
             luauCode = null
           }
           // If score is mediocre (50-75), attempt one re-generation with error context
