@@ -279,13 +279,38 @@ function BuildFeedbackCard({
   executedInStudio,
   model,
   onSend,
+  luauCode,
+  prompt,
 }: {
   qualityScore: number
   partCount?: number
   executedInStudio?: boolean
   model?: string
   onSend?: (msg: string) => void
+  luauCode?: string
+  prompt?: string
 }) {
+  const [voted, setVoted] = useState<'up' | 'down' | null>(null)
+
+  const submitVote = (worked: boolean) => {
+    if (voted) return
+    setVoted(worked ? 'up' : 'down')
+    // Persist to learning system with full context
+    fetch('/api/ai/build-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        promptHash: luauCode ? simpleHash(luauCode) : 'unknown',
+        code: luauCode || '',
+        worked,
+        score: worked ? Math.max(qualityScore, 70) : Math.min(qualityScore, 40),
+        model: 'user-vote',
+        prompt: prompt || undefined,
+        userVote: worked,
+      }),
+    }).catch(() => {})
+  }
+
   const tier = qualityScore >= 80 ? 'great' : qualityScore >= 60 ? 'good' : qualityScore >= 40 ? 'fair' : 'low'
   const tierConfig = {
     great: { label: 'Great Build', color: '#4ADE80', bg: 'rgba(74,222,128,0.06)', border: 'rgba(74,222,128,0.15)', icon: '✓', hint: 'Looking solid. You can refine details or move on.' },
@@ -432,11 +457,74 @@ function BuildFeedbackCard({
           ))}
         </div>
       )}
+
+      {/* Vote buttons — "Did this work?" */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        marginTop: 6, paddingTop: 8,
+        borderTop: `1px solid ${cfg.border}`,
+      }}>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginRight: 2 }}>
+          {voted ? 'Thanks for the feedback!' : 'Did this build work?'}
+        </span>
+        {!voted && (
+          <>
+            <button
+              onClick={() => submitVote(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '4px 10px', borderRadius: 8,
+                border: '1px solid rgba(74,222,128,0.2)',
+                background: 'rgba(74,222,128,0.06)',
+                color: 'rgba(74,222,128,0.8)',
+                fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'inherit', transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.12)'; e.currentTarget.style.borderColor = 'rgba(74,222,128,0.35)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.06)'; e.currentTarget.style.borderColor = 'rgba(74,222,128,0.2)' }}
+            >
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <polyline points="2 8 6 12 14 4" />
+              </svg>
+              Worked
+            </button>
+            <button
+              onClick={() => submitVote(false)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '4px 10px', borderRadius: 8,
+                border: '1px solid rgba(239,68,68,0.2)',
+                background: 'rgba(239,68,68,0.06)',
+                color: 'rgba(239,68,68,0.8)',
+                fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'inherit', transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.35)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.2)' }}
+            >
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="4" y1="4" x2="12" y2="12" />
+                <line x1="12" y1="4" x2="4" y2="12" />
+              </svg>
+              Broke
+            </button>
+          </>
+        )}
+        {voted && (
+          <span style={{
+            fontSize: 10,
+            color: voted === 'up' ? 'rgba(74,222,128,0.7)' : 'rgba(239,68,68,0.7)',
+            fontWeight: 600,
+          }}>
+            {voted === 'up' ? 'Recorded as working — this helps future builds' : 'Recorded — we\'ll learn from this'}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
 
-function CodeFeedbackButtons({ code }: { code: string }) {
+function CodeFeedbackButtons({ code, prompt }: { code: string; prompt?: string }) {
   const [feedbackState, setFeedbackState] = useState<'idle' | 'submitting' | 'done'>('idle')
 
   const submitFeedback = async (worked: boolean) => {
@@ -453,7 +541,9 @@ function CodeFeedbackButtons({ code }: { code: string }) {
         }),
       }).catch(() => {})
 
-      // ALSO persist to BuildFeedback DB for the learning system
+      // Persist to BuildFeedback DB for the learning system
+      // CRITICAL: include `prompt` so findSimilarSuccesses() can retrieve
+      // this feedback for future builds with similar prompts
       fetch('/api/ai/build-feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -461,8 +551,10 @@ function CodeFeedbackButtons({ code }: { code: string }) {
           promptHash: simpleHash(code),
           code,
           worked,
-          score: worked ? 75 : 25, // User signal — override verifier score
+          score: worked ? 75 : 25,
           model: 'user-vote',
+          prompt: prompt || undefined,
+          userVote: worked,
           errorMessage: worked ? undefined : 'User reported: build did not work',
         }),
       }).catch(() => {})
@@ -771,10 +863,12 @@ function LuauCodeBlock({
   code,
   onSendToStudio,
   studioConnected,
+  prompt,
 }: {
   code: string
   onSendToStudio?: (luauCode: string) => void
   studioConnected?: boolean
+  prompt?: string
 }) {
   const [copied, setCopied] = useState(false)
   const [sent, setSent] = useState(false)
@@ -879,7 +973,7 @@ function LuauCodeBlock({
       >
         <code>{highlightLuau(code)}</code>
       </pre>
-      <CodeFeedbackButtons code={code} />
+      <CodeFeedbackButtons code={code} prompt={prompt} />
     </div>
   )
 }
@@ -996,10 +1090,12 @@ function RenderMessageContent({
   content,
   onSendToStudio,
   studioConnected,
+  prompt,
 }: {
   content: string
   onSendToStudio?: (luauCode: string) => void
   studioConnected?: boolean
+  prompt?: string
 }) {
   // Strip [FOLLOWUP] section from display — it's parsed separately by ConversationFeedbackButtons
   const cleanContent = content.replace(/\[FOLLOWUP\][\s\S]*?(?=\[SUGGESTIONS\]|$)/, '').trim()
@@ -1021,6 +1117,7 @@ function RenderMessageContent({
         code={m[1].trimEnd()}
         onSendToStudio={onSendToStudio}
         studioConnected={studioConnected}
+        prompt={prompt}
       />
     )
     last = m.index + m[0].length
@@ -2080,7 +2177,7 @@ function MessageBubbleImpl({
                 ? <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{stripCodeBlocksForDisplay(msg.content)}</span>
                 : <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Generating code — this may take a moment for complex builds<TypingDots /></span>
               )
-            : <RenderMessageContent content={msg.content} onSendToStudio={onSendToStudio} studioConnected={studioConnected} />
+            : <RenderMessageContent content={msg.content} onSendToStudio={onSendToStudio} studioConnected={studioConnected} prompt={userPrompt} />
           }
         </div>
         {!msg.streaming && msg.meshResult && (
@@ -2129,6 +2226,8 @@ function MessageBubbleImpl({
               executedInStudio={msg.executedInStudio}
               model={msg.model}
               onSend={onSend}
+              luauCode={msg.luauCode}
+              prompt={userPrompt}
             />
           )}
           {/*
