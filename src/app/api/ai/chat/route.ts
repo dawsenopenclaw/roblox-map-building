@@ -1273,7 +1273,7 @@ CODE RULES:
 
 COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Stone=140,135,125 RoofDark=55,50,45 Glass=180,210,230
 
-PART LIMITS: Props=10-20, Buildings=25-40, Scenes=40-60, Complex=60-80. MAX 80 parts. MIN 15 parts. Quality > quantity.
+PART TARGETS: Props=15-30, Buildings=50-100, Scenes=80-150, Complex=120-250+. MIN 30 parts for any build. Go HIGHER — detail is everything. A castle with 40 parts looks like a toy. A castle with 150+ parts looks real.
 QUALITY: vc() color variation, trim/molding/frames, interiors furnished (not empty), Glass always 0.3-0.5 transparency with frame, wall thickness 0.5-1.0.
 GUI: ScreenGui→Frame(UICorner 8px, UIStroke 1-2px, BackgroundColor3, BorderSizePixel=0). UDim2 sizing.
 
@@ -2162,7 +2162,52 @@ RULES:
 - A "wall" is wall panel + trim + baseboard (3 parts minimum per wall).
 - USE VARIED SHAPES: Part (boxes), WedgePart (slopes), cylinders (Shape=Enum.PartType.Cylinder), spheres (Shape=Enum.PartType.Ball).
 - USE VARIED SIZES: structural = 0.5-2 stud thick, details = 0.1-0.3 stud.
-- MINIMUM: Props=10 parts, Buildings=25 parts, Scenes=40 parts.`
+- PART TARGETS: Props=20-30, Buildings=60-120, Scenes=100-200, Complex (castles/ships/towns)=150-300+.
+
+COMPLEXITY SCALING — ALWAYS build to the HIGHEST detail level you can:
+- Simple request ("build a chair"): 8-12 parts — seat, backrest, 4 legs, armrests, cushion
+- Medium request ("build a house"): 60-100 parts — foundation, 4+ walls with trim, roof with overhang, door+frame+knob, 4+ windows with glass+frames+sills, interior floor, 2+ rooms, furniture per room, 3+ lights, chimney, porch, steps, landscaping
+- Complex request ("build a castle"): 150-300+ parts — walls with battlements (every merlon is a part), 4+ towers with individual battlements, gatehouse with arch+portcullis, courtyard floor, throne room with furniture, torches with Fire+PointLight, banners, chandelier, interior rooms, staircase, trees outside, path to gate
+- Epic request ("build a town"): 300+ parts — multiple buildings each with full detail, streets with sidewalks, lamp posts, benches, trees, park, fountain, vehicles, signs
+
+BUILDING A WALL WITH DETAIL (do this for every wall):
+  -- Main wall panel
+  P("wall_front", CFrame.new(sp+Vector3.new(0,6,10)), Vector3.new(20,10,0.8), Enum.Material.Brick, Color3.fromRGB(180,140,100), f)
+  -- Baseboard trim (darker, slightly thicker)
+  P("wall_front_base", CFrame.new(sp+Vector3.new(0,1.2,10.1)), Vector3.new(20.2,0.5,0.3), Enum.Material.Wood, Color3.fromRGB(90,60,30), f)
+  -- Crown molding at top
+  P("wall_front_crown", CFrame.new(sp+Vector3.new(0,11.2,10.1)), Vector3.new(20.2,0.3,0.4), Enum.Material.Wood, Color3.fromRGB(100,70,35), f)
+  -- Corner trim (vertical accent)
+  P("wall_front_corner_L", CFrame.new(sp+Vector3.new(-10.1,6,10.1)), Vector3.new(0.4,10.5,0.4), Enum.Material.Wood, Color3.fromRGB(100,70,35), f)
+
+BUILDING A WINDOW WITH DETAIL (do this for every window):
+  -- Glass pane
+  local w = P("window1_glass", CFrame.new(sp+Vector3.new(5,6,10)), Vector3.new(3,3,0.15), Enum.Material.Glass, Color3.fromRGB(200,220,255), f)
+  w.Transparency = 0.4
+  -- Frame top
+  P("window1_top", CFrame.new(sp+Vector3.new(5,7.65,10)), Vector3.new(3.4,0.3,0.3), Enum.Material.Wood, Color3.fromRGB(120,80,40), f)
+  -- Frame bottom (sill — sticks out)
+  P("window1_sill", CFrame.new(sp+Vector3.new(5,4.35,10.2)), Vector3.new(3.6,0.25,0.5), Enum.Material.Wood, Color3.fromRGB(120,80,40), f)
+  -- Frame sides
+  P("window1_left", CFrame.new(sp+Vector3.new(3.35,6,10)), Vector3.new(0.25,3.3,0.25), Enum.Material.Wood, Color3.fromRGB(120,80,40), f)
+  P("window1_right", CFrame.new(sp+Vector3.new(6.65,6,10)), Vector3.new(0.25,3.3,0.25), Enum.Material.Wood, Color3.fromRGB(120,80,40), f)
+
+BUILDING FURNITURE (every piece needs individual parts):
+  -- TABLE: top(5x0.3x3) + 4 legs(0.3x3x0.3) = 5 parts
+  -- CHAIR: seat(2x0.3x2) + back(2x2.5x0.3) + 4 legs(0.25x2x0.25) = 6 parts
+  -- BED: frame(5x0.5x7) + mattress(4.6x1x6.5) + 2 pillows + headboard + blanket = 6 parts
+  -- BOOKSHELF: frame(4x6x1.2) + 4 shelves + 5+ colored books per shelf = 25+ parts
+  -- FIREPLACE: back wall + 2 sides + mantle + hearth + 2 logs + fire(Neon)+PointLight+Fire = 9+ parts
+
+LIGHTING — NEVER skip this:
+  -- Every room needs at least 1 PointLight
+  -- Warm indoor: Color3.fromRGB(255,220,180), Brightness=1.5, Range=16
+  -- Cold outdoor: Color3.fromRGB(200,220,255), Brightness=1, Range=20
+  -- Torches: Neon part + Fire instance + PointLight (3 parts per torch)
+  -- Chandeliers: ring + chain + multiple PointLights
+  -- Street lamps: base + pole + arm + housing + glass + PointLight (6 parts)
+
+GO ALL OUT. The user expects to be impressed. A "house" should have a porch with railing, window boxes with flowers, a chimney with smoke, interior rooms with furniture and lights. Make it feel ALIVE.`
 
     // ── SCRIPT INTENT: use script generation prompt instead of build prompt ──
     const scriptInstruction = `Script/System: ${message}${continuationContext}
