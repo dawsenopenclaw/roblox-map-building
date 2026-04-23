@@ -29,6 +29,10 @@
     {
       "path": "/api/crons/eli-audit",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/crons/self-improve",
+      "schedule": "0 */4 * * *"
     }
   ]
 }
