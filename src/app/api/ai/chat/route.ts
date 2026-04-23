@@ -9384,6 +9384,11 @@ interface StreamResponseMeta {
 }
 
 function toStreamResponse(text: string, meta: StreamResponseMeta): Response {
+  // ── Universal learning: record EVERY AI response (builds, scripts, conversations, images) ──
+  if (meta.luauCode || meta.intent) {
+    void recordUniversalOutcome(text, meta).catch(() => {})
+  }
+
   const enc = new TextEncoder()
   const metaPayload = JSON.stringify({ __meta: true, ...meta })
   const stream = new ReadableStream({
@@ -9401,6 +9406,71 @@ function toStreamResponse(text: string, meta: StreamResponseMeta): Response {
       'Cache-Control': 'no-cache, no-transform',
     },
   })
+}
+
+/**
+ * Universal outcome recorder — fires on EVERY AI response.
+ * Records builds, scripts, conversations, images, terrain — everything teaches the AI.
+ */
+async function recordUniversalOutcome(text: string, meta: StreamResponseMeta): Promise<void> {
+  try {
+    const intent = meta.intent || 'general'
+    const model = meta.model || 'unknown'
+    const code = meta.luauCode || ''
+    const score = meta.qualityScore ?? (code ? 60 : 0) // Default 60 for unscored code
+    const hasCode = !!code && code.length > 50
+
+    // Skip recording for error responses, help, and empty responses
+    if (!text || text.length < 20) return
+    if (intent === 'help' || intent === 'conversation' || intent === 'chat') {
+      // Still record conversations to ELI for topic tracking
+      void recordToEli({
+        prompt: text.slice(0, 200),
+        score: 80, // Conversations are "successful" if they complete
+        model,
+        buildType: 'build',
+        category: 'conversation',
+        partCount: 0,
+        passed: true,
+        retryCount: 0,
+      }).catch(() => {})
+      return
+    }
+
+    if (hasCode) {
+      const category = detectCategory(text)
+      const buildType = detectBuildType(text, intent)
+      const partCount = countPartsInCode(code)
+
+      // Record to experience memory (enables semantic retrieval for future builds)
+      void recordBuildOutcome(text, code, score, model, {
+        category,
+        partCount,
+        buildType,
+      }).catch(() => {})
+
+      // Record to ELI brain
+      void recordToEli({
+        prompt: text.slice(0, 200),
+        score,
+        model,
+        buildType: buildType as 'build' | 'script' | 'terrain' | 'image' | 'mesh',
+        category,
+        partCount,
+        passed: score >= 60,
+        retryCount: 0,
+      }).catch(() => {})
+
+      // Self-improvement: learn from failures
+      if (score < 50) {
+        void learnFromFailure(text, code, score, [], category).catch(() => {})
+      }
+
+      console.log(`[UniversalLearning] Recorded ${buildType} outcome: score=${score}, model=${model}, parts=${partCount}, intent=${intent}`)
+    }
+  } catch {
+    // Never throw — fire and forget
+  }
 }
 
 // User-friendly error messages with context-specific next steps
