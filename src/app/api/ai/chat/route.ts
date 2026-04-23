@@ -3614,6 +3614,41 @@ Then output the COMPLETE code in a \`\`\`lua block. The code must work when past
       if (!conversationText || conversationText.length < 20) {
         conversationText = `Here's what I'm setting up for "${message}". Check your Studio — the build should appear near your camera. Let me know what you'd like to change!`
       }
+      // ── SCRIPT INTENT SAFETY NET ──
+      // If the AI was supposed to generate scripts but produced Part-heavy build code instead,
+      // catch this and either retry or fall back to the template
+      if (luauCode && isScriptIntent) {
+        const partMatches = (luauCode.match(/Instance\.new\s*\(\s*["']Part["']\s*\)/g) || []).length
+        const hasScreenGui = luauCode.includes('ScreenGui') || luauCode.includes('LocalScript') || luauCode.includes('.Source')
+        const hasTextButton = luauCode.includes('TextButton') || luauCode.includes('TextLabel') || luauCode.includes('Frame')
+        const isPartHeavy = partMatches > 5 && !hasScreenGui && !hasTextButton
+
+        if (isPartHeavy) {
+          console.warn(`[ScriptSafetyNet] Script intent "${intent}" produced ${partMatches} Parts with no GUI elements — this is a BUILD, not a SCRIPT. Falling back to template.`)
+          // Use the template directly if available
+          const fallbackTemplate = getScriptTemplate(message)
+          if (fallbackTemplate) {
+            luauCode = fallbackTemplate
+            conversationText = `Here's a complete ${intent} system for "${message}". This includes all the game logic, UI, and server-client communication. Paste it into Studio's command bar to install.`
+            console.log('[ScriptSafetyNet] Replaced with template code')
+          } else {
+            // No template — retry with ultra-forceful script prompt
+            console.log('[ScriptSafetyNet] No template available, retrying with stronger prompt')
+            const retryResult = await raceNonNull(
+              callGemini(SCRIPT_GENERATION_PROMPT + '\n\nCRITICAL: The previous attempt INCORRECTLY generated Parts on the ground. DO NOT create any Instance.new("Part"). Create ONLY Scripts, LocalScripts, ScreenGui, Frame, TextButton, TextLabel. This is a SCRIPT request, not a BUILD request.', scriptInstruction, history.slice(-2), 32768),
+              callGroq(SCRIPT_GENERATION_PROMPT + '\n\nCRITICAL: The previous attempt INCORRECTLY generated Parts on the ground. DO NOT create any Instance.new("Part"). Create ONLY Scripts, LocalScripts, ScreenGui, Frame, TextButton, TextLabel. This is a SCRIPT request, not a BUILD request.', scriptInstruction, history.slice(-2), 32768),
+            )
+            if (retryResult) {
+              const retryCode = extractLuauCode(retryResult.result)
+              if (retryCode) {
+                luauCode = retryCode
+                console.log('[ScriptSafetyNet] Retry succeeded')
+              }
+            }
+          }
+        }
+      }
+
       // Quality gate — reject low-quality code and tell user
       if (luauCode && !isCodeQualityOk(luauCode)) {
         console.warn('[Pass2] Code failed quality check, discarding')
