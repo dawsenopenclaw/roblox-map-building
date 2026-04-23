@@ -310,6 +310,329 @@ function furnishRoom(
       parts.push(generatePointLight(cx, fy + 10, cz, 1.2, 16, [255, 200, 130], `${prefix}_hanging_light`))
       break
     }
+    case 'bathroom': {
+      // ── Toilet (3 parts) ──
+      parts.push({ name: `${prefix}_toilet_base`, size: [1.5, 1.2, 2], position: [cx - roomW / 2 + 2, fy + 0.6, cz - roomD / 2 + 1.5], rotation: [0, 0, 0], material: 'Marble', color: [240, 238, 235] })
+      parts.push({ name: `${prefix}_toilet_tank`, size: [1.3, 1.5, 0.8], position: [cx - roomW / 2 + 2, fy + 1.65, cz - roomD / 2 + 0.6], rotation: [0, 0, 0], material: 'Marble', color: [235, 233, 230] })
+      parts.push({ name: `${prefix}_toilet_seat`, size: [1.3, 0.1, 1.4], position: [cx - roomW / 2 + 2, fy + 1.25, cz - roomD / 2 + 1.5], rotation: [0, 0, 0], material: 'Marble', color: [230, 228, 225] })
+      // ── Bathtub (4 parts) ──
+      parts.push({ name: `${prefix}_tub_body`, size: [2.5, 1.8, 5], position: [cx + roomW / 2 - 2, fy + 0.9, cz], rotation: [0, 0, 0], material: 'Marble', color: [235, 235, 240] })
+      parts.push({ name: `${prefix}_tub_interior`, size: [2, 1.4, 4.5], position: [cx + roomW / 2 - 2, fy + 1.1, cz], rotation: [0, 0, 0], material: 'Marble', color: [220, 225, 235], transparency: 0.1 })
+      parts.push({ name: `${prefix}_tub_faucet`, size: [0.3, 0.8, 0.3], position: [cx + roomW / 2 - 2, fy + 2.2, cz - 2.2], rotation: [0, 0, 0], material: 'Metal', color: [190, 190, 195], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_tub_faucet_handle`, size: [0.6, 0.15, 0.15], position: [cx + roomW / 2 - 2, fy + 2.5, cz - 2.2], rotation: [0, 0, 0], material: 'Metal', color: [180, 180, 185] })
+      // ── Sink (3 parts) ──
+      parts.push({ name: `${prefix}_sink_basin`, size: [2, 0.5, 1.5], position: [cx, fy + 3, cz - roomD / 2 + 1], rotation: [0, 0, 0], material: 'Marble', color: [235, 235, 240] })
+      parts.push({ name: `${prefix}_sink_pedestal`, size: [0.6, 2.5, 0.6], position: [cx, fy + 1.25, cz - roomD / 2 + 1], rotation: [0, 0, 0], material: 'Marble', color: [230, 230, 235], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_sink_faucet`, size: [0.2, 0.8, 0.2], position: [cx, fy + 3.7, cz - roomD / 2 + 0.5], rotation: [0, 0, 0], material: 'Metal', color: [190, 190, 195], shape: 'Cylinder' })
+      // ── Mirror ──
+      parts.push({ name: `${prefix}_mirror`, size: [2.5, 3, 0.1], position: [cx, fy + 5.5, cz - roomD / 2 + 0.55], rotation: [0, 0, 0], material: 'Glass', color: [200, 220, 240], transparency: 0.3 })
+      parts.push({ name: `${prefix}_mirror_frame`, size: [2.7, 3.2, 0.15], position: [cx, fy + 5.5, cz - roomD / 2 + 0.5], rotation: [0, 0, 0], material: 'Metal', color: [170, 170, 175] })
+      // ── Towel rack ──
+      parts.push({ name: `${prefix}_towelrack_bar`, size: [2, 0.12, 0.12], position: [cx + roomW / 2 - 1, fy + 4, cz + roomD / 2 - 1.5], rotation: [0, 0, 0], material: 'Metal', color: [185, 185, 190], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_towelrack_mount_l`, size: [0.15, 0.15, 0.4], position: [cx + roomW / 2 - 0.9, fy + 4, cz + roomD / 2 - 1.3], rotation: [0, 0, 0], material: 'Metal', color: [180, 180, 185] })
+      parts.push({ name: `${prefix}_towelrack_mount_r`, size: [0.15, 0.15, 0.4], position: [cx + roomW / 2 - 0.9, fy + 4, cz + roomD / 2 - 1.7], rotation: [0, 0, 0], material: 'Metal', color: [180, 180, 185] })
+      parts.push({ name: `${prefix}_towel`, size: [1.6, 0.05, 0.8], position: [cx + roomW / 2 - 1, fy + 3.5, cz + roomD / 2 - 1.5], rotation: [10, 0, 0], material: 'Fabric', color: [240, 240, 245] })
+      // ── Bath mat ──
+      parts.push({ name: `${prefix}_bathmat`, size: [2, 0.05, 1.5], position: [cx + roomW / 2 - 2, fy + 0.53, cz + 2.5], rotation: [0, 0, 0], material: 'Fabric', color: [100, 140, 180] })
+      // ── Shower curtain ──
+      parts.push({ name: `${prefix}_curtain_rod`, size: [0.1, 0.1, 5], position: [cx + roomW / 2 - 0.5, fy + 7, cz], rotation: [0, 0, 0], material: 'Metal', color: [185, 185, 190], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_curtain`, size: [0.05, 5, 4.8], position: [cx + roomW / 2 - 0.5, fy + 4.5, cz], rotation: [0, 0, 0], material: 'Fabric', color: [220, 220, 230], transparency: 0.15 })
+      // ── Medicine cabinet ──
+      parts.push({ name: `${prefix}_medcab_body`, size: [1.8, 2.2, 0.6], position: [cx - 2.5, fy + 5.5, cz - roomD / 2 + 0.7], rotation: [0, 0, 0], material: 'Metal', color: [210, 210, 215] })
+      parts.push({ name: `${prefix}_medcab_door`, size: [1.7, 2.1, 0.05], position: [cx - 2.5, fy + 5.5, cz - roomD / 2 + 0.4], rotation: [0, 0, 0], material: 'Glass', color: [200, 220, 240], transparency: 0.4 })
+      parts.push({ name: `${prefix}_medcab_handle`, size: [0.1, 0.5, 0.1], position: [cx - 1.7, fy + 5.5, cz - roomD / 2 + 0.35], rotation: [0, 0, 0], material: 'Metal', color: [180, 180, 185] })
+      // Light
+      parts.push(generatePointLight(cx, fy + 9, cz, 1.2, 14, [255, 245, 240], `${prefix}_ceiling_light`))
+      break
+    }
+    case 'workshop': {
+      // ── Workbench (5 parts) ──
+      parts.push({ name: `${prefix}_bench_top`, size: [6, 0.4, 2.5], position: [cx, fy + 3.2, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'WoodPlanks', color: [140, 100, 55] })
+      parts.push({ name: `${prefix}_bench_leg_fl`, size: [0.4, 2.8, 0.4], position: [cx - 2.7, fy + 1.4, cz - roomD / 2 + 3], rotation: [0, 0, 0], material: 'Wood', color: [120, 80, 40] })
+      parts.push({ name: `${prefix}_bench_leg_fr`, size: [0.4, 2.8, 0.4], position: [cx + 2.7, fy + 1.4, cz - roomD / 2 + 3], rotation: [0, 0, 0], material: 'Wood', color: [120, 80, 40] })
+      parts.push({ name: `${prefix}_bench_leg_bl`, size: [0.4, 2.8, 0.4], position: [cx - 2.7, fy + 1.4, cz - roomD / 2 + 1], rotation: [0, 0, 0], material: 'Wood', color: [120, 80, 40] })
+      parts.push({ name: `${prefix}_bench_leg_br`, size: [0.4, 2.8, 0.4], position: [cx + 2.7, fy + 1.4, cz - roomD / 2 + 1], rotation: [0, 0, 0], material: 'Wood', color: [120, 80, 40] })
+      // ── Tools on wall (pegboard + 6 tools) ──
+      parts.push({ name: `${prefix}_pegboard`, size: [5, 4, 0.2], position: [cx, fy + 6, cz - roomD / 2 + 0.6], rotation: [0, 0, 0], material: 'WoodPlanks', color: [160, 130, 80] })
+      parts.push({ name: `${prefix}_tool_hammer`, size: [0.2, 1.2, 0.2], position: [cx - 2, fy + 6.5, cz - roomD / 2 + 0.4], rotation: [0, 0, 0], material: 'Metal', color: [150, 150, 155] })
+      parts.push({ name: `${prefix}_tool_hammer_head`, size: [0.5, 0.3, 0.2], position: [cx - 2, fy + 7.2, cz - roomD / 2 + 0.4], rotation: [0, 0, 0], material: 'Metal', color: [120, 120, 125] })
+      parts.push({ name: `${prefix}_tool_saw`, size: [0.1, 1.5, 0.6], position: [cx - 1, fy + 6.3, cz - roomD / 2 + 0.4], rotation: [0, 0, 10], material: 'Metal', color: [170, 170, 175] })
+      parts.push({ name: `${prefix}_tool_wrench`, size: [0.15, 1, 0.15], position: [cx, fy + 6.5, cz - roomD / 2 + 0.4], rotation: [0, 0, 5], material: 'Metal', color: [160, 160, 165] })
+      parts.push({ name: `${prefix}_tool_pliers`, size: [0.15, 1.1, 0.3], position: [cx + 1, fy + 6.4, cz - roomD / 2 + 0.4], rotation: [0, 0, -5], material: 'Metal', color: [145, 145, 150] })
+      parts.push({ name: `${prefix}_tool_chisel`, size: [0.1, 1.3, 0.1], position: [cx + 2, fy + 6.5, cz - roomD / 2 + 0.4], rotation: [0, 0, 0], material: 'Metal', color: [155, 155, 160] })
+      // ── Vice ──
+      parts.push({ name: `${prefix}_vice_base`, size: [0.8, 0.4, 0.6], position: [cx + 2, fy + 3.6, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Metal', color: [80, 80, 85] })
+      parts.push({ name: `${prefix}_vice_jaw_fixed`, size: [0.1, 0.8, 0.5], position: [cx + 1.7, fy + 4.2, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Metal', color: [75, 75, 80] })
+      parts.push({ name: `${prefix}_vice_jaw_move`, size: [0.1, 0.8, 0.5], position: [cx + 2.3, fy + 4.2, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Metal', color: [75, 75, 80] })
+      parts.push({ name: `${prefix}_vice_screw`, size: [0.6, 0.12, 0.12], position: [cx + 2.6, fy + 4.2, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Metal', color: [90, 90, 95], shape: 'Cylinder' })
+      // ── Stool ──
+      parts.push({ name: `${prefix}_stool_seat`, size: [1.2, 0.15, 1.2], position: [cx, fy + 2.3, cz + 1], rotation: [0, 0, 0], material: 'Wood', color: [130, 90, 45], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_stool_leg1`, size: [0.15, 2.1, 0.15], position: [cx - 0.4, fy + 1.1, cz + 0.6], rotation: [0, 0, 0], material: 'Wood', color: [120, 80, 40] })
+      parts.push({ name: `${prefix}_stool_leg2`, size: [0.15, 2.1, 0.15], position: [cx + 0.4, fy + 1.1, cz + 0.6], rotation: [0, 0, 0], material: 'Wood', color: [120, 80, 40] })
+      parts.push({ name: `${prefix}_stool_leg3`, size: [0.15, 2.1, 0.15], position: [cx - 0.4, fy + 1.1, cz + 1.4], rotation: [0, 0, 0], material: 'Wood', color: [120, 80, 40] })
+      parts.push({ name: `${prefix}_stool_leg4`, size: [0.15, 2.1, 0.15], position: [cx + 0.4, fy + 1.1, cz + 1.4], rotation: [0, 0, 0], material: 'Wood', color: [120, 80, 40] })
+      // ── Shelving ──
+      parts.push({ name: `${prefix}_shelf_frame_l`, size: [0.3, 6, 0.3], position: [cx - roomW / 2 + 1, fy + 3, cz + roomD / 2 - 1], rotation: [0, 0, 0], material: 'Wood', color: [110, 75, 35] })
+      parts.push({ name: `${prefix}_shelf_frame_r`, size: [0.3, 6, 0.3], position: [cx - roomW / 2 + 4, fy + 3, cz + roomD / 2 - 1], rotation: [0, 0, 0], material: 'Wood', color: [110, 75, 35] })
+      for (let s = 0; s < 3; s++) {
+        parts.push({ name: `${prefix}_shelf_plank_${s}`, size: [3, 0.2, 1], position: [cx - roomW / 2 + 2.5, fy + 1.5 + s * 2, cz + roomD / 2 - 1], rotation: [0, 0, 0], material: 'WoodPlanks', color: [130, 95, 50] })
+      }
+      // ── Desk lamp ──
+      parts.push({ name: `${prefix}_lamp_base`, size: [0.6, 0.15, 0.6], position: [cx - 2, fy + 3.55, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Metal', color: [50, 50, 55], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_lamp_arm`, size: [0.1, 2, 0.1], position: [cx - 2, fy + 4.55, cz - roomD / 2 + 2], rotation: [0, 0, 15], material: 'Metal', color: [55, 55, 60] })
+      parts.push({ name: `${prefix}_lamp_shade`, size: [0.8, 0.5, 0.8], position: [cx - 2.3, fy + 5.7, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Metal', color: [40, 80, 40] })
+      parts.push(generatePointLight(cx - 2.3, fy + 5.5, cz - roomD / 2 + 2, 0.8, 10, [255, 230, 180], `${prefix}_lamp_light`))
+      // ── Sawdust pile ──
+      parts.push({ name: `${prefix}_sawdust_pile`, size: [2, 0.15, 1.5], position: [cx + 1, fy + 0.58, cz - roomD / 2 + 3.5], rotation: [0, 20, 0], material: 'Sand', color: [210, 185, 140] })
+      parts.push({ name: `${prefix}_sawdust_scatter`, size: [1.2, 0.08, 1], position: [cx + 2.5, fy + 0.54, cz - roomD / 2 + 3], rotation: [0, -10, 0], material: 'Sand', color: [200, 175, 130] })
+      // ── Project piece (half-built birdhouse) ──
+      parts.push({ name: `${prefix}_project_base`, size: [1, 0.15, 1], position: [cx - 0.5, fy + 3.5, cz - roomD / 2 + 2], rotation: [0, 30, 0], material: 'WoodPlanks', color: [170, 130, 70] })
+      parts.push({ name: `${prefix}_project_wall1`, size: [0.1, 0.8, 1], position: [cx - 1, fy + 3.9, cz - roomD / 2 + 2], rotation: [0, 30, 0], material: 'WoodPlanks', color: [170, 130, 70] })
+      parts.push({ name: `${prefix}_project_wall2`, size: [1, 0.8, 0.1], position: [cx - 0.5, fy + 3.9, cz - roomD / 2 + 1.5], rotation: [0, 30, 0], material: 'WoodPlanks', color: [165, 125, 65] })
+      // Ceiling light
+      parts.push(generatePointLight(cx, fy + 10, cz, 1, 14, [255, 230, 190], `${prefix}_ceiling_light`))
+      break
+    }
+    case 'armory': {
+      // ── Weapon rack (8 parts: frame + 5 weapons + 2 pegs) ──
+      parts.push({ name: `${prefix}_weaprack_back`, size: [5, 6, 0.3], position: [cx, fy + 4, cz - roomD / 2 + 0.65], rotation: [0, 0, 0], material: 'WoodPlanks', color: [100, 65, 30] })
+      parts.push({ name: `${prefix}_weaprack_peg_top`, size: [4.5, 0.2, 0.5], position: [cx, fy + 6, cz - roomD / 2 + 0.85], rotation: [0, 0, 0], material: 'Wood', color: [90, 55, 25] })
+      parts.push({ name: `${prefix}_weaprack_peg_bot`, size: [4.5, 0.2, 0.5], position: [cx, fy + 3, cz - roomD / 2 + 0.85], rotation: [0, 0, 0], material: 'Wood', color: [90, 55, 25] })
+      parts.push({ name: `${prefix}_sword_1`, size: [0.15, 3.5, 0.05], position: [cx - 1.5, fy + 5, cz - roomD / 2 + 0.85], rotation: [0, 0, 5], material: 'Metal', color: [190, 195, 200] })
+      parts.push({ name: `${prefix}_sword_1_hilt`, size: [0.5, 0.4, 0.1], position: [cx - 1.5, fy + 3.2, cz - roomD / 2 + 0.85], rotation: [0, 0, 5], material: 'Wood', color: [80, 50, 25] })
+      parts.push({ name: `${prefix}_sword_2`, size: [0.2, 4, 0.05], position: [cx, fy + 5.2, cz - roomD / 2 + 0.85], rotation: [0, 0, -3], material: 'Metal', color: [185, 190, 195] })
+      parts.push({ name: `${prefix}_sword_2_hilt`, size: [0.6, 0.4, 0.1], position: [cx, fy + 3.1, cz - roomD / 2 + 0.85], rotation: [0, 0, -3], material: 'Wood', color: [70, 45, 20] })
+      parts.push({ name: `${prefix}_axe_head`, size: [0.8, 0.6, 0.1], position: [cx + 1.5, fy + 6.3, cz - roomD / 2 + 0.85], rotation: [0, 0, 0], material: 'Metal', color: [160, 160, 165] })
+      parts.push({ name: `${prefix}_axe_handle`, size: [0.15, 3, 0.15], position: [cx + 1.5, fy + 4.5, cz - roomD / 2 + 0.85], rotation: [0, 0, 0], material: 'Wood', color: [110, 75, 35], shape: 'Cylinder' })
+      // ── Armor stand (6 parts) ──
+      parts.push({ name: `${prefix}_armor_base`, size: [1.5, 0.3, 1.5], position: [cx - roomW / 2 + 2, fy + 0.65, cz + 1], rotation: [0, 0, 0], material: 'Wood', color: [90, 60, 30], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_armor_pole`, size: [0.2, 5, 0.2], position: [cx - roomW / 2 + 2, fy + 3.3, cz + 1], rotation: [0, 0, 0], material: 'Wood', color: [85, 55, 25], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_armor_chest`, size: [1.8, 2, 1], position: [cx - roomW / 2 + 2, fy + 4.5, cz + 1], rotation: [0, 0, 0], material: 'Metal', color: [140, 140, 145] })
+      parts.push({ name: `${prefix}_armor_shoulder_l`, size: [0.6, 0.4, 0.8], position: [cx - roomW / 2 + 1, fy + 5.7, cz + 1], rotation: [0, 0, 10], material: 'Metal', color: [135, 135, 140] })
+      parts.push({ name: `${prefix}_armor_shoulder_r`, size: [0.6, 0.4, 0.8], position: [cx - roomW / 2 + 3, fy + 5.7, cz + 1], rotation: [0, 0, -10], material: 'Metal', color: [135, 135, 140] })
+      parts.push({ name: `${prefix}_armor_helmet`, size: [0.8, 0.8, 0.8], position: [cx - roomW / 2 + 2, fy + 6.2, cz + 1], rotation: [0, 0, 0], material: 'Metal', color: [145, 145, 150], shape: 'Ball' })
+      // ── Shield display ──
+      parts.push({ name: `${prefix}_shield`, size: [2, 2.5, 0.3], position: [cx + roomW / 2 - 1, fy + 5, cz - 1], rotation: [0, 0, 0], material: 'Wood', color: [130, 30, 30] })
+      parts.push({ name: `${prefix}_shield_boss`, size: [0.6, 0.6, 0.15], position: [cx + roomW / 2 - 0.85, fy + 5, cz - 1], rotation: [0, 0, 0], material: 'Metal', color: [180, 170, 50], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_shield_rim`, size: [2.2, 2.7, 0.1], position: [cx + roomW / 2 - 1.05, fy + 5, cz - 1], rotation: [0, 0, 0], material: 'Metal', color: [160, 150, 40] })
+      // ── Chest ──
+      parts.push({ name: `${prefix}_chest_body`, size: [2.5, 1.5, 1.5], position: [cx + roomW / 2 - 2, fy + 0.75, cz + roomD / 2 - 1.5], rotation: [0, 0, 0], material: 'WoodPlanks', color: [100, 65, 30] })
+      parts.push({ name: `${prefix}_chest_lid`, size: [2.5, 0.4, 1.5], position: [cx + roomW / 2 - 2, fy + 1.7, cz + roomD / 2 - 1.5], rotation: [0, 0, 0], material: 'WoodPlanks', color: [110, 70, 35] })
+      parts.push({ name: `${prefix}_chest_clasp`, size: [0.3, 0.3, 0.1], position: [cx + roomW / 2 - 2, fy + 1.5, cz + roomD / 2 - 0.7], rotation: [0, 0, 0], material: 'Metal', color: [180, 170, 50] })
+      parts.push({ name: `${prefix}_chest_band_1`, size: [2.5, 0.15, 0.1], position: [cx + roomW / 2 - 2, fy + 0.5, cz + roomD / 2 - 0.7], rotation: [0, 0, 0], material: 'Metal', color: [100, 95, 50] })
+      parts.push({ name: `${prefix}_chest_band_2`, size: [2.5, 0.15, 0.1], position: [cx + roomW / 2 - 2, fy + 1, cz + roomD / 2 - 0.7], rotation: [0, 0, 0], material: 'Metal', color: [100, 95, 50] })
+      // ── Lantern ──
+      parts.push({ name: `${prefix}_lantern_body`, size: [0.5, 0.7, 0.5], position: [cx + roomW / 2 - 2, fy + 2.2, cz + roomD / 2 - 1.5], rotation: [0, 0, 0], material: 'Metal', color: [60, 55, 40] })
+      parts.push({ name: `${prefix}_lantern_glass`, size: [0.35, 0.5, 0.35], position: [cx + roomW / 2 - 2, fy + 2.2, cz + roomD / 2 - 1.5], rotation: [0, 0, 0], material: 'Glass', color: [255, 200, 100], transparency: 0.4 })
+      parts.push(generatePointLight(cx + roomW / 2 - 2, fy + 2.2, cz + roomD / 2 - 1.5, 0.8, 10, [255, 180, 80], `${prefix}_lantern_light`))
+      // ── Training dummy (5 parts) ──
+      parts.push({ name: `${prefix}_dummy_base`, size: [1.2, 0.3, 1.2], position: [cx + 2, fy + 0.65, cz + roomD / 2 - 2], rotation: [0, 0, 0], material: 'Wood', color: [100, 65, 30], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_dummy_pole`, size: [0.25, 4, 0.25], position: [cx + 2, fy + 2.8, cz + roomD / 2 - 2], rotation: [0, 0, 0], material: 'Wood', color: [90, 60, 28], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_dummy_torso`, size: [1.5, 2, 0.8], position: [cx + 2, fy + 4.5, cz + roomD / 2 - 2], rotation: [0, 0, 0], material: 'Fabric', color: [180, 160, 120] })
+      parts.push({ name: `${prefix}_dummy_arm_l`, size: [0.3, 1.5, 0.3], position: [cx + 1, fy + 4.5, cz + roomD / 2 - 2], rotation: [0, 0, 45], material: 'Wood', color: [95, 62, 30], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_dummy_arm_r`, size: [0.3, 1.5, 0.3], position: [cx + 3, fy + 4.5, cz + roomD / 2 - 2], rotation: [0, 0, -45], material: 'Wood', color: [95, 62, 30], shape: 'Cylinder' })
+      // Wall torches for ambiance
+      parts.push({ name: `${prefix}_torch_l_handle`, size: [0.2, 1.5, 0.2], position: [cx - roomW / 2 + 0.6, fy + 6, cz], rotation: [0, 0, 0], material: 'Wood', color: [80, 50, 25], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_torch_l_flame`, size: [0.3, 0.5, 0.3], position: [cx - roomW / 2 + 0.6, fy + 7, cz], rotation: [0, 0, 0], material: 'Neon', color: [255, 140, 30],
+        children: [
+          { className: 'PointLight', properties: { Brightness: 1, Range: 12, Color: [255, 180, 80] } },
+          { className: 'Fire', properties: { Size: 2, Heat: 6 } },
+        ],
+      })
+      parts.push({ name: `${prefix}_torch_r_handle`, size: [0.2, 1.5, 0.2], position: [cx + roomW / 2 - 0.6, fy + 6, cz], rotation: [0, 0, 0], material: 'Wood', color: [80, 50, 25], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_torch_r_flame`, size: [0.3, 0.5, 0.3], position: [cx + roomW / 2 - 0.6, fy + 7, cz], rotation: [0, 0, 0], material: 'Neon', color: [255, 140, 30],
+        children: [
+          { className: 'PointLight', properties: { Brightness: 1, Range: 12, Color: [255, 180, 80] } },
+          { className: 'Fire', properties: { Size: 2, Heat: 6 } },
+        ],
+      })
+      break
+    }
+    case 'lab': {
+      // ── Lab bench (5 parts) ──
+      parts.push({ name: `${prefix}_bench_top`, size: [7, 0.3, 2.5], position: [cx, fy + 3.35, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Marble', color: [200, 200, 205] })
+      parts.push({ name: `${prefix}_bench_leg_fl`, size: [0.3, 2.8, 0.3], position: [cx - 3.2, fy + 1.4, cz - roomD / 2 + 3], rotation: [0, 0, 0], material: 'Metal', color: [80, 80, 85] })
+      parts.push({ name: `${prefix}_bench_leg_fr`, size: [0.3, 2.8, 0.3], position: [cx + 3.2, fy + 1.4, cz - roomD / 2 + 3], rotation: [0, 0, 0], material: 'Metal', color: [80, 80, 85] })
+      parts.push({ name: `${prefix}_bench_leg_bl`, size: [0.3, 2.8, 0.3], position: [cx - 3.2, fy + 1.4, cz - roomD / 2 + 1], rotation: [0, 0, 0], material: 'Metal', color: [80, 80, 85] })
+      parts.push({ name: `${prefix}_bench_leg_br`, size: [0.3, 2.8, 0.3], position: [cx + 3.2, fy + 1.4, cz - roomD / 2 + 1], rotation: [0, 0, 0], material: 'Metal', color: [80, 80, 85] })
+      // ── Beakers (3 beakers on bench) ──
+      parts.push({ name: `${prefix}_beaker_1`, size: [0.4, 0.6, 0.4], position: [cx - 2, fy + 3.8, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Glass', color: [200, 230, 255], transparency: 0.5, shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_beaker_1_liquid`, size: [0.35, 0.3, 0.35], position: [cx - 2, fy + 3.65, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Neon', color: [50, 200, 50], transparency: 0.3, shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_beaker_2`, size: [0.3, 0.8, 0.3], position: [cx - 1, fy + 3.9, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Glass', color: [200, 230, 255], transparency: 0.5, shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_beaker_2_liquid`, size: [0.25, 0.5, 0.25], position: [cx - 1, fy + 3.75, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Neon', color: [180, 50, 200], transparency: 0.3, shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_beaker_3`, size: [0.5, 0.5, 0.5], position: [cx, fy + 3.75, cz - roomD / 2 + 2.3], rotation: [0, 0, 0], material: 'Glass', color: [200, 230, 255], transparency: 0.5, shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_beaker_3_liquid`, size: [0.45, 0.25, 0.45], position: [cx, fy + 3.63, cz - roomD / 2 + 2.3], rotation: [0, 0, 0], material: 'Neon', color: [50, 100, 255], transparency: 0.3, shape: 'Cylinder' })
+      // ── Microscope ──
+      parts.push({ name: `${prefix}_microscope_base`, size: [0.6, 0.15, 0.8], position: [cx + 1.5, fy + 3.58, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Metal', color: [40, 40, 45] })
+      parts.push({ name: `${prefix}_microscope_arm`, size: [0.15, 1.5, 0.15], position: [cx + 1.5, fy + 4.3, cz - roomD / 2 + 1.7], rotation: [10, 0, 0], material: 'Metal', color: [50, 50, 55] })
+      parts.push({ name: `${prefix}_microscope_eyepiece`, size: [0.2, 0.4, 0.2], position: [cx + 1.5, fy + 5.2, cz - roomD / 2 + 1.6], rotation: [30, 0, 0], material: 'Metal', color: [35, 35, 40], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_microscope_lens`, size: [0.15, 0.2, 0.15], position: [cx + 1.5, fy + 3.85, cz - roomD / 2 + 2.1], rotation: [0, 0, 0], material: 'Glass', color: [180, 200, 230], shape: 'Cylinder' })
+      // ── Bubbling cauldron ──
+      parts.push({ name: `${prefix}_cauldron_body`, size: [2, 1.8, 2], position: [cx + roomW / 2 - 2.5, fy + 1.4, cz + 2], rotation: [0, 0, 0], material: 'Metal', color: [40, 40, 42], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_cauldron_liquid`, size: [1.7, 0.3, 1.7], position: [cx + roomW / 2 - 2.5, fy + 2.2, cz + 2], rotation: [0, 0, 0], material: 'Neon', color: [80, 255, 80], transparency: 0.2, shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_cauldron_rim`, size: [2.2, 0.15, 2.2], position: [cx + roomW / 2 - 2.5, fy + 2.35, cz + 2], rotation: [0, 0, 0], material: 'Metal', color: [50, 50, 52], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_cauldron_leg_1`, size: [0.2, 0.5, 0.2], position: [cx + roomW / 2 - 3.2, fy + 0.75, cz + 1.3], rotation: [0, 0, 0], material: 'Metal', color: [35, 35, 38] })
+      parts.push({ name: `${prefix}_cauldron_leg_2`, size: [0.2, 0.5, 0.2], position: [cx + roomW / 2 - 1.8, fy + 0.75, cz + 1.3], rotation: [0, 0, 0], material: 'Metal', color: [35, 35, 38] })
+      parts.push({ name: `${prefix}_cauldron_leg_3`, size: [0.2, 0.5, 0.2], position: [cx + roomW / 2 - 2.5, fy + 0.75, cz + 2.7], rotation: [0, 0, 0], material: 'Metal', color: [35, 35, 38] })
+      // ── Shelves with bottles (15+ parts) ──
+      parts.push({ name: `${prefix}_shelf_frame_l`, size: [0.3, 7, 0.3], position: [cx - roomW / 2 + 1, fy + 4, cz + roomD / 2 - 0.8], rotation: [0, 0, 0], material: 'Wood', color: [100, 65, 30] })
+      parts.push({ name: `${prefix}_shelf_frame_r`, size: [0.3, 7, 0.3], position: [cx - roomW / 2 + 5.5, fy + 4, cz + roomD / 2 - 0.8], rotation: [0, 0, 0], material: 'Wood', color: [100, 65, 30] })
+      for (let s = 0; s < 4; s++) {
+        parts.push({ name: `${prefix}_shelf_plank_${s}`, size: [4.5, 0.2, 1], position: [cx - roomW / 2 + 3.25, fy + 1.5 + s * 1.8, cz + roomD / 2 - 0.8], rotation: [0, 0, 0], material: 'WoodPlanks', color: [120, 80, 40] })
+      }
+      // Bottles on shelves (various colors)
+      const bottleColors: [number, number, number][] = [[200, 50, 50], [50, 180, 50], [50, 80, 200], [200, 180, 50], [180, 50, 180], [50, 200, 200], [255, 120, 30], [120, 50, 150]]
+      for (let b = 0; b < 12; b++) {
+        const shelfRow = Math.floor(b / 3)
+        const col = b % 3
+        parts.push({ name: `${prefix}_bottle_${b}`, size: [0.25, 0.6, 0.25], position: [cx - roomW / 2 + 1.5 + col * 1.5, fy + 2 + shelfRow * 1.8, cz + roomD / 2 - 0.8], rotation: [0, 0, 0], material: 'Glass', color: bottleColors[b % bottleColors.length], transparency: 0.3, shape: 'Cylinder' })
+      }
+      // ── Desk lamp ──
+      parts.push({ name: `${prefix}_desklamp_base`, size: [0.5, 0.1, 0.5], position: [cx + 2.5, fy + 3.55, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Metal', color: [50, 50, 55], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_desklamp_arm`, size: [0.08, 1.5, 0.08], position: [cx + 2.5, fy + 4.3, cz - roomD / 2 + 2], rotation: [0, 0, 10], material: 'Metal', color: [55, 55, 60] })
+      parts.push({ name: `${prefix}_desklamp_shade`, size: [0.7, 0.4, 0.7], position: [cx + 2.6, fy + 5.2, cz - roomD / 2 + 2], rotation: [0, 0, 0], material: 'Metal', color: [40, 60, 40] })
+      parts.push(generatePointLight(cx + 2.6, fy + 5, cz - roomD / 2 + 2, 0.7, 8, [255, 230, 180], `${prefix}_desklamp_light`))
+      // ── Stool ──
+      parts.push({ name: `${prefix}_stool_seat`, size: [1, 0.12, 1], position: [cx, fy + 2.6, cz + 0.5], rotation: [0, 0, 0], material: 'Wood', color: [130, 90, 45], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_stool_leg1`, size: [0.12, 2.3, 0.12], position: [cx - 0.35, fy + 1.3, cz + 0.15], rotation: [0, 0, 0], material: 'Metal', color: [70, 70, 75] })
+      parts.push({ name: `${prefix}_stool_leg2`, size: [0.12, 2.3, 0.12], position: [cx + 0.35, fy + 1.3, cz + 0.15], rotation: [0, 0, 0], material: 'Metal', color: [70, 70, 75] })
+      parts.push({ name: `${prefix}_stool_leg3`, size: [0.12, 2.3, 0.12], position: [cx - 0.35, fy + 1.3, cz + 0.85], rotation: [0, 0, 0], material: 'Metal', color: [70, 70, 75] })
+      parts.push({ name: `${prefix}_stool_leg4`, size: [0.12, 2.3, 0.12], position: [cx + 0.35, fy + 1.3, cz + 0.85], rotation: [0, 0, 0], material: 'Metal', color: [70, 70, 75] })
+      // ── Chalkboard ──
+      parts.push({ name: `${prefix}_chalkboard_frame`, size: [5.2, 3.7, 0.2], position: [cx + roomW / 2 - 0.6, fy + 5.5, cz], rotation: [0, 0, 0], material: 'Wood', color: [80, 50, 25] })
+      parts.push({ name: `${prefix}_chalkboard_surface`, size: [5, 3.5, 0.1], position: [cx + roomW / 2 - 0.5, fy + 5.5, cz], rotation: [0, 0, 0], material: 'Slate', color: [35, 50, 40] })
+      parts.push({ name: `${prefix}_chalk_tray`, size: [5, 0.15, 0.4], position: [cx + roomW / 2 - 0.5, fy + 3.6, cz], rotation: [0, 0, 0], material: 'Wood', color: [85, 55, 28] })
+      // Overhead fluorescent
+      parts.push({ name: `${prefix}_fluorescent_housing`, size: [6, 0.2, 0.5], position: [cx, fy + 10.5, cz], rotation: [0, 0, 0], material: 'Metal', color: [210, 210, 215] })
+      parts.push(generatePointLight(cx, fy + 10, cz, 1.5, 18, [240, 245, 255], `${prefix}_fluorescent_light`))
+      break
+    }
+    case 'storage': {
+      // ── Crates (8 crates, various sizes) ──
+      const cratePositions: [number, number, number][] = [
+        [cx - 3, fy + 0.75, cz - 2], [cx - 1, fy + 0.6, cz - 3], [cx + 2, fy + 0.9, cz - 1],
+        [cx + 3, fy + 0.75, cz - 3], [cx - 2, fy + 0.75, cz + 2], [cx + 1, fy + 0.6, cz + 3],
+        [cx - 3, fy + 2.1, cz - 2], [cx + 2, fy + 2.4, cz - 1],
+      ]
+      const crateSizes: [number, number, number][] = [
+        [1.5, 1.5, 1.5], [1.2, 1.2, 1.2], [1.8, 1.8, 1.8], [1.5, 1.5, 1.5],
+        [1.5, 1.5, 1.5], [1.2, 1.2, 1.2], [1.5, 1.5, 1.5], [1.8, 1.8, 1.8],
+      ]
+      for (let c = 0; c < 8; c++) {
+        parts.push({ name: `${prefix}_crate_${c}`, size: crateSizes[c], position: cratePositions[c], rotation: [0, Math.random() * 15, 0], material: 'WoodPlanks', color: [140, 100, 55] })
+        // Cross planks on crate face
+        parts.push({ name: `${prefix}_crate_${c}_plank`, size: [crateSizes[c][0] * 0.8, 0.1, 0.15], position: [cratePositions[c][0], cratePositions[c][1], cratePositions[c][2] - crateSizes[c][2] / 2], rotation: [0, 0, 45], material: 'Wood', color: [120, 85, 40] })
+      }
+      // ── Barrels (6) ──
+      for (let b = 0; b < 6; b++) {
+        const bAngle = (b / 6) * Math.PI * 1.5 + 0.5
+        const bx = cx + Math.cos(bAngle) * (roomW / 3)
+        const bz = cz + Math.sin(bAngle) * (roomD / 3)
+        parts.push({ name: `${prefix}_barrel_${b}_body`, size: [1.2, 1.8, 1.2], position: [bx, fy + 0.9, bz], rotation: [0, b * 30, 0], material: 'WoodPlanks', color: [110, 70, 35], shape: 'Cylinder' })
+        parts.push({ name: `${prefix}_barrel_${b}_band_top`, size: [1.3, 0.1, 1.3], position: [bx, fy + 1.6, bz], rotation: [0, 0, 0], material: 'Metal', color: [80, 75, 60], shape: 'Cylinder' })
+        parts.push({ name: `${prefix}_barrel_${b}_band_bot`, size: [1.3, 0.1, 1.3], position: [bx, fy + 0.2, bz], rotation: [0, 0, 0], material: 'Metal', color: [80, 75, 60], shape: 'Cylinder' })
+      }
+      // ── Shelving ──
+      parts.push({ name: `${prefix}_shelf_frame_l`, size: [0.3, 7, 0.3], position: [cx - roomW / 2 + 1, fy + 3.5, cz - roomD / 2 + 1], rotation: [0, 0, 0], material: 'Wood', color: [100, 65, 30] })
+      parts.push({ name: `${prefix}_shelf_frame_r`, size: [0.3, 7, 0.3], position: [cx - roomW / 2 + 5, fy + 3.5, cz - roomD / 2 + 1], rotation: [0, 0, 0], material: 'Wood', color: [100, 65, 30] })
+      for (let s = 0; s < 4; s++) {
+        parts.push({ name: `${prefix}_shelf_plank_${s}`, size: [4, 0.2, 1.2], position: [cx - roomW / 2 + 3, fy + 1 + s * 1.8, cz - roomD / 2 + 1], rotation: [0, 0, 0], material: 'WoodPlanks', color: [120, 80, 40] })
+      }
+      // ── Cobwebs ──
+      parts.push({ name: `${prefix}_cobweb_1`, size: [2, 0.02, 2], position: [cx - roomW / 2 + 1, fy + 9, cz - roomD / 2 + 1], rotation: [0, 0, 0], material: 'Fabric', color: [220, 220, 220], transparency: 0.6 })
+      parts.push({ name: `${prefix}_cobweb_2`, size: [1.5, 0.02, 1.5], position: [cx + roomW / 2 - 1, fy + 8.5, cz + roomD / 2 - 1], rotation: [0, 45, 0], material: 'Fabric', color: [215, 215, 215], transparency: 0.6 })
+      parts.push({ name: `${prefix}_cobweb_3`, size: [1.8, 0.02, 1.8], position: [cx + roomW / 2 - 1, fy + 9.2, cz - roomD / 2 + 1], rotation: [0, 20, 0], material: 'Fabric', color: [210, 210, 210], transparency: 0.65 })
+      // ── Lantern ──
+      parts.push({ name: `${prefix}_lantern_body`, size: [0.5, 0.7, 0.5], position: [cx, fy + 1.5, cz], rotation: [0, 0, 0], material: 'Metal', color: [70, 60, 40] })
+      parts.push({ name: `${prefix}_lantern_glass`, size: [0.35, 0.5, 0.35], position: [cx, fy + 1.5, cz], rotation: [0, 0, 0], material: 'Glass', color: [255, 200, 100], transparency: 0.4 })
+      parts.push({ name: `${prefix}_lantern_handle`, size: [0.4, 0.3, 0.05], position: [cx, fy + 2, cz], rotation: [0, 0, 0], material: 'Metal', color: [65, 55, 35] })
+      parts.push(generatePointLight(cx, fy + 1.5, cz, 0.6, 12, [255, 180, 80], `${prefix}_lantern_light`))
+      // ── Sacks ──
+      parts.push({ name: `${prefix}_sack_1`, size: [1, 0.8, 0.8], position: [cx + 3, fy + 0.9, cz + 2], rotation: [0, 15, 5], material: 'Fabric', color: [160, 140, 100] })
+      parts.push({ name: `${prefix}_sack_2`, size: [0.9, 0.7, 0.7], position: [cx + 3.8, fy + 0.85, cz + 2.3], rotation: [0, -20, -5], material: 'Fabric', color: [150, 130, 90] })
+      parts.push({ name: `${prefix}_sack_3`, size: [1.1, 0.9, 0.9], position: [cx + 3.3, fy + 1.7, cz + 2.1], rotation: [0, 5, 3], material: 'Fabric', color: [155, 135, 95] })
+      break
+    }
+    case 'office': {
+      // ── Desk (5 parts) ──
+      parts.push({ name: `${prefix}_desk_top`, size: [5, 0.3, 2.5], position: [cx, fy + 3, cz - roomD / 2 + 2.5], rotation: [0, 0, 0], material: 'WoodPlanks', color: [140, 90, 40] })
+      parts.push({ name: `${prefix}_desk_leg_fl`, size: [0.3, 2.5, 0.3], position: [cx - 2.2, fy + 1.25, cz - roomD / 2 + 3.5], rotation: [0, 0, 0], material: 'Wood', color: [130, 85, 38] })
+      parts.push({ name: `${prefix}_desk_leg_fr`, size: [0.3, 2.5, 0.3], position: [cx + 2.2, fy + 1.25, cz - roomD / 2 + 3.5], rotation: [0, 0, 0], material: 'Wood', color: [130, 85, 38] })
+      parts.push({ name: `${prefix}_desk_panel_back`, size: [4.7, 2.5, 0.15], position: [cx, fy + 1.75, cz - roomD / 2 + 1.3], rotation: [0, 0, 0], material: 'WoodPlanks', color: [135, 88, 38] })
+      parts.push({ name: `${prefix}_desk_drawer`, size: [1.5, 0.8, 2], position: [cx + 1.5, fy + 2, cz - roomD / 2 + 2.5], rotation: [0, 0, 0], material: 'WoodPlanks', color: [130, 85, 38] })
+      parts.push({ name: `${prefix}_desk_drawer_handle`, size: [0.5, 0.1, 0.1], position: [cx + 1.5, fy + 2.2, cz - roomD / 2 + 3.55], rotation: [0, 0, 0], material: 'Metal', color: [170, 170, 175] })
+      // ── Office chair (6 parts) ──
+      parts.push({ name: `${prefix}_chair_seat`, size: [1.5, 0.15, 1.5], position: [cx, fy + 2.2, cz - roomD / 2 + 4], rotation: [0, 0, 0], material: 'Fabric', color: [40, 40, 45] })
+      parts.push({ name: `${prefix}_chair_back`, size: [1.5, 2, 0.15], position: [cx, fy + 3.5, cz - roomD / 2 + 4.7], rotation: [5, 0, 0], material: 'Fabric', color: [40, 40, 45] })
+      parts.push({ name: `${prefix}_chair_pole`, size: [0.2, 1.5, 0.2], position: [cx, fy + 1.2, cz - roomD / 2 + 4], rotation: [0, 0, 0], material: 'Metal', color: [70, 70, 75], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_chair_base_star`, size: [1.8, 0.1, 1.8], position: [cx, fy + 0.55, cz - roomD / 2 + 4], rotation: [0, 0, 0], material: 'Metal', color: [60, 60, 65] })
+      parts.push({ name: `${prefix}_chair_armrest_l`, size: [0.15, 0.15, 1], position: [cx - 0.7, fy + 2.8, cz - roomD / 2 + 4], rotation: [0, 0, 0], material: 'Fabric', color: [45, 45, 50] })
+      parts.push({ name: `${prefix}_chair_armrest_r`, size: [0.15, 0.15, 1], position: [cx + 0.7, fy + 2.8, cz - roomD / 2 + 4], rotation: [0, 0, 0], material: 'Fabric', color: [45, 45, 50] })
+      // ── Filing cabinet ──
+      parts.push({ name: `${prefix}_filecab_body`, size: [1.5, 4, 1.5], position: [cx + roomW / 2 - 1.5, fy + 2, cz - roomD / 2 + 1.5], rotation: [0, 0, 0], material: 'Metal', color: [160, 160, 165] })
+      parts.push({ name: `${prefix}_filecab_drawer_1`, size: [1.4, 0.8, 0.05], position: [cx + roomW / 2 - 1.5, fy + 3.5, cz - roomD / 2 + 2.3], rotation: [0, 0, 0], material: 'Metal', color: [155, 155, 160] })
+      parts.push({ name: `${prefix}_filecab_drawer_2`, size: [1.4, 0.8, 0.05], position: [cx + roomW / 2 - 1.5, fy + 2.3, cz - roomD / 2 + 2.3], rotation: [0, 0, 0], material: 'Metal', color: [155, 155, 160] })
+      parts.push({ name: `${prefix}_filecab_drawer_3`, size: [1.4, 0.8, 0.05], position: [cx + roomW / 2 - 1.5, fy + 1.1, cz - roomD / 2 + 2.3], rotation: [0, 0, 0], material: 'Metal', color: [155, 155, 160] })
+      parts.push({ name: `${prefix}_filecab_handle_1`, size: [0.4, 0.1, 0.1], position: [cx + roomW / 2 - 1.5, fy + 3.5, cz - roomD / 2 + 2.35], rotation: [0, 0, 0], material: 'Metal', color: [140, 140, 145] })
+      parts.push({ name: `${prefix}_filecab_handle_2`, size: [0.4, 0.1, 0.1], position: [cx + roomW / 2 - 1.5, fy + 2.3, cz - roomD / 2 + 2.35], rotation: [0, 0, 0], material: 'Metal', color: [140, 140, 145] })
+      parts.push({ name: `${prefix}_filecab_handle_3`, size: [0.4, 0.1, 0.1], position: [cx + roomW / 2 - 1.5, fy + 1.1, cz - roomD / 2 + 2.35], rotation: [0, 0, 0], material: 'Metal', color: [140, 140, 145] })
+      // ── Bookshelf (reuse helper) ──
+      parts.push(...generateBookshelf(cx - roomW / 2 + 1, fy, cz + roomD / 2 - 1.5))
+      // ── Desk lamp ──
+      parts.push({ name: `${prefix}_desklamp_base`, size: [0.5, 0.1, 0.5], position: [cx - 1.5, fy + 3.35, cz - roomD / 2 + 2.5], rotation: [0, 0, 0], material: 'Metal', color: [50, 50, 55], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_desklamp_arm`, size: [0.08, 1.5, 0.08], position: [cx - 1.5, fy + 4.1, cz - roomD / 2 + 2.5], rotation: [0, 0, 12], material: 'Metal', color: [55, 55, 60] })
+      parts.push({ name: `${prefix}_desklamp_shade`, size: [0.7, 0.4, 0.7], position: [cx - 1.6, fy + 5, cz - roomD / 2 + 2.5], rotation: [0, 0, 0], material: 'Metal', color: [40, 80, 40] })
+      parts.push(generatePointLight(cx - 1.6, fy + 4.8, cz - roomD / 2 + 2.5, 0.8, 8, [255, 230, 180], `${prefix}_desklamp_light`))
+      // ── Potted plant ──
+      parts.push({ name: `${prefix}_plant_pot`, size: [0.8, 0.8, 0.8], position: [cx - roomW / 2 + 1.5, fy + 0.9, cz + 2], rotation: [0, 0, 0], material: 'Concrete', color: [160, 100, 60], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_plant_soil`, size: [0.7, 0.1, 0.7], position: [cx - roomW / 2 + 1.5, fy + 1.35, cz + 2], rotation: [0, 0, 0], material: 'Grass', color: [60, 40, 20], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_plant_leaves`, size: [1.2, 1.5, 1.2], position: [cx - roomW / 2 + 1.5, fy + 2.5, cz + 2], rotation: [0, 0, 0], material: 'Grass', color: [50, 130, 50], shape: 'Ball' })
+      // ── Wall clock ──
+      parts.push({ name: `${prefix}_clock_face`, size: [1, 1, 0.1], position: [cx + roomW / 2 - 0.55, fy + 7, cz], rotation: [0, 0, 0], material: 'Marble', color: [240, 235, 225], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_clock_rim`, size: [1.1, 1.1, 0.12], position: [cx + roomW / 2 - 0.56, fy + 7, cz], rotation: [0, 0, 0], material: 'Wood', color: [100, 60, 25], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_clock_hand_hr`, size: [0.04, 0.35, 0.04], position: [cx + roomW / 2 - 0.5, fy + 7.1, cz], rotation: [0, 0, 30], material: 'Metal', color: [30, 30, 35] })
+      parts.push({ name: `${prefix}_clock_hand_min`, size: [0.03, 0.45, 0.03], position: [cx + roomW / 2 - 0.5, fy + 7, cz + 0.05], rotation: [0, 0, -60], material: 'Metal', color: [30, 30, 35] })
+      // ── Trash can ──
+      parts.push({ name: `${prefix}_trashcan`, size: [0.6, 1, 0.6], position: [cx + 2, fy + 0.5, cz - roomD / 2 + 4.5], rotation: [0, 0, 0], material: 'Metal', color: [80, 80, 85], shape: 'Cylinder' })
+      // Ceiling light
+      parts.push(generatePointLight(cx, fy + 10, cz, 1.2, 16, [255, 240, 220], `${prefix}_ceiling_light`))
+      break
+    }
+    case 'hallway': {
+      // ── Runner rug ──
+      parts.push({ name: `${prefix}_runner_rug`, size: [3, 0.05, roomD - 2], position: [cx, fy + 0.53, cz], rotation: [0, 0, 0], material: 'Fabric', color: [120, 30, 30] })
+      parts.push({ name: `${prefix}_runner_border`, size: [3.3, 0.04, roomD - 1.7], position: [cx, fy + 0.52, cz], rotation: [0, 0, 0], material: 'Fabric', color: [160, 130, 50] })
+      // ── Wall sconces (4) ──
+      for (let s = 0; s < 4; s++) {
+        const side = s < 2 ? -1 : 1
+        const sz = cz - roomD / 3 + (s % 2) * (roomD * 2 / 3)
+        parts.push({ name: `${prefix}_sconce_${s}_plate`, size: [0.3, 0.5, 0.15], position: [cx + side * (roomW / 2 - 0.55), fy + 6, sz], rotation: [0, 0, 0], material: 'Metal', color: [160, 140, 80] })
+        parts.push({ name: `${prefix}_sconce_${s}_arm`, size: [0.1, 0.1, 0.5], position: [cx + side * (roomW / 2 - 0.8), fy + 6.2, sz], rotation: [0, 0, 0], material: 'Metal', color: [150, 130, 70] })
+        parts.push({ name: `${prefix}_sconce_${s}_bulb`, size: [0.2, 0.3, 0.2], position: [cx + side * (roomW / 2 - 1.1), fy + 6.3, sz], rotation: [0, 0, 0], material: 'Neon', color: [255, 220, 160], shape: 'Ball' })
+        parts.push(generatePointLight(cx + side * (roomW / 2 - 1.1), fy + 6.3, sz, 0.7, 10, [255, 220, 160], `${prefix}_sconce_${s}_light`))
+      }
+      // ── Paintings (3) ──
+      const paintingColors: [number, number, number][] = [[40, 80, 120], [100, 60, 30], [60, 100, 60]]
+      for (let p = 0; p < 3; p++) {
+        const pz = cz - roomD / 3 + p * (roomD / 3)
+        parts.push({ name: `${prefix}_painting_${p}_frame`, size: [0.15, 2.5, 2], position: [cx - roomW / 2 + 0.58, fy + 6, pz], rotation: [0, 0, 0], material: 'Wood', color: [130, 90, 40] })
+        parts.push({ name: `${prefix}_painting_${p}_canvas`, size: [0.1, 2.2, 1.7], position: [cx - roomW / 2 + 0.55, fy + 6, pz], rotation: [0, 0, 0], material: 'Fabric', color: paintingColors[p] })
+      }
+      // ── Side table ──
+      parts.push({ name: `${prefix}_sidetable_top`, size: [1.5, 0.15, 1], position: [cx + roomW / 2 - 1.5, fy + 2.8, cz], rotation: [0, 0, 0], material: 'WoodPlanks', color: [140, 95, 45] })
+      parts.push({ name: `${prefix}_sidetable_leg1`, size: [0.15, 2.3, 0.15], position: [cx + roomW / 2 - 2.1, fy + 1.4, cz - 0.35], rotation: [0, 0, 0], material: 'Wood', color: [130, 88, 40] })
+      parts.push({ name: `${prefix}_sidetable_leg2`, size: [0.15, 2.3, 0.15], position: [cx + roomW / 2 - 0.9, fy + 1.4, cz - 0.35], rotation: [0, 0, 0], material: 'Wood', color: [130, 88, 40] })
+      parts.push({ name: `${prefix}_sidetable_leg3`, size: [0.15, 2.3, 0.15], position: [cx + roomW / 2 - 2.1, fy + 1.4, cz + 0.35], rotation: [0, 0, 0], material: 'Wood', color: [130, 88, 40] })
+      parts.push({ name: `${prefix}_sidetable_leg4`, size: [0.15, 2.3, 0.15], position: [cx + roomW / 2 - 0.9, fy + 1.4, cz + 0.35], rotation: [0, 0, 0], material: 'Wood', color: [130, 88, 40] })
+      // ── Vase on side table ──
+      parts.push({ name: `${prefix}_vase_body`, size: [0.5, 1, 0.5], position: [cx + roomW / 2 - 1.5, fy + 3.5, cz], rotation: [0, 0, 0], material: 'Marble', color: [180, 160, 140], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_vase_neck`, size: [0.3, 0.4, 0.3], position: [cx + roomW / 2 - 1.5, fy + 4.2, cz], rotation: [0, 0, 0], material: 'Marble', color: [175, 155, 135], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_vase_flowers`, size: [0.8, 0.6, 0.8], position: [cx + roomW / 2 - 1.5, fy + 4.7, cz], rotation: [0, 0, 0], material: 'Grass', color: [200, 50, 80], shape: 'Ball' })
+      // ── Mirror ──
+      parts.push({ name: `${prefix}_mirror_frame`, size: [0.15, 3.2, 1.8], position: [cx + roomW / 2 - 0.58, fy + 6, cz + roomD / 3], rotation: [0, 0, 0], material: 'Wood', color: [160, 120, 60] })
+      parts.push({ name: `${prefix}_mirror_glass`, size: [0.1, 3, 1.6], position: [cx + roomW / 2 - 0.55, fy + 6, cz + roomD / 3], rotation: [0, 0, 0], material: 'Glass', color: [200, 220, 240], transparency: 0.3 })
+      break
+    }
     default: {
       // Generic room — table + chair + light
       parts.push(...generateTable(cx, fy, cz, 4, 3))
@@ -522,6 +845,88 @@ export function blueprintToBuild(blueprint: Blueprint): { parts: BuildPart[]; lu
         const railAngle = Math.atan2(nx - fx, nz - fz) * (180 / Math.PI)
         parts.push({ name: `fence_rail_${f}`, size: [length, 0.2, 0.15], position: [mx, 2.5, mz], rotation: [0, railAngle, 0], material: 'Wood', color: [170, 160, 140] })
         parts.push({ name: `fence_rail_low_${f}`, size: [length, 0.2, 0.15], position: [mx, 1, mz], rotation: [0, railAngle, 0], material: 'Wood', color: [170, 160, 140] })
+      }
+    }
+    // ── Fountain (8+ parts) ──
+    if (blueprint.extras?.includes('fountain') || blueprint.style === 'fantasy' || blueprint.style === 'medieval') {
+      const fx = 0, fz = -15
+      // Basin (bottom pool)
+      parts.push({ name: 'fountain_basin', size: [6, 1, 6], position: [fx, 0.5, fz], rotation: [0, 0, 0], material: 'Marble', color: [190, 185, 175], shape: 'Cylinder' })
+      parts.push({ name: 'fountain_basin_water', size: [5.5, 0.3, 5.5], position: [fx, 0.85, fz], rotation: [0, 0, 0], material: 'Glass', color: [80, 140, 200], transparency: 0.4, shape: 'Cylinder' })
+      // Tier 1 (middle bowl)
+      parts.push({ name: 'fountain_pillar_1', size: [1.2, 2.5, 1.2], position: [fx, 2.25, fz], rotation: [0, 0, 0], material: 'Marble', color: [195, 190, 180], shape: 'Cylinder' })
+      parts.push({ name: 'fountain_bowl_1', size: [3.5, 0.6, 3.5], position: [fx, 3.3, fz], rotation: [0, 0, 0], material: 'Marble', color: [200, 195, 185], shape: 'Cylinder' })
+      parts.push({ name: 'fountain_bowl_1_water', size: [3, 0.2, 3], position: [fx, 3.5, fz], rotation: [0, 0, 0], material: 'Glass', color: [80, 140, 200], transparency: 0.4, shape: 'Cylinder' })
+      // Tier 2 (top)
+      parts.push({ name: 'fountain_pillar_2', size: [0.8, 1.8, 0.8], position: [fx, 4.5, fz], rotation: [0, 0, 0], material: 'Marble', color: [200, 195, 185], shape: 'Cylinder' })
+      parts.push({ name: 'fountain_top_bowl', size: [2, 0.4, 2], position: [fx, 5.5, fz], rotation: [0, 0, 0], material: 'Marble', color: [205, 200, 190], shape: 'Cylinder' })
+      // Spray effect (neon orb on top to simulate water spray)
+      parts.push({ name: 'fountain_spray', size: [0.5, 1.2, 0.5], position: [fx, 6.3, fz], rotation: [0, 0, 0], material: 'Glass', color: [120, 180, 240], transparency: 0.5, shape: 'Ball',
+        children: [
+          { className: 'PointLight', properties: { Brightness: 0.4, Range: 8, Color: [150, 200, 255] } },
+        ],
+      })
+      // Decorative rim details
+      parts.push({ name: 'fountain_rim_accent_1', size: [0.4, 0.4, 0.4], position: [fx + 3, 1, fz], rotation: [0, 0, 0], material: 'Marble', color: [180, 175, 165], shape: 'Ball' })
+      parts.push({ name: 'fountain_rim_accent_2', size: [0.4, 0.4, 0.4], position: [fx - 3, 1, fz], rotation: [0, 0, 0], material: 'Marble', color: [180, 175, 165], shape: 'Ball' })
+      parts.push({ name: 'fountain_rim_accent_3', size: [0.4, 0.4, 0.4], position: [fx, 1, fz + 3], rotation: [0, 0, 0], material: 'Marble', color: [180, 175, 165], shape: 'Ball' })
+      parts.push({ name: 'fountain_rim_accent_4', size: [0.4, 0.4, 0.4], position: [fx, 1, fz - 3], rotation: [0, 0, 0], material: 'Marble', color: [180, 175, 165], shape: 'Ball' })
+    }
+    // ── Market stalls for medieval/fantasy (6+ parts each, 3 stalls) ──
+    if (blueprint.extras?.includes('market stalls') || blueprint.style === 'medieval' || blueprint.style === 'fantasy') {
+      for (let ms = 0; ms < 3; ms++) {
+        const mx = -20 + ms * 12
+        const mz = 20
+        const stallPrefix = `market_stall_${ms}`
+        // Frame (4 posts)
+        parts.push({ name: `${stallPrefix}_post_fl`, size: [0.3, 7, 0.3], position: [mx - 2.5, 3.5, mz + 2], rotation: [0, 0, 0], material: 'Wood', color: [110, 75, 35] })
+        parts.push({ name: `${stallPrefix}_post_fr`, size: [0.3, 7, 0.3], position: [mx + 2.5, 3.5, mz + 2], rotation: [0, 0, 0], material: 'Wood', color: [110, 75, 35] })
+        parts.push({ name: `${stallPrefix}_post_bl`, size: [0.3, 8, 0.3], position: [mx - 2.5, 4, mz - 1], rotation: [0, 0, 0], material: 'Wood', color: [110, 75, 35] })
+        parts.push({ name: `${stallPrefix}_post_br`, size: [0.3, 8, 0.3], position: [mx + 2.5, 4, mz - 1], rotation: [0, 0, 0], material: 'Wood', color: [110, 75, 35] })
+        // Canvas awning
+        const canvasColors: [number, number, number][] = [[180, 40, 40], [40, 80, 160], [160, 140, 40]]
+        parts.push({ name: `${stallPrefix}_canvas`, size: [5.5, 0.1, 3.5], position: [mx, 7.5, mz + 0.5], rotation: [8, 0, 0], material: 'Fabric', color: canvasColors[ms % canvasColors.length] })
+        // Counter
+        parts.push({ name: `${stallPrefix}_counter`, size: [5, 3, 1.5], position: [mx, 1.5, mz + 1.5], rotation: [0, 0, 0], material: 'WoodPlanks', color: [130, 90, 45] })
+        parts.push({ name: `${stallPrefix}_counter_top`, size: [5.2, 0.2, 1.7], position: [mx, 3.1, mz + 1.5], rotation: [0, 0, 0], material: 'WoodPlanks', color: [145, 105, 55] })
+        // Goods on counter (small crates, sacks, items)
+        parts.push({ name: `${stallPrefix}_goods_crate`, size: [0.8, 0.6, 0.8], position: [mx - 1.5, 3.6, mz + 1.5], rotation: [0, 15, 0], material: 'WoodPlanks', color: [120, 80, 38] })
+        parts.push({ name: `${stallPrefix}_goods_sack`, size: [0.6, 0.5, 0.6], position: [mx, 3.5, mz + 1.5], rotation: [0, -10, 0], material: 'Fabric', color: [160, 140, 100] })
+        parts.push({ name: `${stallPrefix}_goods_basket`, size: [0.7, 0.4, 0.7], position: [mx + 1.5, 3.4, mz + 1.5], rotation: [0, 5, 0], material: 'Wood', color: [170, 130, 70], shape: 'Cylinder' })
+        // Sign
+        parts.push({ name: `${stallPrefix}_sign`, size: [2, 0.8, 0.1], position: [mx, 8.5, mz + 2], rotation: [0, 0, 0], material: 'WoodPlanks', color: [100, 65, 30] })
+      }
+    }
+    // ── Gravestones for horror style (3 parts each, 6 gravestones) ──
+    if (blueprint.extras?.includes('gravestones') || blueprint.style === 'horror') {
+      for (let g = 0; g < 6; g++) {
+        const gAngle = (g / 6) * Math.PI * 1.2 + 2.5
+        const gDist = 18 + (g % 2) * 5
+        const gx = Math.cos(gAngle) * gDist
+        const gz = Math.sin(gAngle) * gDist
+        const tilt = (g % 3 - 1) * 5
+        parts.push({ name: `grave_${g}_stone`, size: [1.2, 2, 0.3], position: [gx, 1, gz], rotation: [tilt, g * 25, 0], material: 'Concrete', color: [100, 100, 95] })
+        parts.push({ name: `grave_${g}_base`, size: [1.5, 0.3, 0.8], position: [gx, 0.15, gz], rotation: [0, g * 25, 0], material: 'Concrete', color: [90, 88, 82] })
+        parts.push({ name: `grave_${g}_mound`, size: [1.5, 0.25, 3], position: [gx + Math.sin(g * 25 * Math.PI / 180) * 1.2, 0.13, gz + Math.cos(g * 25 * Math.PI / 180) * 1.2], rotation: [0, g * 25, 0], material: 'Grass', color: [45, 60, 35] })
+      }
+    }
+    // ── Coral formations for underwater style (4 parts each, 5 formations) ──
+    if (blueprint.extras?.includes('coral') || blueprint.style === 'underwater') {
+      const coralColors: [number, number, number][] = [[220, 80, 120], [255, 140, 60], [80, 180, 220], [200, 60, 200], [60, 200, 140]]
+      for (let c = 0; c < 5; c++) {
+        const cAngle = (c / 5) * Math.PI * 2
+        const cDist = 15 + c * 4
+        const ccx = Math.cos(cAngle) * cDist
+        const ccz = Math.sin(cAngle) * cDist
+        const scale = 0.8 + Math.random() * 0.5
+        // Main coral trunk
+        parts.push({ name: `coral_${c}_trunk`, size: [0.8 * scale, 3 * scale, 0.8 * scale], position: [ccx, 1.5 * scale, ccz], rotation: [0, c * 72, 0], material: 'Concrete', color: coralColors[c], shape: 'Cylinder' })
+        // Branch 1
+        parts.push({ name: `coral_${c}_branch_1`, size: [0.5 * scale, 2 * scale, 0.5 * scale], position: [ccx + 0.6 * scale, 2.5 * scale, ccz + 0.3 * scale], rotation: [20, c * 72, -15], material: 'Concrete', color: coralColors[(c + 1) % 5], shape: 'Cylinder' })
+        // Branch 2
+        parts.push({ name: `coral_${c}_branch_2`, size: [0.4 * scale, 1.5 * scale, 0.4 * scale], position: [ccx - 0.4 * scale, 2.8 * scale, ccz - 0.5 * scale], rotation: [-15, c * 72, 20], material: 'Concrete', color: coralColors[(c + 2) % 5], shape: 'Cylinder' })
+        // Tip (ball shape for rounded coral top)
+        parts.push({ name: `coral_${c}_tip`, size: [1 * scale, 0.8 * scale, 1 * scale], position: [ccx, 3.2 * scale, ccz], rotation: [0, 0, 0], material: 'Concrete', color: coralColors[c], shape: 'Ball' })
       }
     }
   }
