@@ -2949,7 +2949,7 @@ async function freeModelTwoPass(
     )
     if (!convRace) return null
     const { message: cleanConv, suggestions } = extractSuggestions(convRace.result)
-    return { conversationText: cleanConv, luauCode: null, executedInStudio: false, suggestions, model: modelNames[convRace.index] }
+    return { conversationText: cleanConv, luauCode: null, executedInStudio: false, suggestions, model: modelNames[convRace.index], qualityScore: undefined as number | undefined, buildPartCount: undefined as number | undefined }
   }
 
   // ── BUILD/SCRIPT INTENTS: Single-pass — generate description + code in ONE call ──
@@ -3999,6 +3999,7 @@ ${effectiveInstruction}`
     }
 
     const { message: cleanConv, suggestions } = extractSuggestions(conversationText)
+    const partCount = luauCode ? countPartsInCode(luauCode) : 0
     return {
       conversationText: cleanConv,
       luauCode,
@@ -4006,6 +4007,7 @@ ${effectiveInstruction}`
       suggestions,
       model,
       qualityScore: luauCode ? finalVerificationScore : undefined,
+      buildPartCount: partCount > 0 ? partCount : undefined,
     }
 }
 
@@ -9320,6 +9322,7 @@ interface StreamResponseMeta {
   mcpResult?: unknown
   buildPlan?: unknown
   qualityScore?: number
+  buildPartCount?: number
 }
 
 function toStreamResponse(text: string, meta: StreamResponseMeta): Response {
@@ -10353,6 +10356,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           executedInStudio: twoPassResult.executedInStudio,
           model: 'gemini-flash',
           qualityScore: twoPassResult.qualityScore,
+          buildPartCount: twoPassResult.buildPartCount,
         }) as unknown as NextResponse
       }
       return NextResponse.json({
@@ -11068,6 +11072,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         executedInStudio: twoPassResult.executedInStudio,
         suggestions: twoPassResult.suggestions,
         qualityScore: twoPassResult.qualityScore,
+        buildPartCount: twoPassResult.buildPartCount,
         ...(freeModelBuildPlan ? { buildPlan: freeModelBuildPlan } : {}),
       })
     }

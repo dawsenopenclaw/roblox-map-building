@@ -271,6 +271,171 @@ function simpleHash(str: string): string {
 }
 
 // ─── Code feedback buttons ───────────────────────────────────────────────────
+// ─── Build Feedback Card — shown after every build with quality + stats ──────
+
+function BuildFeedbackCard({
+  qualityScore,
+  partCount,
+  executedInStudio,
+  model,
+  onSend,
+}: {
+  qualityScore: number
+  partCount?: number
+  executedInStudio?: boolean
+  model?: string
+  onSend?: (msg: string) => void
+}) {
+  const tier = qualityScore >= 80 ? 'great' : qualityScore >= 60 ? 'good' : qualityScore >= 40 ? 'fair' : 'low'
+  const tierConfig = {
+    great: { label: 'Great Build', color: '#4ADE80', bg: 'rgba(74,222,128,0.06)', border: 'rgba(74,222,128,0.15)', icon: '✓', hint: 'Looking solid. You can refine details or move on.' },
+    good:  { label: 'Good Build',  color: '#D4AF37', bg: 'rgba(212,175,55,0.06)',  border: 'rgba(212,175,55,0.15)',  icon: '◆', hint: 'Decent foundation. Try "add more detail" or "make it bigger" to improve.' },
+    fair:  { label: 'Needs Work',  color: '#F59E0B', bg: 'rgba(245,158,11,0.06)',  border: 'rgba(245,158,11,0.15)',  icon: '!', hint: 'Could be better. Try rephrasing or breaking it into smaller steps.' },
+    low:   { label: 'Try Again',   color: '#EF4444', bg: 'rgba(239,68,68,0.06)',   border: 'rgba(239,68,68,0.15)',   icon: '✗', hint: 'This one missed the mark. Try a simpler prompt or be more specific.' },
+  }
+  const cfg = tierConfig[tier]
+
+  const quickActions = tier === 'great'
+    ? ['Add lighting and atmosphere', 'Add more detail to this build', 'What should I build next?']
+    : tier === 'good'
+    ? ['Make it more detailed', 'Fix any issues with this build', 'Enhance the materials and colors']
+    : ['Try building this again with more detail', 'Break this into smaller steps', 'Show me a simpler version']
+
+  return (
+    <div
+      style={{
+        width: '100%',
+        marginTop: 8,
+        padding: '12px 14px',
+        borderRadius: 14,
+        background: cfg.bg,
+        border: `1px solid ${cfg.border}`,
+        fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+        animation: 'msgFadeUp 0.3s ease-out forwards',
+      }}
+    >
+      {/* Header row — score + label */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Score ring */}
+          <div style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: `conic-gradient(${cfg.color} ${qualityScore * 3.6}deg, rgba(255,255,255,0.05) 0deg)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative',
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: '50%',
+              background: '#0a0e1a',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700, color: cfg.color,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {qualityScore}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: cfg.color, lineHeight: 1.2 }}>
+              {cfg.label}
+            </div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+              Quality Score
+            </div>
+          </div>
+        </div>
+
+        {/* Stats badges */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {partCount !== undefined && partCount > 0 && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              padding: '3px 8px', borderRadius: 6,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              fontSize: 10, fontWeight: 600, color: '#A1A1AA',
+            }}>
+              <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="1" y="1" width="4" height="4" rx="0.5" />
+                <rect x="7" y="1" width="4" height="4" rx="0.5" />
+                <rect x="1" y="7" width="4" height="4" rx="0.5" />
+                <rect x="7" y="7" width="4" height="4" rx="0.5" />
+              </svg>
+              {partCount} parts
+            </span>
+          )}
+          {executedInStudio && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              padding: '3px 8px', borderRadius: 6,
+              background: 'rgba(34,197,94,0.06)',
+              border: '1px solid rgba(34,197,94,0.15)',
+              fontSize: 10, fontWeight: 600, color: '#22C55E',
+            }}>
+              <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <polyline points="2 6 5 9 10 3" />
+              </svg>
+              In Studio
+            </span>
+          )}
+          {model && (
+            <span style={{
+              padding: '3px 8px', borderRadius: 6,
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              fontSize: 10, color: '#52525B',
+            }}>
+              {model.split('-')[0]}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Hint text */}
+      <p style={{
+        fontSize: 11, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5,
+        margin: '0 0 8px 0',
+      }}>
+        {cfg.hint}
+      </p>
+
+      {/* Quick action pills */}
+      {onSend && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {quickActions.map((action) => (
+            <button
+              key={action}
+              onClick={() => onSend(action)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 12,
+                background: 'rgba(255,255,255,0.03)',
+                border: `1px solid ${cfg.border}`,
+                color: cfg.color,
+                fontSize: 10,
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                fontFamily: 'inherit',
+                opacity: 0.8,
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.opacity = '1'
+                e.currentTarget.style.background = cfg.bg
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.opacity = '0.8'
+                e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+              }}
+            >
+              {action}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CodeFeedbackButtons({ code }: { code: string }) {
   const [feedbackState, setFeedbackState] = useState<'idle' | 'submitting' | 'done'>('idle')
 
@@ -1956,35 +2121,15 @@ function MessageBubbleImpl({
           {msg.hasCode && (
             <CodePreviewBadge luauCode={msg.luauCode} previousCode={previousCode} executedInStudio={msg.executedInStudio} />
           )}
-          {/* Quality score badge — post-build feedback */}
-          {!msg.streaming && msg.qualityScore !== undefined && msg.qualityScore > 0 && (
-            <span
-              title={`Build quality: ${msg.qualityScore}/100`}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '3px 8px',
-                borderRadius: 6,
-                fontSize: 10,
-                fontWeight: 600,
-                fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
-                border: `1px solid ${msg.qualityScore >= 80 ? 'rgba(74,222,128,0.3)' : msg.qualityScore >= 60 ? 'rgba(212,175,55,0.3)' : 'rgba(249,115,22,0.3)'}`,
-                background: msg.qualityScore >= 80 ? 'rgba(74,222,128,0.08)' : msg.qualityScore >= 60 ? 'rgba(212,175,55,0.08)' : 'rgba(249,115,22,0.08)',
-                color: msg.qualityScore >= 80 ? 'rgba(74,222,128,0.9)' : msg.qualityScore >= 60 ? 'rgba(212,175,55,0.9)' : 'rgba(249,115,22,0.9)',
-              }}
-            >
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                {msg.qualityScore >= 80 ? (
-                  <polyline points="2 8 6 12 14 4" />
-                ) : msg.qualityScore >= 60 ? (
-                  <path d="M8 3v6M8 12v1" />
-                ) : (
-                  <path d="M4 4l8 8M12 4l-8 8" />
-                )}
-              </svg>
-              {msg.qualityScore}/100
-            </span>
+          {/* Build Feedback Card — post-build quality + stats */}
+          {!msg.streaming && msg.hasCode && msg.qualityScore !== undefined && msg.qualityScore > 0 && (
+            <BuildFeedbackCard
+              qualityScore={msg.qualityScore}
+              partCount={msg.buildPartCount}
+              executedInStudio={msg.executedInStudio}
+              model={msg.model}
+              onSend={onSend}
+            />
           )}
           {/*
             Replay-to-Studio button — appears on any assistant message that

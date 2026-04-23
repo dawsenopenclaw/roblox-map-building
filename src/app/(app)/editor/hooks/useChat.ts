@@ -180,6 +180,8 @@ export interface ChatMessage {
   buildOptions?: BuildPreviewOption[]
   /** Quality score from verification pipeline (0-100) — shown as post-build feedback */
   qualityScore?: number
+  /** Number of parts in the generated build code */
+  buildPartCount?: number
 }
 
 export interface BuildPreviewOption {
@@ -307,6 +309,7 @@ interface StreamMeta {
   mcpResult?: McpAgentResult
   meshResult?: MeshResult
   qualityScore?: number
+  buildPartCount?: number
 }
 
 async function readStream(
@@ -1477,6 +1480,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
                 mcpResult?: McpAgentResult
                 meshResult?: MeshResult
                 qualityScore?: number
+                buildPartCount?: number
               }
               meta = {
                 suggestions: data.suggestions,
@@ -1488,6 +1492,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
                 mcpResult: data.mcpResult,
                 meshResult: data.meshResult,
                 qualityScore: data.qualityScore,
+                buildPartCount: data.buildPartCount,
               }
               void finish()
             }))
@@ -1584,6 +1589,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
               hasCode: meta.hasCode,
               ...(meta.meshResult ? { meshResult: meta.meshResult } : {}),
               ...(meta.qualityScore ? { qualityScore: meta.qualityScore } : {}),
+              ...(meta.buildPartCount ? { buildPartCount: meta.buildPartCount } : {}),
             }
             // Plan mode: if AI returned a plan (no code), show plan approval UI
             if (aiMode === 'plan' && !meta.hasCode && finalContent.length > 50) {
@@ -1926,6 +1932,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
               hasCode: meta.hasCode,
               ...(meta.meshResult ? { meshResult: meta.meshResult } : {}),
               ...(meta.qualityScore ? { qualityScore: meta.qualityScore } : {}),
+              ...(meta.buildPartCount ? { buildPartCount: meta.buildPartCount } : {}),
             }
             // Plan mode: if AI returned a plan (no code), show plan approval UI
             if (aiMode === 'plan' && !meta.hasCode && finalContent.length > 50) {
@@ -2091,6 +2098,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
             intent?: string
             hasCode?: boolean
             qualityScore?: number
+            buildPartCount?: number
           }
           const responseText = data.message ?? getDemoResponse(trimmed)
           const tokensUsed = data.tokensUsed ?? estimateTokens(trimmed)
@@ -2121,6 +2129,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
               hasCode: data.hasCode,
               streaming: false,
               ...(data.qualityScore ? { qualityScore: data.qualityScore } : {}),
+              ...(data.buildPartCount ? { buildPartCount: data.buildPartCount } : {}),
             }
             const result: ChatMessage[] = [...without, assistantMsg]
 
