@@ -46,7 +46,8 @@ const SUGGESTION_CHANNELS: Record<string, string> = {
 // Staff / output channels
 const STAFF_CHANNEL = ""; // Will be auto-discovered or created
 const LEADERBOARD_CHANNEL = "1495873973228142632"; // beta-leaderboard
-const BUG_LOG_CHANNEL = "1495873972162789478"; // beta-bug-log
+// Post bug logs ONLY to eli-staff-reports — never spam the user-facing bug channels
+const BUG_LOG_CHANNEL = ""; // Will use staff channel instead
 const ANNOUNCEMENTS_CHANNEL = "1495873969704665248"; // beta-announcements
 
 // ─── State File ──────────────────────────────────────────────────────────────

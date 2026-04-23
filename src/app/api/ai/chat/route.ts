@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
+import { blueprintToBuild, BLUEPRINT_INSTRUCTION, type Blueprint } from '@/lib/ai/blueprint-to-build'
 
 // Vercel serverless: allow up to 60s for streaming AI responses.
 // Without this, the default 10-15s timeout kills the stream mid-response,
@@ -2245,6 +2246,11 @@ Then output the code in a \`\`\`lua block.`
         enrichedCodePrompt += formatBlueprintsForPrompt(blueprints)
         console.log(`[ObjectLibrary] Injected ${blueprints.length} blueprints: ${blueprints.map(b => b.category).join(', ')}`)
       }
+      // Inject blueprint system for complex builds — enables 400-2000+ part generation
+      if (/\b(game|map|city|village|town|world|scene|island|station|course|track|tycoon|simulator|rpg|castle|mansion|fortress|palace|restaurant|hotel|school|hospital|stadium)\b/i.test(message)) {
+        enrichedCodePrompt += '\n\n' + BLUEPRINT_INSTRUCTION
+        console.log('[Blueprint] Blueprint system injected for complex build')
+      }
     }
 
     // Enrich with experience memory (past successful builds)
@@ -2299,6 +2305,22 @@ Then output the code in a \`\`\`lua block.`
       model = modelNames[buildRace.index]
       console.log('[SinglePass]', model, `returned ${fullResponse.length} chars`)
       luauCode = extractLuauCode(fullResponse)
+
+      // Blueprint detection: if the AI output a ```blueprint block, convert it to massive Luau
+      if (!luauCode) {
+        const blueprintMatch = fullResponse.match(/```blueprint\s*\n([\s\S]*?)```/)
+        if (blueprintMatch) {
+          try {
+            const blueprint = JSON.parse(blueprintMatch[1].trim()) as Blueprint
+            const result = blueprintToBuild(blueprint)
+            luauCode = result.luauCode
+            console.log(`[Blueprint] Converted blueprint → ${result.partCount} parts, ${(result.luauCode.length / 1024).toFixed(1)}KB code`)
+          } catch (e) {
+            console.warn('[Blueprint] Failed to parse blueprint JSON:', e instanceof Error ? e.message : e)
+          }
+        }
+      }
+
       // Fallback: if no ```lua block found but response contains Luau code, use it raw
       if (!luauCode && fullResponse.includes('Instance.new') && (fullResponse.includes('workspace') || fullResponse.includes('game:GetService'))) {
         luauCode = fullResponse

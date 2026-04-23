@@ -277,28 +277,9 @@ async function checkAndRespond(state: ResponderState) {
         const isDirectAddress = content.toLowerCase().startsWith('eli') ||
           content.toLowerCase().includes('@eli')
 
-        // For bug channels: auto-acknowledge bug reports (> 30 chars)
-        if (isBugChannel && content.length > 30 && !isMentioned && !isDirectAddress) {
-          console.log(`  Auto-ack bug from ${msg.author.username} in #${channelName}`)
-          const severity = detectSeverity(content)
-          const ackMsg = severity === 'CRITICAL'
-            ? `**Bug logged** — This looks critical. Flagged for immediate review by the team.`
-            : `**Bug logged** — Thanks for reporting, ${msg.author.username}. This is tracked and the team will look into it.`
-
-          await discordFetch(`/channels/${channelId}/messages`, {
-            method: 'POST',
-            body: JSON.stringify({
-              content: ackMsg,
-              message_reference: { message_id: msg.id },
-              allowed_mentions: { replied_user: true },
-            }),
-          })
-          state.respondedTo.push(msg.id)
-          await new Promise((r) => setTimeout(r, 500))
-          continue
-        }
-
-        if (!isMentioned && !isAutoChannel && !isDirectAddress) continue
+        // Don't auto-reply in bug/suggestion channels — it spams the chat
+        // Only respond when @mentioned or directly addressed
+        if (!isMentioned && !isDirectAddress) continue
 
         console.log(`  Responding to ${msg.author.username} in #${channelName}: "${content.slice(0, 50)}..."`)
 
