@@ -721,6 +721,112 @@ function LuauCodeBlock({
 
 // ─── Content renderer: splits prose and fenced code blocks ───────────────────
 
+/** Lightweight markdown renderer — handles bold, italic, inline code, lists, headers */
+function MarkdownText({ text }: { text: string }) {
+  // Process line by line for block-level elements, then inline formatting
+  const lines = text.split('\n')
+  const elements: React.ReactNode[] = []
+  let key = 0
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+
+    // Headers
+    const h3 = line.match(/^###\s+(.+)/)
+    if (h3) {
+      elements.push(<div key={key++} style={{ fontSize: 14, fontWeight: 700, color: '#D4AF37', margin: '10px 0 4px' }}>{formatInline(h3[1])}</div>)
+      continue
+    }
+    const h2 = line.match(/^##\s+(.+)/)
+    if (h2) {
+      elements.push(<div key={key++} style={{ fontSize: 15, fontWeight: 700, color: '#D4AF37', margin: '12px 0 4px' }}>{formatInline(h2[1])}</div>)
+      continue
+    }
+    const h1 = line.match(/^#\s+(.+)/)
+    if (h1) {
+      elements.push(<div key={key++} style={{ fontSize: 16, fontWeight: 700, color: '#D4AF37', margin: '14px 0 6px' }}>{formatInline(h1[1])}</div>)
+      continue
+    }
+
+    // Bullet list items
+    const bullet = line.match(/^[\s]*[-*•]\s+(.+)/)
+    if (bullet) {
+      elements.push(
+        <div key={key++} style={{ display: 'flex', gap: 8, paddingLeft: 4, margin: '2px 0' }}>
+          <span style={{ color: '#D4AF37', fontSize: 10, marginTop: 5, flexShrink: 0 }}>●</span>
+          <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{formatInline(bullet[1])}</span>
+        </div>
+      )
+      continue
+    }
+
+    // Numbered list items
+    const numbered = line.match(/^[\s]*(\d+)[.)]\s+(.+)/)
+    if (numbered) {
+      elements.push(
+        <div key={key++} style={{ display: 'flex', gap: 8, paddingLeft: 4, margin: '2px 0' }}>
+          <span style={{ color: 'rgba(212,175,55,0.7)', fontSize: 12, fontWeight: 600, flexShrink: 0, minWidth: 16, textAlign: 'right' }}>{numbered[1]}.</span>
+          <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{formatInline(numbered[2])}</span>
+        </div>
+      )
+      continue
+    }
+
+    // Empty lines → small gap
+    if (!line.trim()) {
+      elements.push(<div key={key++} style={{ height: 6 }} />)
+      continue
+    }
+
+    // Regular text with inline formatting
+    elements.push(
+      <span key={key++} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', display: 'block' }}>
+        {formatInline(line)}
+      </span>
+    )
+  }
+
+  return <>{elements}</>
+}
+
+/** Format inline markdown: **bold**, *italic*, `code`, ~~strike~~ */
+function formatInline(text: string): React.ReactNode {
+  // Split on inline patterns and rebuild with styled spans
+  const parts: React.ReactNode[] = []
+  // Process: `code`, **bold**, *italic*
+  const re = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g
+  let last = 0
+  let key = 0
+  let m: RegExpExecArray | null
+  re.lastIndex = 0
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index))
+    const match = m[0]
+    if (match.startsWith('`')) {
+      parts.push(
+        <code key={key++} style={{
+          background: 'rgba(212,175,55,0.1)',
+          border: '1px solid rgba(212,175,55,0.15)',
+          borderRadius: 4,
+          padding: '1px 5px',
+          fontSize: '0.88em',
+          fontFamily: 'var(--font-geist-mono, monospace)',
+          color: '#D4AF37',
+        }}>
+          {match.slice(1, -1)}
+        </code>
+      )
+    } else if (match.startsWith('**')) {
+      parts.push(<strong key={key++} style={{ fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>{match.slice(2, -2)}</strong>)
+    } else if (match.startsWith('*')) {
+      parts.push(<em key={key++} style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.8)' }}>{match.slice(1, -1)}</em>)
+    }
+    last = m.index + m[0].length
+  }
+  if (last < text.length) parts.push(text.slice(last))
+  return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : <>{parts}</>
+}
+
 function RenderMessageContent({
   content,
   onSendToStudio,
@@ -741,9 +847,7 @@ function RenderMessageContent({
   while ((m = fenceRe.exec(cleanContent)) !== null) {
     if (m.index > last) {
       parts.push(
-        <span key={key++} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {cleanContent.slice(last, m.index)}
-        </span>
+        <MarkdownText key={key++} text={cleanContent.slice(last, m.index)} />
       )
     }
     parts.push(
@@ -758,9 +862,7 @@ function RenderMessageContent({
   }
   if (last < cleanContent.length) {
     parts.push(
-      <span key={key++} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-        {cleanContent.slice(last)}
-      </span>
+      <MarkdownText key={key++} text={cleanContent.slice(last)} />
     )
   }
   return <>{parts}</>
@@ -3700,6 +3802,26 @@ export function ChatPanel({
     requestAnimationFrame(step)
   }, [])
 
+  // Auto-scroll during streaming: if the user is near the bottom, keep them
+  // pinned as streaming content grows. Throttled to avoid layout thrashing.
+  const streamScrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const isStreamingMsg = messages.some(m => m.streaming)
+  useEffect(() => {
+    if (isStreamingMsg && isNearBottomRef.current) {
+      streamScrollTimerRef.current = setInterval(() => {
+        if (isNearBottomRef.current) {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+        }
+      }, 200)
+    }
+    return () => {
+      if (streamScrollTimerRef.current) {
+        clearInterval(streamScrollTimerRef.current)
+        streamScrollTimerRef.current = null
+      }
+    }
+  }, [isStreamingMsg, messages])
+
   // BUG 8: only auto-scroll when a NEW message is appended (message count
   // changes) AND the user is near the bottom. Mid-stream content edits (which
   // mutate the last assistant message in place) must NOT yank the user back
@@ -4284,7 +4406,6 @@ export function ChatPanel({
                 : `Message Forje... ${modePlaceholders[aiMode] || ''}`
               }
               rows={1}
-              disabled={loading}
               data-no-palette="true"
               style={{
                 flex: 1,
