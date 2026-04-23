@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
   <!-- ForjeGames Studio Plugin v1.0.0 -->
-  <!-- Built by build-plugin.js on 2026-04-20T00:03:59.582Z -->
+  <!-- Built by build-plugin.js on 2026-04-23T01:36:10.104Z -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -4011,6 +4011,16 @@ local function handleScanWorkspace(data)
         G = instance.Color.G,
         B = instance.Color.B,
       }
+    end
+
+    -- Capture script Source so AI can read and edit existing scripts
+    if instance:IsA("LuaSourceContainer") then
+      local ok, src = pcall(function() return instance.Source end)
+      if ok and src and #src > 0 then
+        -- Cap at 2000 chars per script to keep payload reasonable
+        node.source = #src > 2000 and string.sub(src, 1, 2000) .. "\n-- [truncated]" or src
+        node.scriptType = instance.ClassName -- Script, LocalScript, or ModuleScript
+      end
     end
 
     if depth < maxDepth then
