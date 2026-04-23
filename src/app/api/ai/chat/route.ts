@@ -9973,37 +9973,7 @@ DAMAGE MODULE:
     local h=target:FindFirstChildOfClass("Humanoid") if not h or h.Health<=0 then return false end
     h:TakeDamage(amount) if knockback then local rp=target:FindFirstChild("HumanoidRootPart")
     if rp then local bv=Instance.new("BodyVelocity") bv.Velocity=knockback bv.MaxForce=Vector3.one*1e5 bv.Parent=rp
-    task.delay(0.15,function() bv:Destroy() end) end end return true end
-
-PREMIUM GUI PATTERN (use for ALL ScreenGuis — ALWAYS include UICorner, UIStroke, TweenService hover):
-  local TweenService = game:GetService("TweenService")
-  local Players = game:GetService("Players")
-  local player = Players.LocalPlayer
-  local gui = Instance.new("ScreenGui") gui.Name = "PremiumUI" gui.ResetOnSpawn = false gui.Parent = player.PlayerGui
-  local main = Instance.new("Frame") main.Size = UDim2.new(0,380,0,500) main.Position = UDim2.new(0.5,0,0.5,0) main.AnchorPoint = Vector2.new(0.5,0.5)
-  main.BackgroundColor3 = Color3.fromRGB(18,18,24) main.BorderSizePixel = 0 main.Parent = gui
-  Instance.new("UICorner", main).CornerRadius = UDim.new(0,16)
-  local stroke = Instance.new("UIStroke") stroke.Color = Color3.fromRGB(60,60,80) stroke.Thickness = 1.5 stroke.Parent = main
-  local grad = Instance.new("UIGradient") grad.Color = ColorSequence.new(Color3.fromRGB(25,25,35), Color3.fromRGB(15,15,20)) grad.Rotation = 90 grad.Parent = main
-  -- Button with hover animation:
-  local btn = Instance.new("TextButton") btn.Size = UDim2.new(0.8,0,0,44) btn.Position = UDim2.new(0.1,0,0.8,0)
-  btn.BackgroundColor3 = Color3.fromRGB(212,175,55) btn.TextColor3 = Color3.fromRGB(0,0,0) btn.Font = Enum.Font.GothamBold btn.TextSize = 16
-  btn.Text = "PURCHASE" btn.BorderSizePixel = 0 btn.Parent = main
-  Instance.new("UICorner", btn).CornerRadius = UDim.new(0,10)
-  btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255,215,80)}):Play() end)
-  btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(212,175,55)}):Play() end)
-
-CRITICAL GUI RULES — EVERY GUI you generate MUST have ALL of these:
-1. UICorner on EVERY Frame and Button (CornerRadius 8-16px)
-2. UIStroke on containers (1-2px, subtle gray/white border)
-3. UIGradient for depth (dark-to-darker vertical gradient)
-4. TweenService hover animations on ALL buttons (color shift on MouseEnter/MouseLeave)
-5. Dark theme colors: bg RGB(18,18,24), card RGB(28,28,38), accent RGB(212,175,55)
-6. Font: Enum.Font.GothamBold for headers, Enum.Font.Gotham for body
-7. UIListLayout for organized vertical/horizontal stacking
-8. TextScaled = false, use specific TextSize (14-24px range)
-9. AnchorPoint = Vector2.new(0.5, 0.5) for center-aligned elements
-10. Always set ResetOnSpawn = false on ScreenGui`,
+    task.delay(0.15,function() bv:Destroy() end) end end return true end`,
     image: '\n\n[IMAGE_MODE] The user wants to generate a visual asset (icon, thumbnail, GFX). Describe what the image should look like in detail, including art style, color palette, composition, and Roblox-appropriate aesthetics.',
     terrain: '\n\n[TERRAIN_MODE] Focus on terrain generation. Use Terrain:FillRegion(), Terrain:FillBall(), Terrain:FillCylinder(), and related APIs. Paint materials (Grass, Sand, Rock, Snow, Water, etc.), sculpt heights, and create natural biomes.',
     debug: '\n\n[DEBUG_MODE] The user needs help debugging. First, analyze the code or error description thoroughly. Identify the root cause. Then provide a fixed version with clear explanations of what was wrong and why the fix works. Use <thinking>...</thinking> tags to show your analysis.',
