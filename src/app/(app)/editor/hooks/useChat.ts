@@ -600,10 +600,14 @@ export function useChat(options: UseChatOptions = {}) {
     const latest = sessions[0]
     if (!latest || latest.messages.length === 0) return
     // Rehydrate timestamps from ISO strings back to Date objects
-    const rehydrated = latest.messages.map((m) => ({
-      ...m,
-      timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp as unknown as string),
-    }))
+    // Also remove stale status messages ("Forje is building...") that got
+    // persisted when the user closed the tab during generation
+    const rehydrated = latest.messages
+      .filter((m) => m.role !== 'status') // Remove stale loading spinners
+      .map((m) => ({
+        ...m,
+        timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp as unknown as string),
+      }))
     setMessagesSync(() => rehydrated)
     setSessionId(latest.id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -615,7 +619,7 @@ export function useChat(options: UseChatOptions = {}) {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const persistable = messages
-      .filter((m) => !m.streaming)
+      .filter((m) => !m.streaming && m.role !== 'status')
       .slice(-MAX_ACTIVE_MESSAGES)
     if (persistable.length === 0) return
     try {
@@ -1716,11 +1720,18 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
 
         // ── HTTP fetch streaming path (fallback when WebSocket is not connected) ──
 
+        // Client-side timeout: abort if the server doesn't respond within 90s.
+        // Vercel can hang for up to 300s — we'd rather show an error and let
+        // the user retry than freeze the UI for 5 minutes.
+        const fetchAbort = new AbortController()
+        const fetchTimeout = setTimeout(() => fetchAbort.abort(), 90000)
+
         const chatPromise = fetch('/api/ai/chat', {
           method: 'POST',
           headers,
           body: JSON.stringify(chatBody),
-        })
+          signal: fetchAbort.signal,
+        }).finally(() => clearTimeout(fetchTimeout))
 
         type MeshAPIResponse = {
           meshUrl?: string | null
@@ -2188,7 +2199,9 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
         setStreaming(false)
 
         let friendlyError: string
-        if (errMsg.includes('401') || errMsg.includes('403') || errMsg.toLowerCase().includes('unauthorized') || errMsg.toLowerCase().includes('forbidden')) {
+        if (errMsg.includes('abort') || errMsg.includes('AbortError') || err instanceof DOMException) {
+          friendlyError = 'Request timed out — the AI is under heavy load. Try again or try a simpler prompt.'
+        } else if (errMsg.includes('401') || errMsg.includes('403') || errMsg.toLowerCase().includes('unauthorized') || errMsg.toLowerCase().includes('forbidden')) {
           friendlyError = 'Please sign in to continue.'
         } else if (errMsg.includes('402') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('token limit') || errMsg.toLowerCase().includes('insufficient_tokens')) {
           friendlyError = 'Token limit reached — upgrade your plan to continue.'
