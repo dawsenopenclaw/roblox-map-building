@@ -3735,12 +3735,20 @@ Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE
       // catch this and either retry or fall back to the template
       if (luauCode && isScriptIntent) {
         const partMatches = (luauCode.match(/Instance\.new\s*\(\s*["']Part["']\s*\)/g) || []).length
-        const hasScreenGui = luauCode.includes('ScreenGui') || luauCode.includes('LocalScript') || luauCode.includes('.Source')
-        const hasTextButton = luauCode.includes('TextButton') || luauCode.includes('TextLabel') || luauCode.includes('Frame')
-        const isPartHeavy = partMatches > 5 && !hasScreenGui && !hasTextButton
+        // Check for ACTUAL GUI instance creation — not just the word "Frame" in a variable name
+        const hasScreenGui = /Instance\.new\s*\(\s*["']ScreenGui["']\s*\)/.test(luauCode)
+        const hasLocalScript = /Instance\.new\s*\(\s*["']LocalScript["']\s*\)/.test(luauCode)
+        const hasGuiElements = /Instance\.new\s*\(\s*["'](TextButton|TextLabel|TextBox|ImageButton|ImageLabel|ScrollingFrame)["']\s*\)/.test(luauCode)
+        const hasRealFrame = /Instance\.new\s*\(\s*["']Frame["']\s*\)/.test(luauCode)
+        const hasActualGui = hasScreenGui || hasLocalScript || hasGuiElements || hasRealFrame
+        // Part-heavy = lots of 3D parts with NO actual GUI elements being created
+        const isPartHeavy = partMatches > 3 && !hasActualGui
+        // Also catch: has some GUI but overwhelmingly Part-based (ratio check)
+        const guiCount = (luauCode.match(/Instance\.new\s*\(\s*["'](ScreenGui|Frame|TextButton|TextLabel|TextBox|ImageButton|ImageLabel|ScrollingFrame|LocalScript)["']\s*\)/g) || []).length
+        const isMostlyParts = partMatches > 5 && guiCount < 3 && partMatches > guiCount * 3
 
-        if (isPartHeavy) {
-          console.warn(`[ScriptSafetyNet] Script intent "${intent}" produced ${partMatches} Parts with no GUI elements — this is a BUILD, not a SCRIPT. Falling back to template.`)
+        if (isPartHeavy || isMostlyParts) {
+          console.warn(`[ScriptSafetyNet] Script intent "${intent}" produced ${partMatches} Parts vs ${guiCount} GUI elements — replacing with template.`)
           // Use the template directly if available
           const fallbackTemplate = getScriptTemplate(message)
           if (fallbackTemplate) {
@@ -3763,6 +3771,17 @@ Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE
             }
           }
         }
+      }
+
+      // ── Post-processing: fix common AI quality violations in raw Luau ──
+      if (luauCode) {
+        // Replace SmoothPlastic with Concrete (AI keeps ignoring the ban)
+        luauCode = luauCode.replace(/Enum\.Material\.SmoothPlastic/g, 'Enum.Material.Concrete')
+        luauCode = luauCode.replace(/Enum\.Material\.Plastic/g, 'Enum.Material.Concrete')
+        // Fix deprecated APIs
+        luauCode = luauCode.replace(/\bBrickColor\.new\s*\(/g, 'Color3.fromRGB(')
+        // Fix wait() → task.wait()
+        luauCode = luauCode.replace(/\bwait\s*\(/g, 'task.wait(')
       }
 
       // Quality gate — reject low-quality code and tell user
