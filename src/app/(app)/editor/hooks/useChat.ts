@@ -1068,9 +1068,7 @@ export function useChat(options: UseChatOptions = {}) {
             let apiBody: Record<string, unknown> = {}
 
             if (aiMode === 'image') {
-              // Route to /api/ai/image. Prefer the explicit imageOptions.style
-              // when set (BUG 9), else fall back to keyword-based detection so
-              // older flows keep working without UI interaction.
+              // Detect style from imageOptions or keywords
               let style = imageOptions.style
               if (!style || style === 'auto') {
                 const promptLower = trimmed.toLowerCase()
@@ -1078,23 +1076,35 @@ export function useChat(options: UseChatOptions = {}) {
                   : promptLower.includes('thumbnail') || promptLower.includes('cover') ? 'thumbnail'
                   : promptLower.includes('gfx') || promptLower.includes('character') ? 'gfx'
                   : promptLower.includes('clothing') || promptLower.includes('shirt') || promptLower.includes('pants') ? 'clothing'
+                  : promptLower.includes('texture') ? 'texture'
+                  : promptLower.includes('pixel') ? 'pixel-art'
+                  : promptLower.includes('anime') ? 'anime'
+                  : promptLower.includes('3d') || promptLower.includes('render') ? '3d-render'
+                  : promptLower.includes('concept') ? 'concept-art'
+                  : promptLower.includes('ui') || promptLower.includes('button') || promptLower.includes('menu') ? 'ui-element'
+                  : promptLower.includes('nano') || promptLower.includes('figurine') ? 'nano-banana'
                   : 'asset'
                 const styleMap: Record<string, string> = {
                   'icon': 'roblox-icon',
                   'thumbnail': 'game-thumbnail',
-                  'gfx': 'gfx-render',
-                  'clothing': 'clothing',
+                  'gfx': 'roblox-icon',
+                  'clothing': 'roblox-icon',
+                  'texture': 'texture',
+                  'pixel-art': 'pixel-art',
+                  'anime': 'anime',
+                  '3d-render': '3d-render',
+                  'concept-art': 'concept-art',
+                  'ui-element': 'ui-element',
+                  'nano-banana': 'nano-banana',
                   'asset': 'roblox-icon',
                 }
                 style = styleMap[imageMode] || 'roblox-icon'
               }
-              apiUrl = '/api/ai/image'
+              // Try Nano Banana (Gemini) first — faster and uses existing key
+              apiUrl = '/api/ai/image-nano'
               apiBody = {
                 prompt: trimmed,
                 style,
-                count: 1,
-                removeBackground: imageOptions.removeBackground,
-                upscale: imageOptions.upscale,
               }
             } else if (aiMode === 'mesh') {
               apiUrl = '/api/ai/mesh'
@@ -1129,19 +1139,46 @@ export function useChat(options: UseChatOptions = {}) {
               apiBody.skipEnhance = true
             }
 
-            const specialRes = await fetch(apiUrl, {
+            let specialRes = await fetch(apiUrl, {
               method: 'POST',
               headers,
               body: JSON.stringify(apiBody),
             })
 
-            const specialData = await specialRes.json()
+            let specialData = await specialRes.json()
+
+            // If Nano Banana failed, fall back to FAL
+            if (aiMode === 'image' && !specialRes.ok && apiUrl === '/api/ai/image-nano') {
+              console.log('[useChat] Nano Banana failed, falling back to FAL')
+              const falRes = await fetch('/api/ai/image', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  prompt: enhancedPrompt,
+                  style: (apiBody.style as string) || 'roblox-icon',
+                  count: 1,
+                  removeBackground: imageOptions.removeBackground,
+                  upscale: imageOptions.upscale,
+                  skipEnhance: true,
+                }),
+              })
+              if (falRes.ok) {
+                specialData = await falRes.json()
+                specialRes = falRes
+              }
+            }
+
+            // Handle both Nano Banana format ({image:{url}}) and FAL format ({images:[{url}]})
+            const imageUrls: string[] = specialData.images
+              ? (specialData.images as Array<{ url: string }>).map((img) => img.url)
+              : specialData.image?.url
+                ? [specialData.image.url]
+                : []
+
             const resultContent = aiMode === 'image'
-              ? `**Generated Image${specialData.images?.length > 1 ? 's' : ''}** (${apiBody.style || 'roblox-icon'} mode)\n\n${
-                  (specialData.images || []).map((img: { url: string }, i: number) =>
-                    `![Generated ${i + 1}](${img.url})`
-                  ).join('\n\n')
-                }${enhancedPrompt !== trimmed ? `\n\n*Enhanced prompt: "${enhancedPrompt}"*` : ''}`
+              ? `**Generated Image${imageUrls.length > 1 ? 's' : ''}** (${apiBody.style || 'roblox-icon'}${specialData.model ? ` · ${specialData.model}` : ''})\n\n${
+                  imageUrls.map((url, i) => `![Generated ${i + 1}](${url})`).join('\n\n')
+                }${imageUrls.length === 0 ? '⚠️ No image was generated. Try rephrasing your prompt.' : ''}${enhancedPrompt !== trimmed ? `\n\n*Enhanced prompt: "${enhancedPrompt}"*` : ''}`
               : `**3D Model Generated**\n\n${specialData.meshUrl ? `[Download Model](${specialData.meshUrl})` : 'Generation in progress...'}\n\n${specialData.luauCode || ''}`
 
             setMessagesSync((prev) => [
