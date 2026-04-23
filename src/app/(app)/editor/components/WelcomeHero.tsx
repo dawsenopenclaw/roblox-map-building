@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
-// ─── 3D Rotating word ring (matches homepage) ──────────────────────────────
+// ─── 3D Rotating word ring ──────────────────────────────────────────────
 const ROTATING_WORDS = ['Game', 'Map', 'World', 'Obby', 'Tycoon', 'RPG', 'UI']
 const ROTATE_INTERVAL = 2200
 
@@ -12,7 +13,6 @@ function RotatingWord3D() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      // Slide out
       setAnimClass('word-exit')
       setTimeout(() => {
         setIndex(i => (i + 1) % ROTATING_WORDS.length)
@@ -46,6 +46,7 @@ function RotatingWord3D() {
           backgroundClip: 'text',
           willChange: 'transform, opacity',
           perspective: '600px',
+          filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.3))',
         }}
       >
         {ROTATING_WORDS[index]}
@@ -54,221 +55,178 @@ function RotatingWord3D() {
   )
 }
 
-// ─── Animated demo — simulates a real AI build conversation ─────────────────
-const DEMO_STEPS = [
-  { type: 'user' as const, text: 'Build me a pirate ship with cannons and sails' },
-  { type: 'thinking' as const, text: 'Planning build: hull, deck, mast, sails, cannons, cabin...' },
-  { type: 'ai' as const, text: "I'll build your pirate ship with a wooden hull, tall mast with cloth sails, 6 cannons, and a captain's cabin on the stern." },
-  { type: 'building' as const, text: 'Building... 47 parts placed', parts: 47 },
-  { type: 'done' as const, text: 'Pirate ship deployed to Studio' },
-]
-
-function AnimatedDemo() {
-  const [step, setStep] = useState(0)
-  const [typing, setTyping] = useState('')
-  const [showCursor, setShowCursor] = useState(true)
-
-  useEffect(() => {
-    const cursor = setInterval(() => setShowCursor(v => !v), 530)
-    return () => clearInterval(cursor)
-  }, [])
-
-  // Type out user message, then reveal AI steps one by one
-  useEffect(() => {
-    if (step === 0) {
-      // Type user message character by character
-      const msg = DEMO_STEPS[0].text
-      let i = 0
-      const timer = setInterval(() => {
-        if (i <= msg.length) {
-          setTyping(msg.slice(0, i))
-          i++
-        } else {
-          clearInterval(timer)
-          setTimeout(() => setStep(1), 600)
-        }
-      }, 40)
-      return () => clearInterval(timer)
-    }
-    if (step > 0 && step < DEMO_STEPS.length) {
-      const delay = step === 1 ? 1200 : step === 3 ? 2000 : 1500
-      const timer = setTimeout(() => setStep(s => s + 1), delay)
-      return () => clearTimeout(timer)
-    }
-    if (step >= DEMO_STEPS.length) {
-      // Restart loop after pause
-      const timer = setTimeout(() => {
-        setStep(0)
-        setTyping('')
-      }, 4000)
-      return () => clearTimeout(timer)
-    }
-  }, [step])
-
+// ─── Floating Orbs Background ───────────────────────────────────────────
+function FloatingOrbs() {
   return (
-    <div
-      style={{
-        width: '100%',
-        maxWidth: 520,
-        background: 'rgba(8,10,22,0.6)',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 16,
-        padding: '20px 20px 16px',
-        backdropFilter: 'blur(12px)',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Ambient glow */}
-      <div aria-hidden style={{
-        position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)',
-        width: 300, height: 120,
-        background: 'radial-gradient(ellipse, rgba(212,175,55,0.08) 0%, transparent 70%)',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Demo header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14,
-      }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          fontSize: 11, color: '#52525B', fontWeight: 600, letterSpacing: '0.05em',
-        }}>
-          <span style={{
-            width: 7, height: 7, borderRadius: '50%', background: '#22c55e',
-            display: 'inline-block', boxShadow: '0 0 6px rgba(34,197,94,0.5)',
-            animation: 'pulse-dot 2s ease-in-out infinite',
-          }} />
-          LIVE PREVIEW
-        </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', opacity: 0.6 }} />
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', opacity: 0.6 }} />
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', opacity: 0.6 }} />
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 160 }}>
-        {/* User message — always visible while typing or after */}
-        <div style={{
-          alignSelf: 'flex-end',
-          background: 'rgba(212,175,55,0.12)',
-          border: '1px solid rgba(212,175,55,0.18)',
-          borderRadius: '14px 14px 4px 14px',
-          padding: '10px 14px',
-          maxWidth: '85%',
-          fontSize: 13,
-          color: '#E4E4E7',
-          lineHeight: 1.5,
-          opacity: step >= 0 ? 1 : 0,
-          transition: 'opacity 0.3s',
-        }}>
-          {step === 0 ? (
-            <>{typing}<span style={{ opacity: showCursor ? 1 : 0, color: '#D4AF37' }}>|</span></>
-          ) : DEMO_STEPS[0].text}
-        </div>
-
-        {/* AI thinking */}
-        {step >= 1 && (
-          <div style={{
-            alignSelf: 'flex-start',
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 12px',
-            borderRadius: '14px 14px 14px 4px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.06)',
-            fontSize: 12,
-            color: step >= 2 ? '#52525B' : '#A1A1AA',
-            lineHeight: 1.5,
-            maxWidth: '90%',
-            opacity: 1,
-            transition: 'all 0.4s',
-          }}>
-            {step === 1 && (
-              <span style={{ display: 'flex', gap: 3 }}>
-                {[0,1,2].map(i => (
-                  <span key={i} style={{
-                    width: 5, height: 5, borderRadius: '50%', background: '#D4AF37',
-                    animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
-                  }} />
-                ))}
-              </span>
-            )}
-            {step >= 2 && <span style={{ color: '#D4AF37', flexShrink: 0 }}>F</span>}
-            <span>{step === 1 ? DEMO_STEPS[1].text : step >= 2 ? DEMO_STEPS[2].text : ''}</span>
-          </div>
-        )}
-
-        {/* Building progress */}
-        {step >= 3 && (
-          <div style={{
-            alignSelf: 'flex-start',
-            padding: '10px 14px',
-            borderRadius: '14px 14px 14px 4px',
-            background: 'rgba(34,197,94,0.06)',
-            border: '1px solid rgba(34,197,94,0.15)',
-            fontSize: 12,
-            color: '#22c55e',
-            display: 'flex', alignItems: 'center', gap: 8,
-            maxWidth: '85%',
-          }}>
-            {step === 3 ? (
-              <>
-                <span className="spin" style={{ display: 'inline-block' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 12a9 9 0 11-6.219-8.56" />
-                  </svg>
-                </span>
-                Building... 47 parts placed
-              </>
-            ) : (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                Pirate ship deployed to Studio
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* CSS animations */}
+    <>
       <style>{`
-        @keyframes pulse {
-          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-          40% { opacity: 1; transform: scale(1.1); }
+        @keyframes orbDrift1 {
+          0%   { transform: translate(0, 0) scale(1); }
+          25%  { transform: translate(80px, -40px) scale(1.1); }
+          50%  { transform: translate(160px, 20px) scale(0.95); }
+          75%  { transform: translate(60px, 60px) scale(1.05); }
+          100% { transform: translate(0, 0) scale(1); }
         }
-        @keyframes pulse-dot {
-          0%, 100% { box-shadow: 0 0 4px rgba(34,197,94,0.3); }
-          50% { box-shadow: 0 0 10px rgba(34,197,94,0.6); }
+        @keyframes orbDrift2 {
+          0%   { transform: translate(0, 0) scale(1); }
+          25%  { transform: translate(-60px, 50px) scale(1.08); }
+          50%  { transform: translate(-120px, -20px) scale(0.92); }
+          75%  { transform: translate(-40px, -60px) scale(1.04); }
+          100% { transform: translate(0, 0) scale(1); }
         }
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes orbDrift3 {
+          0%   { transform: translate(0, 0) scale(1); }
+          33%  { transform: translate(100px, 50px) scale(1.06); }
+          66%  { transform: translate(-50px, -30px) scale(0.96); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes orbPulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.7; }
+        }
       `}</style>
-    </div>
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0,
+      }}>
+        {/* Gold orb — top left */}
+        <div style={{
+          position: 'absolute',
+          top: '10%', left: '8%',
+          width: 200, height: 200,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(212,175,55,0.08) 0%, rgba(212,175,55,0.02) 50%, transparent 70%)',
+          filter: 'blur(40px)',
+          animation: 'orbDrift1 25s ease-in-out infinite, orbPulse 8s ease-in-out infinite',
+        }} />
+        {/* Blue orb — top right */}
+        <div style={{
+          position: 'absolute',
+          top: '5%', right: '12%',
+          width: 260, height: 260,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(96,165,250,0.06) 0%, rgba(96,165,250,0.015) 50%, transparent 70%)',
+          filter: 'blur(50px)',
+          animation: 'orbDrift2 30s ease-in-out infinite, orbPulse 10s ease-in-out 2s infinite',
+        }} />
+        {/* Purple orb — center */}
+        <div style={{
+          position: 'absolute',
+          top: '40%', left: '35%',
+          width: 180, height: 180,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(124,58,237,0.05) 0%, rgba(124,58,237,0.01) 50%, transparent 70%)',
+          filter: 'blur(45px)',
+          animation: 'orbDrift3 20s ease-in-out infinite, orbPulse 7s ease-in-out 1s infinite',
+        }} />
+        {/* Gold orb — bottom right */}
+        <div style={{
+          position: 'absolute',
+          bottom: '15%', right: '20%',
+          width: 240, height: 240,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(212,175,55,0.06) 0%, rgba(212,175,55,0.015) 50%, transparent 70%)',
+          filter: 'blur(50px)',
+          animation: 'orbDrift1 35s ease-in-out infinite reverse, orbPulse 9s ease-in-out 3s infinite',
+        }} />
+        {/* Cyan orb — bottom left */}
+        <div style={{
+          position: 'absolute',
+          bottom: '10%', left: '15%',
+          width: 160, height: 160,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(6,182,212,0.05) 0%, rgba(6,182,212,0.01) 50%, transparent 70%)',
+          filter: 'blur(40px)',
+          animation: 'orbDrift2 28s ease-in-out infinite reverse, orbPulse 6s ease-in-out 4s infinite',
+        }} />
+      </div>
+    </>
   )
 }
 
-// ─── Suggestion chips — quick-start prompts ────────────────────────────────
-const SUGGESTIONS = [
-  { label: 'Pirate ship', prompt: 'Build me a pirate ship with mast, sails, cannons, and a captain cabin', icon: '🏴‍☠️' },
-  { label: 'Medieval castle', prompt: 'Build a medieval castle with towers, battlements, a gatehouse, and a throne room', icon: '🏰' },
-  { label: 'Tycoon factory', prompt: 'Build a tycoon factory with conveyor belts, machines, and a cash register', icon: '🏭' },
-  { label: 'Floating island', prompt: 'Create a low poly floating island with a cottage, palm trees, dock, and rowboat', icon: '🏝️' },
-  { label: 'PvP arena', prompt: 'Create a symmetrical PvP arena with cover walls, team spawns, and a center platform', icon: '⚔️' },
-  { label: 'Race track', prompt: 'Create a race track with starting gate, banked curves, barriers, and finish line', icon: '🏎️' },
-]
-
-// ─── Mode pills ───────────────────────────────────────────────────────────
-const MODES = [
-  { label: 'Build', prompt: 'Build me a ', color: '#D4AF37' },
-  { label: 'Full Game', prompt: '/plan ', color: '#60A5FA' },
-  { label: 'Script', prompt: 'Write a script that ', color: '#7C3AED' },
-  { label: 'Image', prompt: '/image ', color: '#10B981' },
-  { label: '3D Model', prompt: '/mesh ', color: '#F59E0B' },
+// ─── Quick-start cards ──────────────────────────────────────────────────
+const QUICK_CARDS = [
+  {
+    icon: (
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="3" />
+        <path d="M9 3v18M3 9h18" />
+        <path d="M14 14l3 3M14 17l3-3" />
+      </svg>
+    ),
+    title: 'Build a Game',
+    description: 'Tycoon, obby, simulator, RPG — pick a genre and go',
+    prompt: '/plan Build me a complete game. What genre should we start with?',
+    color: '#D4AF37',
+  },
+  {
+    icon: (
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 18l2-2-2-2" />
+        <path d="M8 18l-2-2 2-2" />
+        <path d="M14 4l-4 16" />
+      </svg>
+    ),
+    title: 'Write a Script',
+    description: 'Leaderboards, shops, combat, doors — any game logic',
+    prompt: 'Write a script that ',
+    autoSend: false,
+    color: '#7C3AED',
+  },
+  {
+    icon: (
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="3" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <path d="M21 15l-5-5L5 21" />
+      </svg>
+    ),
+    title: 'Generate an Image',
+    description: 'Thumbnails, icons, decals, textures — any style',
+    prompt: '/image ',
+    autoSend: false,
+    color: '#10B981',
+  },
+  {
+    icon: (
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3L2 12h3v8h14v-8h3L12 3z" />
+        <path d="M9 21v-6h6v6" />
+      </svg>
+    ),
+    title: 'Create 3D Model',
+    description: 'Weapons, characters, props — AI mesh generation',
+    prompt: '/mesh ',
+    autoSend: false,
+    color: '#F59E0B',
+  },
+  {
+    icon: (
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 22L12 2l10 20H2z" />
+        <path d="M7 17h10" />
+        <path d="M9 13h6" />
+      </svg>
+    ),
+    title: 'Design Terrain',
+    description: 'Islands, mountains, cities — natural landscapes',
+    prompt: '/terrain Generate natural terrain with ',
+    autoSend: false,
+    color: '#06B6D4',
+  },
+  {
+    icon: (
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#EC4899" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+        <circle cx="12" cy="17" r="0.5" fill="#EC4899" />
+      </svg>
+    ),
+    title: 'Get Game Advice',
+    description: 'Monetization, design, marketing — expert guidance',
+    prompt: '/think I need advice on ',
+    autoSend: false,
+    color: '#EC4899',
+  },
 ]
 
 interface WelcomeHeroProps {
@@ -278,6 +236,9 @@ interface WelcomeHeroProps {
 }
 
 export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHeroProps) {
+  const isMobile = useIsMobile()
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null)
+
   if (!visible) return null
 
   return (
@@ -288,140 +249,133 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1.5rem 1rem',
-        gap: '1.5rem',
+        padding: isMobile ? '1rem' : '2rem 1.5rem',
+        gap: isMobile ? '1.5rem' : '2.5rem',
         overflow: 'auto',
         position: 'relative',
       }}
     >
-      {/* ─── Greeting with animated rotating words ─── */}
-      <div style={{ textAlign: 'center', position: 'relative', zIndex: 1, marginTop: '0.5rem' }}>
-        {/* Ambient glow */}
-        <div aria-hidden style={{
-          position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)',
-          width: 400, height: 120,
-          background: 'radial-gradient(ellipse, rgba(212,175,55,0.06) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
+      {/* Floating orbs */}
+      <FloatingOrbs />
+
+      {/* ─── Heading ─── */}
+      <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
         <h1 style={{
-          fontSize: 'clamp(2rem, 6vw, 3.2rem)',
+          fontSize: isMobile ? 'clamp(1.8rem, 6vw, 2.5rem)' : 'clamp(2.4rem, 4vw, 3.2rem)',
           fontWeight: 700,
-          lineHeight: 1.2,
+          lineHeight: 1.15,
           letterSpacing: '-0.03em',
           color: '#FAFAFA',
           margin: 0,
+          textShadow: '0 0 40px rgba(212,175,55,0.08)',
         }}>
-          Forge your <RotatingWord3D />
+          What do you want to build?
         </h1>
         <p style={{
-          marginTop: 12,
-          fontSize: 15,
-          color: '#52525B',
-          maxWidth: 420,
-          margin: '12px auto 0',
+          marginTop: 14,
+          fontSize: 16,
+          color: '#71717A',
+          maxWidth: 460,
+          margin: '14px auto 0',
           lineHeight: 1.6,
         }}>
-          Describe anything. Forje builds it and syncs to Studio.
+          Describe anything. Forje builds your <RotatingWord3D /> and syncs to Studio.
         </p>
       </div>
 
-      {/* ─── Live demo ─── */}
-      <AnimatedDemo />
-
-      {/* ─── Suggestion chips ─── */}
+      {/* ─── Quick-start card grid ─── */}
       <div style={{
-        display: 'flex',
-        gap: 8,
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        maxWidth: 560,
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+        gap: 14,
+        maxWidth: 720,
+        width: '100%',
+        position: 'relative',
+        zIndex: 1,
       }}>
-        {SUGGESTIONS.map((s) => (
-          <button
-            key={s.label}
-            onClick={() => onQuickAction(s.prompt, true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
-              borderRadius: 999,
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(255,255,255,0.03)',
-              color: '#A1A1AA',
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease-out',
-              fontFamily: 'inherit',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(212,175,55,0.10)'
-              e.currentTarget.style.borderColor = 'rgba(212,175,55,0.30)'
-              e.currentTarget.style.color = '#E4E4E7'
-              e.currentTarget.style.transform = 'translateY(-1px)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-              e.currentTarget.style.color = '#A1A1AA'
-              e.currentTarget.style.transform = 'translateY(0)'
-            }}
-          >
-            <span style={{ fontSize: 15 }}>{s.icon}</span>
-            {s.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ─── Mode pills ─── */}
-      <div style={{
-        display: 'flex',
-        gap: 6,
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-      }}>
-        {MODES.map((m) => {
-          const autoSend = !m.prompt.endsWith(' ')
+        {QUICK_CARDS.map((card, i) => {
+          const isHovered = hoveredCard === i
           return (
             <button
-              key={m.label}
-              onClick={() => onQuickAction(m.prompt, autoSend)}
+              key={card.title}
+              onClick={() => {
+                if (card.title === 'Build a Game' && onBuildGame) {
+                  onBuildGame(card.prompt)
+                } else {
+                  onQuickAction(card.prompt, card.autoSend !== false)
+                }
+              }}
+              onMouseEnter={() => setHoveredCard(i)}
+              onMouseLeave={() => setHoveredCard(null)}
               style={{
-                padding: '5px 12px',
-                borderRadius: 999,
-                border: `1px solid ${m.color}25`,
-                background: `${m.color}08`,
-                color: m.color,
-                fontSize: 12,
-                fontWeight: 600,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                gap: 10,
+                padding: '18px 20px',
+                borderRadius: 18,
+                border: `1px solid ${isHovered ? `${card.color}50` : 'rgba(255,255,255,0.06)'}`,
+                background: isHovered
+                  ? `rgba(${hexToRgb(card.color)}, 0.06)`
+                  : 'rgba(12,15,28,0.5)',
+                backdropFilter: 'blur(16px)',
                 cursor: 'pointer',
-                transition: 'all 0.15s',
+                textAlign: 'left',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                 fontFamily: 'inherit',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${m.color}18`
-                e.currentTarget.style.borderColor = `${m.color}40`
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = `${m.color}08`
-                e.currentTarget.style.borderColor = `${m.color}25`
+                transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
+                boxShadow: isHovered
+                  ? `0 12px 32px rgba(0,0,0,0.35), 0 0 20px rgba(${hexToRgb(card.color)}, 0.08), inset 0 1px 0 rgba(255,255,255,0.06)`
+                  : '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.03)',
               }}
             >
-              {m.label}
+              <div style={{
+                width: 44, height: 44, borderRadius: 12,
+                background: isHovered
+                  ? `rgba(${hexToRgb(card.color)}, 0.15)`
+                  : `rgba(${hexToRgb(card.color)}, 0.08)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.25s',
+                boxShadow: isHovered ? `0 0 16px rgba(${hexToRgb(card.color)}, 0.12)` : 'none',
+              }}>
+                {card.icon}
+              </div>
+              <div>
+                <div style={{
+                  fontSize: 14, fontWeight: 650,
+                  color: isHovered ? '#FAFAFA' : '#E4E4E7',
+                  marginBottom: 4, transition: 'color 0.2s',
+                  letterSpacing: '-0.01em',
+                }}>
+                  {card.title}
+                </div>
+                <div style={{
+                  fontSize: 12, lineHeight: 1.5,
+                  color: isHovered ? '#A1A1AA' : '#52525B',
+                  transition: 'color 0.2s',
+                }}>
+                  {card.description}
+                </div>
+              </div>
             </button>
           )
         })}
       </div>
 
       {/* ─── Hint ─── */}
-      <p style={{ fontSize: 11, color: '#3F3F46', textAlign: 'center' }}>
+      <p style={{ fontSize: 11, color: '#3F3F46', textAlign: 'center', position: 'relative', zIndex: 1 }}>
         Type below to start &middot;{' '}
         <kbd style={{
-          padding: '1px 5px', borderRadius: 4,
+          padding: '2px 6px', borderRadius: 5,
           border: '1px solid #27272A', background: '#18181B', fontSize: 10,
         }}>Ctrl+K</kbd> for commands
       </p>
     </div>
   )
+}
+
+function hexToRgb(hex: string): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  if (!result) return '212,175,55'
+  return `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}`
 }

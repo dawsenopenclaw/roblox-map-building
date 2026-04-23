@@ -1701,13 +1701,13 @@ function MessageBubbleImpl({
             /* ── Normal display mode ──────────────────────────────── */
             <div
               style={{
-                padding: '14px 20px',
+                padding: '14px 22px',
                 borderRadius: '20px 20px 6px 20px',
-                background: 'linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.06) 100%)',
-                border: '1px solid rgba(212,175,55,0.18)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                boxShadow: '0 2px 12px rgba(212,175,55,0.08), inset 0 1px 0 rgba(255,230,160,0.06)',
+                background: 'linear-gradient(135deg, rgba(212,175,55,0.10) 0%, rgba(212,175,55,0.05) 100%)',
+                border: '1px solid rgba(212,175,55,0.15)',
+                backdropFilter: 'blur(20px) saturate(1.1)',
+                WebkitBackdropFilter: 'blur(20px) saturate(1.1)',
+                boxShadow: '0 4px 16px rgba(212,175,55,0.06), 0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,230,160,0.06)',
               }}
             >
               <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.95)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontWeight: 500 }}>
@@ -1732,40 +1732,43 @@ function MessageBubbleImpl({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Avatar with pulsing glow */}
+      {/* Avatar with enhanced glow */}
       <div
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: 10,
-          background: 'linear-gradient(135deg, #D4AF37 0%, #B8962E 100%)',
+          width: 34,
+          height: 34,
+          borderRadius: 11,
+          background: 'linear-gradient(135deg, #D4AF37 0%, #C49B2F 50%, #B8962E 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
           marginTop: 2,
-          boxShadow: msg.streaming ? '0 0 12px rgba(212,175,55,0.3)' : '0 2px 8px rgba(0,0,0,0.3)',
+          boxShadow: msg.streaming
+            ? '0 0 16px rgba(212,175,55,0.35), 0 0 32px rgba(212,175,55,0.12), inset 0 1px 0 rgba(255,230,160,0.3)'
+            : '0 2px 10px rgba(0,0,0,0.3), 0 0 8px rgba(212,175,55,0.06), inset 0 1px 0 rgba(255,230,160,0.2)',
+          transition: 'box-shadow 0.3s ease',
         }}
       >
-        <svg width="14" height="14" viewBox="0 0 12 12" fill="#030712">
+        <svg width="15" height="15" viewBox="0 0 12 12" fill="#030712">
           <path d="M6 1L7.5 4.5H11L8 6.5l1 3.5L6 8l-3 2 1-3.5-3-2h3.5L6 1z"/>
         </svg>
       </div>
       <div
         style={{
           maxWidth: '85%',
-          padding: '16px 20px',
+          padding: '16px 22px',
           borderRadius: '20px 20px 20px 6px',
           background: msg.streaming
-            ? 'rgba(255,255,255,0.035)'
-            : 'rgba(255,255,255,0.03)',
+            ? 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.025) 100%)'
+            : 'linear-gradient(135deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.02) 100%)',
           border: newFlash
             ? '1px solid rgba(212,175,55,0.35)'
             : msg.streaming
               ? '1px solid rgba(255,255,255,0.06)'
               : '1px solid rgba(255,255,255,0.04)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
+          backdropFilter: 'blur(20px) saturate(1.1)',
+          WebkitBackdropFilter: 'blur(20px) saturate(1.1)',
           position: 'relative',
           overflow: 'hidden',
           animation: 'bubbleReveal 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards',
@@ -3590,8 +3593,6 @@ export function ChatPanel({
   onBuildGame,
   previewMode = false,
   onPreviewModeToggle,
-  /** When true, hides mode tabs, checkpoints, enhance, build direction —
-   *  used by SimplifiedEditor for a clean chat-first experience. */
   simplified = false,
 }: ChatPanelProps & { simplified?: boolean }) {
   const isMobile = useIsMobile()
@@ -3599,9 +3600,6 @@ export function ChatPanel({
   const taRef = externalRef ?? internalRef
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  // On mobile the textarea is allowed to grow up to 40% of viewport height;
-  // on desktop it caps at 120px. `textareaMaxHeight` is read in both the
-  // initial style and the onInput auto-grow handler.
   const [textareaMaxHeight, setTextareaMaxHeight] = useState<number>(120)
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -3612,24 +3610,15 @@ export function ChatPanel({
     window.addEventListener('resize', compute)
     return () => window.removeEventListener('resize', compute)
   }, [isMobile])
-  // AI Mode config for current mode
   const modeConfig = getModeConfig(aiMode)
-  // Creativity slider for Idea mode
   const [creativity, setCreativity] = useState(50)
-  // Style references for Image mode
   const [styleRefs, setStyleRefs] = useState<File[]>([])
-  // Style preset for Image mode (12 presets)
   const [stylePreset, setStylePreset] = useState<string | null>(null)
-  // Model selector visibility — hidden behind gear by default, shown after first message
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
-  // Extra input controls (image + voice) — hidden until user has messages or expands
-  const [inputExtrasOpen, setInputExtrasOpen] = useState(false)
-  // Scroll-to-bottom button visibility + unread badge
   const [showScrollBtn, setShowScrollBtn] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [isPulsing, setIsPulsing] = useState(false)
   const isScrolledUpRef = useRef(false)
-  // "Saved" flash indicator — visible briefly after each persistence write
   const [showSaved, setShowSaved] = useState(false)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -3643,12 +3632,10 @@ export function ChatPanel({
     }
   }, [savedAt])
 
-  // Voice: auto-submit transcript directly as a message (same UX as VoiceInputButton)
   const handleVoiceSubmit = useCallback((text: string) => {
     if (text.trim()) onSend(text.trim())
   }, [onSend])
 
-  // Image preview URL for the attached file
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   useEffect(() => {
     if (!imageFile) { setImagePreviewUrl(null); return }
@@ -3776,11 +3763,7 @@ export function ChatPanel({
     onSend,
   ])
 
-  // Once messages appear, keep extras accessible
   const hasMessages = messages.length > 0
-  useEffect(() => {
-    if (hasMessages) setInputExtrasOpen(true)
-  }, [hasMessages])
 
   const [sendPressed, setSendPressed] = useState(false)
 
@@ -3834,19 +3817,95 @@ export function ChatPanel({
   const charCountWarning = input.length > MAX_INPUT * 0.85
   const showSlashHint = input === '/'
 
-  // In simplified mode, skip GlassPanel (its overflow:hidden + blur fights
-  // the flex scroll chain). Use a plain div that participates in flex layout.
-  const Wrapper = simplified ? 'div' : GlassPanel
-  const wrapperProps = simplified
-    ? { style: { flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column' as const, position: 'relative' as const } }
-    : { padding: 'none' as const, style: { flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' as const, position: 'relative' as const } }
+  // ── Mode switcher config ──
+  const MODE_PILLS: { mode: AIMode; label: string; color: string }[] = [
+    { mode: 'build', label: 'Build', color: '#D4AF37' },
+    { mode: 'script', label: 'Script', color: '#7C3AED' },
+    { mode: 'image', label: 'Image', color: '#10B981' },
+    { mode: 'mesh', label: '3D Mesh', color: '#F59E0B' },
+    { mode: 'terrain' as AIMode, label: 'Terrain', color: '#06B6D4' },
+    { mode: 'plan', label: 'Plan', color: '#60A5FA' },
+  ]
+
+  // Placeholder text per mode
+  const modePlaceholders: Record<string, string> = {
+    build: 'Build a castle, spaceship, tycoon factory...',
+    script: 'Leaderboard, shop system, NPC dialog...',
+    image: 'Game thumbnail, icon, texture, decal...',
+    mesh: 'Sword, helmet, potion, character model...',
+    terrain: 'Island, mountain range, city landscape...',
+    plan: 'Plan a tycoon, RPG, simulator...',
+  }
 
   return (
-    <Wrapper {...wrapperProps}>
-      {/* MCP Toolbar — quick-action buttons for terrain, city, 3D */}
-      {!compact && <McpToolbar onToolClick={(prompt) => onSend(prompt)} />}
+    <div style={{ flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
 
-      {/* Messages area — hidden in compact mode */}
+      {/* ── Mode Switcher Pill Bar ── */}
+      {onAIModeChange && hasMessages && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '10px 20px',
+            borderBottom: '1px solid rgba(255,255,255,0.03)',
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            flexShrink: 0,
+            background: 'rgba(5,8,16,0.5)',
+          }}
+        >
+          {MODE_PILLS.map(({ mode, label, color }) => {
+            const active = aiMode === mode
+            return (
+              <button
+                key={mode}
+                onClick={() => onAIModeChange(mode)}
+                style={{
+                  position: 'relative',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '7px 16px',
+                  borderRadius: 20,
+                  border: active ? `1px solid ${color}30` : '1px solid transparent',
+                  background: active ? `${color}10` : 'transparent',
+                  color: active ? color : '#71717A',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease-out',
+                  fontFamily: 'Inter, sans-serif',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  boxShadow: active ? `0 0 16px ${color}10` : 'none',
+                  letterSpacing: '-0.01em',
+                }}
+                onMouseEnter={e => { if (!active) { e.currentTarget.style.color = '#A1A1AA'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' } }}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.color = '#71717A'; e.currentTarget.style.background = 'transparent' } }}
+              >
+                {label}
+                {active && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: -1,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '50%',
+                    height: 2,
+                    borderRadius: 1,
+                    background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
+                    boxShadow: `0 0 8px ${color}40`,
+                    transition: 'all 0.2s ease-out',
+                  }} />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Messages Area ── */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
@@ -3855,126 +3914,70 @@ export function ChatPanel({
           minHeight: 0,
           overflowY: 'auto',
           display: compact ? 'none' : 'block',
-          scrollbarWidth: 'thin',
-          scrollbarColor: 'rgba(255,255,255,0.06) transparent',
-          background: 'linear-gradient(180deg, rgba(8,10,22,0.4) 0%, rgba(5,8,16,0.6) 50%, rgba(8,10,22,0.4) 100%)',
+          scrollbarWidth: 'none',
           position: 'relative',
         }}
       >
-        {/* Inner wrapper: flex-column for gap spacing, flexShrink:0 so content
-            overflows the scroll container instead of being compressed by flex. */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           gap: 20,
-          padding: compact ? '0' : hasMessages ? '28px 20px' : '0',
+          padding: hasMessages ? '24px 20px' : '0',
           maxWidth: 720,
           margin: '0 auto',
           width: '100%',
           minHeight: '100%',
         }}>
-        {!hasMessages ? (
-          <EmptyState onQuickAction={(prompt) => onSend(prompt)} onBuildGame={onBuildGame} />
-        ) : (
-          // PERF: Single forward pass computes both "nearest preceding user message"
-          // and "previous assistant luau code" for every message. Previous impl did
-          // `[...messages.slice(0, idx)].reverse().find(...)` TWICE per message which
-          // is O(n²) and was allocating/copying arrays for every message on every
-          // re-render (e.g. every keystroke in the textarea).
-          renderedMessages
-        )}
+          {hasMessages ? renderedMessages : null}
 
-        {/* MCP tool result card — appears after messages when a tool completes/fails */}
-        {mcpToolResult && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
-            <McpToolCard tool={mcpToolResult} />
-          </div>
-        )}
-
-        {/* Active MCP tool indicator — shown mid-stream while AI calls a tool */}
-        {activeMcpTool && (
-          <div style={{ paddingLeft: 38 }}>
-            <McpToolIndicator toolName={activeMcpTool} />
-          </div>
-        )}
-        {/* Thinking/Reasoning indicator — shown during Think/Debug modes */}
-        {isThinking && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
-            <div style={{ maxWidth: 460, width: '100%' }}>
-              <ThinkingIndicator mode={aiMode} thinkingText={thinkingText} />
+          {mcpToolResult && (
+            <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
+              <McpToolCard tool={mcpToolResult} />
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Plan display — shown when Plan mode returns a plan for review */}
-        {planText && onApprovePlan && onEditPlan && onCancelPlan && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
-            <div style={{ maxWidth: 520, width: '100%' }}>
-              <PlanDisplay
-                planText={planText}
-                onApprove={onApprovePlan}
-                onEdit={onEditPlan}
-                onCancel={onCancelPlan}
-              />
+          {activeMcpTool && (
+            <div style={{ paddingLeft: 38 }}>
+              <McpToolIndicator toolName={activeMcpTool} />
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Suggestion chips — clickable next actions */}
-        {suggestions.length > 0 && !loading && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 4 }}>
-            {suggestions.map((s, i) => (
-              <button
-                key={i}
-                onClick={() => onSend(s)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 20,
-                  background: 'rgba(212,175,55,0.08)',
-                  border: '1px solid rgba(212,175,55,0.2)',
-                  color: 'rgba(212,175,55,0.9)',
-                  fontSize: 12,
-                  fontFamily: 'Inter, sans-serif',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease-out',
-                  whiteSpace: 'nowrap',
-                  animation: `chipGlow 3s ease-in-out ${i * 0.4}s infinite`,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(212,175,55,0.18)'
-                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.5)'
-                  e.currentTarget.style.boxShadow = '0 0 14px rgba(212,175,55,0.35), 0 0 28px rgba(212,175,55,0.15)'
-                  e.currentTarget.style.transform = 'translateY(-1px)'
-                  e.currentTarget.style.color = 'rgba(255,200,50,1)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(212,175,55,0.08)'
-                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.2)'
-                  e.currentTarget.style.boxShadow = ''
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.color = 'rgba(212,175,55,0.9)'
-                }}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-        </div>{/* end inner wrapper */}
+          {isThinking && (
+            <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
+              <div style={{ maxWidth: 460, width: '100%' }}>
+                <ThinkingIndicator mode={aiMode} thinkingText={thinkingText} />
+              </div>
+            </div>
+          )}
+
+          {planText && onApprovePlan && onEditPlan && onCancelPlan && (
+            <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
+              <div style={{ maxWidth: 520, width: '100%' }}>
+                <PlanDisplay
+                  planText={planText}
+                  onApprove={onApprovePlan}
+                  onEdit={onEditPlan}
+                  onCancel={onCancelPlan}
+                />
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      {/* Scroll-to-bottom button */}
+      {/* ── Scroll-to-bottom FAB ── */}
       {showScrollBtn && !compact && (
         <button
           onClick={scrollToBottom}
           title="Scroll to bottom"
           style={{
             position: 'absolute',
-            bottom: 80,
-            right: 16,
-            width: 30,
-            height: 30,
+            bottom: 100,
+            right: 20,
+            width: 32,
+            height: 32,
             borderRadius: '50%',
             background: '#D4AF37',
             border: 'none',
@@ -3989,39 +3992,21 @@ export function ChatPanel({
             transition: 'transform 0.15s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease',
             animation: isPulsing ? 'scrollBtnPulse 0.9s cubic-bezier(0.4,0,0.2,1)' : 'none',
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.12)'
-            e.currentTarget.style.boxShadow = '0 4px 20px rgba(212,175,55,0.65)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)'
-            e.currentTarget.style.boxShadow = '0 2px 12px rgba(212,175,55,0.45)'
-          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.12)' }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M7 2v10M2 8l5 5 5-5" stroke="#1a1400" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          {/* Unread badge */}
           {unreadCount > 0 && (
             <span style={{
-              position: 'absolute',
-              top: -6,
-              right: -6,
-              minWidth: 16,
-              height: 16,
-              borderRadius: 8,
-              background: '#FF4444',
-              border: '1.5px solid #0c1024',
-              color: '#fff',
-              fontSize: 9,
-              fontWeight: 700,
+              position: 'absolute', top: -6, right: -6,
+              minWidth: 16, height: 16, borderRadius: 8,
+              background: '#FF4444', border: '1.5px solid #0c1024',
+              color: '#fff', fontSize: 9, fontWeight: 700,
               fontFamily: 'Inter, sans-serif',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 3px',
-              lineHeight: 1,
-              pointerEvents: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '0 3px', lineHeight: 1, pointerEvents: 'none',
             }}>
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
@@ -4029,117 +4014,70 @@ export function ChatPanel({
         </button>
       )}
 
-      {/* Checkpoint panel — save/restore conversation state */}
-      {sessionId && onSaveCheckpoint && onRestoreToCheckpoint && onDeleteCheckpoint && !compact && (
-        <CheckpointPanel
-          checkpoints={checkpoints}
-          messageCount={messages.length}
-          onSave={onSaveCheckpoint}
-          onRestore={onRestoreToCheckpoint}
-          onDelete={onDeleteCheckpoint}
-          loading={loading}
-        />
-      )}
-
-      {/* Checkpoint timeline — visual dot timeline */}
-      {checkpoints.length > 0 && onRestoreToCheckpoint && onDeleteCheckpoint && !compact && !simplified && (
-        <CheckpointTimeline
-          checkpoints={checkpoints}
-          currentMessageCount={messages.length}
-          onRestore={onRestoreToCheckpoint}
-          onDelete={onDeleteCheckpoint}
-          loading={loading}
-        />
-      )}
-
-      {/* Input bar */}
+      {/* ── Input Area — ChatGPT-style bottom bar ── */}
       <div
         style={{
           flexShrink: 0,
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-          padding: '14px 20px 18px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
-          position: 'relative',
+          padding: isMobile ? '10px 12px 16px' : '12px 20px 20px',
           maxWidth: 720,
           margin: '0 auto',
           width: '100%',
-          background: 'linear-gradient(180deg, rgba(5,8,16,0.0) 0%, rgba(5,8,16,0.4) 100%)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
         }}
       >
-        {/* MCP quick-action buttons — hidden for clean UI */}
-        {false && !compact && (
-          <McpQuickActions
-            onAction={(prompt) => {
-              setInput(prompt)
-              // Focus textarea so user can complete the prompt
-              setTimeout(() => {
-                const ta = document.querySelector<HTMLTextAreaElement>('textarea')
-                ta?.focus()
-                const len = prompt.length
-                ta?.setSelectionRange(len, len)
-              }, 30)
-            }}
-          />
-        )}
-
-        {/* Tip of the day — hidden in simplified mode */}
-        {!simplified && <TipOfTheDay />}
-
-        {/* AI Mode Selector — compact version in simplified mode, full version otherwise */}
-        {simplified && onAIModeChange && hasMessages && (
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {([
-              { mode: 'build' as AIMode, icon: '🏗️', label: 'Build', color: '#D4AF37' },
-              { mode: 'plan' as AIMode, icon: '📋', label: 'Plan', color: '#60A5FA' },
-              { mode: 'script' as AIMode, icon: '📝', label: 'Script', color: '#7C3AED' },
-              { mode: 'image' as AIMode, icon: '🎨', label: 'Image', color: '#10B981' },
-              { mode: 'mesh' as AIMode, icon: '🧊', label: '3D', color: '#F59E0B' },
-            ]).map(({ mode, icon, label, color }) => (
+        {/* Suggestion pills — above input */}
+        {suggestions.length > 0 && !loading && (
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 8,
+            animation: 'msgFadeUp 0.25s ease-out forwards',
+          }}>
+            {suggestions.map((s, i) => (
               <button
-                key={mode}
-                onClick={() => onAIModeChange(mode)}
+                key={i}
+                onClick={() => onSend(s)}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 3,
-                  padding: '3px 8px',
-                  borderRadius: 6,
-                  border: `1px solid ${aiMode === mode ? `${color}55` : 'rgba(255,255,255,0.06)'}`,
-                  background: aiMode === mode ? `${color}12` : 'transparent',
-                  color: aiMode === mode ? color : '#52525B',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.12s',
+                  padding: '7px 16px',
+                  borderRadius: 20,
+                  background: 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(212,175,55,0.03) 100%)',
+                  border: '1px solid rgba(212,175,55,0.12)',
+                  color: 'rgba(212,175,55,0.9)',
+                  fontSize: 12,
+                  fontWeight: 500,
                   fontFamily: 'Inter, sans-serif',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  whiteSpace: 'nowrap',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.03)',
+                  letterSpacing: '-0.01em',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(212,175,55,0.14) 0%, rgba(212,175,55,0.08) 100%)'
+                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)'
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2), 0 0 12px rgba(212,175,55,0.08), inset 0 1px 0 rgba(255,255,255,0.05)'
+                  e.currentTarget.style.color = '#D4AF37'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(212,175,55,0.03) 100%)'
+                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.12)'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.03)'
+                  e.currentTarget.style.color = 'rgba(212,175,55,0.9)'
                 }}
               >
-                <span style={{ fontSize: 11 }}>{icon}</span>
-                {label}
+                {s}
               </button>
             ))}
           </div>
         )}
-        {!simplified && onAIModeChange && (
-          <AIModeSelector
-            activeMode={aiMode}
-            onModeChange={onAIModeChange}
-            compact={compact}
-          />
-        )}
 
-        {/* Mode-specific controls */}
-        {aiMode === 'idea' && (
-          <CreativitySlider value={creativity} onChange={setCreativity} />
-        )}
+        {/* Image mode controls */}
         {aiMode === 'image' && (
           <>
             <ImageStylePresetSelector
-              // Drive the preset selector from useChat's imageOptions when
-              // available so the chosen style actually reaches /api/ai/image
-              // (BUG 9). Falls back to local state for older callers.
               selectedStyle={
                 imageOptions && imageOptions.style !== 'auto'
                   ? imageOptions.style
@@ -4156,46 +4094,31 @@ export function ChatPanel({
                 }
               }}
             />
-            {/* Background removal + HD upscale toggles (BUG 9) */}
             {onImageOptionsChange && imageOptions && (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '4px 2px' }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  onClick={() => onImageOptionsChange({
-                    ...imageOptions,
-                    removeBackground: !imageOptions.removeBackground,
-                  })}
+                  onClick={() => onImageOptionsChange({ ...imageOptions, removeBackground: !imageOptions.removeBackground })}
                   style={{
-                    fontSize: 11,
-                    padding: '4px 10px',
-                    borderRadius: 999,
+                    fontSize: 11, padding: '4px 10px', borderRadius: 999,
                     border: `1px solid ${imageOptions.removeBackground ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
                     background: imageOptions.removeBackground ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
                     color: imageOptions.removeBackground ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
-                    cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
+                    cursor: 'pointer', fontFamily: 'Inter, sans-serif',
                   }}
-                  title="Run background removal on the generated image"
                 >
                   {imageOptions.removeBackground ? '✓ ' : ''}Remove BG
                 </button>
                 <button
                   type="button"
-                  onClick={() => onImageOptionsChange({
-                    ...imageOptions,
-                    upscale: !imageOptions.upscale,
-                  })}
+                  onClick={() => onImageOptionsChange({ ...imageOptions, upscale: !imageOptions.upscale })}
                   style={{
-                    fontSize: 11,
-                    padding: '4px 10px',
-                    borderRadius: 999,
+                    fontSize: 11, padding: '4px 10px', borderRadius: 999,
                     border: `1px solid ${imageOptions.upscale ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
                     background: imageOptions.upscale ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
                     color: imageOptions.upscale ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
-                    cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
+                    cursor: 'pointer', fontFamily: 'Inter, sans-serif',
                   }}
-                  title="Upscale the generated image to 2x resolution"
                 >
                   {imageOptions.upscale ? '✓ ' : ''}HD Upscale
                 </button>
@@ -4209,7 +4132,7 @@ export function ChatPanel({
           </>
         )}
 
-        {/* Playtest indicator — shows autonomous test progress */}
+        {/* Playtest indicator */}
         {playtestState && playtestState.result !== 'idle' && (
           <PlaytestIndicator
             running={playtestState.running}
@@ -4221,334 +4144,97 @@ export function ChatPanel({
           />
         )}
 
-        {/* Auto toggles row */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {!simplified && onAutoPlaytestToggle && studioConnected && (
-            <PlaytestToggle
-              enabled={autoPlaytestEnabled}
-              onToggle={onAutoPlaytestToggle}
-              studioConnected={studioConnected}
-            />
-          )}
-          {!simplified && onAutoEnhanceToggle && (
-            <EnhanceToggle
-              enabled={autoEnhanceEnabled}
-              onToggle={onAutoEnhanceToggle}
-            />
-          )}
-          {!simplified && onPreviewModeToggle && aiMode === 'build' && (
-            <button
-              onClick={() => onPreviewModeToggle(!previewMode)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                fontSize: 10,
-                padding: '3px 8px',
-                borderRadius: 6,
-                border: `1px solid ${previewMode ? 'rgba(168,85,247,0.35)' : 'rgba(255,255,255,0.1)'}`,
-                background: previewMode ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.03)',
-                color: previewMode ? 'rgba(168,85,247,0.9)' : 'rgba(255,255,255,0.35)',
-                cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
-                transition: 'all 0.15s',
-              }}
-              title="Show 3 concept options before building"
-            >
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="1" y="1" width="4" height="6" rx="1" />
-                <rect x="6" y="1" width="4" height="6" rx="1" />
-                <rect x="11" y="1" width="4" height="6" rx="1" />
-                <line x1="1" y1="10" x2="15" y2="10" />
-                <line x1="1" y1="13" x2="10" y2="13" />
-              </svg>
-              Preview
-            </button>
-          )}
-        </div>
-
-        {/* BUG 2: Build direction chips — hidden in simplified mode */}
-        {!simplified && onBuildDirectionChange && hasMessages && (
-          <div
-            style={{
-              display: 'flex',
-              gap: 6,
-              alignItems: 'center',
-              fontFamily: 'Inter, sans-serif',
-            }}
-            role="radiogroup"
-            aria-label="Build direction"
-          >
-            {(['continue', 'pivot', 'start-over'] as const).map((dir) => {
-              const label = dir === 'start-over' ? 'Start over' : dir.charAt(0).toUpperCase() + dir.slice(1)
-              const active = buildDirection === dir
-              return (
-                <button
-                  key={dir}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => onBuildDirectionChange(dir)}
-                  title={
-                    dir === 'continue'
-                      ? 'Refine or add to the current build (default)'
-                      : dir === 'pivot'
-                      ? 'Change direction — prepends "Change direction:" to your prompt'
-                      : 'Clear chat history and start fresh'
-                  }
-                  style={{
-                    fontSize: 11,
-                    padding: '3px 9px',
-                    borderRadius: 999,
-                    border: `1px solid ${active ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.10)'}`,
-                    background: active ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.03)',
-                    color: active ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.55)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Textarea + actions */}
+        {/* ── Main input container — cyberglass ── */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 8,
-            background: 'rgba(8,10,22,0.7)',
-            border: `1px solid ${modeConfig.id !== 'build' ? modeConfig.borderColor.replace('0.25', '0.18') : 'rgba(255,255,255,0.08)'}`,
-            borderRadius: 16,
+            gap: 0,
+            background: 'linear-gradient(135deg, rgba(12,15,28,0.75) 0%, rgba(18,22,38,0.7) 50%, rgba(12,15,28,0.75) 100%)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 22,
             padding: '12px 16px',
-            transition: 'border-color 0.2s ease-out, box-shadow 0.2s ease-out',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03), 0 -4px 24px rgba(0,0,0,0.2)',
+            transition: 'border-color 0.3s ease-out, box-shadow 0.3s ease-out',
+            backdropFilter: 'blur(24px) saturate(1.2)',
+            WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(212,175,55,0.02), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(255,255,255,0.02)',
+            position: 'relative',
+            overflow: 'hidden',
           }}
           onFocusCapture={(e) => {
-            e.currentTarget.style.borderColor = modeConfig.borderColor
-            e.currentTarget.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px ${modeConfig.bgColor}, 0 0 20px ${modeConfig.bgColor}`
+            e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)'
+            e.currentTarget.style.boxShadow = '0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.06), 0 0 60px rgba(212,175,55,0.04), inset 0 1px 0 rgba(255,230,160,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)'
           }}
           onBlurCapture={(e) => {
-            e.currentTarget.style.borderColor = modeConfig.id !== 'build' ? modeConfig.borderColor.replace('0.25', '0.12') : 'rgba(255,255,255,0.06)'
-            e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.03), 0 -4px 24px rgba(0,0,0,0.2)'
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
+            e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(212,175,55,0.02), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(255,255,255,0.02)'
           }}
         >
-          {/* Pasted image preview thumbnail */}
-          {pastedImagePreview && (
+          {/* Cyberglass shimmer overlay */}
+          <div aria-hidden style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.015) 45%, rgba(212,175,55,0.02) 50%, rgba(255,255,255,0.015) 55%, transparent 70%)',
+            pointerEvents: 'none',
+            borderRadius: 'inherit',
+          }} />
+          {/* Attached image preview */}
+          {(imagePreviewUrl || pastedImagePreview) && (
             <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '4px 0',
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '4px 0 8px',
               animation: 'msgFadeUp 0.15s ease-out forwards',
             }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={pastedImagePreview}
-                alt="Pasted image"
+                src={imagePreviewUrl || pastedImagePreview || ''}
+                alt="Attached"
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 6,
+                  width: 48, height: 48, borderRadius: 8,
                   objectFit: 'cover',
                   border: '1px solid rgba(212,175,55,0.3)',
                 }}
               />
-              <span style={{
-                fontSize: 10,
-                color: 'rgba(212,175,55,0.7)',
-                fontFamily: 'Inter, sans-serif',
-              }}>
-                Image pasted from clipboard
+              <span style={{ fontSize: 11, color: '#A1A1AA', fontFamily: 'Inter, sans-serif', flex: 1 }}>
+                {imageFile?.name || 'Pasted image'}
               </span>
-            </div>
-          )}
-
-          {/* Textarea row */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-
-          {/* + button — expands image/voice extras. Always visible; extras toggle on click */}
-          <button
-            onClick={() => setInputExtrasOpen((v) => !v)}
-            title={inputExtrasOpen ? 'Hide extras' : 'Attach image or use voice'}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 9,
-              border: inputExtrasOpen ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.07)',
-              background: inputExtrasOpen ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.03)',
-              color: inputExtrasOpen ? '#D4AF37' : 'rgba(255,255,255,0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              flexShrink: 0,
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              if (!inputExtrasOpen) e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
-            }}
-            onMouseLeave={(e) => {
-              if (!inputExtrasOpen) e.currentTarget.style.color = 'rgba(255,255,255,0.3)'
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d={inputExtrasOpen ? 'M2 6h8' : 'M6 2v8M2 6h8'} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-            </svg>
-          </button>
-
-          {/* AI quick actions — shown when extras open in simplified mode */}
-          {simplified && inputExtrasOpen && (
-            <div style={{
-              display: 'flex',
-              gap: 4,
-              flexWrap: 'wrap',
-              animation: 'msgFadeUp 0.15s ease-out forwards',
-            }}>
-              {/* AI Modes */}
-              {[
-                { mode: 'build' as const, icon: '🏗️', label: 'Build', color: '#D4AF37', prompt: '' },
-                { mode: 'plan' as const, icon: '📋', label: 'Plan', color: '#60A5FA', prompt: '' },
-                { mode: 'script' as const, icon: '📝', label: 'Script', color: '#7C3AED', prompt: '' },
-                { mode: 'image' as const, icon: '🎨', label: 'Image', color: '#10B981', prompt: '' },
-                { mode: 'mesh' as const, icon: '🧊', label: '3D', color: '#F59E0B', prompt: '' },
-                { mode: 'think' as const, icon: '🧠', label: 'Think', color: '#EC4899', prompt: '' },
-              ].map(({ mode, icon, label, color }) => (
+              {imageFile && (
                 <button
-                  key={mode}
-                  onClick={() => { if (onAIModeChange) onAIModeChange(mode) }}
-                  title={`Switch to ${label} mode`}
+                  onClick={() => onImageFile?.(null)}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 3,
-                    padding: '4px 8px',
-                    borderRadius: 7,
-                    border: `1px solid ${aiMode === mode ? `${color}55` : 'rgba(255,255,255,0.06)'}`,
-                    background: aiMode === mode ? `${color}15` : 'rgba(255,255,255,0.02)',
-                    color: aiMode === mode ? color : '#71717A',
-                    fontSize: 10,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    fontFamily: 'Inter, sans-serif',
-                    flexShrink: 0,
+                    width: 20, height: 20, borderRadius: '50%',
+                    border: '1px solid rgba(239,68,68,0.3)',
+                    background: 'rgba(239,68,68,0.1)',
+                    color: '#F87171',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', flexShrink: 0,
                   }}
                 >
-                  <span style={{ fontSize: 11 }}>{icon}</span>
-                  {label}
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                    <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
                 </button>
-              ))}
-
-              {/* Separator */}
-              <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.06)', margin: '0 2px', flexShrink: 0 }} />
-
-              {/* Quick prompts — one-click actions that send pre-filled prompts */}
-              {[
-                { icon: '📍', label: 'Spawn Area', prompt: 'Build a spawn area with a lobby, teleporters, and a welcome sign' },
-                { icon: '🎯', label: 'Cursor Place', prompt: 'Place a new object exactly where my camera is looking in Studio' },
-                { icon: '✨', label: 'Enhance', prompt: 'Enhance what I just built — add more detail, better materials, lighting, and polish' },
-                { icon: '🌍', label: 'Terrain', prompt: 'Generate natural terrain with hills, water, trees, and a path system' },
-                { icon: '💡', label: 'Lighting', prompt: 'Add atmospheric lighting — ambient light, point lights, fog, and a skybox' },
-                { icon: '🎮', label: 'Game Loop', prompt: '/plan Design a complete gameplay loop with currency, upgrades, and progression' },
-                { icon: '🏪', label: 'Shop', prompt: 'Build an in-game shop with 6 items, a purchase system, and UI' },
-                { icon: '🧹', label: 'Clean Up', prompt: 'Clean up my workspace — organize parts into folders, remove duplicates, anchor everything' },
-                { icon: '🐛', label: 'Debug', prompt: '/think Look at my current build and find any bugs, missing parts, or things that could break' },
-                { icon: '🔊', label: 'Sounds', prompt: 'Add ambient sounds — background music, footstep sounds, and UI click sounds' },
-              ].map(({ icon, label, prompt }) => (
-                <button
-                  key={label}
-                  onClick={() => {
-                    onSend(prompt)
-                    setInputExtrasOpen(false)
-                  }}
-                  title={prompt}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 3,
-                    padding: '4px 8px',
-                    borderRadius: 7,
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    background: 'rgba(255,255,255,0.02)',
-                    color: '#A1A1AA',
-                    fontSize: 10,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    fontFamily: 'Inter, sans-serif',
-                    flexShrink: 0,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)'
-                    e.currentTarget.style.color = '#D4AF37'
-                    e.currentTarget.style.background = 'rgba(212,175,55,0.06)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
-                    e.currentTarget.style.color = '#A1A1AA'
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
-                  }}
-                >
-                  <span style={{ fontSize: 11 }}>{icon}</span>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Image upload — only shown when extras open */}
-          {inputExtrasOpen && (
-            <label
-              title={imageFile ? `Image attached: ${imageFile.name} (click to change)` : 'Attach image for Image-to-Map'}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 9,
-                border: imageFile ? '1px solid rgba(212,175,55,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                background: imageFile ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.03)',
-                color: imageFile ? '#D4AF37' : 'rgba(255,255,255,0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                flexShrink: 0,
-                transition: 'all 0.15s',
-                animation: 'msgFadeUp 0.15s ease-out forwards',
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-              onMouseEnter={(e) => {
-                if (!loading && !imageFile) {
-                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'
-                  e.currentTarget.style.color = '#D4AF37'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!imageFile) {
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-                  e.currentTarget.style.color = 'rgba(255,255,255,0.4)'
-                }
-              }}
-            >
-              {imagePreviewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imagePreviewUrl}
-                  alt="Attached"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
-                />
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <rect x="1" y="2" width="12" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
-                  <circle cx="4.5" cy="5.5" r="1.25" stroke="currentColor" strokeWidth="1.1"/>
-                  <path d="M1.5 10l3-3.5 2.5 2.5 2-1.5L13 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
               )}
+            </div>
+          )}
+
+          {/* Input row: attach + textarea + voice + send */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+            {/* Attach image (paperclip) */}
+            <label
+              title="Attach image"
+              style={{
+                width: 36, height: 36, borderRadius: 10,
+                border: 'none', background: 'rgba(255,255,255,0.04)',
+                color: '#52525B', cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#A1A1AA' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#52525B' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+              </svg>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif"
@@ -4558,274 +4244,146 @@ export function ChatPanel({
                   const file = e.target.files?.[0]
                   if (!file) return
                   onImageFile?.(file)
-                  if (!input.trim()) {
-                    setInput('Build a Roblox map based on this image')
-                  }
+                  if (!input.trim()) setInput('Build a Roblox map based on this image')
                   e.target.value = ''
                 }}
               />
             </label>
-          )}
 
-          {/* Remove image button — shown when an image is attached */}
-          {inputExtrasOpen && imageFile && (
-            <button
-              onClick={() => onImageFile?.(null)}
-              title="Remove attached image"
+            {/* Textarea */}
+            <textarea
+              ref={taRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={imageFile
+                ? `Describe what to build from "${imageFile.name}"...`
+                : `Message Forje... ${modePlaceholders[aiMode] || ''}`
+              }
+              rows={1}
+              disabled={loading}
+              data-no-palette="true"
               style={{
-                width: 18,
-                height: 18,
-                borderRadius: '50%',
-                border: '1px solid rgba(239,68,68,0.4)',
-                background: 'rgba(239,68,68,0.12)',
-                color: '#F87171',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                resize: 'none',
+                padding: '8px 0',
+                color: '#FAFAFA',
+                fontSize: isMobile ? 16 : 15,
+                fontFamily: 'inherit',
+                lineHeight: 1.5,
+                fontWeight: 400,
+                maxHeight: textareaMaxHeight,
+                overflowY: 'auto',
+                opacity: loading ? 0.5 : 1,
+                minHeight: isMobile ? 44 : undefined,
+              }}
+              onInput={(e) => {
+                const el = e.currentTarget
+                el.style.height = 'auto'
+                el.style.height = `${Math.min(el.scrollHeight, textareaMaxHeight)}px`
+              }}
+            />
+
+            {/* Voice input */}
+            <div style={{ flexShrink: 0 }}>
+              <VoiceInputButton onSubmit={handleVoiceSubmit} disabled={loading} />
+            </div>
+
+            {/* Send button */}
+            <button
+              onClick={handleSend}
+              disabled={(!input.trim() && !imageFile) || loading}
+              aria-label="Send message"
+              style={{
+                width: 38, height: 38, borderRadius: 12,
+                border: 'none',
+                background: (input.trim() || imageFile) && !loading
+                  ? 'linear-gradient(135deg, #D4AF37 0%, #C49B2F 100%)'
+                  : 'rgba(255,255,255,0.04)',
+                color: (input.trim() || imageFile) && !loading
+                  ? '#09090b' : '#3F3F46',
+                cursor: (input.trim() || imageFile) && !loading
+                  ? 'pointer' : 'default',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
-                marginLeft: -6,
-                marginBottom: 14,
-                zIndex: 1,
-                transition: 'all 0.15s',
-                animation: 'msgFadeUp 0.15s ease-out forwards',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: sendPressed ? 'scale(0.88)' : 'scale(1)',
+                boxShadow: (input.trim() || imageFile) && !loading
+                  ? '0 0 20px rgba(212,175,55,0.25), 0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,230,160,0.3)'
+                  : 'none',
               }}
             >
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
+              {loading ? (
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ animation: 'spin 0.8s linear infinite' }}>
+                  <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.8" strokeDasharray="8 8"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5" />
+                  <polyline points="5 12 12 5 19 12" />
+                </svg>
+              )}
             </button>
-          )}
-
-          {/* Voice button — uses VoiceInputButton for waveform + transcript overlay */}
-          {inputExtrasOpen && (
-            <div style={{ animation: 'msgFadeUp 0.15s ease-out forwards', flexShrink: 0 }}>
-              <VoiceInputButton
-                onSubmit={handleVoiceSubmit}
-                disabled={loading}
-              />
-            </div>
-          )}
-
-          <textarea
-            ref={taRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            placeholder={imageFile
-              ? `Describe what to build from "${imageFile.name}"...`
-              : simplified
-                ? aiMode === 'build' ? 'Add a tree, make it bigger, change the color...'
-                : aiMode === 'script' ? 'Add a leaderboard, make doors open, currency system...'
-                : aiMode === 'image' ? 'Game thumbnail, icon, texture...'
-                : aiMode === 'mesh' ? 'Sword, helmet, potion bottle...'
-                : aiMode === 'plan' ? 'Plan a tycoon game, RPG, simulator...'
-                : 'Type anything...'
-              : modeConfig.placeholder}
-            rows={1}
-            disabled={loading}
-            data-no-palette="true"
-            style={{
-              flex: 1,
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              resize: 'none',
-              color: 'rgba(255,255,255,0.85)',
-              // 16px on mobile to prevent iOS Safari from auto-zooming on focus
-              fontSize: isMobile ? 16 : 14,
-              fontFamily: 'Inter, sans-serif',
-              lineHeight: 1.5,
-              maxHeight: textareaMaxHeight,
-              overflowY: 'auto',
-              opacity: loading ? 0.5 : 1,
-              // Larger minimum tap area on mobile for accessibility
-              minHeight: isMobile ? 44 : undefined,
-            }}
-            onInput={(e) => {
-              const el = e.currentTarget
-              el.style.height = 'auto'
-              el.style.height = `${Math.min(el.scrollHeight, textareaMaxHeight)}px`
-            }}
-          />
-
-          {/* Send button — enabled when there's text OR an image attached */}
-          <button
-            onClick={handleSend}
-            disabled={(!input.trim() && !imageFile) || loading}
-            aria-label="Send message"
-            style={{
-              width: isMobile ? 44 : 36,
-              height: isMobile ? 44 : 36,
-              minWidth: isMobile ? 44 : 36,
-              minHeight: isMobile ? 44 : 36,
-              borderRadius: isMobile ? 12 : 10,
-              border: 'none',
-              background:
-                (!input.trim() && !imageFile) || loading
-                  ? 'rgba(255,255,255,0.04)'
-                  : `linear-gradient(135deg, ${modeConfig.color} 0%, ${modeConfig.color} 100%)`,
-              color: (!input.trim() && !imageFile) || loading ? 'rgba(255,255,255,0.15)' : '#030712',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: (!input.trim() && !imageFile) || loading ? 'not-allowed' : 'pointer',
-              flexShrink: 0,
-              boxShadow: (!input.trim() && !imageFile) || loading ? 'none' : `0 0 16px ${modeConfig.bgColor.replace('0.08', '0.35')}, inset 0 1px 0 rgba(255,230,160,0.25)`,
-              transition: 'all 0.15s ease-out',
-              transform: sendPressed ? 'scale(0.9)' : 'scale(1)',
-            }}
-          >
-            {loading ? (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ animation: 'spin 0.8s linear infinite' }}>
-                <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.8" strokeDasharray="8 8"/>
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M12 7L2 7M9 4l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            )}
-          </button>
           </div>
 
-          {/* Bottom row: gear (model) + hints + char count */}
+          {/* Bottom info row */}
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderTop: '1px solid rgba(255,255,255,0.04)',
-            paddingTop: 6,
-            flexWrap: isMobile ? 'wrap' : 'nowrap',
-            gap: isMobile ? 6 : 0,
-            rowGap: isMobile ? 4 : 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            paddingTop: 6, marginTop: 2,
           }}>
-            {/* Left: gear icon opens model selector inline */}
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button
-                onClick={() => setModelSelectorOpen((v) => !v)}
-                title="Model settings"
-                aria-label="Model settings"
-                style={{
-                  width: isMobile ? 44 : 24,
-                  height: isMobile ? 44 : 24,
-                  minWidth: isMobile ? 44 : 24,
-                  minHeight: isMobile ? 44 : 24,
-                  borderRadius: isMobile ? 10 : 6,
-                  border: modelSelectorOpen ? '1px solid rgba(212,175,55,0.35)' : '1px solid rgba(255,255,255,0.07)',
-                  background: modelSelectorOpen ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
-                  color: modelSelectorOpen ? '#D4AF37' : 'rgba(255,255,255,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  flexShrink: 0,
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 18 18" fill="none">
-                  <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
-                  <path d="M9 2v2M9 14v2M2 9h2M14 9h2M4.2 4.2l1.4 1.4M12.4 12.4l1.4 1.4M4.2 13.8l1.4-1.4M12.4 5.6l1.4-1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
-              </button>
-              {modelSelectorOpen && (
-                <div style={{ animation: 'msgFadeUp 0.15s ease-out forwards' }}>
-                  <ModelSelector selected={selectedModel} onChange={(id) => { setSelectedModel(id); setModelSelectorOpen(false) }} />
-                </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {/* Saved indicator */}
+              <span style={{
+                fontSize: 10, color: 'rgba(74,222,128,0.55)', fontFamily: 'Inter, sans-serif',
+                opacity: showSaved ? 1 : 0, transition: 'opacity 0.35s ease',
+                pointerEvents: 'none',
+              }}>Saved</span>
+              {/* Mode indicator */}
+              {aiMode !== 'build' && (
+                <span style={{
+                  fontSize: 10, color: modeConfig.color,
+                  fontFamily: 'Inter, sans-serif', opacity: 0.7,
+                }}>
+                  {modeConfig.label} mode
+                </span>
               )}
             </div>
-
-            {/* Right: saved indicator + hints + char count */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              flexWrap: isMobile ? 'wrap' : 'nowrap',
-              justifyContent: 'flex-end',
-              minWidth: 0,
-            }}>
-              {/* "Saved" flash — appears briefly after messages are persisted */}
-              <span
-                style={{
-                  fontSize: 10,
-                  color: 'rgba(74,222,128,0.55)',
-                  fontFamily: 'Inter, sans-serif',
-                  opacity: showSaved ? 1 : 0,
-                  transition: 'opacity 0.35s ease',
-                  pointerEvents: 'none',
-                  userSelect: 'none',
-                }}
-                aria-hidden="true"
-              >
-                Saved
-              </span>
-              {/* Session token counter — visible reminder of usage */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {totalTokens > 0 && (
                 <span style={{
                   fontSize: 10,
-                  color: totalTokens > 800 ? 'rgba(239,68,68,0.7)' : totalTokens > 400 ? 'rgba(245,158,11,0.6)' : 'rgba(255,255,255,0.3)',
+                  color: totalTokens > 800 ? 'rgba(239,68,68,0.7)' : totalTokens > 400 ? 'rgba(245,158,11,0.6)' : 'rgba(255,255,255,0.25)',
                   fontFamily: "'JetBrains Mono', monospace",
                   fontVariantNumeric: 'tabular-nums',
                 }}>
-                  ⚡ {totalTokens.toLocaleString()} tokens
+                  {totalTokens.toLocaleString()} tokens
                 </span>
               )}
-              {/* Estimated cost */}
-              {input.trim().length > 20 && (
-                <span style={{
-                  fontSize: 10,
-                  color: 'rgba(212,175,55,0.5)',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontVariantNumeric: 'tabular-nums',
-                }}>
-                  ~{Math.max(1, Math.ceil(input.split(/\s+/).length * 1.3 * 0.01 * 100) / 100).toFixed(2)}¢
-                </span>
-              )}
-              {/* Slash command hint */}
-              {showSlashHint && (
-                <span style={{
-                  fontSize: 10,
-                  color: 'rgba(139,92,246,0.8)',
-                  fontFamily: 'Inter, sans-serif',
-                  animation: 'msgFadeUp 0.15s ease-out forwards',
-                  whiteSpace: isMobile ? 'normal' : 'nowrap',
-                  lineHeight: 1.4,
-                  maxWidth: isMobile ? '100%' : undefined,
-                  wordBreak: 'break-word',
-                }}>
-                  /build · /script · /terrain · /think · /plan · /debug
-                </span>
-              )}
-              {/* Active mode indicator (when not build) */}
-              {aiMode !== 'build' && !showCharCount && !showSlashHint && (
-                <span style={{
-                  fontSize: 10,
-                  color: modeConfig.color,
-                  fontFamily: 'Inter, sans-serif',
-                  opacity: 0.6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}>
-                  <span style={{ display: 'flex', alignItems: 'center', transform: 'scale(0.75)' }}>{modeConfig.icon}</span>
-                  {modeConfig.label} mode
-                  {modeConfig.creditMultiplier > 1 && <span style={{ opacity: 0.6 }}>· {modeConfig.creditMultiplier}x credits</span>}
-                </span>
-              )}
-              {/* Char count — appears when typing */}
               {showCharCount && (
                 <span style={{
                   fontSize: 10,
-                  color: charCountWarning ? 'rgba(249,115,22,0.8)' : 'rgba(255,255,255,0.18)',
+                  color: charCountWarning ? 'rgba(249,115,22,0.8)' : 'rgba(255,255,255,0.15)',
                   fontFamily: 'Inter, sans-serif',
                   fontVariantNumeric: 'tabular-nums',
-                  transition: 'color 0.2s',
                 }}>
                   {input.length} / {MAX_INPUT}
                 </span>
               )}
+              {showSlashHint && (
+                <span style={{
+                  fontSize: 10, color: 'rgba(139,92,246,0.8)',
+                  fontFamily: 'Inter, sans-serif',
+                  animation: 'msgFadeUp 0.15s ease-out forwards',
+                }}>
+                  /build · /script · /terrain · /think · /plan
+                </span>
+              )}
               {!showCharCount && !showSlashHint && (
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.15)', fontFamily: 'Inter, sans-serif' }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.12)', fontFamily: 'Inter, sans-serif' }}>
                   Enter to send
                 </span>
               )}
@@ -4840,6 +4398,6 @@ export function ChatPanel({
           to   { transform: rotate(360deg); }
         }
       `}</style>
-    </Wrapper>
+    </div>
   )
 }

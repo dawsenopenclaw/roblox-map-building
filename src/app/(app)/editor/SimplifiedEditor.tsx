@@ -3,11 +3,13 @@
 /**
  * SimplifiedEditor — chat-first Roblox AI builder.
  *
- * Replaces the 4,344-line NewEditorClient with a clean layout:
- *   TopBar  →  WelcomeHero (empty state) / Messages (active chat)  →  ChatInput
+ * Layout:
+ *   TopBar (48px)
+ *   ├─ Mode Switcher (pill bar — inside ChatPanel when messages exist)
+ *   ├─ Main area: WelcomeHero (empty) or ChatPanel (active)
+ *   └─ Right Sidebar (AI Context — when Studio connected)
  *
- * All the heavy lifting (messaging, streaming, slash commands, BYOK, Studio
- * sync, persistence) stays in the existing hooks — this file is pure layout.
+ * All heavy lifting stays in hooks — this file is pure layout.
  */
 
 import React, { useState, useCallback, useEffect } from 'react'
@@ -31,6 +33,217 @@ import { FirstBuildModal } from '@/components/editor/FirstBuildModal'
 import { PostBuildShare } from '@/components/editor/PostBuildShare'
 import { UpgradeNudge } from '@/components/editor/UpgradeNudge'
 
+// ─── Right Sidebar — AI Context Panel ────────────────────────────────────
+
+function RightSidebar({
+  studioContext,
+  open,
+  onToggle,
+  isMobile,
+}: {
+  studioContext: { cameraPosition?: string; selectedObjects?: string[]; sceneTree?: string; scripts?: { name: string; source?: string }[]; partCount?: number; modelCount?: number } | null
+  open: boolean
+  onToggle: () => void
+  isMobile: boolean
+}) {
+  if (isMobile && !open) return null
+
+  return (
+    <>
+      {/* Toggle button on the edge */}
+      <button
+        onClick={onToggle}
+        style={{
+          position: 'absolute',
+          right: open ? (isMobile ? 'auto' : 320) : 0,
+          left: isMobile && open ? 0 : 'auto',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 20,
+          height: 48,
+          borderRadius: open ? '6px 0 0 6px' : '0 6px 6px 0',
+          background: 'rgba(15,18,30,0.9)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRight: open ? '1px solid rgba(255,255,255,0.06)' : 'none',
+          borderLeft: open ? 'none' : '1px solid rgba(255,255,255,0.06)',
+          color: '#52525B',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 15,
+          transition: 'all 0.2s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = '#A1A1AA'}
+        onMouseLeave={e => e.currentTarget.style.color = '#52525B'}
+      >
+        <svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <path d={open ? 'M6 1l-5 5 5 5' : 'M2 1l5 5-5 5'} />
+        </svg>
+      </button>
+
+      {/* Sidebar panel */}
+      {open && (
+        <div
+          style={{
+            width: isMobile ? '100%' : 320,
+            height: isMobile ? '100%' : 'auto',
+            position: isMobile ? 'fixed' : 'relative',
+            top: isMobile ? 0 : 'auto',
+            right: isMobile ? 0 : 'auto',
+            zIndex: isMobile ? 50 : 1,
+            flexShrink: 0,
+            borderLeft: isMobile ? 'none' : '1px solid rgba(255,255,255,0.05)',
+            background: isMobile ? 'rgba(5,8,16,0.98)' : 'rgba(8,10,22,0.6)',
+            backdropFilter: 'blur(20px)',
+            overflowY: 'auto',
+            scrollbarWidth: 'none',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            animation: 'sidebarSlideIn 0.2s ease-out',
+          }}
+        >
+          {/* Mobile close button */}
+          {isMobile && (
+            <button
+              onClick={onToggle}
+              style={{
+                alignSelf: 'flex-end',
+                width: 32, height: 32, borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.04)',
+                color: '#71717A', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+
+          <h3 style={{
+            fontSize: 12, fontWeight: 700, color: '#D4AF37',
+            letterSpacing: '0.05em', textTransform: 'uppercase',
+            margin: 0,
+          }}>
+            AI Context
+          </h3>
+
+          {studioContext ? (
+            <>
+              {/* Camera position */}
+              {studioContext.cameraPosition && (
+                <SidebarSection title="Camera" value={studioContext.cameraPosition} />
+              )}
+
+              {/* Selected objects */}
+              {studioContext.selectedObjects && studioContext.selectedObjects.length > 0 && (
+                <SidebarSection title="Selected">
+                  {studioContext.selectedObjects.map((obj, i) => (
+                    <div key={i} style={{
+                      fontSize: 11, color: '#A1A1AA', padding: '2px 0',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}>
+                      {obj}
+                    </div>
+                  ))}
+                </SidebarSection>
+              )}
+
+              {/* Stats */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {studioContext.partCount !== undefined && (
+                  <StatBadge label="Parts" value={studioContext.partCount} />
+                )}
+                {studioContext.modelCount !== undefined && (
+                  <StatBadge label="Models" value={studioContext.modelCount} />
+                )}
+              </div>
+
+              {/* Scripts */}
+              {studioContext.scripts && studioContext.scripts.length > 0 && (
+                <SidebarSection title={`Scripts (${studioContext.scripts.length})`}>
+                  {studioContext.scripts.slice(0, 10).map((script, i) => (
+                    <div key={i} style={{
+                      fontSize: 11, color: '#71717A',
+                      padding: '3px 6px', marginBottom: 2,
+                      borderRadius: 4, background: 'rgba(255,255,255,0.02)',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}>
+                      {script.name}
+                    </div>
+                  ))}
+                </SidebarSection>
+              )}
+            </>
+          ) : (
+            <p style={{
+              fontSize: 12, color: '#3F3F46', lineHeight: 1.6,
+              margin: 0,
+            }}>
+              Connect Roblox Studio to see your scene context here — camera position, selected objects, scripts, and part counts.
+            </p>
+          )}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes sidebarSlideIn {
+          from { opacity: 0; transform: translateX(20px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
+    </>
+  )
+}
+
+function SidebarSection({ title, value, children }: { title: string; value?: string; children?: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{
+        fontSize: 10, fontWeight: 600, color: '#52525B',
+        letterSpacing: '0.04em', textTransform: 'uppercase',
+        marginBottom: 4,
+      }}>
+        {title}
+      </div>
+      {value && (
+        <div style={{
+          fontSize: 11, color: '#A1A1AA',
+          fontFamily: "'JetBrains Mono', monospace",
+        }}>
+          {value}
+        </div>
+      )}
+      {children}
+    </div>
+  )
+}
+
+function StatBadge({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{
+      flex: 1,
+      padding: '8px 10px',
+      borderRadius: 8,
+      background: 'rgba(255,255,255,0.03)',
+      border: '1px solid rgba(255,255,255,0.05)',
+      textAlign: 'center',
+    }}>
+      <div style={{
+        fontSize: 16, fontWeight: 700, color: '#FAFAFA',
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {value.toLocaleString()}
+      </div>
+      <div style={{ fontSize: 10, color: '#52525B', marginTop: 2 }}>{label}</div>
+    </div>
+  )
+}
+
 // ─── Inner component (needs toast + theme providers above) ────────────────
 
 function EditorInner() {
@@ -48,11 +261,19 @@ function EditorInner() {
   const [buildJustSucceeded, setBuildJustSucceeded] = useState(false)
   const [showShareBar, setShowShareBar] = useState(false)
   const [lastBuildPrompt, setLastBuildPrompt] = useState('')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
-  // ── Studio connection — auto-generate pairing code on mount ──
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // ── Studio connection ──
   const studio = useStudioConnection()
 
-  // Auto-start Studio connect flow so the pairing code is ready in the top bar
   React.useEffect(() => {
     if (isSignedIn && !studio.isConnected && studio.connectFlow === 'idle') {
       studio.generateCode()
@@ -60,7 +281,14 @@ function EditorInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn, studio.isConnected, studio.connectFlow])
 
-  // ── Chat hook — the core of everything ──
+  // Auto-show sidebar when Studio connects (desktop only)
+  useEffect(() => {
+    if (studio.isConnected && !isMobile) {
+      setSidebarOpen(true)
+    }
+  }, [studio.isConnected, isMobile])
+
+  // ── Chat hook ──
   const chat = useChat({
     studioSessionId: studio.sessionId,
     studioConnected: studio.isConnected,
@@ -75,48 +303,38 @@ function EditorInner() {
             body: JSON.stringify({ code: luauCode, prompt, sessionId }),
           })
           studio.addActivity(`Build sent: ${prompt.slice(0, 60)}`)
-          // Refresh the usage meter so the count updates immediately
           mutate('/api/usage/daily')
-          // Signal that a build just succeeded -- FirstBuildModal picks this up
           setBuildJustSucceeded(true)
-          // Show post-build share bar
           setLastBuildPrompt(prompt)
           setShowShareBar(true)
-          // Check for newly earned achievements (fire-and-forget)
           fetch('/api/gamification/achievements/check', { method: 'POST' }).catch(() => {})
-          // Bump build streak (fire-and-forget)
           fetch('/api/gamification/streak', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'build' }),
           }).catch(() => {})
         } catch {
-          // Non-fatal — chat already shows the code
+          // Non-fatal
         }
       },
       [studio, mutate],
     ),
   })
 
-  // ── Onboarding overlay — auto-show on first visit ──
+  // ── Onboarding ──
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingOverlay({
     hasMessages: chat.messages.length > 0,
   })
 
-  // ── Auto-clear chat on ?new=1 and auto-send ?prompt= from onboarding ──
+  // ── Auto-clear chat on ?new=1 and auto-send ?prompt= ──
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search)
-      if (params.has('new')) {
-        chat.newChat()
-      }
-      // Auto-send the prompt passed from the onboarding wizard
+      if (params.has('new')) chat.newChat()
       const promptParam = params.get('prompt')
       if (promptParam && promptParam.trim()) {
-        // Small delay so the chat hook is fully initialised
         setTimeout(() => chat.sendMessage(promptParam.trim()), 300)
       }
-      // Clean URL params so refresh doesn't re-trigger
       if (params.has('new') || params.has('prompt')) {
         const url = new URL(window.location.href)
         url.searchParams.delete('new')
@@ -129,7 +347,6 @@ function EditorInner() {
 
   // ── Load session list for drawer ──
   useEffect(() => {
-    // Use the merged cloud + local session list so history syncs across devices
     const merged = chat.listSessions()
     if (merged.length > 0) {
       setSessions(merged)
@@ -149,13 +366,12 @@ function EditorInner() {
     newChat: () => chat.newChat(),
   })
 
-  // ── Quick action handler from WelcomeHero cards ──
+  // ── Quick action handler ──
   const handleQuickAction = useCallback(
     (prompt: string, autoSend: boolean) => {
       if (autoSend) {
         chat.sendMessage(prompt)
       } else {
-        // Focus input with pre-filled text (user completes the prompt)
         chat.setInput(prompt)
         chat.textareaRef?.current?.focus()
       }
@@ -163,11 +379,10 @@ function EditorInner() {
     [chat],
   )
 
-  // ── Send to Studio handler for mesh/asset results in chat ──
+  // ── Send to Studio handler ──
   const handleSendToStudio = useCallback(
     (luauCode: string) => {
       if (!studio.sessionId || !studio.isConnected) {
-        // Pre-flight: open publish panel so user can connect
         toast('Studio not connected — open the Publish panel to pair', 'warning')
         setPublishOpen(true)
         return
@@ -200,12 +415,77 @@ function EditorInner() {
         background: 'linear-gradient(180deg, #050810 0%, #070B1A 50%, #050810 100%)',
         color: '#FAFAFA',
         fontFamily: 'var(--font-inter, Inter, sans-serif)',
+        position: 'relative',
       }}
     >
-      {/* Upgrade nudge — shows when free user is at 80%+ daily limit */}
+      {/* ── Floating background orbs — visible everywhere ── */}
+      <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+        <div style={{
+          position: 'absolute', top: '8%', left: '5%',
+          width: 220, height: 220, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(212,175,55,0.06) 0%, rgba(212,175,55,0.015) 50%, transparent 70%)',
+          filter: 'blur(45px)',
+          animation: 'editorOrbDrift1 28s ease-in-out infinite, editorOrbPulse 9s ease-in-out infinite',
+        }} />
+        <div style={{
+          position: 'absolute', top: '3%', right: '10%',
+          width: 280, height: 280, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(96,165,250,0.04) 0%, rgba(96,165,250,0.01) 50%, transparent 70%)',
+          filter: 'blur(55px)',
+          animation: 'editorOrbDrift2 35s ease-in-out infinite, editorOrbPulse 11s ease-in-out 3s infinite',
+        }} />
+        <div style={{
+          position: 'absolute', top: '45%', left: '40%',
+          width: 200, height: 200, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(124,58,237,0.035) 0%, transparent 60%)',
+          filter: 'blur(50px)',
+          animation: 'editorOrbDrift3 22s ease-in-out infinite, editorOrbPulse 8s ease-in-out 1.5s infinite',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: '12%', right: '18%',
+          width: 260, height: 260, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(212,175,55,0.05) 0%, rgba(212,175,55,0.01) 50%, transparent 70%)',
+          filter: 'blur(50px)',
+          animation: 'editorOrbDrift1 32s ease-in-out infinite reverse, editorOrbPulse 10s ease-in-out 5s infinite',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: '8%', left: '12%',
+          width: 180, height: 180, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(6,182,212,0.035) 0%, transparent 60%)',
+          filter: 'blur(40px)',
+          animation: 'editorOrbDrift2 26s ease-in-out infinite reverse, editorOrbPulse 7s ease-in-out 2s infinite',
+        }} />
+      </div>
+      <style>{`
+        @keyframes editorOrbDrift1 {
+          0%   { transform: translate(0, 0) scale(1); }
+          25%  { transform: translate(90px, -45px) scale(1.08); }
+          50%  { transform: translate(170px, 25px) scale(0.94); }
+          75%  { transform: translate(65px, 65px) scale(1.05); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes editorOrbDrift2 {
+          0%   { transform: translate(0, 0) scale(1); }
+          25%  { transform: translate(-70px, 55px) scale(1.06); }
+          50%  { transform: translate(-140px, -25px) scale(0.93); }
+          75%  { transform: translate(-45px, -55px) scale(1.03); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes editorOrbDrift3 {
+          0%   { transform: translate(0, 0) scale(1); }
+          33%  { transform: translate(110px, 55px) scale(1.07); }
+          66%  { transform: translate(-55px, -35px) scale(0.95); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes editorOrbPulse {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 0.8; }
+        }
+      `}</style>
+
       <UpgradeNudge />
 
-      {/* Top bar */}
+      {/* Top bar — slim 48px */}
       <EditorTopBar
         onOpenDrawer={() => setDrawerOpen(true)}
         onOpenApiKeys={() => setApiKeysOpen(true)}
@@ -220,78 +500,199 @@ function EditorInner() {
         }}
         connectCode={studio.connectCode}
         onOpenPublish={() => setPublishOpen(true)}
+        selectedModel={chat.selectedModel}
+        onModelChange={chat.setSelectedModel}
       />
 
-      {/* Main content — either welcome hero OR chat messages */}
-      {!hasMessages ? (
-        <WelcomeHero
-          visible={!hasMessages}
-          onQuickAction={handleQuickAction}
-          onBuildGame={(prompt) => {
-            if (studio.isConnected && studio.sessionId) {
-              chat.triggerStepByStepBuild(prompt, studio.sessionId)
-            } else {
-              // No Studio connected — send as normal chat so the AI still
-              // generates the full game code. No toast / publish panel needed;
-              // users can connect Studio later from the top bar.
-              chat.sendMessage(prompt)
-            }
-          }}
-        />
-      ) : (
-        // When messages exist, ChatPanel fills the space (messages + input)
-        <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <ChatPanel
-            simplified
-            messages={chat.messages}
-            input={chat.input}
-            setInput={chat.setInput}
-            loading={chat.loading}
-            onSend={chat.sendMessage}
-            selectedModel={chat.selectedModel}
-            setSelectedModel={chat.setSelectedModel}
-            totalTokens={chat.totalTokens}
-            textareaRef={chat.textareaRef}
-            suggestions={chat.suggestions}
-            onRetry={chat.resetRetryCount}
-            onDismiss={chat.dismissMessage}
-            onEditAndResend={chat.editAndResend}
-            onSendToStudio={handleSendToStudio}
-            studioConnected={studio.isConnected}
-            savedAt={chat.savedAt}
-            imageFile={chat.imageFile}
-            onImageFile={chat.setImageFile}
-            aiMode={chat.aiMode}
-            onAIModeChange={chat.setAIMode}
-            thinkingText={chat.thinkingText}
-            isThinking={chat.isThinking}
-            planText={chat.planText}
-            onApprovePlan={chat.approvePlan}
-            onEditPlan={chat.editPlan}
-            onCancelPlan={chat.cancelPlan}
-            autoEnhanceEnabled={chat.enhancePrompts}
-            onAutoEnhanceToggle={chat.setEnhancePrompts}
-            sessionId={chat.currentSessionId ?? undefined}
-            checkpoints={chat.checkpoints}
-            onSaveCheckpoint={chat.saveCheckpoint}
-            onRestoreToCheckpoint={chat.restoreToCheckpoint}
-            onDeleteCheckpoint={chat.removeCheckpoint}
-            imageOptions={chat.imageOptions}
-            onImageOptionsChange={chat.setImageOptions}
-            buildDirection={chat.buildDirection}
-            onBuildDirectionChange={chat.setBuildDirection}
-            onBuildGame={(prompt) => {
-              if (studio.isConnected && studio.sessionId) {
-                chat.triggerStepByStepBuild(prompt, studio.sessionId)
-              } else {
-                chat.sendMessage(prompt)
-              }
-            }}
-          />
-        </div>
-      )}
+      {/* Main content area with optional sidebar */}
+      <div style={{
+        flex: '1 1 0%',
+        display: 'flex',
+        minHeight: 0,
+        position: 'relative',
+        zIndex: 1,
+      }}>
+        {/* Chat / Welcome area */}
+        <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
+          {!hasMessages ? (
+            <>
+              <WelcomeHero
+                visible={!hasMessages}
+                onQuickAction={handleQuickAction}
+                onBuildGame={(prompt) => {
+                  if (studio.isConnected && studio.sessionId) {
+                    chat.triggerStepByStepBuild(prompt, studio.sessionId)
+                  } else {
+                    chat.sendMessage(prompt)
+                  }
+                }}
+              />
+              {/* Floating input bar on welcome screen — cyberglass */}
+              <div style={{ padding: '0 20px 24px', background: 'transparent', position: 'relative', zIndex: 2 }}>
+                <div style={{ maxWidth: 680, margin: '0 auto' }}>
+                  <div
+                    style={{
+                      display: 'flex', gap: 8, alignItems: 'flex-end',
+                      background: 'linear-gradient(135deg, rgba(12,15,28,0.75) 0%, rgba(18,22,38,0.7) 50%, rgba(12,15,28,0.75) 100%)',
+                      border: '1px solid rgba(255,255,255,0.07)',
+                      borderRadius: 22, padding: '12px 14px 12px 20px',
+                      transition: 'border-color 0.3s ease-out, box-shadow 0.3s ease-out',
+                      backdropFilter: 'blur(24px) saturate(1.2)',
+                      WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(212,175,55,0.02), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(255,255,255,0.02)',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                    onFocusCapture={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)'
+                      e.currentTarget.style.boxShadow = '0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.06), 0 0 60px rgba(212,175,55,0.04), inset 0 1px 0 rgba(255,230,160,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)'
+                    }}
+                    onBlurCapture={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
+                      e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(212,175,55,0.02), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(255,255,255,0.02)'
+                    }}
+                  >
+                    {/* Cyberglass shimmer */}
+                    <div aria-hidden style={{
+                      position: 'absolute', inset: 0,
+                      background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.015) 45%, rgba(212,175,55,0.02) 50%, rgba(255,255,255,0.015) 55%, transparent 70%)',
+                      pointerEvents: 'none', borderRadius: 'inherit',
+                    }} />
+                    {/* Attach */}
+                    <label
+                      style={{
+                        width: 36, height: 36, borderRadius: 10,
+                        border: 'none', background: 'rgba(255,255,255,0.04)',
+                        color: '#52525B', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0, transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#A1A1AA' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#52525B' }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                      </svg>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) chat.setImageFile(file)
+                        }}
+                      />
+                    </label>
 
-      {/* Build progress dashboard — shows real-time agent progress during builds */}
+                    <textarea
+                      ref={chat.textareaRef}
+                      value={chat.input}
+                      onChange={(e) => chat.setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          if (chat.input.trim()) chat.sendMessage(chat.input)
+                        }
+                      }}
+                      placeholder="Message Forje..."
+                      rows={1}
+                      style={{
+                        flex: 1, background: 'transparent', border: 'none',
+                        padding: '8px 0', color: '#FAFAFA', fontSize: 15,
+                        fontFamily: 'inherit', resize: 'none', outline: 'none',
+                        lineHeight: 1.5, fontWeight: 400,
+                      }}
+                    />
+
+                    {/* Send */}
+                    <button
+                      onClick={() => { if (chat.input.trim()) chat.sendMessage(chat.input) }}
+                      disabled={chat.loading || !chat.input.trim()}
+                      style={{
+                        width: 36, height: 36, borderRadius: 10,
+                        border: 'none',
+                        background: chat.input.trim() ? '#D4AF37' : 'rgba(255,255,255,0.04)',
+                        color: chat.input.trim() ? '#09090b' : '#3F3F46',
+                        cursor: chat.input.trim() ? 'pointer' : 'default',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0, transition: 'all 0.15s',
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="19" x2="12" y2="5" />
+                        <polyline points="5 12 12 5 19 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <p style={{ textAlign: 'center', fontSize: 11, color: '#27272A', marginTop: 8 }}>
+                    Forje can make mistakes. Verify builds in Studio.
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <ChatPanel
+              simplified
+              messages={chat.messages}
+              input={chat.input}
+              setInput={chat.setInput}
+              loading={chat.loading}
+              onSend={chat.sendMessage}
+              selectedModel={chat.selectedModel}
+              setSelectedModel={chat.setSelectedModel}
+              totalTokens={chat.totalTokens}
+              textareaRef={chat.textareaRef}
+              suggestions={chat.suggestions}
+              onRetry={chat.resetRetryCount}
+              onDismiss={chat.dismissMessage}
+              onEditAndResend={chat.editAndResend}
+              onSendToStudio={handleSendToStudio}
+              studioConnected={studio.isConnected}
+              savedAt={chat.savedAt}
+              imageFile={chat.imageFile}
+              onImageFile={chat.setImageFile}
+              aiMode={chat.aiMode}
+              onAIModeChange={chat.setAIMode}
+              thinkingText={chat.thinkingText}
+              isThinking={chat.isThinking}
+              planText={chat.planText}
+              onApprovePlan={chat.approvePlan}
+              onEditPlan={chat.editPlan}
+              onCancelPlan={chat.cancelPlan}
+              autoEnhanceEnabled={chat.enhancePrompts}
+              onAutoEnhanceToggle={chat.setEnhancePrompts}
+              sessionId={chat.currentSessionId ?? undefined}
+              checkpoints={chat.checkpoints}
+              onSaveCheckpoint={chat.saveCheckpoint}
+              onRestoreToCheckpoint={chat.restoreToCheckpoint}
+              onDeleteCheckpoint={chat.removeCheckpoint}
+              imageOptions={chat.imageOptions}
+              onImageOptionsChange={chat.setImageOptions}
+              buildDirection={chat.buildDirection}
+              onBuildDirectionChange={chat.setBuildDirection}
+              onBuildGame={(prompt) => {
+                if (studio.isConnected && studio.sessionId) {
+                  chat.triggerStepByStepBuild(prompt, studio.sessionId)
+                } else {
+                  chat.sendMessage(prompt)
+                }
+              }}
+            />
+          )}
+        </div>
+
+        {/* Right sidebar — AI Context */}
+        {studio.isConnected && (
+          <RightSidebar
+            studioContext={studio.studioContext}
+            open={sidebarOpen}
+            onToggle={() => setSidebarOpen(v => !v)}
+            isMobile={isMobile}
+          />
+        )}
+      </div>
+
+      {/* Build progress dashboard */}
       {activeBuildId && (
         <BuildProgressDashboard
           buildId={activeBuildId}
@@ -304,123 +705,6 @@ function EditorInner() {
             toast('Build cancelled', 'warning')
           }}
         />
-      )}
-
-      {/* Floating chat input — ChatGPT-style centered bar */}
-      {!hasMessages && (
-        <div
-          style={{
-            padding: '0 20px 24px',
-            background: 'transparent',
-          }}
-        >
-          <div style={{ maxWidth: 680, margin: '0 auto' }}>
-            <div
-              style={{
-                display: 'flex',
-                gap: 8,
-                alignItems: 'flex-end',
-                background: 'rgba(15,18,30,0.8)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 20,
-                padding: '10px 12px 10px 18px',
-                transition: 'border-color 0.2s, box-shadow 0.2s',
-                backdropFilter: 'blur(20px)',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
-              }}
-              onFocusCapture={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.30)'
-                e.currentTarget.style.boxShadow = '0 4px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.08), 0 0 40px rgba(212,175,55,0.06), inset 0 1px 0 rgba(255,230,160,0.06)'
-              }}
-              onBlurCapture={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-                e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)'
-              }}
-            >
-              {/* Attach button */}
-              <button
-                onClick={() => {
-                  const input = document.createElement('input')
-                  input.type = 'file'
-                  input.accept = 'image/*'
-                  input.onchange = (e) => {
-                    const file = (e.target as HTMLInputElement).files?.[0]
-                    if (file) chat.setImageFile(file)
-                  }
-                  input.click()
-                }}
-                style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  border: 'none', background: 'rgba(255,255,255,0.04)',
-                  color: '#52525B', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#A1A1AA' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#52525B' }}
-                aria-label="Attach image"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-                </svg>
-              </button>
-
-              <textarea
-                ref={chat.textareaRef}
-                value={chat.input}
-                onChange={(e) => chat.setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    if (chat.input.trim()) chat.sendMessage(chat.input)
-                  }
-                }}
-                placeholder="Message Forje..."
-                rows={1}
-                style={{
-                  flex: 1,
-                  background: 'transparent',
-                  border: 'none',
-                  padding: '8px 0',
-                  color: '#FAFAFA',
-                  fontSize: 15,
-                  fontFamily: 'inherit',
-                  resize: 'none',
-                  outline: 'none',
-                  lineHeight: 1.5,
-                  fontWeight: 400,
-                }}
-              />
-
-              {/* Send button */}
-              <button
-                onClick={() => { if (chat.input.trim()) chat.sendMessage(chat.input) }}
-                disabled={chat.loading || !chat.input.trim()}
-                style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  border: 'none',
-                  background: chat.input.trim()
-                    ? '#D4AF37'
-                    : 'rgba(255,255,255,0.04)',
-                  color: chat.input.trim() ? '#09090b' : '#3F3F46',
-                  cursor: chat.input.trim() ? 'pointer' : 'default',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, transition: 'all 0.15s',
-                }}
-                aria-label="Send message"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="19" x2="12" y2="5" />
-                  <polyline points="5 12 12 5 19 12" />
-                </svg>
-              </button>
-            </div>
-
-            <p style={{ textAlign: 'center', fontSize: 11, color: '#27272A', marginTop: 8 }}>
-              Forje can make mistakes. Verify builds in Studio.
-            </p>
-          </div>
-        </div>
       )}
 
       {/* Left drawer */}
@@ -446,12 +730,8 @@ function EditorInner() {
         }}
       />
 
-      {/* API Keys modal (BYOK) */}
-      {apiKeysOpen && (
-        <ApiKeysModal onClose={() => setApiKeysOpen(false)} />
-      )}
+      {apiKeysOpen && <ApiKeysModal onClose={() => setApiKeysOpen(false)} />}
 
-      {/* Publish to Studio panel */}
       <PublishPanel
         open={publishOpen}
         onClose={() => setPublishOpen(false)}
@@ -460,7 +740,6 @@ function EditorInner() {
         connectCode={studio.connectCode}
         connectFlow={studio.connectFlow}
         onGenerateCode={() => {
-          // Allow regenerate from idle or when current code expired
           if (studio.connectFlow === 'idle' || (studio.connectFlow === 'code' && studio.connectTimer <= 0)) {
             studio.generateCode()
           }
@@ -473,7 +752,6 @@ function EditorInner() {
         sessionId={studio.sessionId}
       />
 
-      {/* Onboarding tour — auto-fires on first editor visit */}
       {showOnboarding && (
         <OnboardingOverlay
           onDone={dismissOnboarding}
@@ -484,14 +762,12 @@ function EditorInner() {
         />
       )}
 
-      {/* Post-build share bar — shows after every successful build */}
       <PostBuildShare
         visible={showShareBar}
         prompt={lastBuildPrompt}
         onDismiss={() => setShowShareBar(false)}
       />
 
-      {/* First-build upgrade modal — shows once for free-tier users */}
       <FirstBuildModal
         buildJustSucceeded={buildJustSucceeded}
         onDismiss={() => setBuildJustSucceeded(false)}
