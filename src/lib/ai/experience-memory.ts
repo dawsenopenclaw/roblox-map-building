@@ -226,6 +226,95 @@ class LRUCache<V> {
 // Material extraction from code
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Code pattern extraction — learns TECHNIQUES from code, not just copies it
+// ---------------------------------------------------------------------------
+
+interface CodePatterns {
+  structureApproach: string | null  // "nested models", "flat parts", "hierarchical"
+  sizingPattern: string | null      // "large base (20,1,20), small details (1-3)"
+  colorPalette: string | null       // "earth tones: RGB(139,90,43), RGB(101,67,33)"
+  lightingApproach: string | null   // "3 PointLights warm tone, 1 SpotLight accent"
+}
+
+function extractCodePatterns(code: string): CodePatterns {
+  // Structure approach
+  let structureApproach: string | null = null
+  const modelCount = (code.match(/Instance\.new\s*\(\s*["']Model["']/g) || []).length
+  const folderCount = (code.match(/Instance\.new\s*\(\s*["']Folder["']/g) || []).length
+  if (modelCount >= 3) structureApproach = `${modelCount} nested Models for organization`
+  else if (folderCount >= 2) structureApproach = `Folder-based grouping (${folderCount} folders)`
+  else structureApproach = 'flat part structure'
+
+  // Sizing patterns — extract the most common sizes
+  const sizeMatches = code.match(/Size\s*=\s*Vector3\.new\s*\(([^)]+)\)/g) || []
+  let sizingPattern: string | null = null
+  if (sizeMatches.length >= 3) {
+    const sizes = sizeMatches.slice(0, 5).map(s => s.replace(/Size\s*=\s*Vector3\.new\s*\(/, '').replace(')', '').trim())
+    const maxDim = Math.max(...sizes.map(s => Math.max(...s.split(',').map(Number).filter(n => !isNaN(n)))))
+    const minDim = Math.min(...sizes.filter(s => !s.includes('0')).map(s => Math.min(...s.split(',').map(Number).filter(n => !isNaN(n) && n > 0))))
+    if (maxDim > 0 && minDim > 0) sizingPattern = `range ${minDim}-${maxDim} studs, typical sizes: ${sizes.slice(0, 3).join(' | ')}`
+  }
+
+  // Color palette — extract unique colors
+  const colorMatches = code.match(/Color3\.fromRGB\s*\(([^)]+)\)/g) || []
+  let colorPalette: string | null = null
+  if (colorMatches.length >= 2) {
+    const uniqueColors = new Set(colorMatches.slice(0, 8).map(c => c.replace(/Color3\.fromRGB\s*\(/, '').replace(')', '').trim()))
+    colorPalette = Array.from(uniqueColors).slice(0, 5).map(c => `RGB(${c})`).join(', ')
+  }
+
+  // Lighting approach
+  const pointLights = (code.match(/Instance\.new\s*\(\s*["']PointLight["']/g) || []).length
+  const spotLights = (code.match(/Instance\.new\s*\(\s*["']SpotLight["']/g) || []).length
+  const surfLights = (code.match(/Instance\.new\s*\(\s*["']SurfaceLight["']/g) || []).length
+  let lightingApproach: string | null = null
+  const totalLights = pointLights + spotLights + surfLights
+  if (totalLights > 0) {
+    const parts: string[] = []
+    if (pointLights > 0) parts.push(`${pointLights} PointLight`)
+    if (spotLights > 0) parts.push(`${spotLights} SpotLight`)
+    if (surfLights > 0) parts.push(`${surfLights} SurfaceLight`)
+    lightingApproach = parts.join(', ')
+  }
+
+  return { structureApproach, sizingPattern, colorPalette, lightingApproach }
+}
+
+/** Extract the most USEFUL lines of code — skip boilerplate, keep structure */
+function extractKeyCodeLines(code: string, maxLines: number): string[] {
+  const allLines = code.split('\n')
+  const scored: { line: string; score: number }[] = []
+
+  for (const line of allLines) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('--')) continue
+
+    let score = 0
+    // Structure-defining lines are most valuable
+    if (trimmed.includes('Instance.new')) score += 3
+    if (trimmed.includes('Size =')) score += 2
+    if (trimmed.includes('Position =')) score += 2
+    if (trimmed.includes('Color3.fromRGB')) score += 2
+    if (trimmed.includes('Material =')) score += 2
+    if (trimmed.includes('PointLight') || trimmed.includes('SpotLight')) score += 3
+    if (trimmed.includes('Fire') || trimmed.includes('Smoke') || trimmed.includes('ParticleEmitter')) score += 3
+    if (trimmed.includes('ProximityPrompt') || trimmed.includes('ClickDetector')) score += 3
+    if (trimmed.includes('CFrame')) score += 1
+    if (trimmed.includes('Model') && trimmed.includes('Instance.new')) score += 2
+    // Boilerplate — reduce score
+    if (trimmed.includes('game:GetService')) score -= 1
+    if (trimmed.includes('ChangeHistoryService')) score -= 2
+    if (trimmed === 'end' || trimmed === 'end)') score -= 2
+    if (trimmed.includes('.Parent =')) score += 1
+
+    if (score > 0) scored.push({ line: trimmed, score })
+  }
+
+  scored.sort((a, b) => b.score - a.score)
+  return scored.slice(0, maxLines).map(s => s.line)
+}
+
 function extractMaterials(code: string): string[] {
   const matches = code.match(/Enum\.Material\.(\w+)/g) || []
   const mats = new Set(matches.map(m => m.replace('Enum.Material.', '')))
@@ -594,27 +683,40 @@ export class ExperienceMemory {
     if (successes.length === 0) return ''
 
     const lines: string[] = ['', '[PROVEN_EXAMPLES]']
-    lines.push('Verified working builds similar to the current request. Learn from their patterns:')
+    lines.push('Verified working builds similar to the current request. COPY these patterns:')
     lines.push('')
 
     for (let i = 0; i < successes.length; i++) {
       const s = successes[i]
-      const codeLines = s.code.split('\n')
-      const truncated = codeLines.length > 50
-        ? codeLines.slice(0, 50).join('\n') + '\n-- (truncated) --'
-        : s.code
+      const patterns = extractCodePatterns(s.code)
+      const partCount = countPartsInCode(s.code)
+      const interactive = countInteractiveInstances(s.code)
+      const materials = extractMaterials(s.code)
 
-      const badges: string[] = [`score: ${s.score}`]
+      const badges: string[] = [`${s.score}/100`]
       if (s.userVote === true) badges.push('USER VERIFIED')
       if (s.category) badges.push(s.category)
       if (s.age < 1) badges.push('RECENT')
 
       lines.push(`Example ${i + 1} (${badges.join(', ')}):`)
-      if (s.prompt) lines.push(`User asked: "${s.prompt}"`)
-      lines.push('Working code:')
-      lines.push('```lua')
-      lines.push(truncated)
-      lines.push('```')
+      if (s.prompt) lines.push(`  Prompt: "${s.prompt}"`)
+      lines.push(`  Parts: ${partCount}, Lights: ${interactive.lights}, Effects: ${interactive.effects}, Scripts: ${interactive.scripts}`)
+      if (materials.length > 0) lines.push(`  Materials: ${materials.join(', ')}`)
+
+      // Extract the KEY patterns — sizing, positioning, structure approach
+      if (patterns.structureApproach) lines.push(`  Structure: ${patterns.structureApproach}`)
+      if (patterns.sizingPattern) lines.push(`  Sizing: ${patterns.sizingPattern}`)
+      if (patterns.colorPalette) lines.push(`  Colors: ${patterns.colorPalette}`)
+      if (patterns.lightingApproach) lines.push(`  Lighting: ${patterns.lightingApproach}`)
+
+      // Only show the MOST useful 20 lines of code — the unique structure, not boilerplate
+      const keyLines = extractKeyCodeLines(s.code, 20)
+      if (keyLines.length > 0) {
+        lines.push('  Key code patterns:')
+        lines.push('  ```lua')
+        lines.push('  ' + keyLines.join('\n  '))
+        lines.push('  ```')
+      }
       lines.push('')
     }
     lines.push('[/PROVEN_EXAMPLES]')
