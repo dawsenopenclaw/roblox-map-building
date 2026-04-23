@@ -42,6 +42,7 @@ import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
 import { findSimilarSuccesses, findAntiPatterns, formatAsExamples, formatAntiPatterns, recordBuildOutcome, detectCategory, detectBuildType, countPartsInCode, getAggregatePatterns, getConfidence } from '@/lib/ai/experience-memory'
 import { getLearnedRules, learnFromFailure, learnFromStudioError, learnFromPromptPopularity } from '@/lib/ai/self-improve'
+import { awardXP } from '@/lib/ai/ai-xp'
 import { findAllRelevantSystems, formatSystemKnowledge } from '@/lib/ai/game-systems-knowledge'
 import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
 import { scoreOutput, isObviouslyBroken } from '@/lib/ai/quality-scorer'
@@ -9917,6 +9918,9 @@ async function recordUniversalOutcome(text: string, meta: StreamResponseMeta): P
       if (score < 50) {
         void learnFromFailure(text, code, score, [], category).catch(() => {})
       }
+
+      // AI XP: award experience for every build
+      void awardXP(score, partCount, category).catch(() => {})
 
       console.log(`[UniversalLearning] Recorded ${buildType} outcome: score=${score}, model=${model}, parts=${partCount}, intent=${intent}`)
     }

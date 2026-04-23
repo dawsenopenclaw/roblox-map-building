@@ -4019,6 +4019,7 @@ export function ChatPanel({
   const isScrolledUpRef = useRef(false)
   const [showSaved, setShowSaved] = useState(false)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [aiLevelBadge, setAiLevelBadge] = useState<{ level: number; title: string } | null>(null)
 
   useEffect(() => {
     if (savedAt === 0) return
@@ -4029,6 +4030,14 @@ export function ChatPanel({
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
     }
   }, [savedAt])
+
+  // Fetch AI level badge on mount
+  useEffect(() => {
+    fetch('/api/ai/level')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && d.level > 0) setAiLevelBadge(d) })
+      .catch(() => {})
+  }, [])
 
   const handleVoiceSubmit = useCallback((text: string) => {
     if (text.trim()) onSend(text.trim())
@@ -4894,6 +4903,18 @@ export function ChatPanel({
                 opacity: showSaved ? 1 : 0, transition: 'opacity 0.35s ease',
                 pointerEvents: 'none',
               }}>Saved</span>
+              {/* AI Level badge */}
+              {aiLevelBadge && (
+                <span style={{
+                  fontSize: 10,
+                  color: '#D4AF37',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                  opacity: 0.75,
+                  textShadow: '0 0 8px rgba(212,175,55,0.3)',
+                }}>
+                  AI Lv.{aiLevelBadge.level} — {aiLevelBadge.title}
+                </span>
+              )}
               {/* Mode indicator */}
               {aiMode !== 'build' && (
                 <span style={{

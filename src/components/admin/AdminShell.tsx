@@ -25,6 +25,7 @@ import {
   KeyRound,
   Wrench,
   Bot,
+  Brain,
 } from 'lucide-react'
 // Profile handled by global ProfileButton in root layout
 
@@ -49,6 +50,7 @@ const NAV_ITEMS = [
   { href: '/admin/studio', label: 'Studio', icon: Radio },
   { href: '/admin/fixes', label: 'Bug Fixes', icon: Wrench },
   { href: '/admin/beta', label: 'Beta Invites', icon: KeyRound },
+  { href: '/admin/learning', label: 'AI Learning', icon: Brain },
 ]
 
 export function AdminShell({
