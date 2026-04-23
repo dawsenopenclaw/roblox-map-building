@@ -391,3 +391,159 @@ function simpleHash(s: string): string {
   }
   return Math.abs(hash).toString(36)
 }
+
+// ─── Studio Error Learning ──────────────────────────────────────────────
+// When Studio returns an error, learn the fix pattern permanently
+
+export async function learnFromStudioError(
+  error: string,
+  originalCode: string,
+  fixedCode: string | null,
+  category: string | null,
+): Promise<void> {
+  try {
+    const rule = studioErrorToRule(error, originalCode)
+    if (!rule) return
+
+    const existing = rulesCache.find(r => r.rule === rule)
+    if (existing) {
+      existing.occurrences++
+      existing.confidence = Math.min(100, existing.confidence + 8)
+      await persistRule(existing)
+    } else {
+      const newRule: LearnedRule = {
+        rule,
+        confidence: 75, // Studio errors are high-confidence signals
+        source: 'verification',
+        occurrences: 1,
+        category: category || undefined,
+        createdAt: new Date(),
+      }
+      rulesCache.push(newRule)
+      await persistRule(newRule)
+    }
+  } catch (err) {
+    console.warn('[SelfImprove] learnFromStudioError:', err instanceof Error ? err.message : err)
+  }
+}
+
+function studioErrorToRule(error: string, code: string): string | null {
+  const lower = error.toLowerCase()
+  // API-specific errors
+  if (lower.includes('is not a valid member')) {
+    const match = error.match(/"(\w+)" is not a valid member of "?(\w+)"?/i)
+    if (match) return `NEVER access .${match[1]} on ${match[2]} — it does not exist. Check the API reference.`
+  }
+  if (lower.includes('unable to cast')) {
+    return 'Ensure all property assignments use the correct types — Vector3 for Position/Size, CFrame for CFrame, Color3 for Color'
+  }
+  if (lower.includes('attempt to index nil')) {
+    return 'Always nil-check FindFirstChild results before indexing: local obj = parent:FindFirstChild("Name"); if obj then ... end'
+  }
+  if (lower.includes('maximum event re-entrancy')) {
+    return 'Avoid triggering events inside event handlers — use task.defer() to break the chain'
+  }
+  if (lower.includes('datastore') && lower.includes('budget')) {
+    return 'DataStore requests are rate-limited — use throttling (1 request per 6 seconds per key) and caching'
+  }
+  if (lower.includes('http requests are not enabled')) {
+    return 'HttpService is disabled by default — scripts using HTTP need game settings to enable it'
+  }
+  if (lower.includes('loadstring')) {
+    return 'NEVER use loadstring() — it is disabled in Roblox games for security'
+  }
+  return null
+}
+
+// ─── Cross-User Prompt Pattern Learning ─────────────────────────────────
+// Track what prompts ALL users send most frequently → get insanely good at those
+
+export async function learnFromPromptPopularity(): Promise<void> {
+  try {
+    // Find the most commonly requested build types
+    const popularPrompts = await db.$queryRaw<Array<{
+      category: string
+      count: number
+      avgScore: number
+      bestScore: number
+    }>>(Prisma.sql`
+      SELECT
+        COALESCE(category, 'general') as category,
+        COUNT(*)::int as count,
+        AVG(score)::int as "avgScore",
+        MAX(score)::int as "bestScore"
+      FROM "BuildFeedback"
+      WHERE "createdAt" > NOW() - INTERVAL '7 days'
+        AND prompt IS NOT NULL
+        AND "buildType" != 'rule'
+      GROUP BY COALESCE(category, 'general')
+      HAVING COUNT(*) >= 3
+      ORDER BY COUNT(*) DESC
+      LIMIT 20
+    `) as Array<{ category: string; count: number; avgScore: number; bestScore: number }>
+
+    for (const pop of popularPrompts) {
+      if (pop.avgScore < 55 && pop.count >= 5) {
+        // Popular category with low scores = urgent improvement needed
+        const rule = `PRIORITY: "${pop.category}" builds requested ${pop.count} times but avg score only ${pop.avgScore}/100 — needs better templates, more parts, and higher quality output for this category`
+        if (!rulesCache.find(r => r.rule.includes(`"${pop.category}" builds requested`))) {
+          rulesCache.push({
+            rule,
+            confidence: 85,
+            source: 'verification',
+            occurrences: pop.count,
+            category: pop.category,
+            createdAt: new Date(),
+          })
+          await persistRule({ rule, confidence: 85, source: 'verification', occurrences: pop.count, category: pop.category, createdAt: new Date() })
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[SelfImprove] learnFromPromptPopularity:', err instanceof Error ? err.message : err)
+  }
+}
+
+// ─── Iterative Improvement Learning ─────────────────────────────────────
+// When a user says "make it better" and the result scores higher, learn what "better" means
+
+export async function learnFromIteration(
+  originalPrompt: string,
+  originalScore: number,
+  refinedPrompt: string,
+  refinedScore: number,
+  refinedCode: string,
+  category: string | null,
+): Promise<void> {
+  try {
+    // Only learn if the refinement actually improved things
+    if (refinedScore <= originalScore + 10) return
+
+    const improvement = refinedScore - originalScore
+    const goodPatterns = extractGoodPatterns(refinedCode)
+
+    for (const pattern of goodPatterns) {
+      const rule = `When improving ${category || 'builds'}: ${pattern} (improved score by ${improvement} points)`
+      if (!rulesCache.find(r => r.rule === rule)) {
+        rulesCache.push({
+          rule,
+          confidence: 60 + Math.min(30, improvement),
+          source: 'user-feedback',
+          occurrences: 1,
+          category: category || undefined,
+          createdAt: new Date(),
+        })
+        await persistRule({
+          rule,
+          confidence: 60 + Math.min(30, improvement),
+          source: 'user-feedback',
+          occurrences: 1,
+          category: category || undefined,
+          createdAt: new Date(),
+        })
+      }
+    }
+  } catch (err) {
+    console.warn('[SelfImprove] learnFromIteration:', err instanceof Error ? err.message : err)
+  }
+}
