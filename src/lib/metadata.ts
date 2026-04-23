@@ -40,10 +40,10 @@ export function createMetadata({
   jsonLd?: Record<string, unknown>
 }): Metadata {
   const canonical = `${BASE_URL}${path}`
-  const fullTitle = title === SITE_NAME ? title : `${title} — ${SITE_NAME}`
-
+  // Don't append "— ForjeGames" here — the root layout template does it
+  // via title.template: '%s — ForjeGames'
   return {
-    title: fullTitle,
+    title: title,
     description,
     metadataBase: new URL(BASE_URL),
     alternates: {
@@ -78,17 +78,17 @@ export function createMetadata({
           googleBot: { index: true, follow: true, 'max-snippet': -1, 'max-image-preview': 'large' },
         },
     openGraph: {
-      title: fullTitle,
+      title: `${title} — ${SITE_NAME}`,
       description,
       url: canonical,
       siteName: SITE_NAME,
-      images: [{ url: image, width: 1200, height: 630, alt: fullTitle }],
+      images: [{ url: image, width: 1200, height: 630, alt: `${title} — ${SITE_NAME}` }],
       locale: 'en_US',
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
-      title: fullTitle,
+      title: `${title} — ${SITE_NAME}`,
       description,
       images: [image],
       creator: '@forjegames',
