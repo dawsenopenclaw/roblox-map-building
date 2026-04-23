@@ -2198,7 +2198,8 @@ function MessageBubbleImpl({
             {msg.tokensUsed && msg.role === 'assistant' ? ` · ${msg.tokensUsed} tokens` : ''}
           </span>
         )}
-        {!msg.streaming && msg.role === 'assistant' && !msg.hasCode && onSend && (
+        {/* Feedback buttons — on EVERY assistant message (code or not) */}
+        {!msg.streaming && msg.role === 'assistant' && onSend && (
           <ConversationFeedbackButtons
             messageId={msg.id}
             content={msg.content}
@@ -4204,6 +4205,7 @@ export function ChatPanel({
   }, [onImageFile])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (loading) return // One message at a time — don't send while generating
     const mod = e.ctrlKey || e.metaKey
     // Ctrl/Cmd+Enter — send message (alternative to plain Enter)
     if (mod && e.key === 'Enter') {
@@ -4218,6 +4220,7 @@ export function ChatPanel({
   }
 
   const handleSend = () => {
+    if (loading) return // One message at a time
     setSendPressed(true)
     setTimeout(() => setSendPressed(false), 150)
     onSend(input)
