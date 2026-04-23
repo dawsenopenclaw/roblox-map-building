@@ -360,6 +360,52 @@ function scoreQuality(code: string, errors: VerificationError[]): { score: numbe
     warnings.push({ type: 'visual', message: 'Very few colors used — add variety for better visuals' })
   }
 
+  // Check for position sanity — parts should be near each other, not scattered randomly
+  const posMatches = code.match(/Vector3\.new\s*\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/g) || []
+  if (posMatches.length >= 3 && !isScriptCode) {
+    const positions = posMatches.slice(0, 20).map(m => {
+      const nums = m.match(/([-\d.]+)/g)
+      return nums ? { x: parseFloat(nums[0]), y: parseFloat(nums[1]), z: parseFloat(nums[2]) } : null
+    }).filter(Boolean) as { x: number; y: number; z: number }[]
+
+    if (positions.length >= 3) {
+      // Check if any position is absurdly far from the others (>500 studs away)
+      const avgX = positions.reduce((s, p) => s + p.x, 0) / positions.length
+      const avgZ = positions.reduce((s, p) => s + p.z, 0) / positions.length
+      const outliers = positions.filter(p => Math.abs(p.x - avgX) > 500 || Math.abs(p.z - avgZ) > 500)
+      if (outliers.length > 0) {
+        score -= 15
+        warnings.push({ type: 'positioning', message: `${outliers.length} parts positioned >500 studs from center — parts may be scattered randomly` })
+      }
+
+      // Check if parts are floating in the sky (Y > 200 without being intentional like clouds/sky builds)
+      const skyParts = positions.filter(p => p.y > 200)
+      if (skyParts.length > positions.length * 0.5 && !code.includes('cloud') && !code.includes('sky') && !code.includes('float')) {
+        score -= 10
+        warnings.push({ type: 'positioning', message: 'Many parts placed very high (Y>200) — may be floating in sky' })
+      }
+    }
+  }
+
+  // Check for overlapping parts (same position, different names = they're stacked inside each other)
+  const cfMatches = code.match(/CFrame\.new\s*\(\s*sp\s*\+\s*Vector3\.new\s*\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/g) || []
+  if (cfMatches.length >= 5) {
+    const posSet = new Set<string>()
+    let duplicates = 0
+    for (const m of cfMatches) {
+      const nums = m.match(/([-\d.]+)/g)
+      if (nums && nums.length >= 3) {
+        const key = `${Math.round(parseFloat(nums[0]))},${Math.round(parseFloat(nums[1]))},${Math.round(parseFloat(nums[2]))}`
+        if (posSet.has(key)) duplicates++
+        posSet.add(key)
+      }
+    }
+    if (duplicates > 3) {
+      score -= 10
+      warnings.push({ type: 'positioning', message: `${duplicates} parts share the same position — they may be overlapping/inside each other` })
+    }
+  }
+
   // Bonus for good practices
   if (code.includes('workspace.CurrentCamera')) score += 5 // Camera-relative placement
   if (code.includes('Raycast')) score += 5 // Ground detection
