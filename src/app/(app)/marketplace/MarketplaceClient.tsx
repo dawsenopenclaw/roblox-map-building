@@ -417,12 +417,19 @@ export default function MarketplacePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white">
-                Template Marketplace
+              <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-400" />
+                Marketplace
               </h1>
               <p className="text-sm text-white/40 mt-1">
-                Premium Roblox assets, maps, scripts, and UI kits
+                Premium templates, scripts, maps, and UI kits — built by creators, for creators
               </p>
+              {/* Quick stats */}
+              <div className="flex items-center gap-4 mt-2">
+                <span className="text-xs text-white/25 flex items-center gap-1"><Package className="w-3 h-3" /> {templates.length > 0 ? `${templates.length}+ templates` : '12 demo templates'}</span>
+                <span className="text-xs text-white/25 flex items-center gap-1"><Users className="w-3 h-3" /> Free + paid</span>
+                <span className="text-xs text-white/25 flex items-center gap-1"><Flame className="w-3 h-3" /> Updated daily</span>
+              </div>
             </div>
 
             {/* Submit CTA */}
@@ -1082,18 +1089,32 @@ function TemplateCard({
           </button>
         </div>
 
-        {/* Gold CTA */}
-        <div
-          className="
-            mt-1 w-full py-2 rounded-lg font-semibold text-xs text-center
-            bg-gradient-to-r from-amber-500 to-yellow-400 text-black
-            group-hover:from-amber-400 group-hover:to-yellow-300
-            shadow-[0_0_12px_rgba(245,158,11,0.15)]
-            group-hover:shadow-[0_0_20px_rgba(245,158,11,0.35)]
-            transition-all duration-200
-          "
-        >
-          Use Template
+        {/* CTAs */}
+        <div className="flex gap-2 mt-1">
+          <div
+            className="
+              flex-1 py-2 rounded-lg font-semibold text-xs text-center
+              bg-gradient-to-r from-amber-500 to-yellow-400 text-black
+              group-hover:from-amber-400 group-hover:to-yellow-300
+              shadow-[0_0_12px_rgba(245,158,11,0.15)]
+              group-hover:shadow-[0_0_20px_rgba(245,158,11,0.35)]
+              transition-all duration-200
+            "
+          >
+            {isFree ? 'Use Free' : formatPrice(template.priceCents)}
+          </div>
+          <div
+            onClick={(e) => { e.preventDefault(); window.location.href = `/editor?template=${template.slug || template.id}` }}
+            className="
+              px-3 py-2 rounded-lg text-xs font-medium text-center
+              bg-white/5 border border-white/10 text-white/60
+              hover:bg-white/10 hover:text-white hover:border-white/20
+              transition-all duration-150 cursor-pointer
+            "
+            title="Open in Editor"
+          >
+            <Code2 className="w-3.5 h-3.5 inline" />
+          </div>
         </div>
       </div>
     </Link>
