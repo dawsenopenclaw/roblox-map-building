@@ -9755,7 +9755,28 @@ DAMAGE MODULE:
   const history = compressHistory(rawHistory)
   const sessionId = req.headers.get('x-studio-session') ?? parsed.data.gameContext?.sessionId ?? null
 
-  const intent = await smartDetectIntent(message, rawHistory)
+  let intent = await smartDetectIntent(message, rawHistory)
+
+  // ── AI Mode → Intent override ──────────────────────────────────────────
+  // When the user explicitly selects a mode in the UI, force the intent to
+  // match. This prevents Script mode from falling into the build path, and
+  // ensures terrain mode routes to terrain generation, etc.
+  if (aiMode === 'script' && intent !== 'script' && intent !== 'chat' && intent !== 'conversation') {
+    console.log(`[chat] aiMode=script overriding intent "${intent}" → "script"`)
+    intent = 'script'
+  }
+  if (aiMode === 'terrain' && intent !== 'terrain') {
+    console.log(`[chat] aiMode=terrain overriding intent "${intent}" → "terrain"`)
+    intent = 'terrain'
+  }
+  if (aiMode === 'image' && intent !== 'image') {
+    console.log(`[chat] aiMode=image overriding intent "${intent}" → "image"`)
+    intent = 'image'
+  }
+  if (aiMode === 'mesh' && intent !== 'mesh') {
+    console.log(`[chat] aiMode=mesh overriding intent "${intent}" → "mesh"`)
+    intent = 'mesh'
+  }
 
   // ── Multi-step build orchestration detection ─────────────────────────────
   // Detect whether this is a new multi-step request OR a continuation step.

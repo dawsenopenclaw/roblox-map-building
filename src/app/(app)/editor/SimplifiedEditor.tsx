@@ -379,11 +379,21 @@ function EditorInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: luauCode, sessionId: studio.sessionId }),
       })
-        .then(() => {
-          studio.addActivity('Code sent to Studio')
-          toast('Deployed to Studio', 'success')
+        .then(async (res) => {
+          if (res.ok) {
+            studio.addActivity('Code sent to Studio')
+            toast('Deployed to Studio', 'success')
+          } else {
+            const body = await res.text().catch(() => '')
+            console.error('[SendToStudio] Failed:', res.status, body)
+            if (res.status === 404 || res.status === 410) {
+              toast('Studio session expired — reconnect from the top bar', 'error')
+            } else {
+              toast(`Failed to send to Studio (${res.status})`, 'error')
+            }
+          }
         })
-        .catch(() => toast('Failed to send to Studio', 'error'))
+        .catch(() => toast('Failed to send to Studio — check your connection', 'error'))
     },
     [studio, toast],
   )

@@ -33,10 +33,10 @@ const TOOL_GROUPS: McpToolGroup[] = [
       </svg>
     ),
     tools: [
-      { id: 'text-to-3d',        label: 'Text to 3D',        prompt: '/mesh a detailed game prop' },
-      { id: 'generate-texture',  label: 'Generate Texture',  prompt: '/mesh texture a realistic surface' },
-      { id: 'optimize-mesh',     label: 'Optimize Mesh',     prompt: '/mesh optimize the last model' },
-      { id: 'image-to-3d',       label: 'Image to 3D',       prompt: '/mesh from image' },
+      { id: 'text-to-3d',        label: 'Text to 3D',        prompt: '/mesh Create a detailed medieval sword with a jeweled hilt' },
+      { id: 'generate-texture',  label: 'Generate Texture',  prompt: '/image Create a seamless tileable stone brick texture for Roblox' },
+      { id: 'optimize-mesh',     label: 'Character Model',   prompt: '/mesh Create a stylized low-poly game character' },
+      { id: 'image-to-3d',       label: 'Game Prop',         prompt: '/mesh Create a treasure chest with gold coins spilling out' },
     ],
   },
   {
@@ -51,9 +51,9 @@ const TOOL_GROUPS: McpToolGroup[] = [
       </svg>
     ),
     tools: [
-      { id: 'plan-city',          label: 'Plan City',          prompt: 'Build a full city block with roads, buildings, street lights, and sidewalks' },
-      { id: 'generate-building',  label: 'Generate Building',  prompt: 'Build a detailed building with windows, doors, roof, and interior' },
-      { id: 'layout-district',    label: 'Layout District',    prompt: 'Build a district layout with multiple buildings, park, and roads' },
+      { id: 'plan-city',          label: 'Plan City',          prompt: 'Build a full city block with 4 buildings, roads with lane markings, street lamps, traffic lights, crosswalks, and sidewalks with benches' },
+      { id: 'generate-building',  label: 'Generate Building',  prompt: 'Build a 3-story office building with glass windows on every floor, a main entrance door, rooftop AC units, and a lobby interior' },
+      { id: 'layout-district',    label: 'Layout District',    prompt: 'Build a residential district with 6 houses, a central park with trees and a fountain, connecting roads, and street lights' },
     ],
   },
   {
@@ -66,9 +66,9 @@ const TOOL_GROUPS: McpToolGroup[] = [
       </svg>
     ),
     tools: [
-      { id: 'generate-terrain', label: 'Generate Terrain', prompt: 'Generate terrain with mountains, valleys, rivers, and grass using Roblox Terrain API' },
-      { id: 'paint-terrain',    label: 'Paint Terrain',    prompt: 'Paint the terrain with grass, sand near water, rock on steep slopes, and snow on peaks' },
-      { id: 'create-water',     label: 'Create Water',     prompt: 'Create a water body with realistic shoreline, waves, and underwater terrain' },
+      { id: 'generate-terrain', label: 'Generate Terrain', prompt: '/terrain Generate a natural landscape with rolling hills, a river valley, scattered trees, and rocky outcrops' },
+      { id: 'paint-terrain',    label: 'Island Map',       prompt: '/terrain Create a tropical island with sandy beaches, palm trees, a central volcano, and surrounding ocean' },
+      { id: 'create-water',     label: 'Mountain Range',   prompt: '/terrain Create a mountain range with snow-capped peaks, alpine meadows, a glacier lake, and pine forests' },
     ],
   },
 ]
