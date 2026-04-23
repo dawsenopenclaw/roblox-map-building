@@ -1177,10 +1177,71 @@ export function useChat(options: UseChatOptions = {}) {
                 ? [specialData.image.url]
                 : []
 
+            // Check if this is a UI/GUI style that should also generate Roblox code
+            const isUIStyle = ['ui-mockup', 'game-menu', 'hud-design', 'shop-ui', 'inventory-ui'].includes(
+              (apiBody.style as string) || ''
+            )
+
+            let guiCode = ''
+            if (aiMode === 'image' && isUIStyle && imageUrls.length > 0) {
+              // Generate Roblox ScreenGui code that recreates this UI design
+              try {
+                const guiRes = await fetch('/api/ai/chat', {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify({
+                    message: `Convert this UI design into working Roblox ScreenGui Luau code. The design is: "${trimmed}". Style: ${apiBody.style}.
+
+Generate COMPLETE Luau code that creates a ScreenGui with all the UI elements shown in this design. Use these Roblox UI classes:
+- ScreenGui (parent to PlayerGui)
+- Frame (containers with UICorner, UIStroke, UIGradient)
+- TextLabel (text display)
+- TextButton (clickable buttons with hover effects)
+- ImageLabel (icons/images)
+- UIListLayout / UIGridLayout (auto-layout)
+- UICorner (rounded corners, CornerRadius = UDim.new(0, 8-12))
+- UIStroke (borders, Thickness = 1-2)
+- UIGradient (gradient backgrounds)
+- UIPadding (internal padding)
+- ScrollingFrame (scrollable lists)
+
+DESIGN RULES:
+- Dark theme: BackgroundColor3 = Color3.fromRGB(15, 18, 30) for main bg
+- Gold accents: Color3.fromRGB(212, 175, 55) for highlights, buttons, borders
+- White text on dark: TextColor3 = Color3.fromRGB(250, 250, 250)
+- Muted text: Color3.fromRGB(113, 113, 122)
+- Card backgrounds: Color3.fromRGB(25, 28, 40) with UICorner 12px
+- Buttons: gold bg with dark text, UICorner 8px, hover effect via MouseEnter
+- Font: GothamBold for headings, GothamMedium for body, size 14-24
+- Use UDim2.new(0, px, 0, px) for fixed sizes, UDim2.new(scale, 0, scale, 0) for responsive
+- Add UIListLayout with Padding = UDim.new(0, 8) for vertical/horizontal lists
+- Include close button (X) in top-right with TextButton
+- Make it responsive: parent Frame uses UDim2.new(0.9, 0, 0.85, 0) centered
+
+Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready for Studio command bar.`,
+                    aiMode: 'script',
+                  }),
+                })
+                if (guiRes.ok) {
+                  const guiData = await guiRes.json()
+                  const guiResponse = guiData?.response || guiData?.text || ''
+                  // Extract code block
+                  const codeMatch = guiResponse.match(/```(?:lua|luau)?\s*\n?([\s\S]*?)```/)
+                  if (codeMatch) {
+                    guiCode = codeMatch[1].trim()
+                  }
+                }
+              } catch {
+                // GUI generation failed — still show the image
+              }
+            }
+
             const resultContent = aiMode === 'image'
               ? `**Generated Image${imageUrls.length > 1 ? 's' : ''}** (${apiBody.style || 'roblox-icon'}${specialData.model ? ` · ${specialData.model}` : ''})\n\n${
                   imageUrls.map((url, i) => `![Generated ${i + 1}](${url})`).join('\n\n')
-                }${imageUrls.length === 0 ? '⚠️ No image was generated. Try rephrasing your prompt.' : ''}${enhancedPrompt !== trimmed ? `\n\n*Enhanced prompt: "${enhancedPrompt}"*` : ''}`
+                }${imageUrls.length === 0 ? '⚠️ No image was generated. Try rephrasing your prompt.' : ''}${enhancedPrompt !== trimmed ? `\n\n*Enhanced prompt: "${enhancedPrompt}"*` : ''}${
+                  guiCode ? `\n\n---\n\n**Roblox GUI Code** — paste this in Studio command bar:\n\n\`\`\`lua\n${guiCode}\n\`\`\`` : ''
+                }${isUIStyle && !guiCode ? '\n\n*Tip: the AI also tried to generate Roblox GUI code for this design but it didn\'t complete. Try asking "convert this to Roblox GUI" in Build mode.*' : ''}`
               : `**3D Model Generated**\n\n${specialData.meshUrl ? `[Download Model](${specialData.meshUrl})` : 'Generation in progress...'}\n\n${specialData.luauCode || ''}`
 
             setMessagesSync((prev) => [
@@ -1191,6 +1252,7 @@ export function useChat(options: UseChatOptions = {}) {
                 content: specialRes.ok ? resultContent : `Error: ${specialData.error || 'Generation failed'}`,
                 timestamp: new Date(),
                 model: selectedModel,
+                luauCode: guiCode || undefined,
               },
             ])
             setLoading(false)
