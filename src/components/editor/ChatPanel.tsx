@@ -426,6 +426,182 @@ function CodeFeedbackButtons({ code }: { code: string }) {
   )
 }
 
+// ─── Conversation feedback buttons — appears on non-code AI messages ────────
+// Thumbs up/down for conversation quality + interactive follow-up questions
+function ConversationFeedbackButtons({
+  messageId,
+  content,
+  onSend,
+}: {
+  messageId: string
+  content: string
+  onSend: (msg: string) => void
+}) {
+  const [feedbackState, setFeedbackState] = useState<'idle' | 'thumbsUp' | 'thumbsDown' | 'done'>('idle')
+
+  const submitFeedback = async (positive: boolean) => {
+    if (feedbackState !== 'idle') return
+    setFeedbackState(positive ? 'thumbsUp' : 'thumbsDown')
+    try {
+      fetch('/api/ai/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageId: `conv-${messageId}`,
+          thumbsUp: positive,
+          conversational: true,
+        }),
+      }).catch(() => {})
+    } catch {
+      // Best-effort
+    }
+    setTimeout(() => setFeedbackState('done'), 1200)
+  }
+
+  // Extract [FOLLOWUP] questions from the content
+  const followups: string[] = []
+  const followupMatch = content.match(/\[FOLLOWUP\]([\s\S]*?)(?:\[SUGGESTIONS\]|$)/)
+  if (followupMatch) {
+    followupMatch[1]
+      .split('\n')
+      .map(s => s.trim().replace(/^[-*]\s*/, ''))
+      .filter(s => s.length > 0 && s.length < 120)
+      .slice(0, 3)
+      .forEach(q => followups.push(q))
+  }
+
+  if (feedbackState === 'done') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', marginTop: 4 }}>
+        <span style={{ fontSize: 10, color: 'rgba(212,175,55,0.6)', fontFamily: 'Inter, sans-serif' }}>
+          Thanks! That helps me get better.
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+      {/* Followup question pills */}
+      {followups.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+          {followups.map((q, i) => (
+            <button
+              key={i}
+              onClick={() => onSend(q)}
+              style={{
+                padding: '5px 10px',
+                borderRadius: 16,
+                background: 'rgba(212,175,55,0.06)',
+                border: '1px solid rgba(212,175,55,0.15)',
+                color: 'rgba(212,175,55,0.8)',
+                fontSize: 11,
+                fontFamily: 'Inter, sans-serif',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                textAlign: 'left',
+                lineHeight: 1.3,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(212,175,55,0.14)'
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)'
+                e.currentTarget.style.transform = 'translateY(-1px)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(212,175,55,0.06)'
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.15)'
+                e.currentTarget.style.transform = 'translateY(0)'
+              }}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Thumbs up/down */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: 'Inter, sans-serif', marginRight: 2 }}>
+          Helpful?
+        </span>
+        <button
+          onClick={() => submitFeedback(true)}
+          disabled={feedbackState !== 'idle'}
+          title="Helpful response"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 3,
+            fontSize: 12,
+            padding: '3px 8px',
+            borderRadius: 6,
+            border: feedbackState === 'thumbsUp' ? '1px solid rgba(74,222,128,0.5)' : '1px solid rgba(255,255,255,0.08)',
+            background: feedbackState === 'thumbsUp' ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.03)',
+            color: feedbackState === 'thumbsUp' ? 'rgba(74,222,128,0.9)' : 'rgba(255,255,255,0.35)',
+            cursor: feedbackState !== 'idle' ? 'default' : 'pointer',
+            fontFamily: 'Inter, sans-serif',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            if (feedbackState === 'idle') {
+              e.currentTarget.style.background = 'rgba(74,222,128,0.1)'
+              e.currentTarget.style.borderColor = 'rgba(74,222,128,0.25)'
+              e.currentTarget.style.color = 'rgba(74,222,128,0.8)'
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (feedbackState === 'idle') {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+              e.currentTarget.style.color = 'rgba(255,255,255,0.35)'
+            }
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+          </svg>
+        </button>
+        <button
+          onClick={() => submitFeedback(false)}
+          disabled={feedbackState !== 'idle'}
+          title="Not helpful"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 3,
+            fontSize: 12,
+            padding: '3px 8px',
+            borderRadius: 6,
+            border: feedbackState === 'thumbsDown' ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255,255,255,0.08)',
+            background: feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.03)',
+            color: feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.9)' : 'rgba(255,255,255,0.35)',
+            cursor: feedbackState !== 'idle' ? 'default' : 'pointer',
+            fontFamily: 'Inter, sans-serif',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            if (feedbackState === 'idle') {
+              e.currentTarget.style.background = 'rgba(239,68,68,0.1)'
+              e.currentTarget.style.borderColor = 'rgba(239,68,68,0.25)'
+              e.currentTarget.style.color = 'rgba(239,68,68,0.8)'
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (feedbackState === 'idle') {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+              e.currentTarget.style.color = 'rgba(255,255,255,0.35)'
+            }
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function LuauCodeBlock({
   code,
   onSendToStudio,
@@ -554,17 +730,19 @@ function RenderMessageContent({
   onSendToStudio?: (luauCode: string) => void
   studioConnected?: boolean
 }) {
+  // Strip [FOLLOWUP] section from display — it's parsed separately by ConversationFeedbackButtons
+  const cleanContent = content.replace(/\[FOLLOWUP\][\s\S]*?(?=\[SUGGESTIONS\]|$)/, '').trim()
   const parts: React.ReactNode[] = []
   const fenceRe = /```(?:lua|luau|[a-z]*)?\n([\s\S]*?)```/g
   let last = 0
   let key = 0
   let m: RegExpExecArray | null
   fenceRe.lastIndex = 0
-  while ((m = fenceRe.exec(content)) !== null) {
+  while ((m = fenceRe.exec(cleanContent)) !== null) {
     if (m.index > last) {
       parts.push(
         <span key={key++} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {content.slice(last, m.index)}
+          {cleanContent.slice(last, m.index)}
         </span>
       )
     }
@@ -578,10 +756,10 @@ function RenderMessageContent({
     )
     last = m.index + m[0].length
   }
-  if (last < content.length) {
+  if (last < cleanContent.length) {
     parts.push(
       <span key={key++} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-        {content.slice(last)}
+        {cleanContent.slice(last)}
       </span>
     )
   }
@@ -881,6 +1059,7 @@ function MessageBubbleImpl({
   onSendToStudio,
   studioConnected,
   onSelectBuildOption,
+  onSend,
 }: {
   msg: ChatMessage
   userPrompt?: string
@@ -892,6 +1071,7 @@ function MessageBubbleImpl({
   onSendToStudio?: (luauCode: string) => void
   studioConnected?: boolean
   onSelectBuildOption?: (optionPrompt: string) => void
+  onSend?: (msg: string) => void
 }) {
   const [hovered, setHovered] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -1635,6 +1815,14 @@ function MessageBubbleImpl({
         </div>
         {!msg.streaming && msg.meshResult && (
           <MeshResultCard mesh={msg.meshResult} onSendToStudio={onSendToStudio} />
+        )}
+        {/* Conversation feedback — thumbs up/down + follow-up questions for non-code messages */}
+        {!msg.streaming && msg.role === 'assistant' && !msg.hasCode && onSend && (
+          <ConversationFeedbackButtons
+            messageId={msg.id}
+            content={msg.content}
+            onSend={onSend}
+          />
         )}
         {/*
           Manual build fallback: when Studio isn't connected and the AI
@@ -3568,6 +3756,7 @@ export function ChatPanel({
           onSendToStudio={onSendToStudio}
           studioConnected={studioConnected}
           onSelectBuildOption={onSend}
+          onSend={onSend}
         />,
       )
       // Advance trailing state AFTER rendering so the current message sees
