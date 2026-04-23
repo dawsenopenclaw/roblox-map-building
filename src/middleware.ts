@@ -62,6 +62,7 @@ const isPublicRoute = createRouteMatcher([
   // welcome flow then runs post-signup before they land in the editor.
   // Exception: DEMO_MODE bypasses all auth (handled earlier in the pipeline).
   // Game templates marketplace — public so visitors can browse before signing up
+  '/marketplace(.*)',
   '/templates(.*)',
   '/docs(.*)',
   '/download(.*)',

@@ -400,7 +400,7 @@ export async function generateMetadata({
         creator: '@forjegames',
         site: '@forjegames',
       },
-      robots: { index: false, follow: false },
+      robots: { index: true, follow: true },
     }
   }
 
@@ -410,7 +410,7 @@ export async function generateMetadata({
       select: { title: true, description: true, slug: true },
     })
 
-    if (!template) return { metadataBase, robots: { index: false, follow: false } }
+    if (!template) return { metadataBase, robots: { index: true, follow: true } }
 
     const ogUrl = new URL(`${APP_URL}/api/og`)
     ogUrl.searchParams.set('type', 'template')
@@ -441,10 +441,10 @@ export async function generateMetadata({
         creator: '@forjegames',
         site: '@forjegames',
       },
-      robots: { index: false, follow: false },
+      robots: { index: true, follow: true },
     }
   } catch {
-    return { metadataBase, robots: { index: false, follow: false } }
+    return { metadataBase, robots: { index: true, follow: true } }
   }
 }
 

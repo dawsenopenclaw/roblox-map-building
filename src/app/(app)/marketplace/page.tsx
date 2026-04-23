@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   metadataBase: new URL(BASE_URL),
   alternates: { canonical: `${BASE_URL}/marketplace` },
-  robots: { index: false, follow: false },
+  robots: { index: true, follow: true },
   openGraph: {
     title: TITLE,
     description: DESCRIPTION,
