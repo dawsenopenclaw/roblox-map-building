@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import SettingsClient from './SettingsClient'
 
 export const metadata: Metadata = {
-  title: 'Account — ForjeGames',
+  title: 'Account',
   description: 'Manage your ForjeGames account, billing, and Studio connection.',
   robots: { index: false, follow: false },
 }

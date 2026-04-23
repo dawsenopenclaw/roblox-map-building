@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import OnboardingWizardPage from './OnboardingClient'
 
 export const metadata: Metadata = {
-  title: 'Get Started | ForjeGames',
+  title: 'Get Started',
   description: 'Set up your ForjeGames account',
   robots: { index: false, follow: false },
 }

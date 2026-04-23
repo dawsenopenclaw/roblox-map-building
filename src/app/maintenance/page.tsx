@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Maintenance — ForjeGames',
+  title: 'Maintenance',
   description: 'ForjeGames is temporarily down for scheduled maintenance.',
 }
 

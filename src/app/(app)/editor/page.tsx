@@ -3,7 +3,7 @@ import SimplifiedEditor from './SimplifiedEditor'
 import { withBetaGuard } from '@/lib/beta-guard'
 
 export const metadata: Metadata = {
-  title: 'Editor — ForjeGames',
+  title: 'Editor',
   description: 'Build Roblox games with AI in the ForjeGames editor. Generate terrain, scripts, and assets from voice or image prompts.',
   robots: { index: false, follow: false },
 }

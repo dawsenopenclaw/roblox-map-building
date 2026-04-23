@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import JoinTeamClient from './JoinTeamClient'
 
 export const metadata: Metadata = {
-  title: 'Join Team — ForjeGames',
+  title: 'Join Team',
   robots: { index: false, follow: false },
 }
 

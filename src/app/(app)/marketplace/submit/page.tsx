@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import SubmitTemplateClient from './SubmitTemplateClient'
 
 export const metadata: Metadata = {
-  title: 'Submit Template — ForjeGames',
+  title: 'Submit Template',
   robots: { index: false, follow: false },
 }
 

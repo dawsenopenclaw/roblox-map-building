@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import EarningsClient from './EarningsClient'
 
 export const metadata: Metadata = {
-  title: 'Creator Earnings — ForjeGames',
+  title: 'Creator Earnings',
   robots: { index: false, follow: false },
 }
 

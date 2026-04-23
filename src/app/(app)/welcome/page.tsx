@@ -5,7 +5,7 @@ import WelcomeClient from './WelcomeClient'
 import { hasBetaAccess, isBetaRequired } from '@/lib/beta-guard'
 
 export const metadata: Metadata = {
-  title: 'Welcome — ForjeGames',
+  title: 'Welcome',
   description: 'Welcome to ForjeGames. Get started building AI-powered Roblox games. Complete your setup and start creating.',
   robots: { index: false, follow: false },
 }

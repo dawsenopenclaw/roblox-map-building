@@ -4,7 +4,7 @@ import Footer from '@/components/Footer'
 import UnsubscribeClient from './UnsubscribeClient'
 
 export const metadata: Metadata = {
-  title: 'Unsubscribe | ForjeGames',
+  title: 'Unsubscribe',
   description: 'Unsubscribe from ForjeGames marketing emails.',
   robots: { index: false, follow: false },
 }

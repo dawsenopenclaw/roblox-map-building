@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import RobloxLinkCard from '@/components/settings/RobloxLinkCard'
 
 export const metadata: Metadata = {
-  title: 'Roblox Account — ForjeGames',
+  title: 'Roblox Account',
   description: 'Link or manage your Roblox account connection with ForjeGames.',
   robots: { index: false, follow: false },
 }

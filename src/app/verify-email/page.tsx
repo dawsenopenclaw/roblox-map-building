@@ -4,7 +4,7 @@ import Footer from '@/components/Footer'
 import VerifyEmailClient from './VerifyEmailClient'
 
 export const metadata: Metadata = {
-  title: 'Verify Email | ForjeGames',
+  title: 'Verify Email',
   description: 'Verify your email address to activate your ForjeGames account.',
   robots: { index: false, follow: false },
 }

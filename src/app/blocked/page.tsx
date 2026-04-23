@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Access Restricted — ForjeGames',
+  title: 'Access Restricted',
   description: 'ForjeGames is not available in your region due to U.S. export control laws.',
 }
 

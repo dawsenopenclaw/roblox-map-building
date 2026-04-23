@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import TeamSettingsClient from './TeamSettingsClient'
 
 export const metadata: Metadata = {
-  title: 'Team Settings — ForjeGames',
+  title: 'Team Settings',
   description: 'Manage team roles, permissions, and member access for your ForjeGames workspace.',
   robots: { index: false, follow: false },
 }

@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { ProjectsClient } from './ProjectsClient'
 
 export const metadata: Metadata = {
-  title: 'Projects — ForjeGames',
+  title: 'Projects',
   description: 'Your saved Roblox game projects',
 }
 

@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import AgeGatePage from './AgeGateClient'
 
 export const metadata: Metadata = {
-  title: 'Age Verification | ForjeGames',
+  title: 'Age Verification',
   description: 'Verify your age to continue',
   robots: { index: false, follow: false },
 }
