@@ -2529,6 +2529,30 @@ CODE RULES:
 - VALID materials: Wood,WoodPlanks,Marble,Slate,Concrete,Granite,Brick,Pebble,Cobblestone,CorrodedMetal,DiamondPlate,Metal,Grass,LeafyGrass,Sand,Fabric,Ice,Glass,Rock,Snow,Sandstone,Mud,Limestone,Asphalt,Pavement,CrackedLava,Neon
 - VALID classes: Part,WedgePart,MeshPart,SpawnLocation,Model,Folder,PointLight,SpotLight,SurfaceLight,Attachment,Trail,ParticleEmitter,Sound,Fire,Smoke,Sparkles,BillboardGui,SurfaceGui,TextLabel,Frame,Script,LocalScript,ModuleScript,Tool,ClickDetector,ProximityPrompt,Seat,VehicleSeat,TrussPart,CornerWedgePart
 
+SELF-CHECK (validate before outputting):
+1. Every GetService uses a real service name
+2. Every Instance.new uses a class from VALID classes above
+3. Every property = correct type (Vector3/CFrame/Color3/Enum)
+4. All Parts: Anchored=true
+5. DataStore: pcall all operations
+6. No deprecated: wait()/spawn()/delay()/pairs()/ipairs()/BrickColor
+7. RemoteEvents created before connected
+8. Server scripts: no LocalPlayer/PlayerGui
+9. Client scripts: no ServerStorage/ServerScriptService
+10. ChangeHistoryService wraps entire build
+
+COMPLEXITY RULES:
+- FULL GAME request (tycoon/simulator/RPG/obby) = decompose:
+  Phase 1: World + spawn. Phase 2: Core loop. Phase 3: UI. Phase 4: Polish.
+  Build Phase 1 first, suggest next in [FOLLOWUP]
+- SINGLE SYSTEM request (shop/leaderboard/combat) = complete in one shot
+- Max 400 lines per code block — split large builds across phases
+
+SERVER AUTHORITY:
+- Server is ALWAYS authoritative. Client never decides game truth.
+- Currency/damage/ownership = server via RemoteEvent only
+- Validate ALL RemoteEvent args on server: type + range + cooldown
+
 COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Stone=140,135,125 RoofDark=55,50,45 Glass=180,210,230
 
 PART TARGETS: Props=15-30, Buildings=50-100, Scenes=80-150, Complex=120-250+. MIN 30 parts for any build. Go HIGHER — detail is everything. A castle with 40 parts looks like a toy. A castle with 150+ parts looks real.
@@ -9629,16 +9653,44 @@ interface StreamResponseMeta {
   buildPlan?: unknown
   qualityScore?: number
   buildPartCount?: number
+  // Conversation tracking — log every exchange for learning
+  _userId?: string | null
+  _userMessage?: string | null
+  _sessionId?: string | null
 }
 
 function toStreamResponse(text: string, meta: StreamResponseMeta): Response {
-  // ── Universal learning: record EVERY AI response (builds, scripts, conversations, images) ──
+  // ── Universal learning: record EVERY AI response ──
   if (meta.luauCode || meta.intent) {
     void recordUniversalOutcome(text, meta).catch(() => {})
   }
 
+  // ── Conversation logging: save EVERY exchange to DB for historical analysis ──
+  if (meta._userId && meta._userMessage) {
+    void logConversationAsync(
+      meta._userId,
+      meta._sessionId || null,
+      meta._userMessage,
+      text,
+      {
+        model: meta.model,
+        intent: meta.intent,
+        hasCode: meta.hasCode,
+        tokensUsed: meta.tokensUsed,
+        qualityScore: meta.qualityScore,
+        executedInStudio: meta.executedInStudio,
+      }
+    )
+  }
+
+  // Strip internal fields from the meta sent to client
+  const clientMeta = { ...meta }
+  delete clientMeta._userId
+  delete clientMeta._userMessage
+  delete clientMeta._sessionId
+
   const enc = new TextEncoder()
-  const metaPayload = JSON.stringify({ __meta: true, ...meta })
+  const metaPayload = JSON.stringify({ __meta: true, ...clientMeta })
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(enc.encode(text))
@@ -9884,6 +9936,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const wantsStream = parsed.data.stream === true
 
+  // ── Conversation tracking — wraps toStreamResponse to auto-log every exchange ──
+  const trackableStream = (text: string, meta: StreamResponseMeta): Response => {
+    return toStreamResponse(text, {
+      ...meta,
+      _userId: authedUserId,
+      _userMessage: message,
+      _sessionId: sessionId,
+    })
+  }
+
   // ── Learning: detect and record user recommendations (fire-and-forget) ──
   const recs = detectRecommendations(message)
   if (recs.length > 0) {
@@ -10023,11 +10085,13 @@ DAMAGE MODULE:
     .slice(-20)
     .map((h) => ({ role: h.role, content: h.content.slice(0, 2000) }))
 
-  // Auto-fix loop: Studio plugin sends the execution error back here so the AI
-  // can generate a corrected script without the user having to describe the failure.
+  // Learn from every Studio error — permanent negative signal loop
   const lastError = (
     (parsed.data as Record<string, unknown>).lastError as string | undefined
   )?.trim()
+  if (lastError) {
+    void learnFromStudioError(lastError, message, null, detectCategory(message)).catch(() => {})
+  }
 
   // Hard cap: if the client has already retried 3 times, stop trying to fix
   // and return a clear error so the user can change their approach.
@@ -10626,7 +10690,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         let geminiExecuted = false
         if (geminiLuau && sessionId) { geminiExecuted = await sendCodeToStudio(sessionId, geminiLuau) }
         if (wantsStream) {
-          return toStreamResponse(text, { intent, tokensUsed, hasCode: geminiLuau !== null, luauCode: geminiLuau, executedInStudio: geminiExecuted, model: 'gemini-1.5-flash (custom key)' }) as unknown as NextResponse
+          return trackableStream(text, { intent, tokensUsed, hasCode: geminiLuau !== null, luauCode: geminiLuau, executedInStudio: geminiExecuted, model: 'gemini-1.5-flash (custom key)' }) as unknown as NextResponse
         }
         return NextResponse.json({
           message: text,
@@ -10675,7 +10739,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         let openaiExecuted = false
         if (openaiLuau && sessionId) { openaiExecuted = await sendCodeToStudio(sessionId, openaiLuau) }
         if (wantsStream) {
-          return toStreamResponse(text, { intent, tokensUsed, hasCode: openaiLuau !== null, luauCode: openaiLuau, executedInStudio: openaiExecuted, model: 'gpt-4o (custom key)' }) as unknown as NextResponse
+          return trackableStream(text, { intent, tokensUsed, hasCode: openaiLuau !== null, luauCode: openaiLuau, executedInStudio: openaiExecuted, model: 'gpt-4o (custom key)' }) as unknown as NextResponse
         }
         return NextResponse.json({
           message: text,
@@ -10721,7 +10785,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       let anthropicExecuted = false
       if (anthropicLuau && sessionId) { anthropicExecuted = await sendCodeToStudio(sessionId, anthropicLuau) }
       if (wantsStream) {
-        return toStreamResponse(responseText, { intent, tokensUsed, hasCode: anthropicLuau !== null, luauCode: anthropicLuau, executedInStudio: anthropicExecuted, model: aiResponse.model + ' (custom key)' }) as unknown as NextResponse
+        return trackableStream(responseText, { intent, tokensUsed, hasCode: anthropicLuau !== null, luauCode: anthropicLuau, executedInStudio: anthropicExecuted, model: aiResponse.model + ' (custom key)' }) as unknown as NextResponse
       }
       return NextResponse.json({
         message: responseText,
@@ -10744,7 +10808,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     const twoPassResult = await freeModelTwoPass(message, intent, historyForGemini, cameraContext, sessionId)
     if (twoPassResult) {
       if (wantsStream) {
-        return toStreamResponse(twoPassResult.conversationText, {
+        return trackableStream(twoPassResult.conversationText, {
           suggestions: twoPassResult.suggestions,
           intent,
           hasCode: twoPassResult.luauCode !== null,
@@ -10806,7 +10870,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         finalMsg = prependStudioDisconnectedBanner(finalMsg, true)
       }
       if (wantsStream) {
-        return toStreamResponse(finalMsg, {
+        return trackableStream(finalMsg, {
           suggestions: sug,
           intent,
           hasCode: luau !== null,
@@ -11447,7 +11511,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         // Stream conversation text — code is sent to Studio via sendCodeToStudio
         // but also included in meta so frontend can show "Import to Studio" button
         // when plugin isn't connected.
-        return toStreamResponse(twoPassResult.conversationText, {
+        return trackableStream(twoPassResult.conversationText, {
           suggestions: twoPassResult.suggestions,
           intent,
           hasCode: twoPassResult.luauCode !== null,
@@ -11484,7 +11548,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     console.error('[chat] All AI providers exhausted — no response generated for:', message.slice(0, 100))
     const allFailedMsg = 'All AI providers are busy — please wait 60 seconds and try again.'
     if (wantsStream) {
-      return toStreamResponse(allFailedMsg, {
+      return trackableStream(allFailedMsg, {
         suggestions: ['Try again in a minute', 'Simplify your request'],
         intent,
         hasCode: false,
@@ -11566,7 +11630,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         tokensUsed + ' tokens.'
     }
     if (wantsStream) {
-      return toStreamResponse(payload.message, {
+      return trackableStream(payload.message, {
         intent,
         hasCode: false,
         tokensUsed,
@@ -11598,7 +11662,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       // Leave default demo message, no textureResult attached
     }
     if (wantsStream) {
-      return toStreamResponse(payload.message, {
+      return trackableStream(payload.message, {
         intent,
         hasCode: false,
         tokensUsed,
@@ -11701,7 +11765,7 @@ Set m.PrimaryPart to the base part. No explanation.`,
           ? 'Sent to Studio — your plugin should be building it now. If nothing appears, make sure the ForjeGames plugin is active.\n\nWhat would you like to change or add next?'
           : 'Here\'s the build code! Click **"Import to Studio"** to paste it into your game. Make sure the Studio plugin is connected first — [install it here](/download) if you haven\'t.\n\nWhat would you like to change or add next?'
         if (wantsStream) {
-          return toStreamResponse(buildMsg, {
+          return trackableStream(buildMsg, {
             intent,
             hasCode: true,
             tokensUsed,
@@ -11737,7 +11801,7 @@ Set m.PrimaryPart to the base part. No explanation.`,
       ? `Sent to Studio — building now. What would you like to change or add?`
       : `Here's the build code! Click **"Import to Studio"** to place it in your game. Make sure the Studio plugin is connected first — [install it here](/download) if you haven't.`
     if (wantsStream) {
-      return toStreamResponse(fbMsg, {
+      return trackableStream(fbMsg, {
         intent,
         hasCode: true,
         tokensUsed,
