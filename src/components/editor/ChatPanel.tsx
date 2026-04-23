@@ -8,6 +8,7 @@ import { McpToolCard, type McpToolResult } from './McpToolCard'
 import { McpToolbar } from './McpToolbar'
 import { ModelPreview } from './ModelPreview'
 import { VoiceInputButton } from './VoiceInputButton'
+import { VoiceOutputToggle } from './VoiceOutputToggle'
 import { CheckpointPanel } from './CheckpointPanel'
 import { CheckpointTimeline } from './CheckpointTimeline'
 import { computeLineDiff, hasDiff } from '@/lib/simple-diff'
@@ -311,6 +312,7 @@ function BuildFeedbackCard({
     }).catch(() => {})
   }
 
+  const hasBuild = !!luauCode && qualityScore > 0
   const tier = qualityScore >= 80 ? 'great' : qualityScore >= 60 ? 'good' : qualityScore >= 40 ? 'fair' : 'low'
   const tierConfig = {
     great: { label: 'Great Build', color: '#4ADE80', bg: 'rgba(74,222,128,0.06)', border: 'rgba(74,222,128,0.15)', icon: '✓', hint: 'Looking solid. You can refine details or move on.' },
@@ -318,9 +320,11 @@ function BuildFeedbackCard({
     fair:  { label: 'Needs Work',  color: '#F59E0B', bg: 'rgba(245,158,11,0.06)',  border: 'rgba(245,158,11,0.15)',  icon: '!', hint: 'Could be better. Try rephrasing or breaking it into smaller steps.' },
     low:   { label: 'Try Again',   color: '#EF4444', bg: 'rgba(239,68,68,0.06)',   border: 'rgba(239,68,68,0.15)',   icon: '✗', hint: 'This one missed the mark. Try a simpler prompt or be more specific.' },
   }
-  const cfg = tierConfig[tier]
+  const cfg = hasBuild ? tierConfig[tier] : { label: 'Response', color: '#71717A', bg: 'rgba(255,255,255,0.02)', border: 'rgba(255,255,255,0.06)', icon: '•', hint: '' }
 
-  const quickActions = tier === 'great'
+  const quickActions = !hasBuild
+    ? ['Tell me more', 'Can you show me code for this?', 'What else can you help with?']
+    : tier === 'great'
     ? ['Add lighting and atmosphere', 'Add more detail to this build', 'What should I build next?']
     : tier === 'good'
     ? ['Make it more detailed', 'Fix any issues with this build', 'Enhance the materials and colors']
@@ -870,6 +874,7 @@ function LuauCodeBlock({
   studioConnected?: boolean
   prompt?: string
 }) {
+  const codeBlockMobile = useIsMobile()
   const [copied, setCopied] = useState(false)
   const [sent, setSent] = useState(false)
 
@@ -963,7 +968,7 @@ function LuauCodeBlock({
           lineHeight: 1.6,
           color: 'rgba(255,255,255,0.72)',
           overflowX: 'auto',
-          maxHeight: 320,
+          maxHeight: codeBlockMobile ? 180 : 320,
           overflowY: 'auto',
           whiteSpace: 'pre',
           scrollbarWidth: 'thin',
@@ -2219,10 +2224,10 @@ function MessageBubbleImpl({
           {msg.hasCode && (
             <CodePreviewBadge luauCode={msg.luauCode} previousCode={previousCode} executedInStudio={msg.executedInStudio} />
           )}
-          {/* Build Feedback Card — post-build quality + stats */}
-          {!msg.streaming && msg.hasCode && msg.qualityScore !== undefined && msg.qualityScore > 0 && (
+          {/* Build Feedback Card — shows on EVERY completed AI response for learning */}
+          {!msg.streaming && msg.role === 'assistant' && (
             <BuildFeedbackCard
-              qualityScore={msg.qualityScore}
+              qualityScore={msg.qualityScore ?? (msg.hasCode ? 60 : 0)}
               partCount={msg.buildPartCount}
               executedInStudio={msg.executedInStudio}
               model={msg.model}
@@ -4006,6 +4011,7 @@ export function ChatPanel({
   const [creativity, setCreativity] = useState(50)
   const [styleRefs, setStyleRefs] = useState<File[]>([])
   const [stylePreset, setStylePreset] = useState<string | null>(null)
+  const [mobileImageControlsOpen, setMobileImageControlsOpen] = useState(false)
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
   const [showScrollBtn, setShowScrollBtn] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -4176,6 +4182,15 @@ export function ChatPanel({
   ])
 
   const hasMessages = messages.length > 0
+  const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(false)
+
+  // Get latest assistant message for voice output
+  const latestAssistantMsg = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant' && !messages[i].streaming) return messages[i].content
+    }
+    return undefined
+  }, [messages])
 
   const [sendPressed, setSendPressed] = useState(false)
 
@@ -4488,62 +4503,145 @@ export function ChatPanel({
           </div>
         )}
 
-        {/* Image mode controls */}
+        {/* Image mode controls — collapsible on mobile to keep input visible */}
         {aiMode === 'image' && (
-          <>
-            <ImageStylePresetSelector
-              selectedStyle={
-                imageOptions && imageOptions.style !== 'auto'
-                  ? imageOptions.style
-                  : stylePreset ?? ''
-              }
-              onStyleChange={(key) => {
-                setStylePreset(key)
-                if (onImageOptionsChange) {
-                  onImageOptionsChange({
-                    style: key,
-                    removeBackground: imageOptions?.removeBackground ?? false,
-                    upscale: imageOptions?.upscale ?? false,
-                  })
+          isMobile ? (
+            <div>
+              <button
+                type="button"
+                onClick={() => setMobileImageControlsOpen(v => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  width: '100%', padding: '6px 0',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'rgba(244,114,182,0.7)', fontSize: 11, fontWeight: 600,
+                  fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
+                  style={{ transform: mobileImageControlsOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>
+                  <path d="M3 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Image Options
+                {imageOptions?.style && imageOptions.style !== 'auto' && (
+                  <span style={{ fontSize: 10, color: 'rgba(244,114,182,0.5)' }}>
+                    ({imageOptions.style})
+                  </span>
+                )}
+              </button>
+              {mobileImageControlsOpen && (
+                <div style={{ maxHeight: '35vh', overflowY: 'auto', paddingBottom: 4 }}>
+                  <ImageStylePresetSelector
+                    selectedStyle={
+                      imageOptions && imageOptions.style !== 'auto'
+                        ? imageOptions.style
+                        : stylePreset ?? ''
+                    }
+                    onStyleChange={(key) => {
+                      setStylePreset(key)
+                      if (onImageOptionsChange) {
+                        onImageOptionsChange({
+                          style: key,
+                          removeBackground: imageOptions?.removeBackground ?? false,
+                          upscale: imageOptions?.upscale ?? false,
+                        })
+                      }
+                    }}
+                  />
+                  {onImageOptionsChange && imageOptions && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => onImageOptionsChange({ ...imageOptions, removeBackground: !imageOptions.removeBackground })}
+                        style={{
+                          fontSize: 11, padding: '4px 10px', borderRadius: 999,
+                          border: `1px solid ${imageOptions.removeBackground ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                          background: imageOptions.removeBackground ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
+                          color: imageOptions.removeBackground ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
+                          cursor: 'pointer', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                        }}
+                      >
+                        {imageOptions.removeBackground ? '✓ ' : ''}Remove BG
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onImageOptionsChange({ ...imageOptions, upscale: !imageOptions.upscale })}
+                        style={{
+                          fontSize: 11, padding: '4px 10px', borderRadius: 999,
+                          border: `1px solid ${imageOptions.upscale ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                          background: imageOptions.upscale ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
+                          color: imageOptions.upscale ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
+                          cursor: 'pointer', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                        }}
+                      >
+                        {imageOptions.upscale ? '✓ ' : ''}HD Upscale
+                      </button>
+                    </div>
+                  )}
+                  <StyleReferenceUpload
+                    references={styleRefs}
+                    onAdd={(f) => setStyleRefs(prev => [...prev, f])}
+                    onRemove={(i) => setStyleRefs(prev => prev.filter((_, idx) => idx !== i))}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <ImageStylePresetSelector
+                selectedStyle={
+                  imageOptions && imageOptions.style !== 'auto'
+                    ? imageOptions.style
+                    : stylePreset ?? ''
                 }
-              }}
-            />
-            {onImageOptionsChange && imageOptions && (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => onImageOptionsChange({ ...imageOptions, removeBackground: !imageOptions.removeBackground })}
-                  style={{
-                    fontSize: 11, padding: '4px 10px', borderRadius: 999,
-                    border: `1px solid ${imageOptions.removeBackground ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
-                    background: imageOptions.removeBackground ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
-                    color: imageOptions.removeBackground ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
-                    cursor: 'pointer', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
-                  }}
-                >
-                  {imageOptions.removeBackground ? '✓ ' : ''}Remove BG
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onImageOptionsChange({ ...imageOptions, upscale: !imageOptions.upscale })}
-                  style={{
-                    fontSize: 11, padding: '4px 10px', borderRadius: 999,
-                    border: `1px solid ${imageOptions.upscale ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
-                    background: imageOptions.upscale ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
-                    color: imageOptions.upscale ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
-                    cursor: 'pointer', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
-                  }}
-                >
-                  {imageOptions.upscale ? '✓ ' : ''}HD Upscale
-                </button>
-              </div>
-            )}
-            <StyleReferenceUpload
-              references={styleRefs}
-              onAdd={(f) => setStyleRefs(prev => [...prev, f])}
-              onRemove={(i) => setStyleRefs(prev => prev.filter((_, idx) => idx !== i))}
-            />
-          </>
+                onStyleChange={(key) => {
+                  setStylePreset(key)
+                  if (onImageOptionsChange) {
+                    onImageOptionsChange({
+                      style: key,
+                      removeBackground: imageOptions?.removeBackground ?? false,
+                      upscale: imageOptions?.upscale ?? false,
+                    })
+                  }
+                }}
+              />
+              {onImageOptionsChange && imageOptions && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => onImageOptionsChange({ ...imageOptions, removeBackground: !imageOptions.removeBackground })}
+                    style={{
+                      fontSize: 11, padding: '4px 10px', borderRadius: 999,
+                      border: `1px solid ${imageOptions.removeBackground ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                      background: imageOptions.removeBackground ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
+                      color: imageOptions.removeBackground ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
+                      cursor: 'pointer', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                    }}
+                  >
+                    {imageOptions.removeBackground ? '✓ ' : ''}Remove BG
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onImageOptionsChange({ ...imageOptions, upscale: !imageOptions.upscale })}
+                    style={{
+                      fontSize: 11, padding: '4px 10px', borderRadius: 999,
+                      border: `1px solid ${imageOptions.upscale ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                      background: imageOptions.upscale ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
+                      color: imageOptions.upscale ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
+                      cursor: 'pointer', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                    }}
+                  >
+                    {imageOptions.upscale ? '✓ ' : ''}HD Upscale
+                  </button>
+                </div>
+              )}
+              <StyleReferenceUpload
+                references={styleRefs}
+                onAdd={(f) => setStyleRefs(prev => [...prev, f])}
+                onRemove={(i) => setStyleRefs(prev => prev.filter((_, idx) => idx !== i))}
+              />
+            </>
+          )
         )}
 
         {/* Playtest indicator */}
@@ -4709,9 +4807,14 @@ export function ChatPanel({
               }}
             />
 
-            {/* Voice input */}
-            <div style={{ flexShrink: 0 }}>
+            {/* Voice input + output */}
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
               <VoiceInputButton onSubmit={handleVoiceSubmit} disabled={loading} />
+              <VoiceOutputToggle
+                latestMessage={latestAssistantMsg}
+                enabled={voiceOutputEnabled}
+                onToggle={setVoiceOutputEnabled}
+              />
             </div>
 
             {/* Send / Stop button */}
