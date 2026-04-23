@@ -2761,6 +2761,108 @@ local function P(name, sx,sy,sz, px,py,pz, mat, r,g,b, parent, transparency)
 end
 Then use it: P("Wall_Front", 20,10,1, 0,6,10, "Brick", 180,120,80, model)
 
+=== MASTER BUILD PATTERNS — USE THESE LOOPS TO GENERATE MASSIVE DETAIL ===
+
+PATTERN 1 — BRICK WALL WITH MORTAR (creates 30+ parts per wall):
+for row = 0, 9 do
+  for col = 0, 4 do
+    local offset = (row % 2 == 0) and 0 or 2
+    P("brick_"..row.."_"..col, 4,2,1, sp.X-8+col*4+offset, sp.Y+1+row*2.05, sp.Z, "Brick", vc(Color3.fromRGB(160,80,50),0.08), f)
+  end
+end
+
+PATTERN 2 — PICKET FENCE (creates 20+ parts):
+for i = 0, 19 do
+  P("picket_"..i, 0.3,3.5,0.3, sp.X-10+i*1.05, sp.Y+1.75, sp.Z+15, "Wood", vc(Color3.fromRGB(230,225,215),0.05), f)
+  -- Pointed tops
+  W("picket_top_"..i, CFrame.new(sp.X-10+i*1.05, sp.Y+3.75, sp.Z+15), Vector3.new(0.3,0.5,0.3), Enum.Material.Wood, vc(Color3.fromRGB(230,225,215),0.05), f)
+end
+P("fence_rail_top", 21,0.2,0.2, sp.X, sp.Y+3, sp.Z+15, "Wood", Color3.fromRGB(220,215,205), f)
+P("fence_rail_bot", 21,0.2,0.2, sp.X, sp.Y+1, sp.Z+15, "Wood", Color3.fromRGB(220,215,205), f)
+
+PATTERN 3 — COBBLESTONE PATH (creates 15+ parts per section):
+for i = 0, 14 do
+  local sz = 1.5+math.random()*1.5
+  P("cobble_"..i, sz,0.15,sz, sp.X-3+math.random()*6, sp.Y+0.08, sp.Z-15+i*2.2, "Cobblestone", vc(Color3.fromRGB(130,125,115),0.12), f)
+end
+
+PATTERN 4 — BOOKSHELF WITH BOOKS (creates 25+ parts):
+P("shelf_frame", 4,6,1.2, sp.X+9, sp.Y+3.5, sp.Z-9, "Wood", Color3.fromRGB(120,80,40), f)
+for shelf = 0, 3 do
+  P("shelf_"..shelf, 3.8,0.2,1.1, sp.X+9, sp.Y+1.5+shelf*1.4, sp.Z-9, "WoodPlanks", Color3.fromRGB(140,95,50), f)
+  for book = 0, 6 do
+    local colors = {{180,40,40},{40,80,160},{40,140,60},{180,140,40},{120,40,120},{200,80,30},{30,100,100}}
+    local c = colors[(book%7)+1]
+    local h = 0.7+math.random()*0.5
+    P("book_"..shelf.."_"..book, 0.35,h,0.7, sp.X+7.2+book*0.5, sp.Y+1.8+shelf*1.4+h/2-0.35, sp.Z-9, "SmoothPlastic", Color3.fromRGB(c[1],c[2],c[3]), f)
+  end
+end
+
+PATTERN 5 — CHANDELIER (creates 15+ parts):
+local cY = sp.Y+18
+P("chandelier_chain", 0.15,3,0.15, sp.X, cY+1.5, sp.Z, "Metal", Color3.fromRGB(140,120,70), f)
+local ring = P("chandelier_ring", 5,0.3,5, sp.X, cY, sp.Z, "Metal", Color3.fromRGB(160,140,80), f)
+ring.Shape = Enum.PartType.Cylinder
+for i = 0, 7 do
+  local a = i/8*math.pi*2
+  local cx, cz = sp.X+math.cos(a)*2.2, sp.Z+math.sin(a)*2.2
+  P("candle_"..i, 0.15,0.6,0.15, cx, cY+0.45, cz, "SmoothPlastic", Color3.fromRGB(255,250,230), f)
+  local flame = P("flame_"..i, 0.2,0.35,0.2, cx, cY+0.95, cz, "Neon", Color3.fromRGB(255,180,50), f)
+  local pl = Instance.new("PointLight"); pl.Brightness=0.6; pl.Range=10; pl.Color=Color3.fromRGB(255,200,120); pl.Parent=flame
+end
+
+PATTERN 6 — WINDOW WITH SHUTTERS AND FLOWER BOX (8+ parts per window):
+local wX, wY, wZ = sp.X+5, sp.Y+6, sp.Z+10.2
+P("win_glass", 3,3.5,0.1, wX,wY,wZ, "Glass", Color3.fromRGB(200,220,255), f).Transparency=0.4
+P("win_frame_t", 3.4,0.25,0.25, wX,wY+1.88,wZ, "Wood", Color3.fromRGB(120,80,40), f)
+P("win_sill", 3.6,0.2,0.5, wX,wY-1.88,wZ+0.15, "Wood", Color3.fromRGB(120,80,40), f)
+P("win_frame_l", 0.2,3.8,0.2, wX-1.7,wY,wZ, "Wood", Color3.fromRGB(120,80,40), f)
+P("win_frame_r", 0.2,3.8,0.2, wX+1.7,wY,wZ, "Wood", Color3.fromRGB(120,80,40), f)
+-- Shutters
+P("shutter_l", 1.2,3.5,0.15, wX-2.5,wY,wZ+0.1, "Wood", Color3.fromRGB(50,80,120), f)
+P("shutter_r", 1.2,3.5,0.15, wX+2.5,wY,wZ+0.1, "Wood", Color3.fromRGB(50,80,120), f)
+-- Flower box
+P("flowerbox", 3,0.6,0.8, wX,wY-2.3,wZ+0.3, "Wood", Color3.fromRGB(100,65,30), f)
+for fl = 0, 4 do
+  local fc = {{220,50,60},{255,200,50},{220,100,180},{255,120,40},{180,50,200}}
+  local c = fc[(fl%5)+1]
+  P("flower_"..fl, 0.35,0.4,0.35, wX-1.2+fl*0.6,wY-1.8,wZ+0.4, "Grass", Color3.fromRGB(c[1],c[2],c[3]), f)
+end
+
+PATTERN 7 — FIREPLACE WITH MANTLE (12+ parts):
+P("fp_back", 5,5,1, sp.X,sp.Y+3,sp.Z-9.5, "Brick", Color3.fromRGB(120,60,40), f)
+P("fp_side_l", 1,5,2, sp.X-2.5,sp.Y+3,sp.Z-8.5, "Brick", Color3.fromRGB(130,65,42), f)
+P("fp_side_r", 1,5,2, sp.X+2.5,sp.Y+3,sp.Z-8.5, "Brick", Color3.fromRGB(130,65,42), f)
+P("fp_mantle", 6,0.5,2.5, sp.X,sp.Y+5.75,sp.Z-8.75, "Marble", Color3.fromRGB(220,210,200), f)
+P("fp_hearth", 5.5,0.3,3, sp.X,sp.Y+0.65,sp.Z-8, "Cobblestone", Color3.fromRGB(100,95,85), f)
+P("fp_log1", 0.4,0.4,2.5, sp.X-0.3,sp.Y+1.1,sp.Z-8.5, "Wood", Color3.fromRGB(80,45,20), f)
+P("fp_log2", 0.35,0.35,2.2, sp.X+0.3,sp.Y+1.1,sp.Z-8.5, "Wood", Color3.fromRGB(70,40,18), f)
+local fire = P("fp_fire", 2,1.5,0.5, sp.X,sp.Y+1.5,sp.Z-8.5, "Neon", Color3.fromRGB(255,120,20), f)
+local fpl = Instance.new("PointLight"); fpl.Brightness=1.5; fpl.Range=16; fpl.Color=Color3.fromRGB(255,180,80); fpl.Parent=fire
+Instance.new("Fire", fire).Size=5
+
+PATTERN 8 — STAIRCASE WITH RAILING (20+ parts):
+for step = 0, 11 do
+  P("step_"..step, 4,0.8,1.2, sp.X,sp.Y+0.5+step*0.8,sp.Z-8+step*1.2, "Marble", vc(Color3.fromRGB(200,195,185),0.04), f)
+  -- Railing balusters
+  P("baluster_l_"..step, 0.15,3,0.15, sp.X-1.9,sp.Y+2+step*0.8,sp.Z-8+step*1.2, "Metal", Color3.fromRGB(60,60,65), f)
+  P("baluster_r_"..step, 0.15,3,0.15, sp.X+1.9,sp.Y+2+step*0.8,sp.Z-8+step*1.2, "Metal", Color3.fromRGB(60,60,65), f)
+end
+-- Handrails
+P("handrail_l", 0.1,0.1,15, sp.X-1.9,sp.Y+9,sp.Z-2, "Metal", Color3.fromRGB(70,70,75), f)
+P("handrail_r", 0.1,0.1,15, sp.X+1.9,sp.Y+9,sp.Z-2, "Metal", Color3.fromRGB(70,70,75), f)
+
+USE THESE PATTERNS. When building a house, use Pattern 6 for EVERY window, Pattern 7 for the fireplace, Pattern 4 for a bookshelf, Pattern 5 for a chandelier. Use loops and math.random() for variety. A single building should have 100-300+ parts. A scene should have 300-800+. GO INSANE WITH DETAIL.
+
+THINK ABOUT WHAT MAKES A SPACE FEEL REAL:
+- A kitchen has: counter + sink with faucet + stove with burners + fridge with handle + hanging pots + cutting board + fruit bowl + dish rack + window above sink + under-cabinet lights
+- A bedroom has: bed with headboard + mattress + pillows + blanket + nightstands + lamps + dresser with mirror + rug + curtains on windows + closet door + alarm clock
+- A living room has: couch with cushions + coffee table with magazines + TV on stand + bookshelf with books + floor lamp + rug + plants + picture frames on wall + curtains
+- A medieval hall has: long tables + benches + tapestries + chandeliers + torches + banners + throne + carpet runner + suits of armor + weapon racks + stained glass windows
+- A street has: road with lane markings + sidewalks + curbs + storm drains + street lights + fire hydrants + trash cans + benches + bus stop + mail boxes + newspaper boxes + trees in planters
+
+EVERY DETAIL MATTERS. Don't skip anything. Build it like you're building a real place.
+
 === BUILD TEMPLATES (from RAG knowledge base) ===
 If the RELEVANT ROBLOX DOCUMENTATION section at the end of this prompt contains a BUILD TEMPLATE with WORKING CODE, that is your PRIMARY reference. These templates have been hand-verified — every coordinate is mathematically correct, parts connect at corners, furniture sits on floors, roofs cover footprints. COPY the coordinate patterns and adapt dimensions/colors to fit the request. Do NOT ignore templates and guess your own coordinates.
 Cylinder axis: X=height, Y+Z=diameter. Rotate Z=90deg for horizontal. Parent set LAST. 2-3 color shades per object. ALWAYS add a PointLight to anything that should glow.
