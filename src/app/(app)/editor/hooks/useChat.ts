@@ -639,6 +639,7 @@ export function useChat(options: UseChatOptions = {}) {
   // ─── Persist active messages to fg_chat_messages_v1 on every change ──────────
   // Filters out still-streaming messages and caps at MAX_ACTIVE_MESSAGES.
   // Also bumps savedAt so ChatPanel can flash the "Saved" indicator.
+  // ALSO saves to session history so old chats are always accessible.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const persistable = messages
@@ -648,8 +649,25 @@ export function useChat(options: UseChatOptions = {}) {
     try {
       localStorage.setItem(LS_ACTIVE_KEY, JSON.stringify(persistable))
       setSavedAt(Date.now())
+      // Auto-save to session history so it appears in Chat History panel
+      if (persistable.filter(m => m.role === 'user').length > 0) {
+        persistSession(currentSessionIdRef.current, persistable)
+      }
     } catch { /* quota exceeded — silently ignore */ }
   }, [messages])
+
+  // ─── Save session on tab close / navigate away ──────────────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleUnload = () => {
+      const current = messagesRef.current.filter(m => !m.streaming && m.role !== 'status')
+      if (current.filter(m => m.role === 'user').length > 0) {
+        persistSession(currentSessionIdRef.current, current)
+      }
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    return () => window.removeEventListener('beforeunload', handleUnload)
+  }, [])
 
   // Keep ref in sync with state
   const setMessagesSync = useCallback((updater: (prev: ChatMessage[]) => ChatMessage[]) => {
