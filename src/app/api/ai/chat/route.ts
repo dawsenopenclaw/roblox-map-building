@@ -8383,44 +8383,48 @@ type IntentKey =
   | 'default'
 
 // Token costs per intent — cheap for conversation, expensive for generation
-// Beta: all costs set to 0 so testers can use everything freely.
-// Restore original costs before paid launch.
+// Free actions cost 0 (conversation, help, undo). Generation costs scale by complexity.
+// Pricing: users get tokens from tier subscription or token packs.
 const INTENT_TOKEN_COST: Record<IntentKey, number> = {
+  // Free — no cost
   conversation: 0,
   chat: 0,
   undo: 0,
   help: 0,
   publish: 0,
   education: 0,
-  debug: 0,
-  performance: 0,
-  modify: 0,
-  cleanup: 0,
-  animate: 0,
-  datasave: 0,
-  networking: 0,
-  multiscript: 0,
-  gamesystem: 0,
-  default: 0,
-  analysis: 0,
-  script: 0,
-  ui: 0,
-  audio: 0,
-  lighting: 0,
-  economy: 0,
-  quest: 0,
-  combat: 0,
-  npc: 0,
-  vehicle: 0,
-  particle: 0,
-  weather: 0,
-  building: 0,
-  terrain: 0,
-  marketplace: 0,
-  fullgame: 0,
-  mesh: 0,
-  texture: 0,
-  image: 0,
+  // Cheap — light processing
+  debug: 1,
+  performance: 1,
+  modify: 2,
+  cleanup: 1,
+  analysis: 1,
+  default: 2,
+  // Medium — code generation
+  animate: 3,
+  datasave: 5,
+  networking: 5,
+  multiscript: 8,
+  gamesystem: 5,
+  script: 5,
+  ui: 5,
+  audio: 3,
+  lighting: 3,
+  economy: 5,
+  quest: 5,
+  combat: 5,
+  npc: 5,
+  vehicle: 5,
+  particle: 3,
+  weather: 3,
+  // Expensive — heavy generation
+  building: 5,
+  terrain: 8,
+  marketplace: 1,
+  fullgame: 15,
+  mesh: 20,
+  texture: 10,
+  image: 5,
 }
 
 const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
@@ -11538,19 +11542,46 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     }
   }
 
+  // ── Pre-generation balance check — block if insufficient tokens ──
+  const intentTokenCost = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
+  if (!isDemo && !isAdmin && authedUserId && intentTokenCost > 0) {
+    try {
+      const bal = await getTokenBalance(authedUserId)
+      const currentBalance = bal?.balance ?? 0
+      if (currentBalance < intentTokenCost) {
+        return NextResponse.json(
+          { error: 'insufficient_tokens', balance: currentBalance, required: intentTokenCost,
+            message: `You need ${intentTokenCost} tokens for this but only have ${currentBalance}. Get more tokens to continue.` },
+          { status: 402 },
+        )
+      }
+    } catch {
+      // Balance check failed — allow through (fail open)
+    }
+  }
+
   // ── Direct Gemini Flash path (user explicitly selected 'gemini-flash') ─────
-  // Bypasses the cascade and goes straight to Gemini. Free tier, no token cost.
+  // Bypasses the cascade and goes straight to Gemini.
   if (rawRequestedModel === 'gemini-flash' && !isAutoMode) {
     const historyForGemini = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
     const twoPassResult = await freeModelTwoPass(message, intent, historyForGemini, cameraContext, sessionId)
     if (twoPassResult) {
+      // Spend tokens for this generation (skip for free intents, demo, admins)
+      const tokenCostFree = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
+      if (!isDemo && !isAdmin && authedUserId && tokenCostFree > 0) {
+        try {
+          await spendTokens(authedUserId, tokenCostFree, `AI ${intent} request (Gemini)`, { prompt: message.slice(0, 100), intent })
+        } catch (spendErr) {
+          console.warn('[TokenSpend] Failed (non-blocking):', spendErr instanceof Error ? spendErr.message : spendErr)
+        }
+      }
       if (wantsStream) {
         return trackableStream(twoPassResult.conversationText, {
           suggestions: twoPassResult.suggestions,
           intent,
           hasCode: twoPassResult.luauCode !== null,
           luauCode: twoPassResult.luauCode,
-          tokensUsed: 0,
+          tokensUsed: tokenCostFree,
           executedInStudio: twoPassResult.executedInStudio,
           model: 'gemini-flash',
           qualityScore: twoPassResult.qualityScore,
@@ -11559,7 +11590,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       }
       return NextResponse.json({
         message: twoPassResult.conversationText,
-        tokensUsed: 0,
+        tokensUsed: tokenCostFree,
         intent,
         hasCode: twoPassResult.luauCode !== null,
         luauCode: twoPassResult.luauCode,
@@ -12234,6 +12265,14 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     const twoPassResult = await freeModelTwoPass(message, intent, historyForFree, cameraContext, sessionId)
 
     if (twoPassResult) {
+      // Spend tokens for this generation
+      if (!isDemo && !isAdmin && authedUserId && tokenCost > 0) {
+        try {
+          await spendTokens(authedUserId, tokenCost, `AI ${intent} request (${twoPassResult.model})`, { prompt: message.slice(0, 100), intent })
+        } catch (spendErr) {
+          console.warn('[TokenSpend] Failed (non-blocking):', spendErr instanceof Error ? spendErr.message : spendErr)
+        }
+      }
       // Auto-log for beta review
       if (authedUserId) logConversationAsync(authedUserId, sessionId, message, twoPassResult.conversationText, { model: twoPassResult.model, intent, hasCode: twoPassResult.luauCode !== null })
 
