@@ -150,9 +150,21 @@ local function authHeaders()
   return headers
 end
 
+-- Ensure HTTP is enabled before every request — handles play mode transitions
+-- and game setting changes that might disable it mid-session
+local function ensureHttpEnabled()
+  pcall(function()
+    if not HttpService.HttpEnabled then
+      HttpService.HttpEnabled = true
+      warn("[ForjeGames] Re-enabled HttpService.HttpEnabled")
+    end
+  end)
+end
+
 -- Returns result table on success, nil on network failure, string "http_disabled"
 -- if HttpService is blocked, string "unreachable" if server cannot be reached.
 local function httpGet(path)
+  ensureHttpEnabled()
   local url = resolveBaseUrl() .. path
   local ok, result = pcall(function()
     return HttpService:RequestAsync({
@@ -176,6 +188,7 @@ local function httpGet(path)
 end
 
 local function httpPost(path, body)
+  ensureHttpEnabled()
   local url = resolveBaseUrl() .. path
   local encoded
   local encOk, encErr = pcall(function()
@@ -2457,7 +2470,7 @@ local function sendConnect()
 
   local result, netErr = httpPost("/api/studio/connect", payload)
   if netErr == "http_disabled" then
-    notifyMessage("Enable HTTP Requests in Game Settings > Security", "error")
+    notifyMessage("HTTP Requests blocked — go to Game Settings > Security > Allow HTTP Requests and turn it ON, then reconnect", "error")
     notifyStatus(false, _lastSync)
     return
   end
@@ -2599,7 +2612,7 @@ local function pollSync()
 
   elseif status == 403 then
     -- HTTP service blocked at the game level
-    notifyMessage("Enable HTTP Requests in Game Settings > Security", "error")
+    notifyMessage("HTTP Requests blocked — go to Game Settings > Security > Allow HTTP Requests and turn it ON, then reconnect", "error")
     notifyStatus(false, _lastSync)
 
   elseif status == 429 then
