@@ -46,6 +46,7 @@ import { awardXP } from '@/lib/ai/ai-xp'
 import { findAllRelevantSystems, formatSystemKnowledge } from '@/lib/ai/game-systems-knowledge'
 import { getArchitectureKnowledge, detectGameType } from '@/lib/ai/roblox-architecture'
 import { findRelevantPatterns, formatPatternsForPrompt } from '@/lib/ai/luau-patterns'
+import { findBlueprints, formatBlueprintsForPrompt as formatObjectBlueprints } from '@/lib/ai/object-blueprints'
 import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
 import { scoreOutput, isObviouslyBroken } from '@/lib/ai/quality-scorer'
 import { getTierPromptModifier, getTierFromSubscription, type QualityTier } from '@/lib/ai/quality-tiers'
@@ -4359,6 +4360,19 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       }
     } catch (patErr) {
       console.warn('[LuauPatterns] Non-blocking:', patErr instanceof Error ? patErr.message : patErr)
+    }
+
+    // Inject object construction blueprints — exact part-by-part build guides
+    if (!isScriptIntent) {
+      try {
+        const blueprints = findBlueprints(message, 2)
+        if (blueprints.length > 0) {
+          enrichedCodePrompt += formatObjectBlueprints(blueprints)
+          console.log(`[Blueprints] Injected ${blueprints.length} construction blueprints: ${blueprints.map(b => b.name).join(', ')}`)
+        }
+      } catch (bpErr) {
+        console.warn('[Blueprints] Non-blocking:', bpErr instanceof Error ? bpErr.message : bpErr)
+      }
     }
 
     // Enrich with experience memory (past builds — both successes AND failures)
