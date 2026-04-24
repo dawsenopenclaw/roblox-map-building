@@ -178,6 +178,149 @@ Every Roblox game has these services. Know what goes where — misplacement caus
 - No material variation (walls=Concrete, trim=Wood, floor=WoodPlanks, etc.)
 - Ignoring collision (walkthrough walls, stuck in furniture)
 - Z-fighting (two surfaces at exact same position — offset by 0.01)
+
+### Enum Reference (all commonly used Enums)
+Enum.Material: Plastic, SmoothPlastic, Neon, Wood, WoodPlanks, Marble, Basalt, Slate, CrackedLava, Concrete, Limestone, Granite, Pavement, Brick, Pebble, Cobblestone, Rock, Sandstone, CorrodedMetal, DiamondPlate, Foil, Metal, Grass, LeafyGrass, Sand, Fabric, Snow, Ice, Glass, ForceField, Air, Water, Ground, Salt, Asphalt, Cardboard, Carpet, CeramicTiles, ClayRoofTiles, Mud, Plaster, RoofShingles, Rubber
+
+Enum.Font: Legacy, Arial, ArialBold, SourceSans, SourceSansBold, SourceSansLight, SourceSansSemibold, SourceSansItalic, Bodoni, Garamond, Cartoon, Code, Highway, SciFi, Arcade, Fantasy, Antique, Gotham, GothamMedium, GothamBold, GothamBlack, AmaticSC, Bangers, Creepster, DenkOne, Fondamento, FredokaOne, GrenzeGotisch, IndieFlower, JosefinSans, Jura, Kalam, LuckiestGuy, Merriweather, Michroma, Nunito, Oswald, PatrickHand, PermanentMarker, Roboto, RobotoCondensed, RobotoMono, RobotoSlab, SpecialElite, TitilliumWeb, Ubuntu
+
+Enum.EasingStyle: Linear, Sine, Back, Quad, Quart, Quint, Bounce, Elastic, Exponential, Circular, Cubic
+Enum.EasingDirection: In, Out, InOut
+
+Enum.KeyCode (common): W, A, S, D, Q, E, R, F, G, Space, LeftShift, LeftControl, Tab, One, Two, Three, Four, Five, Six, Seven, Eight, Nine, Zero
+Enum.UserInputType: MouseButton1, MouseButton2, MouseButton3, MouseMovement, Touch, Keyboard, Gamepad1
+Enum.HumanoidStateType: Running, Jumping, Freefall, Landed, Climbing, Swimming, Dead, Physics, None
+Enum.RaycastFilterType: Include, Exclude
+Enum.SortOrder: LayoutOrder, Name
+Enum.FillDirection: Horizontal, Vertical
+Enum.AutomaticSize: None, X, Y, XY
+Enum.ScrollingDirection: X, Y, XY
+Enum.ScaleType: Stretch, Slice, Tile, Fit, Crop
+
+### Common API Methods — Correct vs Hallucinated
+**CORRECT Instance methods:**
+- Instance.new(className) — create. NEVER pass parent as 2nd arg (set Parent LAST after all properties)
+- instance:Clone() — deep copy including all descendants
+- instance:Destroy() — remove permanently and disconnect all connections
+- instance:FindFirstChild(name) — returns child or nil. SAFE, won't error
+- instance:WaitForChild(name, timeout?) — yields until found. USE ON CLIENT for replicated instances
+- instance:FindFirstChildOfClass(className) — match exact class name
+- instance:FindFirstChildWhichIsA(className) — match class including inheritance
+- instance:FindFirstAncestorOfClass(className) — search up the hierarchy
+- instance:GetChildren() — array of direct children only
+- instance:GetDescendants() — array of ALL descendants recursively
+- instance:IsA(className) — type check including inheritance (Part:IsA("BasePart") = true)
+- instance:SetAttribute(name, value) — store custom data without creating value objects
+- instance:GetAttribute(name) — read custom data, returns nil if not set
+- instance:GetAttributes() — returns table of all attribute key/value pairs
+
+**CORRECT Model methods:**
+- model:PivotTo(cframe) — move entire model (REPLACES deprecated SetPrimaryPartCFrame)
+- model:GetPivot() — get model's current pivot CFrame
+- model:GetBoundingBox() — returns CFrame, Size of the model's bounding box
+- model:MoveTo(position) — move model's primary part to world position
+- model:ScaleTo(scale) — scale entire model uniformly
+
+**CORRECT Humanoid methods:**
+- humanoid:TakeDamage(amount) — reduce health (respects ForceField, use for game damage)
+- humanoid:MoveTo(position, part?) — walk NPC or character to world position
+- humanoid:ChangeState(Enum.HumanoidStateType.Jumping) — force state change
+- humanoid:EquipTool(tool) — force equip a tool
+- humanoid:UnequipTools() — force unequip all tools
+
+**CORRECT Animator (replaces deprecated Humanoid:LoadAnimation):**
+- local animator = humanoid:FindFirstChildOfClass("Animator")
+- local track = animator:LoadAnimation(animationObject)
+- track:Play() / track:Stop() / track:AdjustSpeed(n) / track:AdjustWeight(n)
+- track.Ended:Connect(fn) fires when animation finishes
+- track.KeyframeReached:Connect(fn) fires on named keyframes
+
+**CORRECT TweenService:**
+- TweenService:Create(instance, tweenInfo, {property=targetValue}) — create tween
+- TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, repeatCount, reverses, delayTime)
+- tween:Play() / tween:Pause() / tween:Cancel()
+- tween.Completed:Connect(fn) fires when tween finishes
+
+**CORRECT workspace Spatial Queries:**
+- workspace:Raycast(origin, direction, raycastParams?) — single ray, returns RaycastResult or nil
+- workspace:GetPartBoundsInRadius(position, radius, overlapParams?) — sphere overlap
+- workspace:GetPartBoundsInBox(cframe, size, overlapParams?) — box overlap
+- workspace:GetPartsInPart(part, overlapParams?) — part shape overlap
+
+RaycastParams setup pattern:
+  local params = RaycastParams.new()
+  params.FilterType = Enum.RaycastFilterType.Exclude
+  params.FilterDescendantsInstances = {character}
+  local result = workspace:Raycast(origin, direction * 500, params)
+  if result then local hit = result.Instance; local hitPos = result.Position end
+
+### HALLUCINATED APIs — NEVER USE THESE
+These do not exist or are deprecated. Reject every one:
+- workspace:FindPartOnRay() — DEPRECATED. Use workspace:Raycast(origin, direction, params)
+- Ray.new(origin, direction) — DEPRECATED. Use workspace:Raycast() directly
+- instance:Remove() or instance:remove() — DEPRECATED. Use :Destroy()
+- model:SetPrimaryPartCFrame(cframe) — DEPRECATED. Use model:PivotTo(cframe)
+- game.Workspace — use the global workspace directly
+- wait(n) — DEPRECATED global. Use task.wait(n)
+- spawn(fn) — DEPRECATED global. Use task.spawn(fn)
+- delay(t, fn) — DEPRECATED global. Use task.delay(t, fn)
+- game:GetService("Workspace") — use global workspace
+- game.Players.LocalPlayer inside a Script (server) — WILL ERROR, client-only API
+- DataStoreService in a LocalScript — WILL ERROR, server-only service
+- ServerStorage access from LocalScript — WILL ERROR, invisible to clients
+- Instance.new("Part", parent) — avoid 2nd arg. Set Parent LAST after all properties
+- BrickColor.new("Bright red") — use Color3.fromRGB(r,g,b)
+- pairs(t) / ipairs(t) — use generalized Luau iteration: for k,v in t do
+
+### Sound ID Quick Reference (royalty-free Roblox asset IDs)
+Click UI:       rbxassetid://876939830
+Pop:            rbxassetid://421058925
+Woosh:          rbxassetid://320557563
+Ding/bell:      rbxassetid://160715357
+Error buzz:     rbxassetid://2865227271
+Explosion:      rbxassetid://262562442
+Footstep wood:  rbxassetid://507863457
+Footstep metal: rbxassetid://507863493
+Sword hit:      rbxassetid://517742100
+Coin collect:   rbxassetid://138080679
+Level up:       rbxassetid://2865227271
+Door creak:     rbxassetid://1369158
+Water splash:   rbxassetid://516740443
+Wind ambient:   rbxassetid://6799601490
+Thunder crack:  rbxassetid://130847073
+Heartbeat:      rbxassetid://289556450
+
+Sound setup pattern:
+  local s = Instance.new("Sound")
+  s.SoundId = "rbxassetid://876939830"
+  s.Volume = 0.5
+  s.RollOffMaxDistance = 40  -- positional 3D falloff
+  s.Parent = part             -- or SoundService for global audio
+  s:Play()
+
+### CollisionGroup Reference (PhysicsService)
+  local PhysicsService = game:GetService("PhysicsService")
+  PhysicsService:RegisterCollisionGroup("Players")
+  PhysicsService:RegisterCollisionGroup("Enemies")
+  PhysicsService:RegisterCollisionGroup("Projectiles")
+  PhysicsService:RegisterCollisionGroup("Interactables")
+  PhysicsService:CollisionGroupSetCollidable("Players", "Players", false)        -- players pass through each other
+  PhysicsService:CollisionGroupSetCollidable("Projectiles", "Players", false)    -- own projectile skips self
+  PhysicsService:CollisionGroupSetCollidable("Projectiles", "Projectiles", false) -- projectiles don't hit each other
+  part.CollisionGroup = "Players"  -- assign group to a part (Roblox 2023+ shorthand)
+
+### Attribute System (modern data storage on instances)
+Attributes replace IntValue/StringValue/BoolValue children for simple per-instance data.
+  part:SetAttribute("Health", 100)
+  part:SetAttribute("TeamColor", Color3.fromRGB(255,0,0))
+  part:SetAttribute("IsActive", true)
+  local hp = part:GetAttribute("Health")   -- nil if not set
+  local all = part:GetAttributes()          -- {key=value} table
+  part:GetAttributeChangedSignal("Health"):Connect(function()
+      local newHp = part:GetAttribute("Health")
+  end)
+Supported types: number, string, boolean, Color3, Vector3, CFrame, UDim, UDim2, BrickColor, NumberRange, NumberSequence, ColorSequence, Rect, Font, EnumItem
+Best for: enemy stats on NPC models, item properties on pickups, building ownership tags, door state (open/closed), seat occupancy — anything that doesn't need complex nested table data.
 `;
 
 // ---------------------------------------------------------------------------
@@ -1204,6 +1347,217 @@ Ongoing — Base expansion, better gear, boss encounters, multiplayer raids
 - Night too dangerous for new players (safe starter area needed)
 - Crafting recipes hidden (show all recipes, gray out what you can't make yet)
 `,
+
+  battle_royale: `
+## Battle Royale Game Architecture
+
+### Explorer Tree
+ServerScriptService/
+  BRManager.lua — lobby→bus drop→play→storm→winner→lobby round loop
+  StormManager.lua — shrinking safe zone, damage outside zone, zone timer display
+  LootManager.lua — randomized loot spawns across map, respawn after round
+  DataManager.lua — save wins, kills, top10s, xp, level, skins, emotes
+  SpectateManager.lua — spectate players after death, follow cam, kill feed
+ReplicatedStorage/
+  Remotes/ — PickupLoot, DropItem, DealDamage, StormUpdate, PlayerEliminated, VictoryRoyale, ReadyUp, RequestSpectate
+  Modules/
+    LootData.lua — {id, rarity, damage, ammo, healAmount, weight}
+    StormData.lua — {phase, shrinkDuration, pauseDuration, damagePerSecond, innerRadius, outerRadius}
+    ZoneData.lua — {safePositions[], allowedLootZones[], terrainFeatures[]}
+ServerStorage/
+  LootModels/ — weapon, ammo, armor, healing item models
+  VehicleModels/ — optional vehicle models for traversal
+  MapVariants/ — optional randomized map sections
+StarterGui/
+  MinimapUI/ — overhead minimap with storm circle overlay, player dots, loot zones
+  KillFeedUI/ — scrolling log of eliminations with weapon icons
+  InventoryUI/ — weapon slots (2), consumables (4), armor display
+  HUDOverlay/ — health bar, shield bar, alive counter, storm timer
+  VictoryUI/ — VICTORY ROYALE fullscreen overlay with stats
+  SpectateUI/ — who you're watching, kill count, exit to lobby button
+Workspace/
+  Map/ — full map terrain, buildings, cover objects
+  LootSpawns/ — invisible spawn points (Parts with attributes: lootTable, weight)
+  SafeZone/ — visible circle part (transparency 0.8, Neon, blue) showing current safe zone
+
+### Data Schema
+{version=1, wins=0, kills=0, top10s=0, xp=0, level=1, gamesPlayed=0, unlockedSkins={}, unlockedEmotes={}, stats={headshots=0,longestKill=0,damageDealt=0}}
+
+### Core Loop
+0:00  — Lobby. Players join, see map, equip cosmetics. 60s countdown or 10/10 players ready
+1:00  — Bus phase. Players ride flying bus across map. Jump out manually (30s window)
+1:30  — Freefall + glide to chosen landing zone. Rush to nearest building for loot
+2:00  — Loot phase. Find weapons, armor, healing. Zone 1 begins shrinking after 2 min
+4:00  — Zone 1 closes. Players inside take 5 HP/s damage. Survivors pushed toward center
+6:00  — Zone 2 forms. 20+ players remain. Engagements increase. Use cover.
+8:00  — Zone 3. ~10 players. Every engagement is final circle territory.
+10:00 — Final circle. Last 2-3 players. Very small zone forces confrontation.
+11:00 — Winner. VICTORY ROYALE screen. Stats shown (kills, damage, survival time).
+11:30 — Back to lobby. XP awarded based on placement + kills.
+
+### Pitfalls
+- Storm must shrink smoothly not teleport (lerp the visual circle each frame)
+- Loot spawns need seeded randomization per round so map doesn't feel the same
+- Dead players must spectate immediately (grief prevention: no ghost walking)
+- Alive counter must be server-authoritative (client can't trust other clients)
+- Inventory weight or slot limits prevent hoarding meta
+- Zone damage must tick server-side not client-side (exploit prevention)
+- First-circle players who land far away need enough time to reach zone (tune shrink speed)
+`,
+
+  sandbox: `
+## Sandbox / Creative Build Game Architecture
+
+### Explorer Tree
+ServerScriptService/
+  PlotManager.lua — claim plots, save/load builds per plot, plot ownership, visitor permissions
+  BuildManager.lua — place/remove/paint parts server-side, validate within plot bounds
+  DataManager.lua — save plotId, buildings list, coins, inventory, friend list
+  EconomyManager.lua — earn coins from visitors, sell creations, trade items
+  VisitManager.lua — teleport to friend plots, public plot browsing, ratings
+ReplicatedStorage/
+  Remotes/ — PlaceBlock, RemoveBlock, PaintBlock, ResizeBlock, SaveBuild, LoadBuild, VisitPlot, RatePlot, ClaimPlot
+  Modules/
+    BlockData.lua — {id, name, material, defaultColor, cost, category, maxStack}
+    PlotData.lua — {id, size, location, maxBlocks, price}
+    BuildSerializer.lua — serialize/deserialize builds as compact table
+ServerStorage/
+  PlotTemplates/ — empty plot base models
+  StarterBlocks/ — free blocks given to new players
+  SpecialBlocks/ — premium or unlockable block types
+StarterGui/
+  BuildToolbar/ — bottom row: selected block type, paint bucket, eraser, move, resize
+  MaterialPicker/ — grid of materials/colors with search
+  InventoryUI/ — owned blocks count per type
+  PlotUI/ — plot name, visitor count, rating stars, save/publish buttons
+  FriendPlotUI/ — list of friends and their plot thumbnails, visit button
+  ShopUI/ — buy block packs, cosmetics, plot expansions
+
+### Data Schema
+{version=1, plotId=nil, coins=100, inventory={["Brick"]=100,["Wood"]=50}, buildings=[{blockId,position={x,y,z},rotation={rx,ry,rz},color={r,g,b},material="Brick"}], friends=[], plotName="My Plot", totalVisitors=0, rating=0}
+
+### Core Loop
+0:00  — Join world. Assigned a free plot. Tutorial: place first block.
+0:02  — Browse block shop. Earn starter coins. Place blocks in grid with snapping.
+0:05  — Build a structure. Paint it. Add detail with different materials.
+0:10  — Publish plot. Friends can visit. Earn coins per visitor. Rate friends' plots.
+0:20  — Buy plot expansion. Unlock premium blocks. Customize plot theme.
+Ongoing — Compete for highest-rated plot. Enter build contests. Trade rare blocks.
+
+### Pitfalls
+- Grid snapping must be precise: snap position to nearest grid unit before saving
+- Save/load serialization must capture ALL relevant part properties (color, material, size, rotation, not just position)
+- Plot boundary enforcement server-side (client sends position, server validates within plot AABB)
+- Block limit per plot (prevent lag from millions of parts: cap at 500-2000 depending on part complexity)
+- Undo/redo system essential: keep action history stack (max 50 actions) on client, sync to server on confirm
+- Visitors should be read-only (cannot modify another player's plot)
+- Auto-save every 2 minutes to prevent loss on crash
+`,
+
+  sports: `
+## Sports Game Architecture
+
+### Explorer Tree
+ServerScriptService/
+  MatchManager.lua — queue→team assign→kickoff→play→halftime→play→final whistle→results
+  BallPhysics.lua — ball ownership, kick force calculations, goal detection, out-of-bounds
+  TeamManager.lua — balanced team assignment, score tracking, substitutions
+  DataManager.lua — save wins, losses, goals, assists, MVPs, rating, career stats
+  ReplayManager.lua — (optional) record last 10s, replay on goal scored
+ReplicatedStorage/
+  Remotes/ — KickBall, PassBall, Tackle, Shoot, ScoreGoal, StartMatch, EndMatch, RequestSubstitution
+  Modules/
+    MatchData.lua — {duration, halfTime, maxPlayers, teamsSize, overtimeRules}
+    StadiumData.lua — {name, fieldSize, goalPositions, spawnPoints}
+    PlayerStats.lua — {goals, assists, tackles, shotAccuracy, distanceCovered}
+ServerStorage/
+  BallModels/ — ball variants per sport (soccer, basketball, football)
+  StadiumModels/ — different arena/field models
+StarterGui/
+  ScoreboardUI/ — team names, score, match timer (counts down), half indicator
+  MinimapUI/ — bird's-eye minimap showing ball position and players
+  StaminaBarUI/ — player stamina bar (sprinting drains, recovers over time)
+  TeamDisplayUI/ — show team color, teammates list, formation
+  GoalCelebrationUI/ — fullscreen goal scored overlay with scorer name, +1 score animation
+  ResultsUI/ — final score, MVP award, personal stats, rewards
+StarterPlayer/
+  StarterCharacterScripts/
+    StaminaController.lua — sprint stamina, slow when empty
+    BallInteraction.lua — proximity check, ball control radius, dribbling feel
+
+### Data Schema
+{version=1, wins=0, losses=0, draws=0, goals=0, assists=0, mvps=0, rating=1000, gamesPlayed=0, careerGoals=0, favoritePosition="Forward"}
+
+### Core Loop
+0:00  — Queue solo or with friends. Auto-team balance. Select position preference.
+0:01  — Match found. Load stadium. Teams shown. Kickoff from center.
+0:02  — Play first half (5 min). Sprint to ball, tackle opponents, shoot on goal.
+0:07  — Halftime. Score shown. Teams swap sides.
+0:08  — Second half (5 min). Losing team presses harder. Close matches = tension.
+0:13  — Full time whistle. Final score. MVP chosen (most goals + assists).
+0:14  — Results screen. Rating change (+/- based on win/loss/performance). XP awarded.
+
+### Pitfalls
+- Ball physics inconsistent between clients: use server-authoritative ball position, replicate to clients
+- Goal detection via workspace:GetPartsInPart() on goal volume (not Touched which has gaps)
+- Offsides rule optional but adds depth for older audience
+- Stamina prevents speed-hacking: validate sprint on server by checking velocity vs stamina
+- Team imbalance ruins fun: auto-balance when new player joins, never allow >1 player difference
+- Celebrating own goal (ball deflects off own player into own net) needs special handling
+- Ball gets stuck in geometry: add small upward force if ball velocity < 0.1 for 2+ seconds
+`,
+
+  mystery_detective: `
+## Mystery / Detective Game Architecture
+
+### Explorer Tree
+ServerScriptService/
+  MysteryManager.lua — case selection, clue state, suspect tracking, reveal sequence, replay
+  ClueTracker.lua — which clues found per player, unlock new areas on discovery, clue linking
+  NPCManager.lua — dialogue trees, NPC schedule/location, reaction to accusations
+  DataManager.lua — save solved cases, reputation, notebook, inventory, achievements
+  AccusationManager.lua — validate accusation against solution, handle correct/wrong outcome
+ReplicatedStorage/
+  Remotes/ — ExamineClue, TalkToNPC, MakeAccusation, UnlockArea, OpenNotebook, LinkClues, RequestHint
+  Modules/
+    CaseData.lua — {id, title, victim, suspects[], clues[], solution, difficulty, timeLimit}
+    ClueData.lua — {id, type, location, description, linkedClues[], revealsOnFind}
+    SuspectData.lua — {name, alibi, motive, opportunity, dialogue{}, isGuilty}
+    DialogueData.lua — {npcId, topic, response, unlockedBy, revealsClue}
+ServerStorage/
+  CrimeSceneModels/ — scene dressing per case
+  ClueObjects/ — physical clue props (murder weapon, note, footprint decal)
+  NPCModels/ — suspect character models
+StarterGui/
+  EvidenceBoardUI/ — cork board with photos, strings connecting clues (bezier curves between frames)
+  NotebookUI/ — scrollable notes, discovered clues list, suspect profiles with rating sliders
+  DialogueUI/ — NPC portrait, text box, choice buttons (Ask about alibi / motive / other suspect)
+  CluePopupUI/ — appears when examining: clue image, description, "Add to board" button
+  AccusationUI/ — pick suspect from grid, confirm accusation with dramatic reveal
+  HintUI/ — pay reputation points for a hint arrow pointing to next undiscovered clue
+
+### Data Schema
+{version=1, solvedCases={}, currentCase=nil, reputation=100, notebook={clues=[],notes="",suspects={}}, inventory=[], achievements={}, stats={casesAttempted=0,hintsUsed=0,wrongAccusations=0}}
+
+### Core Loop
+0:00  — Case selection screen. Choose difficulty. Read crime summary. Enter scene.
+0:02  — Explore crime scene. Examine objects. Clue popup appears. Added to evidence board.
+0:05  — Find first physical clue. Unlocks NPC dialogue option. Talk to suspect #1.
+0:08  — Suspect gives alibi. Dialogue choice: press them or accept. Links to new clue.
+0:12  — Evidence board fills. Draw connections between clues (string lines). Pattern emerges.
+0:18  — All main clues found. Accusation button unlocks. Red herrings may mislead.
+0:20  — Make accusation. Dramatic reveal cutscene. Correct = reward + reputation up. Wrong = -reputation.
+0:22  — Case solved. Stats shown. Next case unlocked.
+
+### Pitfalls
+- Branching narratives need careful state machine: track exactly which clues/dialogue are found
+- Red herrings must feel fair in hindsight (don't make them lead nowhere, make them point to wrong suspect plausibly)
+- Evidence board string connections can clip through UI elements: use ScreenGui Canvas with ZIndex layering
+- NPC dialogue must gate properly: don't reveal solution clue before player has context clues
+- Accusation with insufficient evidence should give a "you need more clues" message, not silently fail
+- Multiple playthroughs need case rotation or randomized guilty suspect to prevent solution sharing
+- Time limit (if used) should be optional/difficulty-based — never mandatory for casual players
+`,
 };
 
 // ---------------------------------------------------------------------------
@@ -1220,6 +1574,10 @@ const INTENT_KEYWORDS: Record<string, string[]> = {
   fighting: ['fighting', 'pvp', 'combat', 'arena', 'combo', 'martial arts', '1v1', 'ranked', 'elo'],
   tower_defense: ['tower defense', 'td', 'waves', 'tower placement', 'enemy path', 'turret', 'defend'],
   survival: ['survival', 'crafting', 'hunger', 'gather', 'base building', 'resources', 'craft', 'mine', 'harvest'],
+  battle_royale: ['battle royale', 'br game', 'last player standing', 'shrinking zone', 'storm', 'loot drop', 'drop zone', 'parachute', 'bus', 'victory royale', 'pubg', 'fortnite style'],
+  sandbox: ['sandbox', 'creative mode', 'build freely', 'plot', 'my plot', 'freeform build', 'place blocks', 'creative game', 'builder game', 'place anything'],
+  sports: ['soccer', 'football', 'basketball', 'baseball', 'sports game', 'score goals', 'kick ball', 'dribble', 'stadium', 'team sport', 'match', 'referee'],
+  mystery_detective: ['mystery', 'detective', 'solve crime', 'clue', 'whodunit', 'murder mystery', 'investigation', 'suspect', 'evidence board', 'accusation', 'crime scene'],
 };
 
 /**

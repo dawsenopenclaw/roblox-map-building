@@ -806,6 +806,412 @@ end`,
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
+// TYCOON & ECONOMY PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TYCOON_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Dropper + Conveyor + Collector',
+    category: 'tycoon',
+    keywords: ['dropper', 'conveyor', 'collector', 'tycoon', 'factory', 'machine'],
+    code: `local dropInterval = 2; local baseValue = 5
+task.spawn(function() while true do task.wait(dropInterval)
+  local drop = Instance.new("Part"); drop.Shape = Enum.PartType.Ball
+  drop.Size = Vector3.new(1.5,1.5,1.5); drop.Material = Enum.Material.Glass
+  drop.Color = Color3.fromRGB(255,200,50); drop.Anchored = false
+  drop.CFrame = dropperPart.CFrame - Vector3.new(0,3,0)
+  drop:SetAttribute("Value", baseValue)
+  drop.Parent = workspace
+  game:GetService("Debris"):AddItem(drop, 15)
+end end)
+collectorPart.Touched:Connect(function(hit: BasePart)
+  local val = hit:GetAttribute("Value")
+  if not val then return end
+  hit:Destroy()
+  -- add coins to player
+end)`,
+  },
+  {
+    name: 'Tycoon Buy Button',
+    category: 'tycoon',
+    keywords: ['buy button', 'tycoon button', 'unlock', 'purchase pad'],
+    code: `local function createBuyButton(part: BasePart, cost: number, unlockModel: Model)
+  local bg = Instance.new("BillboardGui"); bg.Size = UDim2.new(4,0,1.5,0)
+  bg.StudsOffset = Vector3.new(0,3,0); bg.AlwaysOnTop = true
+  local label = Instance.new("TextLabel"); label.Size = UDim2.new(1,0,1,0)
+  label.BackgroundColor3 = Color3.fromRGB(34,197,94); label.TextColor3 = Color3.new(1,1,1)
+  label.Font = Enum.Font.GothamBold; label.TextSize = 18; label.Text = "$"..cost
+  Instance.new("UICorner", label).CornerRadius = UDim.new(0,8)
+  label.Parent = bg; bg.Parent = part
+  unlockModel.Parent = workspace
+  for _, p in unlockModel:GetDescendants() do
+    if p:IsA("BasePart") then p.Transparency = 1 end
+  end
+  part.Touched:Connect(function(hit: BasePart)
+    local player = Players:GetPlayerFromCharacter(hit.Parent); if not player then return end
+    local coins = player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Coins")
+    if not coins or coins.Value < cost then return end
+    coins.Value -= cost; part:Destroy(); bg:Destroy()
+    for _, p in unlockModel:GetDescendants() do
+      if p:IsA("BasePart") then p.Transparency = 0 end
+    end
+  end)
+end`,
+  },
+  {
+    name: 'Rebirth/Prestige System',
+    category: 'tycoon',
+    keywords: ['rebirth', 'prestige', 'reset', 'multiplier', 'ascend'],
+    code: `local function rebirth(player: Player)
+  local ls = player:FindFirstChild("leaderstats"); if not ls then return end
+  local coins = ls:FindFirstChild("Coins"); if not coins then return end
+  local rebirths = ls:FindFirstChild("Rebirths") or Instance.new("IntValue")
+  rebirths.Name = "Rebirths"; rebirths.Parent = ls
+  local cost = 10000 * (2 ^ rebirths.Value)
+  if coins.Value < cost then return end
+  coins.Value = 0; rebirths.Value += 1
+  -- multiplier = 1 + rebirths * 0.5
+  -- reset tycoon state, keep rebirths
+end`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NPC & AI PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const NPC_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Pathfinding NPC',
+    category: 'npc',
+    keywords: ['pathfind', 'npc', 'walk', 'navigate', 'move to', 'ai walk'],
+    code: `local PFS = game:GetService("PathfindingService")
+local function moveNPCTo(npc: Model, target: Vector3)
+  local hum = npc:FindFirstChildOfClass("Humanoid"); if not hum then return end
+  local root = npc:FindFirstChild("HumanoidRootPart"); if not root then return end
+  local path = PFS:CreatePath({AgentRadius=2, AgentHeight=5, AgentCanJump=true})
+  local ok = pcall(function() path:ComputeAsync(root.Position, target) end)
+  if not ok or path.Status ~= Enum.PathStatus.Success then
+    hum:MoveTo(target); return
+  end
+  for _, wp in path:GetWaypoints() do
+    if wp.Action == Enum.PathWaypointAction.Jump then hum.Jump = true end
+    hum:MoveTo(wp.Position)
+    local reached = hum.MoveToFinished:Wait()
+    if not reached then break end
+  end
+end`,
+  },
+  {
+    name: 'Enemy AI State Machine',
+    category: 'npc',
+    keywords: ['enemy', 'ai', 'state', 'patrol', 'chase', 'attack', 'hostile'],
+    code: `type AIState = "idle" | "patrol" | "chase" | "attack" | "return"
+local function runEnemyAI(npc: Model, waypoints: {Vector3}, detectRange: number, attackRange: number)
+  local hum = npc:FindFirstChildOfClass("Humanoid"); if not hum then return end
+  local root = npc:FindFirstChild("HumanoidRootPart"); if not root then return end
+  local state: AIState = "patrol"; local wpIdx = 1; local target: Model? = nil
+  local origin = root.Position
+  task.spawn(function() while hum.Health > 0 do
+    -- Find nearest player
+    local nearest: Model?, nearDist = nil, math.huge
+    for _, p in Players:GetPlayers() do
+      local char = p.Character; if not char then continue end
+      local pRoot = char:FindFirstChild("HumanoidRootPart"); if not pRoot then continue end
+      local dist = (pRoot.Position - root.Position).Magnitude
+      if dist < nearDist then nearest = char; nearDist = dist end
+    end
+    if state == "patrol" then
+      if nearest and nearDist < detectRange then state = "chase"; target = nearest
+      else hum:MoveTo(waypoints[wpIdx]); if hum.MoveToFinished:Wait() then wpIdx = wpIdx % #waypoints + 1 end end
+    elseif state == "chase" then
+      if not target or not target.Parent then state = "return"; target = nil
+      elseif nearDist > detectRange * 1.5 then state = "return"; target = nil
+      elseif nearDist < attackRange then state = "attack"
+      else local tRoot = target:FindFirstChild("HumanoidRootPart"); if tRoot then hum:MoveTo(tRoot.Position) end end
+    elseif state == "attack" then
+      if not target or not target.Parent then state = "return"; target = nil
+      elseif nearDist > attackRange * 1.5 then state = "chase"
+      else local tHum = target:FindFirstChildOfClass("Humanoid"); if tHum then tHum:TakeDamage(10) end end
+    elseif state == "return" then
+      hum:MoveTo(origin); state = "patrol"; wpIdx = 1
+    end
+    task.wait(0.5)
+  end end)
+end`,
+  },
+  {
+    name: 'NPC Dialogue System',
+    category: 'npc',
+    keywords: ['dialogue', 'dialog', 'npc talk', 'conversation', 'chat npc'],
+    code: `type DialogNode = {text: string, choices: {{text: string, next: string?}}?}
+local dialogTree: {[string]: DialogNode} = {
+  start = {text = "Welcome, traveler! What brings you here?", choices = {
+    {text = "I need supplies", next = "shop"},
+    {text = "Any quests?", next = "quest"},
+    {text = "Goodbye", next = nil},
+  }},
+  shop = {text = "I have the finest wares! Take a look.", choices = {
+    {text = "Show me", next = nil}, -- opens shop GUI
+    {text = "Maybe later", next = "start"},
+  }},
+  quest = {text = "Defeat 5 slimes in the forest. I'll pay you 200 coins.", choices = {
+    {text = "I'll do it!", next = nil}, -- accepts quest
+    {text = "Too dangerous", next = "start"},
+  }},
+}
+-- Client: typewriter effect for text, show choice buttons, fire RemoteEvent on choice`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EFFECTS & VFX PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const EFFECTS_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Camera Shake',
+    category: 'effects',
+    keywords: ['camera shake', 'screen shake', 'impact', 'earthquake'],
+    code: `local function shakeCamera(intensity: number, duration: number)
+  local cam = workspace.CurrentCamera
+  local startCF = cam.CFrame
+  local elapsed = 0
+  local conn: RBXScriptConnection
+  conn = game:GetService("RunService").RenderStepped:Connect(function(dt)
+    elapsed += dt
+    if elapsed >= duration then conn:Disconnect(); return end
+    local decay = 1 - (elapsed / duration)
+    local offset = Vector3.new(
+      (math.random() - 0.5) * 2 * intensity * decay,
+      (math.random() - 0.5) * 2 * intensity * decay,
+      0
+    )
+    cam.CFrame = cam.CFrame * CFrame.new(offset)
+  end)
+end
+-- Small hit: shakeCamera(0.1, 0.15)
+-- Explosion: shakeCamera(0.5, 0.4)
+-- Earthquake: shakeCamera(0.8, 2.0)`,
+  },
+  {
+    name: 'Damage Number Popup',
+    category: 'effects',
+    keywords: ['damage number', 'floating text', 'hit number', 'popup number'],
+    code: `local function showDamageNumber(position: Vector3, damage: number, isCrit: boolean?)
+  local bg = Instance.new("BillboardGui")
+  bg.Size = UDim2.new(2,0,1,0); bg.StudsOffset = Vector3.new(math.random(-1,1), 2, 0)
+  bg.AlwaysOnTop = true; bg.MaxDistance = 50
+  local label = Instance.new("TextLabel"); label.Size = UDim2.new(1,0,1,0)
+  label.BackgroundTransparency = 1
+  label.Text = tostring(math.floor(damage))
+  label.Font = Enum.Font.GothamBold
+  label.TextSize = if isCrit then 28 else 20
+  label.TextColor3 = if isCrit then Color3.fromRGB(255,200,50) else Color3.fromRGB(255,70,70)
+  label.TextStrokeTransparency = 0.5
+  label.Parent = bg
+  local anchor = Instance.new("Part"); anchor.Size = Vector3.one * 0.1
+  anchor.Position = position; anchor.Anchored = true; anchor.CanCollide = false
+  anchor.Transparency = 1; anchor.Parent = workspace
+  bg.Adornee = anchor; bg.Parent = anchor
+  TweenService:Create(anchor, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    Position = position + Vector3.new(0, 4, 0)
+  }):Play()
+  TweenService:Create(label, TweenInfo.new(0.8), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
+  game:GetService("Debris"):AddItem(anchor, 1)
+end`,
+  },
+  {
+    name: 'Particle Burst Effect',
+    category: 'effects',
+    keywords: ['particle', 'burst', 'explosion', 'confetti', 'sparkle', 'effect'],
+    code: `local function particleBurst(position: Vector3, color: Color3?, count: number?)
+  local emitter = Instance.new("Part")
+  emitter.Size = Vector3.one * 0.5; emitter.Position = position
+  emitter.Anchored = true; emitter.CanCollide = false; emitter.Transparency = 1
+  emitter.Parent = workspace
+  local pe = Instance.new("ParticleEmitter")
+  pe.Color = ColorSequence.new(color or Color3.fromRGB(255,200,50))
+  pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,0.5), NumberSequenceKeypoint.new(1,0)})
+  pe.Lifetime = NumberRange.new(0.5, 1.5)
+  pe.Speed = NumberRange.new(10, 25)
+  pe.SpreadAngle = Vector2.new(360, 360)
+  pe.Rate = 0; pe.Parent = emitter
+  pe:Emit(count or 30)
+  game:GetService("Debris"):AddItem(emitter, 2)
+end`,
+  },
+  {
+    name: 'Trail Effect on Character',
+    category: 'effects',
+    keywords: ['trail', 'streak', 'motion trail', 'speed trail', 'aura trail'],
+    code: `local function addTrail(character: Model, color: Color3)
+  local root = character:FindFirstChild("HumanoidRootPart"); if not root then return end
+  local a0 = Instance.new("Attachment"); a0.Position = Vector3.new(0, 1, 0); a0.Parent = root
+  local a1 = Instance.new("Attachment"); a1.Position = Vector3.new(0, -1, 0); a1.Parent = root
+  local trail = Instance.new("Trail")
+  trail.Attachment0 = a0; trail.Attachment1 = a1
+  trail.Color = ColorSequence.new(color)
+  trail.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0), NumberSequenceKeypoint.new(1,1)})
+  trail.Lifetime = 0.5; trail.MinLength = 0.1
+  trail.FaceCamera = true; trail.Parent = root
+  return trail
+end`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROUND/MATCH SYSTEM PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ROUND_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Round System State Machine',
+    category: 'round',
+    keywords: ['round', 'match', 'game round', 'intermission', 'state machine'],
+    code: `type GameState = "waiting" | "intermission" | "playing" | "ended"
+local state: GameState = "waiting"; local roundNum = 0
+local MIN_PLAYERS = 2; local INTERMISSION = 15; local ROUND_TIME = 120
+local stateEvent = Instance.new("RemoteEvent"); stateEvent.Name = "GameState"
+stateEvent.Parent = game:GetService("ReplicatedStorage")
+local function setState(newState: GameState, data: {[string]: any}?)
+  state = newState; stateEvent:FireAllClients(newState, data or {})
+end
+task.spawn(function() while true do
+  setState("waiting", {minPlayers = MIN_PLAYERS})
+  repeat task.wait(1) until #Players:GetPlayers() >= MIN_PLAYERS
+  setState("intermission", {duration = INTERMISSION})
+  task.wait(INTERMISSION)
+  roundNum += 1
+  setState("playing", {round = roundNum, duration = ROUND_TIME})
+  local elapsed = 0
+  while elapsed < ROUND_TIME do task.wait(1); elapsed += 1
+    stateEvent:FireAllClients("tick", {timeLeft = ROUND_TIME - elapsed})
+    -- check win conditions
+  end
+  setState("ended", {round = roundNum, winner = "TBD"})
+  task.wait(8)
+end end)`,
+  },
+  {
+    name: 'Map Voting System',
+    category: 'round',
+    keywords: ['map vote', 'vote', 'map selection', 'choose map'],
+    code: `local maps = {"Desert", "Forest", "Snow", "City", "Space"}
+local votes: {[string]: {Player}} = {}
+local voteEvent = Instance.new("RemoteEvent"); voteEvent.Name = "MapVote"
+voteEvent.Parent = game:GetService("ReplicatedStorage")
+local function startVote(duration: number): string
+  local options = {}
+  for i = 1, 3 do
+    local pick = maps[math.random(#maps)]
+    while table.find(options, pick) do pick = maps[math.random(#maps)] end
+    table.insert(options, pick); votes[pick] = {}
+  end
+  voteEvent:FireAllClients("start", options)
+  voteEvent.OnServerEvent:Connect(function(player: Player, mapName: string)
+    if not votes[mapName] then return end
+    for _, list in votes do -- remove from other votes
+      local idx = table.find(list, player); if idx then table.remove(list, idx) end
+    end
+    table.insert(votes[mapName], player)
+    voteEvent:FireAllClients("update", {[mapName] = #votes[mapName]})
+  end)
+  task.wait(duration)
+  local winner, maxVotes = options[1], 0
+  for map, voters in votes do if #voters > maxVotes then winner = map; maxVotes = #voters end end
+  voteEvent:FireAllClients("result", winner)
+  return winner
+end`,
+  },
+  {
+    name: 'Spawn/Respawn Manager',
+    category: 'round',
+    keywords: ['spawn', 'respawn', 'death', 'revive', 'respawn delay'],
+    code: `local RESPAWN_DELAY = 5
+local function setupRespawn(player: Player)
+  player.CharacterAdded:Connect(function(char: Model)
+    local hum = char:WaitForChild("Humanoid")
+    hum.Died:Connect(function()
+      -- Death effects
+      task.wait(RESPAWN_DELAY)
+      player:LoadCharacter()
+    end)
+  end)
+end
+Players.PlayerAdded:Connect(setupRespawn)`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUILDING HELPER PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const BUILDING_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Part Helper Functions (P, W, Cyl, Ball)',
+    category: 'building',
+    keywords: ['part', 'helper', 'build', 'create part', 'place part'],
+    code: `local function P(name: string, cf: CFrame, size: Vector3, mat: Enum.Material, col: Color3, parent: Instance?): Part
+  local p = Instance.new("Part"); p.Name = name; p.CFrame = cf; p.Size = size
+  p.Material = mat; p.Color = col; p.Anchored = true; p.CastShadow = (size.X > 2 and size.Y > 2)
+  p.Parent = parent or workspace; return p
+end
+local function W(name: string, cf: CFrame, size: Vector3, mat: Enum.Material, col: Color3, parent: Instance?): WedgePart
+  local w = Instance.new("WedgePart"); w.Name = name; w.CFrame = cf; w.Size = size
+  w.Material = mat; w.Color = col; w.Anchored = true; w.Parent = parent or workspace; return w
+end
+local function Cyl(name: string, cf: CFrame, size: Vector3, mat: Enum.Material, col: Color3, parent: Instance?): Part
+  local p = Instance.new("Part"); p.Name = name; p.Shape = Enum.PartType.Cylinder
+  p.CFrame = cf; p.Size = size; p.Material = mat; p.Color = col
+  p.Anchored = true; p.Parent = parent or workspace; return p
+end
+local function Ball(name: string, cf: CFrame, diameter: number, mat: Enum.Material, col: Color3, parent: Instance?): Part
+  local p = Instance.new("Part"); p.Name = name; p.Shape = Enum.PartType.Ball
+  p.CFrame = cf; p.Size = Vector3.one * diameter; p.Material = mat; p.Color = col
+  p.Anchored = true; p.Parent = parent or workspace; return p
+end`,
+  },
+  {
+    name: 'Color Variation Helper',
+    category: 'building',
+    keywords: ['color', 'variation', 'vc', 'vary', 'randomize color'],
+    code: `local function vc(base: Color3, variance: number?): Color3
+  local h, s, v = Color3.toHSV(base)
+  local v2 = variance or 0.1
+  return Color3.fromHSV(
+    h + (math.random() - 0.5) * v2 * 0.1,
+    math.clamp(s + (math.random() - 0.5) * v2, 0, 1),
+    math.clamp(v + (math.random() - 0.5) * v2, 0, 1)
+  )
+end`,
+  },
+  {
+    name: 'Ground Raycast Placement',
+    category: 'building',
+    keywords: ['ground', 'raycast', 'placement', 'terrain', 'floor level'],
+    code: `local cam = workspace.CurrentCamera
+local sp = cam.CFrame.Position + cam.CFrame.LookVector * 30
+local groundRay = workspace:Raycast(sp + Vector3.new(0,50,0), Vector3.new(0,-200,0))
+local groundY = groundRay and groundRay.Position.Y or sp.Y
+sp = Vector3.new(sp.X, groundY, sp.Z)`,
+  },
+  {
+    name: 'Add PointLight to Part',
+    category: 'building',
+    keywords: ['light', 'pointlight', 'glow', 'lamp', 'illuminate'],
+    code: `local function addLight(part: BasePart, color: Color3?, brightness: number?, range: number?)
+  local light = Instance.new("PointLight")
+  light.Color = color or Color3.fromRGB(255,220,180)
+  light.Brightness = brightness or 1.5
+  light.Range = range or 20
+  light.Parent = part
+  return light
+end`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ALL PATTERNS COMBINED
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -816,6 +1222,11 @@ const ALL_PATTERNS: LuauPattern[] = [
   ...COMBAT_PATTERNS,
   ...MOVEMENT_PATTERNS,
   ...ENVIRONMENT_PATTERNS,
+  ...TYCOON_PATTERNS,
+  ...NPC_PATTERNS,
+  ...EFFECTS_PATTERNS,
+  ...ROUND_PATTERNS,
+  ...BUILDING_PATTERNS,
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
