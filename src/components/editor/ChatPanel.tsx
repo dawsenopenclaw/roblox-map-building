@@ -4174,6 +4174,16 @@ export function ChatPanel({
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [aiLevelBadge, setAiLevelBadge] = useState<{ level: number; title: string } | null>(null)
 
+  // Scroll to bottom on initial load so user sees latest messages
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      }, 100)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Run once on mount
+
   useEffect(() => {
     if (savedAt === 0) return
     setShowSaved(true)
@@ -4442,7 +4452,8 @@ export function ChatPanel({
           minHeight: 0,
           overflowY: 'auto',
           display: compact ? 'none' : 'block',
-          scrollbarWidth: 'none',
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(212,175,55,0.3) transparent',
           position: 'relative',
         }}
       >
