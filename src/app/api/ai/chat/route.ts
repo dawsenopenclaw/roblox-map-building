@@ -2958,8 +2958,9 @@ async function callGemini(
   const geminiKey = process.env.GEMINI_API_KEY
   if (!geminiKey) return null
 
-  const RETRY_DELAYS = [2000, 5000, 10000]
-  for (let attempt = 0; attempt <= 3; attempt++) {
+  // Fast fail on quota — don't block the race for 17 seconds
+  const RETRY_DELAYS = [1000, 2000]
+  for (let attempt = 0; attempt <= 2; attempt++) {
     try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
@@ -3562,8 +3563,8 @@ async function freeModelTwoPass(
   if (!isBuildIntent) {
     const convPrompt = CONVERSATION_PROMPT + (cameraContext ? '\n\n' + cameraContext : '')
     const convRace = await raceNonNull(
-      callGemini(convPrompt, message, history, 1024),
       callGroq(convPrompt, message, history, 1024),
+      callGemini(convPrompt, message, history, 1024),
       callOpenRouterChat(convPrompt, message, history, 1024),
     )
     if (!convRace) return null
@@ -4415,10 +4416,11 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     let buildRace: { result: string; index: number } | null = null
     if (!luauCode) {
       console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
+      // Groq FIRST (it's working), Gemini second (quota issues), OpenRouter third
       buildRace = await raceNonNull(
-        callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 32768),
-        callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 32768),
-        callOpenRouterChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 32768),
+        callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 16384),
+        callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 16384),
+        callOpenRouterChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 16384),
       )
     }
 
