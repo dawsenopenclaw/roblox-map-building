@@ -45,6 +45,7 @@ import { getLearnedRules, learnFromFailure, learnFromStudioError, learnFromPromp
 import { awardXP } from '@/lib/ai/ai-xp'
 import { findAllRelevantSystems, formatSystemKnowledge } from '@/lib/ai/game-systems-knowledge'
 import { getArchitectureKnowledge, detectGameType } from '@/lib/ai/roblox-architecture'
+import { findRelevantPatterns, formatPatternsForPrompt } from '@/lib/ai/luau-patterns'
 import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
 import { scoreOutput, isObviouslyBroken } from '@/lib/ai/quality-scorer'
 import { getTierPromptModifier, getTierFromSubscription, type QualityTier } from '@/lib/ai/quality-tiers'
@@ -4347,6 +4348,17 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       }
     } catch (archErr) {
       console.warn('[Architecture] Non-blocking:', archErr instanceof Error ? archErr.message : archErr)
+    }
+
+    // Inject proven Luau code patterns — tested snippets the AI can adapt
+    try {
+      const codePatterns = findRelevantPatterns(message, 4)
+      if (codePatterns.length > 0) {
+        enrichedCodePrompt += formatPatternsForPrompt(codePatterns)
+        console.log(`[LuauPatterns] Injected ${codePatterns.length} code patterns: ${codePatterns.map(p => p.name).join(', ')}`)
+      }
+    } catch (patErr) {
+      console.warn('[LuauPatterns] Non-blocking:', patErr instanceof Error ? patErr.message : patErr)
     }
 
     // Enrich with experience memory (past builds — both successes AND failures)
