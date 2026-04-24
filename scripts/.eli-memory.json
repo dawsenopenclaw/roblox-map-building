@@ -1,0 +1,2994 @@
+{
+  "entries": [
+    {
+      "type": "learning",
+      "content": "Session Apr 23-24: 52 commits. Fixed AI scripting pipeline (7 layers), self-improvement engine, universal learning, AI XP system, chat UX overhaul, space theme, plugin redesign, OpenRouter multi-model, project labels, Discord cleanup.",
+      "confidence": 95,
+      "tags": [
+        "session",
+        "major"
+      ],
+      "source": "claude-session",
+      "createdAt": "2026-04-24T23:13:25.975Z",
+      "usageCount": 0
+    },
+    {
+      "type": "pattern",
+      "content": "Gemini and Groq free tiers exhaust daily with 10+ testers. Always race 4 providers: Groq > Claude > Gemini > OpenRouter. Free quotas reset at midnight UTC.",
+      "confidence": 90,
+      "tags": [
+        "ai",
+        "providers",
+        "quota"
+      ],
+      "source": "claude-session",
+      "createdAt": "2026-04-24T23:13:25.975Z",
+      "usageCount": 0
+    },
+    {
+      "type": "pattern",
+      "content": "Fallback templates were generating houses for everything. REMOVED all fallbacks — AI now either generates what was asked or tells user honestly it failed.",
+      "confidence": 95,
+      "tags": [
+        "ai",
+        "builds",
+        "quality"
+      ],
+      "source": "claude-session",
+      "createdAt": "2026-04-24T23:13:25.975Z",
+      "usageCount": 0
+    },
+    {
+      "type": "learning",
+      "content": "Competitors: Lemonade.gg uses OpenRouter 372B tokens/mo. Ropilot has playtesting. Rebirth is cheap at $8.99. Our edge: 200 agents, all-inclusive, self-improving AI.",
+      "confidence": 85,
+      "tags": [
+        "competitors",
+        "strategy"
+      ],
+      "source": "claude-session",
+      "createdAt": "2026-04-24T23:13:25.975Z",
+      "usageCount": 0
+    },
+    {
+      "type": "pattern",
+      "content": "ELI bot was spamming bug/suggestion channels with Quality Report embeds. FIXED: acknowledgeInChannel disabled, AUTO_RESPOND_CHANNELS reduced to bot-only channels, SILENT_CHANNELS blocks bug/suggestion channels entirely.",
+      "confidence": 95,
+      "tags": [
+        "discord",
+        "eli",
+        "fixed"
+      ],
+      "source": "claude-session",
+      "createdAt": "2026-04-24T23:13:25.975Z",
+      "usageCount": 0
+    },
+    {
+      "type": "decision",
+      "content": "Pricing changed to 5 paid tiers: Starter $10 (5K), Builder $25 (15K), Creator $50 (40K), Pro $150 (100K), Studio $200 (200K). Builder and Pro need Stripe price IDs.",
+      "confidence": 95,
+      "tags": [
+        "pricing",
+        "business"
+      ],
+      "source": "claude-session",
+      "createdAt": "2026-04-24T23:13:25.975Z",
+      "usageCount": 0
+    },
+    {
+      "type": "metric",
+      "content": "Plugin UI simplified from 1201 to 732 lines. Now just: code box + connect + undo. Space theme background.",
+      "confidence": 90,
+      "tags": [
+        "plugin",
+        "ui"
+      ],
+      "source": "claude-session",
+      "createdAt": "2026-04-24T23:13:25.975Z",
+      "usageCount": 0
+    },
+    {
+      "id": "obs_1776832519733_p3db",
+      "type": "user-pref",
+      "content": "# Claude Preferences — How to Work with Dawse",
+      "source": "obsidian:Claude Context\\Claude Preferences.md#chunk0",
+      "confidence": 95,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "vyren",
+        "preferences"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_dpze",
+      "type": "user-pref",
+      "content": "Who is Dawse\n- **Name**: Yomi / Dawse, 20 years old (turns 21 Aug 16, 2026)\n- **Role**: Solo founder & developer of ForjeGames\n- **Budget**: Zero — bootstrapping everything\n- **Day job**: Semi part-time jet detailing\n- **Location**: Windows 11, project at `C:\\dev\\roblox-map-building`\n- **Has testers**: A few (never met most in person), but platform not ready yet\n- **Never published a Roblox game** — ForjeGames is his first major project\n- **Considering building Roblox games** to generate revenue while platform grows",
+      "source": "obsidian:Claude Context\\Claude Preferences.md#chunk1",
+      "confidence": 95,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "vyren",
+        "preferences"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_w4xx",
+      "type": "user-pref",
+      "content": "Working Style — CRITICAL\n- **MAX AUTONOMY** — commit, push, deploy, edit without asking. EVER.\n- **\"Do it for me\"** — Dawse wants Claude to execute, not explain steps\n- **Visual thinker** — \"put it on my screen\", \"load it so I can see\"\n- **Repeats when frustrated** — same message 2-4x means something is broken\n- **\"Fix it all\"** = find every bug and fix in one pass\n- **\"Make it frictionless\"** = zero unnecessary clicks, loading, dead buttons\n- **\"Take full control\"** = make all decisions yourself\n- Don't summarize — he can read the diff\n- Bundled PRs fine — don't split refactors into many small ones",
+      "source": "obsidian:Claude Context\\Claude Preferences.md#chunk2",
+      "confidence": 95,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "vyren",
+        "preferences"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_gctx",
+      "type": "user-pref",
+      "content": "What He HATES\n1. Corporate AI language — \"stunning\", \"captivating\", \"vibrant\"\n2. SmoothPlastic — flat and cheap. Use Wood, Brick, Concrete, Metal\n3. Single-part builds — everything needs multi-part detail\n4. Manual steps — don't explain, just DO it\n5. Crashes — save handoffs frequently\n6. Silent failures — buttons that do nothing\n7. Repetition — having to explain the same thing twice",
+      "source": "obsidian:Claude Context\\Claude Preferences.md#chunk3",
+      "confidence": 95,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "vyren",
+        "preferences"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_qdpc",
+      "type": "user-pref",
+      "content": "What He LOVES\n1. Speed — commit, push, move on\n2. Detail — multi-part builds, realistic lighting, textured materials\n3. Space aesthetic — dark theme, floating neon orbs, stars, depth\n4. Fun for kids — bright colors, oversized windows, welcoming feel\n5. Imagination — \"build anything\" not just templates\n6. Competitor awareness — know what others do, do it better\n7. Initiative — \"I also added X because Y\"",
+      "source": "obsidian:Claude Context\\Claude Preferences.md#chunk4",
+      "confidence": 95,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "vyren",
+        "preferences"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_jpre",
+      "type": "user-pref",
+      "content": "Communication Decoder\n- Types fast with typos: \"evrything\" = everything, \"extreas\" = extras\n- ALL CAPS word = the priority\n- \"please\" after 2nd ask = frustrated\n- Short msgs = fine. Long msgs = important context.\n- Pastes huge crashed-session blocks = extract what you need, don't complain",
+      "source": "obsidian:Claude Context\\Claude Preferences.md#chunk5",
+      "confidence": 95,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "vyren",
+        "preferences"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_ox2w",
+      "type": "user-pref",
+      "content": "Technical Knowledge\n- Comfortable with Next.js, React, TypeScript, Prisma, Stripe\n- Knows Roblox ecosystem and Studio plugin development\n- Understands AI model routing and multi-provider architectures",
+      "source": "obsidian:Claude Context\\Claude Preferences.md#chunk6",
+      "confidence": 95,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "vyren",
+        "preferences"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_vumf",
+      "type": "user-pref",
+      "content": "Session Management\n- Save handoffs every 30 minutes\n- Max 2 parallel agents (crashes at 5+)\n- Keep bash output short (| head -20)\n- No screenshots unless absolutely needed",
+      "source": "obsidian:Claude Context\\Claude Preferences.md#chunk7",
+      "confidence": 95,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "vyren",
+        "preferences"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_hm3f",
+      "type": "user-pref",
+      "content": "Key Paths\n- Project: `C:\\dev\\roblox-map-building`\n- Live: `https://forjegames.com`\n- Vault: `C:\\Users\\Dawse\\Documents\\ForjeVault\\`\n- Plugin: `packages/studio-plugin/` (NOT `src/plugin/`)\n- Type-check: `tsconfig.spotcheck.json` (full tsc OOMs)",
+      "source": "obsidian:Claude Context\\Claude Preferences.md#chunk8",
+      "confidence": 95,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "vyren",
+        "preferences"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_3bs3",
+      "type": "learning",
+      "content": "# AI Provider Orchestrator\n\n**Core file**: `src/lib/ai/provider.ts`\n**Function**: `callAI()` — routes requests to the best available model",
+      "source": "obsidian:Architecture\\AI Provider Orchestrator.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "billing",
+        "studio-plugin",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_ghd2",
+      "type": "learning",
+      "content": "How It Works\n\n```\nUser prompt\n  → Free enhancement via Groq (llama-3.3-70b)\n  → Route to primary model (Gemini by default)\n  → Fallback chain if primary fails\n  → Structured output (jsonMode) or streaming\n  → Token tracking + billing\n```",
+      "source": "obsidian:Architecture\\AI Provider Orchestrator.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "billing",
+        "studio-plugin",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_gh4w",
+      "type": "learning",
+      "content": "Provider Priority\n1. **Gemini 2.0 Flash** — primary, jsonMode, fast, cheap\n2. **Groq llama-3.3-70b** — free prompt enhancement layer, fallback\n3. **Claude** — optional, user-provided API key\n4. **OpenAI** — specific model tasks",
+      "source": "obsidian:Architecture\\AI Provider Orchestrator.md#chunk2",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "billing",
+        "studio-plugin",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_jsrc",
+      "type": "learning",
+      "content": "9 AI Agent Modes\nThe orchestrator powers 9 distinct agent modes (more than any competitor):\n1. Script generation (Luau code)\n2. Map/world building\n3. UI/GUI design\n4. Game mechanics\n5. Asset generation (images)\n6. 3D mesh generation (Meshy)\n7. Terrain generation\n8. City/layout architecture\n9. Playtest analysis",
+      "source": "obsidian:Architecture\\AI Provider Orchestrator.md#chunk3",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "billing",
+        "studio-plugin",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_co3m",
+      "type": "learning",
+      "content": "Image Generation\n- **FAL** with Stable Diffusion backend\n- 13 preset styles defined in `src/lib/image-styles.ts`\n- Styles include: realistic, anime, pixel art, low-poly, etc.",
+      "source": "obsidian:Architecture\\AI Provider Orchestrator.md#chunk4",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "billing",
+        "studio-plugin",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_7l05",
+      "type": "learning",
+      "content": "3D Mesh Generation\n- **Meshy** text-to-3D API\n- UNIQUE to ForjeGames — no competitor offers this\n- Generates .fbx/.obj meshes from text descriptions",
+      "source": "obsidian:Architecture\\AI Provider Orchestrator.md#chunk5",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "billing",
+        "studio-plugin",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_0gog",
+      "type": "learning",
+      "content": "Token Economy\n- Subscription tiers include token allocations\n- Token packs available via Stripe\n- Token refund on AI error (5 call sites in chat/route.ts — PENDING implementation)",
+      "source": "obsidian:Architecture\\AI Provider Orchestrator.md#chunk6",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "billing",
+        "studio-plugin",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_4q16",
+      "type": "learning",
+      "content": "Key Patterns\n- P() helper function for prompt construction — AI must recognize this\n- Structured commands translator converts AI output to Studio plugin commands\n- False \"Built!\" claims fixed (Apr 12) — AI no longer claims success without verification",
+      "source": "obsidian:Architecture\\AI Provider Orchestrator.md#chunk7",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "billing",
+        "studio-plugin",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_petr",
+      "type": "learning",
+      "content": "# API Routes Map\n\n**Location**: `src/app/api/`",
+      "source": "obsidian:Architecture\\API Routes Map.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_swej",
+      "type": "learning",
+      "content": "Auth & User\n| Route | Method | Purpose |\n|-------|--------|---------|\n| /api/webhooks/clerk | POST | Clerk webhook (Svix-verified) |\n| /api/user/preferences | GET/PUT | User settings |\n| /api/user/roblox | POST | Link Roblox account |",
+      "source": "obsidian:Architecture\\API Routes Map.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_2lqp",
+      "type": "learning",
+      "content": "AI & Chat\n| Route | Method | Purpose |\n|-------|--------|---------|\n| /api/chat | POST | Main AI chat endpoint (streaming) |\n| /api/chat/sessions | GET/POST | Cloud session persistence |\n| /api/enhance | POST | Free prompt enhancement (Groq) |",
+      "source": "obsidian:Architecture\\API Routes Map.md#chunk2",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_ys1u",
+      "type": "learning",
+      "content": "Studio Bridge\n| Route | Method | Purpose |\n|-------|--------|---------|\n| /api/studio/bridge | WS/POST | Plugin WebSocket relay |\n| /api/studio/bridge-result | POST | Plugin command results |\n| /api/studio/plugin | GET | Serve plugin .rbxmx |\n| /api/studio/connect | POST | Studio connection handshake |",
+      "source": "obsidian:Architecture\\API Routes Map.md#chunk3",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_clml",
+      "type": "learning",
+      "content": "Image & 3D\n| Route | Method | Purpose |\n|-------|--------|---------|\n| /api/generate/image | POST | FAL image generation |\n| /api/generate/mesh | POST | Meshy 3D generation |\n| /api/assets | GET/POST | Asset management |",
+      "source": "obsidian:Architecture\\API Routes Map.md#chunk4",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_ds1c",
+      "type": "learning",
+      "content": "Billing & Payments\n| Route | Method | Purpose |\n|-------|--------|---------|\n| /api/webhooks/stripe | POST | Stripe webhook |\n| /api/billing/checkout | POST | Create Stripe checkout |\n| /api/billing/portal | POST | Stripe customer portal |\n| /api/billing/tokens | POST | Purchase token pack |\n| /api/billing/balance | GET | Current token balance (402 display) |",
+      "source": "obsidian:Architecture\\API Routes Map.md#chunk5",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_yrx1",
+      "type": "learning",
+      "content": "System\n| Route | Method | Purpose |\n|-------|--------|---------|\n| /api/health | GET | System health (fixed: no longer falsely reports degraded) |\n| /api/cron/stripe-reconcile | POST | Stripe subscription reconciliation |",
+      "source": "obsidian:Architecture\\API Routes Map.md#chunk6",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519726_3x7z",
+      "type": "learning",
+      "content": "Beta & Marketing\n| Route | Method | Purpose |\n|-------|--------|---------|\n| /api/beta/invite | POST | Beta invite redemption |\n| /api/newsletter | POST | Newsletter signup |",
+      "source": "obsidian:Architecture\\API Routes Map.md#chunk7",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.726Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_8u0q",
+      "type": "learning",
+      "content": "System Diagram\n\n```\n[Roblox Studio] <--plugin--> [WebSocket Bridge] <--HTTP--> [Next.js API]\n                                                              |\n                                          [Clerk Auth] [Prisma/Neon DB]\n                                          [Stripe]     [Upstash Redis]\n                                          [AI Providers] [FAL/Meshy]\n                                              |\n                                      [Vercel Edge] --> [CDN]\n```",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_46i8",
+      "type": "learning",
+      "content": "Frontend\n- **Next.js 15 App Router** with React 19, TypeScript strict mode\n- **Route Groups**: `(marketing)`, `(app)`, `(auth)`, `(admin)`, `(legal)`\n- **Vercel** hosting (Hobby plan — daily cron only, 300s max, 100MB build)",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_j3g8",
+      "type": "learning",
+      "content": "Auth\n- **Clerk** with production keys, Svix webhook signatures\n- Social providers configured but currently email-only (dashboard toggles needed)\n- Age gate: COPPA compliance, server-side hardened",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk2",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_c65s",
+      "type": "learning",
+      "content": "Database\n- **PostgreSQL** via **Neon** (pooled + direct URLs)\n- **Prisma ORM** — 45KB schema, 8 migrations\n- pgvector extension for RAG (migration exists, needs Neon install)\n- Shadow DB via Docker for migrations",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk3",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_lcan",
+      "type": "learning",
+      "content": "Cache / Queue\n- **Upstash Redis** — L1 in-memory + L2 Redis fallback\n- Rate limiting with Sentry error reporting on Upstash failures",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk4",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_kesa",
+      "type": "learning",
+      "content": "Payments\n- **Stripe** — subscriptions + token packs, 6 tiers\n- Robux payments via GamePass/DevProduct (packages/robux-payment)\n- Stripe reconcile cron job",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk5",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_7gn4",
+      "type": "learning",
+      "content": "AI Providers (Multi-Model Orchestrator)\n| Provider | Model | Role |\n|----------|-------|------|\n| Gemini | gemini-2.0-flash | Primary (jsonMode) |\n| Groq | llama-3.3-70b | Fallback + free prompt enhancement |\n| Claude | user-selected | Optional custom-key |\n| OpenAI | specific models | Specific tasks |\n\n- `callAI()` in `src/lib/ai/provider.ts` handles routing\n- Free prompt enhancement via Groq before main model call",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk6",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_38f4",
+      "type": "learning",
+      "content": "Image / 3D Generation\n- **FAL** — Stable Diffusion, 13 preset styles\n- **Meshy** — text-to-3D mesh generation (UNIQUE — no competitor has this)\n- **Roblox Open Cloud** — asset upload",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk7",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_uuvd",
+      "type": "learning",
+      "content": "Studio Plugin\n- **Production source**: `packages/studio-plugin/` (6 Lua files)\n  - Plugin.lua, Auth.lua, UI.lua, Sync.lua, AssetManager.lua, History.lua\n- **ORPHAN** (ignore): `src/plugin/ForjeGamesPlugin.lua`\n- Built via `packages/studio-plugin/build-plugin.js` → `public/plugin/ForjeGames.rbxmx`\n- 12 structured commands (no loadstring by default)\n- Auto-installed to `%LOCALAPPDATA%/Roblox/Plugins/`\n- Current version: v4.6.0",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk8",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_58iu",
+      "type": "learning",
+      "content": "MCP Servers\n| Server | Location | Port | Purpose |\n|--------|----------|------|---------|\n| studio-bridge | packages/mcp/studio-bridge | cloud | Cloud relay for Studio |\n| studio-controller | packages/mcp/ | 3006 | Local Studio control |\n| asset-alchemist | packages/mcp/asset-alchemist | — | AI asset generation |\n| city-architect | packages/mcp/city-architect | — | AI city/map generation |\n| terrain-forge | packages/mcp/terrain-forge | — | AI terrain generation |",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk9",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_xhl2",
+      "type": "learning",
+      "content": "WebSocket Pattern\n- HTTP fallback when WS unavailable\n- Mid-stream disconnect guard in editor\n- Plugin connects to bridge, bridge relays to API",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk10",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_x28g",
+      "type": "learning",
+      "content": "Observability\n- **Sentry** — client DSN set, server token not configured\n- **PostHog** — COPPA-gated analytics\n- Rate-limit + cloud-sessions report Upstash failures to Sentry",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk11",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_6v9u",
+      "type": "learning",
+      "content": "Email & Push\n- **Resend** for transactional email\n- **VAPID** web push notifications\n- Twilio SMS (not configured)",
+      "source": "obsidian:Architecture\\Architecture Overview.md#chunk12",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_euzk",
+      "type": "learning",
+      "content": "# Database Schema\n\n**Location**: `prisma/schema.prisma` (45KB)\n**Host**: Neon PostgreSQL (pooled + direct URLs)",
+      "source": "obsidian:Architecture\\Database Schema.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "database",
+        "rag"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_4rga",
+      "type": "learning",
+      "content": "Migrations History\n| # | Migration | Purpose |\n|---|-----------|---------|\n| 1 | 0_init | Initial schema |\n| 2 | 20260330120000_add_check_constraints | Data integrity |\n| 3 | 20260404000000_add_user_preferences | User settings |\n| 4 | 20260404100000_add_roblox_handle | Roblox identity linking |\n| 5 | 20260406000000_add_pgvector_rag | RAG embeddings (BLOCKED — pgvector not installed on Neon) |\n| 6 | 20260406100000_add_roblox_identity | Extended Roblox profile |\n| 7 | 20260410180002_add_beta_invites | Beta invitation system |\n| 8 | 20260410190000_add_newsletter_and_generated_asset | Newsletter + asset gallery |",
+      "source": "obsidian:Architecture\\Database Schema.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "database",
+        "rag"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_3oer",
+      "type": "learning",
+      "content": "Key Models (from schema)\n- **User** — Clerk-linked, subscription tier, token balance, age verification\n- **Subscription** — Stripe-linked, currentPeriodEnd for tier-guard expiry\n- **ChatSession** — AI conversation persistence, cloud sessions\n- **GeneratedAsset** — Images, 3D meshes, scripts produced by AI\n- **BetaInvite** — Invite code system\n- **Newsletter** — Email list",
+      "source": "obsidian:Architecture\\Database Schema.md#chunk2",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "database",
+        "rag"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_dwxf",
+      "type": "learning",
+      "content": "Known Issues\n- **pgvector blocker**: Migration 5 requires pgvector extension installed on Neon. Fix: run `CREATE EXTENSION vector;` via Neon console, or use shadow DB URL pointing to Docker postgres with pgvector.\n- Shadow DB for local migrations: `docker-compose.shadow-db.yml`",
+      "source": "obsidian:Architecture\\Database Schema.md#chunk3",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "database",
+        "rag"
+      ]
+    },
+    {
+      "id": "obs_1776832519727_ck76",
+      "type": "learning",
+      "content": "Seed Data\n- `prisma/seed.ts` — initial data seeding",
+      "source": "obsidian:Architecture\\Database Schema.md#chunk4",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.727Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "database",
+        "rag"
+      ]
+    },
+    {
+      "id": "obs_1776832519728_yanz",
+      "type": "learning",
+      "content": "# MCP Agents\n\nForjeGames uses Model Context Protocol (MCP) servers for specialized AI agent tasks.",
+      "source": "obsidian:Architecture\\MCP Agents.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.728Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "studio-plugin",
+        "connection",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519728_j8kk",
+      "type": "learning",
+      "content": "Studio Bridge (`packages/mcp/studio-bridge`)\n- **Purpose**: Cloud relay between Roblox Studio plugin and web app\n- **Protocol**: WebSocket with HTTP fallback\n- **Auth**: JWT (shared secret between plugin and server)\n- Routes commands from the web editor to Studio and back",
+      "source": "obsidian:Architecture\\MCP Agents.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.728Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "studio-plugin",
+        "connection",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519728_gm2f",
+      "type": "learning",
+      "content": "Studio Controller (`packages/mcp/`, port 3006)\n- **Purpose**: Local Studio control for development\n- **Port**: 3006\n- Direct connection to Studio for testing",
+      "source": "obsidian:Architecture\\MCP Agents.md#chunk2",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.728Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "studio-plugin",
+        "connection",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519728_w9us",
+      "type": "learning",
+      "content": "Asset Alchemist (`packages/mcp/asset-alchemist`)\n- **Purpose**: AI agent for generating game assets\n- **Capabilities**: Image generation (FAL), 3D mesh (Meshy), script generation\n- **Package**: Has own package.json",
+      "source": "obsidian:Architecture\\MCP Agents.md#chunk3",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.728Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "studio-plugin",
+        "connection",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519728_wk4f",
+      "type": "learning",
+      "content": "City Architect (`packages/mcp/city-architect`)\n- **Purpose**: AI agent for city and map layout generation\n- **Capabilities**: Procedural city layouts, building placement, road networks\n- **Package**: Has own package.json",
+      "source": "obsidian:Architecture\\MCP Agents.md#chunk4",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.728Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "studio-plugin",
+        "connection",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519728_g94o",
+      "type": "learning",
+      "content": "Terrain Forge (`packages/mcp/terrain-forge`)\n- **Purpose**: AI agent for terrain generation\n- **Capabilities**: Heightmaps, biomes, terrain painting\n- **Package**: Has own package.json",
+      "source": "obsidian:Architecture\\MCP Agents.md#chunk5",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.728Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "studio-plugin",
+        "connection",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519728_ioyz",
+      "type": "learning",
+      "content": "9-Agent Orchestrator\nThe web app orchestrates all 9 AI modes through `callAI()`:\n1. Script gen → direct Gemini/Groq\n2. Map building → city-architect MCP\n3. UI/GUI → direct AI\n4. Game mechanics → direct AI\n5. Asset gen → asset-alchemist MCP (FAL)\n6. 3D mesh → asset-alchemist MCP (Meshy)\n7. Terrain → terrain-forge MCP\n8. City layout → city-architect MCP\n9. Playtest analysis → direct AI + Studio bridge",
+      "source": "obsidian:Architecture\\MCP Agents.md#chunk6",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.728Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "studio-plugin",
+        "connection",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519728_m3c8",
+      "type": "learning",
+      "content": "Future MCP Plans\n- CLI npm package (match Ropilot's `@ropilot/mcp-cli`)\n- Python agent SDK integration\n- More specialized agents (animation, VFX, sound design)",
+      "source": "obsidian:Architecture\\MCP Agents.md#chunk7",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.728Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "studio-plugin",
+        "connection",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_bpbh",
+      "type": "learning",
+      "content": "# Monorepo Structure\n\n**Root**: `C:\\dev\\roblox-map-building`\n**Package manager**: npm workspaces",
+      "source": "obsidian:Architecture\\Monorepo Structure.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "database",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_tpv3",
+      "type": "learning",
+      "content": "```\nroblox-map-building/\n├── src/                          # Main Next.js app\n│   ├── app/                      # App Router pages\n│   │   ├── (admin)/              # Admin dashboard\n│   │   ├── (app)/                # Main app (protected)\n│   │   ├── (auth)/               # Sign-in/sign-up (Clerk prebuilt)\n│   │   ├── (legal)/              # Privacy, ToS\n│   │   ├── (marketing)/          # Landing, pricing\n│   │   ├── api/                  # Route handlers (40+)\n│   │   └── [locale]/             # i18n\n│   ├── components/               # React components\n│   │   ├── admin/                # Admin UI\n│   │   ├── billing/              # Payment UI\n│   │   ├── editor/               # Canvas editor\n│   │   ├── marketing/            # Landing page sections\n│   │   ├── pricing/              # Pricing cards\n│   │   ├── ui/                   # Shared UI primitives\n│   │   └── ...\n│   ├── hooks/                    # React hooks (useChat, etc.)\n│   ├── lib/                      # Core utilities\n│   │   ├── ai/provider.ts        # Multi-model orchestrator\n│   │   ├── image-styles.ts       # 13 FAL presets\n│   │   └── posthog-safe.ts       # COPPA-gated analytics\n│   ├── i18n/                     # Internationalization\n│   ├── workers/                  # Web workers\n│   └── __tests__/                # Tests\n├── packages/\n│   ├── mcp/\n│   │   ├── asset-alchemist/      # AI asset agent\n│   │   ├── city-architect/       # AI city agent\n│   │   ├── terrain-forge/        # AI terrain agent\n│   │   └── studio-bridge/        # Cloud relay MCP\n│   ├── studio-plugin/            # Roblox Studio Lua plugin\n│   │   ├── Plugin.lua\n│   │   ├── Auth.lua\n│   │   ├── UI.lua\n│   │   ├── Sync.lua\n│   │   ├── AssetManager.lua\n│   │   ├── History.lua\n│   │   └── build-plugin.js       # → public/plugin/ForjeGames.rbxmx\n│   ├── robux-payment/            # In-game payment\n│   └── sdk/\n│       ├── typescript/           # TS SDK\n│       └── python/               # Python SDK\n├── apps/\n│   └── api/                      # Separate API workspace\n├── prisma/\n│   ├── schema.prisma             # 45KB data model\n│   ├── migrations/               # 8 migrations\n│   └── seed.ts\n├── public/\n│   └── plugin/                   # Built .rbxmx files\n├── .planning/                    # Strategy docs (11 files)\n│   └── phases/01-08/             # Phase breakdowns\n└── [config files]                # next.config.ts, tsconfig.json, etc.\n```",
+      "source": "obsidian:Architecture\\Monorepo Structure.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "database",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_qcma",
+      "type": "learning",
+      "content": "Key Scripts (package.json)\n```json\n\"dev\": \"next dev --turbopack\",\n\"build\": \"next build\",\n\"test\": \"vitest\",\n\"electron:dev\": \"electron dev mode\",\n\"mcp:bridge\": \"start studio bridge MCP\",\n\"mcp:controller\": \"start studio controller (port 3006)\"\n```",
+      "source": "obsidian:Architecture\\Monorepo Structure.md#chunk2",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "database",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_70li",
+      "type": "learning",
+      "content": "TypeScript Config\n- Strict mode enabled\n- Path alias: `@/*` → `./src/*`\n- `tsconfig.spotcheck.json` — curated subset to avoid OOM during full type-check",
+      "source": "obsidian:Architecture\\Monorepo Structure.md#chunk3",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "database",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_4g8e",
+      "type": "learning",
+      "content": "Source Location\n- **Production**: `packages/studio-plugin/` (6 Lua files)\n- **ORPHAN** (DO NOT USE): `src/plugin/ForjeGamesPlugin.lua`\n- **Built artifact**: `public/plugin/ForjeGames.rbxmx`\n- **Current version**: v4.6.0",
+      "source": "obsidian:Architecture\\Studio Plugin Architecture.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_5s6p",
+      "type": "learning",
+      "content": "Plugin Files\n| File | Purpose |\n|------|---------|\n| Plugin.lua | Main entry, toolbar, lifecycle |\n| Auth.lua | JWT auth with Studio, secret unified with server |\n| UI.lua | DockWidgetPluginGui, status display |\n| Sync.lua | WebSocket bridge, command dispatch, scan_workspace |\n| AssetManager.lua | Asset import/export, Roblox Open Cloud |\n| History.lua | Undo/redo, checkpoint system |",
+      "source": "obsidian:Architecture\\Studio Plugin Architecture.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_ihxg",
+      "type": "learning",
+      "content": "12 Structured Commands\nThe plugin handles these command types (no loadstring):\n1. create_part\n2. create_model\n3. modify_properties\n4. delete_instance\n5. create_script\n6. structured_commands (batch)\n7. start_playtest\n8. stop_playtest\n9. get_output (LogService ring buffer)\n10. capture_screenshot\n11. create_sound\n12. scan_workspace (returns scene manifest to server)",
+      "source": "obsidian:Architecture\\Studio Plugin Architecture.md#chunk2",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_vglu",
+      "type": "learning",
+      "content": "Build Process\n```bash\nnode packages/studio-plugin/build-plugin.js\n# Outputs: public/plugin/ForjeGames.rbxmx (157KB)\n# Auto-installs to: %LOCALAPPDATA%/Roblox/Plugins/\n```",
+      "source": "obsidian:Architecture\\Studio Plugin Architecture.md#chunk3",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_otiq",
+      "type": "learning",
+      "content": "Connection Flow\n```\nStudio Plugin\n  → WebSocket to studio-bridge (cloud relay)\n  → HTTP fallback if WS fails\n  → JWT auth (shared secret between plugin and server)\n  → Commands dispatched via dispatchCommand()\n  → Results returned as tuples (fixed: was being discarded in v4.5)\n```",
+      "source": "obsidian:Architecture\\Studio Plugin Architecture.md#chunk4",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_kprj",
+      "type": "learning",
+      "content": "Known Issues (Fixed)\n- dispatchCommand return tuple was discarded (fixed v4.6.0)\n- scan_workspace results never reached server (fixed v4.6.0)\n- Plugin needs rebuild + republish after Lua changes\n- CDN edge cache on public/plugin/*.rbxmx can serve stale builds",
+      "source": "obsidian:Architecture\\Studio Plugin Architecture.md#chunk5",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_wy55",
+      "type": "learning",
+      "content": "Publication\n- Creator Store publication plan: `PLUGIN-PUBLISH-PLAN.md`\n- Store listing copy: `PLUGIN-STORE-LISTING.md`\n- User guide: `roblox-studio-plugin-guide.md`",
+      "source": "obsidian:Architecture\\Studio Plugin Architecture.md#chunk6",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "auth",
+        "studio-plugin",
+        "connection"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_xy0n",
+      "type": "learning",
+      "content": "# Tech Stack Reference\n\nEvery dependency in the ForjeGames stack and why it's there.",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_7uq2",
+      "type": "learning",
+      "content": "Frontend\n| Tech | Version | Why |\n|------|---------|-----|\n| Next.js | 15 | App Router, RSC, API routes, Vercel-native |\n| React | 19 | Latest concurrent features |\n| TypeScript | strict | Type safety across monorepo |\n| Tailwind CSS | 4 | Utility-first styling |\n| Framer Motion | — | Animations (3D ring carousel, etc.) |",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_s7xt",
+      "type": "learning",
+      "content": "Auth & Identity\n| Tech | Why |\n|------|-----|\n| Clerk | Managed auth, prebuilt components, webhook events |\n| Svix | Webhook signature verification |",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk2",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_o06d",
+      "type": "learning",
+      "content": "Database & ORM\n| Tech | Why |\n|------|-----|\n| Neon PostgreSQL | Serverless Postgres, branching, pooled connections |\n| Prisma | Type-safe ORM, migrations, schema-first |\n| pgvector | RAG embeddings for AI context (migration ready, needs install) |",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk3",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_pjid",
+      "type": "learning",
+      "content": "Cache & Rate Limiting\n| Tech | Why |\n|------|-----|\n| Upstash Redis | Serverless Redis, rate limiting, session cache |\n| In-memory L1 | Fast fallback when Upstash quota exhausted |",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk4",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_jaya",
+      "type": "learning",
+      "content": "Payments\n| Tech | Why |\n|------|-----|\n| Stripe | Subscriptions, token packs, checkout, webhooks |\n| Robux GamePass | In-game payments for Roblox users |",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk5",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_oz1r",
+      "type": "learning",
+      "content": "AI Providers\n| Tech | Why |\n|------|-----|\n| Google Gemini | Primary model, jsonMode support, fast |\n| Groq | Free prompt enhancement, llama fallback |\n| Anthropic Claude | Optional user-provided key |\n| OpenAI | Specific model tasks |\n| FAL | Image generation (Stable Diffusion, 13 styles) |\n| Meshy | Text-to-3D mesh (unique differentiator) |",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk6",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_dtxx",
+      "type": "learning",
+      "content": "Infrastructure\n| Tech | Why |\n|------|-----|\n| Vercel | Hosting, edge functions, CI/CD |\n| Roblox Open Cloud | Asset upload API |\n| Docker | Shadow DB for Prisma migrations |",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk7",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_ts22",
+      "type": "learning",
+      "content": "Observability\n| Tech | Why |\n|------|-----|\n| Sentry | Error tracking (client DSN live) |\n| PostHog | Analytics (COPPA-gated) |",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk8",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_4xdm",
+      "type": "learning",
+      "content": "Communication\n| Tech | Why |\n|------|-----|\n| Resend | Transactional email |\n| VAPID | Web push notifications |\n| Twilio | SMS (not yet configured) |",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk9",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_myt7",
+      "type": "learning",
+      "content": "Build & Dev\n| Tech | Why |\n|------|-----|\n| Turbopack | Fast dev server (moved from OneDrive to C:\\dev to fix file locks) |\n| ESLint | Linting |\n| tsconfig.spotcheck.json | Curated type-checking to avoid OOM on full build |\n| electron-builder | Desktop app packaging (Win/Mac) |",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk10",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519729_vsbd",
+      "type": "learning",
+      "content": "Monorepo Packages\n| Package | Purpose |\n|---------|---------|\n| packages/mcp/asset-alchemist | AI agent for asset generation |\n| packages/mcp/city-architect | AI agent for city/map layout |\n| packages/mcp/terrain-forge | AI agent for terrain generation |\n| packages/studio-plugin | Roblox Studio Lua plugin (v4.6.0) |\n| packages/robux-payment | Robux payment integration |\n| packages/sdk/typescript | TypeScript SDK |\n| packages/sdk/python | Python SDK |\n| apps/api | Separate API server workspace |",
+      "source": "obsidian:Architecture\\Tech Stack Reference.md#chunk11",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.729Z",
+      "usageCount": 0,
+      "tags": [
+        "architecture",
+        "ai",
+        "auth",
+        "billing",
+        "studio-plugin",
+        "connection",
+        "database",
+        "redis",
+        "deployment",
+        "rag",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519738_phbi",
+      "type": "pattern",
+      "content": "# Pattern — Audit Agent False Positives",
+      "source": "obsidian:Patterns\\Pattern — Audit Agent False Positives.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.738Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "auth",
+        "database",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519738_0bmf",
+      "type": "pattern",
+      "content": "Rule\nHaiku-powered audit subagents have a **~50% false positive rate**. Always verify each claim against real code lines before editing.",
+      "source": "obsidian:Patterns\\Pattern — Audit Agent False Positives.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.738Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "auth",
+        "database",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519738_72il",
+      "type": "pattern",
+      "content": "The Three Worst Offenders\n1. **\"Missing input validation\"** — often the validation exists in middleware or Clerk\n2. **\"SQL injection risk\"** — Prisma parameterizes queries automatically\n3. **\"Missing error handling\"** — the error handling exists but in a parent try/catch",
+      "source": "obsidian:Patterns\\Pattern — Audit Agent False Positives.md#chunk2",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.738Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "auth",
+        "database",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519738_i596",
+      "type": "pattern",
+      "content": "How to Apply\nWhen running security/code audits with Claude Haiku:\n1. Get the report\n2. For each finding, grep the actual file and line\n3. Verify the issue exists in the current code\n4. Only fix confirmed issues\n5. Expect to discard ~half the findings",
+      "source": "obsidian:Patterns\\Pattern — Audit Agent False Positives.md#chunk3",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.738Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "auth",
+        "database",
+        "agents"
+      ]
+    },
+    {
+      "id": "obs_1776832519738_tje1",
+      "type": "pattern",
+      "content": "# Pattern — Next.js Public File Tracing",
+      "source": "obsidian:Patterns\\Pattern — Next.js Public File Tracing.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.738Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "studio-plugin",
+        "deployment"
+      ]
+    },
+    {
+      "id": "obs_1776832519739_zzll",
+      "type": "pattern",
+      "content": "The Problem\nAPI routes that read from `public/` via `fs.readFileSync` work locally but serve **stale files on Vercel** because Next.js doesn't automatically include `public/` files in serverless function bundles.",
+      "source": "obsidian:Patterns\\Pattern — Next.js Public File Tracing.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.739Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "studio-plugin",
+        "deployment"
+      ]
+    },
+    {
+      "id": "obs_1776832519739_s9s8",
+      "type": "pattern",
+      "content": "The Fix\nAdd `experimental.outputFileTracingIncludes` in `next.config.ts`:\n\n```ts\nexperimental: {\n  outputFileTracingIncludes: {\n    '/api/studio/plugin': ['./public/plugin/**/*'],\n  },\n}\n```",
+      "source": "obsidian:Patterns\\Pattern — Next.js Public File Tracing.md#chunk2",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.739Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "studio-plugin",
+        "deployment"
+      ]
+    },
+    {
+      "id": "obs_1776832519739_gd0x",
+      "type": "pattern",
+      "content": "Why This Matters\n- Cost us 6 hours of debugging\n- Plugin .rbxmx was being served from CDN edge cache instead of the actual file\n- Applies to ANY API route that reads from public/ at runtime",
+      "source": "obsidian:Patterns\\Pattern — Next.js Public File Tracing.md#chunk3",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.739Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "studio-plugin",
+        "deployment"
+      ]
+    },
+    {
+      "id": "obs_1776832519739_2gj8",
+      "type": "pattern",
+      "content": "When to Apply\nAny time you create an API route that uses `fs.readFileSync(path.join(process.cwd(), 'public', ...))`.",
+      "source": "obsidian:Patterns\\Pattern — Next.js Public File Tracing.md#chunk4",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.739Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "studio-plugin",
+        "deployment"
+      ]
+    },
+    {
+      "id": "obs_1776832519739_b59a",
+      "type": "pattern",
+      "content": "# Pattern — Parallel Claude Sessions",
+      "source": "obsidian:Patterns\\Pattern — Parallel Claude Sessions.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.739Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "auth"
+      ]
+    },
+    {
+      "id": "obs_1776832519739_74ap",
+      "type": "pattern",
+      "content": "How to Detect\n- Check `git status` for unexpected changes\n- Look for files modified in the last few minutes that you didn't touch\n- Check if another Claude session is running in task manager",
+      "source": "obsidian:Patterns\\Pattern — Parallel Claude Sessions.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.739Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "auth"
+      ]
+    },
+    {
+      "id": "obs_1776832519739_ev65",
+      "type": "pattern",
+      "content": "Safe vs Unsafe Edit Zones\nDuring auth work, these zones are safe for parallel editing:\n- Marketing pages\n- Documentation\n- Test files\n- Unrelated API routes\n\n**UNSAFE** (will conflict):\n- middleware.ts\n- Auth components\n- Clerk config\n- Shared layout files",
+      "source": "obsidian:Patterns\\Pattern — Parallel Claude Sessions.md#chunk2",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.739Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "auth"
+      ]
+    },
+    {
+      "id": "obs_1776832519739_u0du",
+      "type": "pattern",
+      "content": "Rules\n- Always explicit-stage-by-name (`git add src/specific-file.ts`)\n- Never `git add -A` or `git add .`\n- Check git status before committing\n- If you see unexpected changes, don't overwrite — ask the user",
+      "source": "obsidian:Patterns\\Pattern — Parallel Claude Sessions.md#chunk3",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.739Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "auth"
+      ]
+    },
+    {
+      "id": "obs_1776832519739_nixg",
+      "type": "pattern",
+      "content": "# Pattern — Vercel Hobby Limits\n\nForjeGames is on Vercel Hobby plan. Know these limits:\n\n| Limit | Value |\n|-------|-------|\n| Cron frequency | **Daily only** (no hourly/minute crons) |\n| Function timeout | **300 seconds** max |\n| Build size | **100MB** max |\n| Bandwidth | 100GB/mo |\n| Serverless executions | 100K/mo |",
+      "source": "obsidian:Patterns\\Pattern — Vercel Hobby Limits.md#chunk0",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.739Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "billing",
+        "redis",
+        "deployment"
+      ]
+    },
+    {
+      "id": "obs_1776832519739_p2tr",
+      "type": "pattern",
+      "content": "Implications\n- Stripe reconcile cron runs daily, not hourly\n- Long AI generation tasks must complete within 300s or use streaming\n- Keep build size lean — watch node_modules and public/ assets\n- If we need sub-daily crons, upgrade to Pro ($20/mo) or use Upstash QStash",
+      "source": "obsidian:Patterns\\Pattern — Vercel Hobby Limits.md#chunk1",
+      "confidence": 90,
+      "timestamp": "2026-04-22T04:35:19.739Z",
+      "usageCount": 0,
+      "tags": [
+        "pattern",
+        "billing",
+        "redis",
+        "deployment"
+      ]
+    },
+    {
+      "id": "obs_1776832519730_u00m",
+      "type": "bug-insight",
+      "content": "# BUG FIX — luauCode Never Returned to Frontend (Apr 13)\n#bugfix #critical #solved\nDate: 2026-04-13",
+      "source": "obsidian:BUG FIX — luauCode Never Returned to Frontend.md#chunk0",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.730Z",
+      "usageCount": 0,
+      "tags": [
+        "engineering",
+        "bugs"
+      ]
+    },
+    {
+      "id": "obs_1776832519730_ifbj",
+      "type": "bug-insight",
+      "content": "The Problem\nUser said \"AI gives shitty models\" and \"nothing loads into Studio.\"\nThe AI was actually generating 4,000+ chars of valid Luau code — but it was silently dropped.",
+      "source": "obsidian:BUG FIX — luauCode Never Returned to Frontend.md#chunk1",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.730Z",
+      "usageCount": 0,
+      "tags": [
+        "engineering",
+        "bugs"
+      ]
+    },
+    {
+      "id": "obs_1776832519730_hb5q",
+      "type": "bug-insight",
+      "content": "Root Cause\nTwo-pass free model pipeline (Gemini Flash + Groq Llama):\n- Pass 1: Conversational response (explains what it'll build)\n- Pass 2: Luau code generation (actual buildable code)\n\nThe code from Pass 2 was generated correctly, but **6 response paths** (3 JSON + 3 stream) omitted the `luauCode` field from the response. Frontend saw `hasCode: true` but had no code.\n\nAdditionally, the frontend's useChat hook only extracted code by regex-matching ` ```lua ``` ` blocks in the stream text. Since the two-pass pipeline sends conversation text (no code blocks) in the stream and code separately, the regex never matched.",
+      "source": "obsidian:BUG FIX — luauCode Never Returned to Frontend.md#chunk2",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.730Z",
+      "usageCount": 0,
+      "tags": [
+        "engineering",
+        "bugs"
+      ]
+    },
+    {
+      "id": "obs_1776832519730_knoc",
+      "type": "bug-insight",
+      "content": "The Fix (commits 053b3c2 + fb11b46)\n1. **Backend**: Added `luauCode` field to all 6 response paths (gemini-flash JSON/stream, groq-llama JSON/stream, auto-cascade JSON/stream)\n2. **Frontend**: useChat now checks `meta.luauCode` first (from server), falls back to code block extraction",
+      "source": "obsidian:BUG FIX — luauCode Never Returned to Frontend.md#chunk3",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.730Z",
+      "usageCount": 0,
+      "tags": [
+        "engineering",
+        "bugs"
+      ]
+    },
+    {
+      "id": "obs_1776832519730_1t8u",
+      "type": "bug-insight",
+      "content": "Files Changed\n- `src/app/api/ai/chat/route.ts` — 6 response paths fixed\n- `src/app/(app)/editor/hooks/useChat.ts` — meta.luauCode extraction",
+      "source": "obsidian:BUG FIX — luauCode Never Returned to Frontend.md#chunk4",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.730Z",
+      "usageCount": 0,
+      "tags": [
+        "engineering",
+        "bugs"
+      ]
+    },
+    {
+      "id": "obs_1776832519730_btye",
+      "type": "bug-insight",
+      "content": "Impact\nBefore: AI said \"I built a house\" → nothing happened → user thought output was garbage\nAfter: AI says \"I built a house\" → 4,120 chars of valid Luau code returned → can be imported to Studio",
+      "source": "obsidian:BUG FIX — luauCode Never Returned to Frontend.md#chunk5",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.730Z",
+      "usageCount": 0,
+      "tags": [
+        "engineering",
+        "bugs"
+      ]
+    },
+    {
+      "id": "obs_1776832519730_443s",
+      "type": "bug-insight",
+      "content": "Lesson\nAlways include the generated artifact in the API response, even when it's \"also\" being sent to Studio. If the plugin isn't connected, the code must still reach the frontend for manual import.",
+      "source": "obsidian:BUG FIX — luauCode Never Returned to Frontend.md#chunk6",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.730Z",
+      "usageCount": 0,
+      "tags": [
+        "engineering",
+        "bugs"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_1maf",
+      "type": "metric",
+      "content": "# Competitive Intelligence Report\n#competitors #strategy #research\nDate: 2026-04-13",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk0",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_znmn",
+      "type": "metric",
+      "content": "TL;DR\n\nWe analyzed 5 direct competitors. **ForjeGames has the most sophisticated tech** but competitors are winning on marketing, pricing, and user friction.",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk1",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_7uwd",
+      "type": "metric",
+      "content": "| Competitor | Users Claimed | Price | AI Model | Studio Plugin | Our Edge |\n|-----------|--------------|-------|----------|--------------|----------|\n| Ropilot | Unknown | $20-250/mo + YOUR API costs | BYOK (you pay OpenAI/Anthropic) | Desktop app required | We include AI — one bill |\n| Rebirth | 50K+ | $8.99-15.99/mo | Hidden | Yes (Creator Store) | We have 9 agents, mesh gen, image gen |\n| Lemonade | 100K+ | $20/mo (100 prompts) | Hidden (Gemini suspected) | Yes (Creator Store) | We're faster, more modes |\n| ForgeGUI | ~28K | $15.99-200/mo | Hidden | No plugin | We actually build in Studio |\n| BloxToolkit | Unknown | $19-79/mo | GPT | No plugin | We're real, they have fake testimonials |",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk2",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_bzd0",
+      "type": "metric",
+      "content": "The Uncomfortable Truth\n\n**None of these tools can build production games.** The best AI (Gemini 3.1 Pro) fails 45% of Roblox tasks on first attempt. Every tool is a scripting assistant with varying Studio integration.",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk3",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_m4nh",
+      "type": "metric",
+      "content": "What We Have That Nobody Else Does\n- 9-agent orchestrator (multi-agent coordination)\n- 9 AI modes (build/think/plan/image/script/terrain/mesh/debug/idea)\n- 13 image generation styles including Roblox clothing UV maps\n- 3D mesh generation (Meshy)\n- Canvas editor (Canva-like)\n- Robux payments\n- Free prompt enhancement (Groq Llama)\n- Plugin ChangeHistory undo (single Ctrl+Z)\n- 50+ curated marketplace assets\n- Automated playtest + input simulation + AI visual verification",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk4",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_wedl",
+      "type": "metric",
+      "content": "Ropilot (ropilot.ai)\n- **Company**: ROSUITE LLC, Newark DE. Founded by \"ClassifiedCoach\" — started as open-source plugin Sept 2024\n- **Model**: BYOK — users bring own API keys. Users pay Ropilot + pay OpenAI/Anthropic separately\n- **Architecture**: Desktop app (required) + Studio plugin + npm MCP CLI\n- **Reality**: Scripting copilot only. Cannot modify models, sounds, meshes. Zero documented user-built games.\n- **Pricing**: Free 250 actions, $20-250/mo (+ your API costs = $40-300+ total)",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk5",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_ticn",
+      "type": "metric",
+      "content": "Rebirth (userebirth.com)\n- **Company**: England-based, unknown team\n- **Stack**: Next.js + Turbopack, Supabase Auth, Fly.io backend\n- **Reality**: Script generator. Their own docs warn \"chain small prompts\" because complex requests fail.\n- **Pricing**: $8.99/mo (100 prompts), $15.99/mo (300 prompts)\n- **Marketing**: TikTok active, 6 SEO blog posts, Rewardful affiliates",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk6",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_ksqf",
+      "type": "metric",
+      "content": "Lemonade (lemonade.gg)\n- **Company**: San Francisco, founder @nicolasvizi\n- **Auth**: Roblox OAuth (zero friction — genius move)\n- **Reality**: In their own demo, cats fell through floors, NPCs walked off maps. \"Boilerplate only.\"\n- **Pricing**: 1 free credit/day, $20/mo for 100 prompts ($0.20/prompt = expensive)",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk7",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_uqtc",
+      "type": "metric",
+      "content": "ForgeGUI (forgegui.com)\n- **Company**: ForgeGUI Inc., built with bolt.new\n- **Reality**: Image-only tool. No Studio plugin. No code generation. Generates thumbnails/icons/clothing.\n- **Has**: Public remix gallery, prompt guide page",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk8",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_hzxl",
+      "type": "metric",
+      "content": "BloxToolkit (bloxtoolkit.com)\n- **Trust**: 0/100 on ScamAdviser. FAKE testimonials (DevForum avatars + fabricated names)\n- **Reality**: Web-only, no Studio integration. GPT wrapper with Roblox skin.\n- **Pricing**: $19-79/mo",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk9",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_y3xm",
+      "type": "metric",
+      "content": "Key Gaps to Close\n1. Add Roblox OAuth (Lemonade's #1 advantage)\n2. Restructure pricing ($9.99/$19.99/$29.99)\n3. Affiliate program (Rewardful)\n4. TikTok marketing\n5. 6 SEO blog posts",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk10",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_9qej",
+      "type": "metric",
+      "content": "Full Analysis\nSee `C:\\dev\\competitor-mirrors\\COMPETITIVE_ANALYSIS.md` for the complete 400+ line report with tech stack details, Supabase URLs, Firebase configs, and all source code findings.",
+      "source": "obsidian:Business\\Competitive Intelligence Report.md#chunk11",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "business"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_wp9x",
+      "type": "decision",
+      "content": "# Pricing Analysis — ForjeGames vs Market\n#pricing #strategy #business\nDate: 2026-04-13",
+      "source": "obsidian:Business\\Pricing Analysis.md#chunk0",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "business",
+        "revenue",
+        "pricing"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_tux9",
+      "type": "decision",
+      "content": "Current Market Pricing\n\n| Tool | Free Tier | Entry | Mid | Top | AI Included? |\n|------|----------|-------|-----|-----|-------------|\n| **ForjeGames** | Yes (Free $0) | $9.99/mo (Hobby) | $24.99/mo (Creator) | $49.99/mo (Studio) | YES |\n| **Ropilot** | 250 actions | $20/mo | $50/mo | $250/mo | NO (you pay OpenAI/Anthropic too) |\n| **Rebirth** | 5 credits | $8.99/mo | $15.99/mo | $15.99/mo | YES |\n| **Lemonade** | 1/day | $20/mo | $20/mo | $20/mo | YES |\n| **ForgeGUI** | 5 credits | $15.99/mo | $50/mo | $200/mo | YES |\n| **BloxToolkit** | None | $19/mo | $39/mo | $79/mo | YES |",
+      "source": "obsidian:Business\\Pricing Analysis.md#chunk1",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "business",
+        "revenue",
+        "pricing"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_twv9",
+      "type": "decision",
+      "content": "Current Pricing (Implemented)\n\n| Tier | Price | Target |\n|------|-------|--------|\n| Free | $0 | Try before buy |\n| Hobby | $9.99/mo | Compete with Rebirth Hobby |\n| Creator | $24.99/mo | Compete with Rebirth Pro + Lemonade |\n| Studio | $49.99/mo | Power users, teams |",
+      "source": "obsidian:Business\\Pricing Analysis.md#chunk2",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "business",
+        "revenue",
+        "pricing"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_ezr6",
+      "type": "decision",
+      "content": "Key Insight\nRopilot's BYOK model means their true cost is $40-300+/mo. We can message:\n**\"All-inclusive AI. One bill. No API keys needed.\"**\n\nRebirth's $8.99 is the floor. We need a $9.99 tier to compete.",
+      "source": "obsidian:Business\\Pricing Analysis.md#chunk3",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "business",
+        "revenue",
+        "pricing"
+      ]
+    },
+    {
+      "id": "obs_1776832519731_gsm6",
+      "type": "decision",
+      "content": "Roblox Audience Reality\n- Most Roblox developers are 13-22 years old\n- $30/mo is a LOT for a teenager\n- $9.99/mo is \"one month of allowance\"\n- Free tier with generous limits drives word-of-mouth",
+      "source": "obsidian:Business\\Pricing Analysis.md#chunk4",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.731Z",
+      "usageCount": 0,
+      "tags": [
+        "business",
+        "revenue",
+        "pricing"
+      ]
+    },
+    {
+      "id": "obs_1776832519732_nxxk",
+      "type": "decision",
+      "content": "Target\n**$30K/mo** = 1,000 Studio tier subscribers at $30/mo",
+      "source": "obsidian:Business\\Revenue Playbook.md#chunk0",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.732Z",
+      "usageCount": 0,
+      "tags": [
+        "business",
+        "revenue",
+        "pricing"
+      ]
+    },
+    {
+      "id": "obs_1776832519732_o4ge",
+      "type": "decision",
+      "content": "Pricing Tiers\n| Tier | Price | Positioning |\n|------|-------|-------------|\n| Free | $0 | Try it, limited tokens |\n| Starter | $9.99/mo | Casual builders |\n| Builder | $19.99/mo | Regular creators |\n| Studio | $29.99/mo | Power users (target tier) |\n| Team | Custom | Studios & groups |\n| Enterprise | Custom | Large organizations |\n\n**Key insight**: Rebirth charges $8.99/mo and has 50K users. Our $30/mo is 3.3x more — justified by 9 agents, 3D mesh, 13 styles, but messaging must make this obvious.",
+      "source": "obsidian:Business\\Revenue Playbook.md#chunk1",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.732Z",
+      "usageCount": 0,
+      "tags": [
+        "business",
+        "revenue",
+        "pricing"
+      ]
+    },
+    {
+      "id": "obs_1776832519732_v9e0",
+      "type": "decision",
+      "content": "Acquisition Channels (Zero Budget)\n1. **Twitter/X** — dev community, daily Roblox AI clips\n2. **YouTube Shorts** — 60-second build demos (script: YOUTUBE-DEMO-SCRIPT.md)\n3. **TikTok** — follow Rebirth's playbook, short AI build timelapses\n4. **SEO** — 6 blog posts targeting \"roblox ai builder\", \"roblox script generator\"\n5. **DevForum** — Roblox developer community posts\n6. **Influencer partnerships** — Roblox content creators, rev-share\n7. **Affiliate program** — Rewardful integration (Ropilot & Rebirth both have this)",
+      "source": "obsidian:Business\\Revenue Playbook.md#chunk2",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.732Z",
+      "usageCount": 0,
+      "tags": [
+        "business",
+        "revenue",
+        "pricing"
+      ]
+    },
+    {
+      "id": "obs_1776832519732_6dhd",
+      "type": "decision",
+      "content": "Conversion Levers\n- Paywall UX (clear upgrade path)\n- Usage meter (show token consumption)\n- Watermarks on free-tier outputs\n- First-build magic (onboarding wow moment)\n- Social proof (user count, testimonials)",
+      "source": "obsidian:Business\\Revenue Playbook.md#chunk3",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.732Z",
+      "usageCount": 0,
+      "tags": [
+        "business",
+        "revenue",
+        "pricing"
+      ]
+    },
+    {
+      "id": "obs_1776832519732_gxxh",
+      "type": "decision",
+      "content": "90-Day Plan\n| Phase | Timeline | Goal |\n|-------|----------|------|\n| Soft launch | Days 1-30 | 100 users, $50 MRR |\n| Public launch | Days 31-60 | 1K users, $500 MRR |\n| Paid ads | Days 61-90 | 10K users, $5K MRR |",
+      "source": "obsidian:Business\\Revenue Playbook.md#chunk4",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.732Z",
+      "usageCount": 0,
+      "tags": [
+        "business",
+        "revenue",
+        "pricing"
+      ]
+    },
+    {
+      "id": "obs_1776832519732_2p8s",
+      "type": "decision",
+      "content": "Competitive Moat\nForjeGames is the ONLY all-inclusive platform:\n- Competitors force BYOK (bring your own API key) = friction\n- Competitors charge per-prompt ($0.20/prompt at Lemonade) = unpredictable costs\n- We include everything: 9 AI modes, image gen, 3D mesh, canvas editor, Studio plugin",
+      "source": "obsidian:Business\\Revenue Playbook.md#chunk5",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.732Z",
+      "usageCount": 0,
+      "tags": [
+        "business",
+        "revenue",
+        "pricing"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_wc7n",
+      "type": "metric",
+      "content": "# BloxToolkit (bloxtoolkit.com)\n#competitor #bloxtoolkit\nDate: 2026-04-13",
+      "source": "obsidian:Competitors\\Competitor — BloxToolkit.md#chunk0",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "bloxtoolkit"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_seoz",
+      "type": "metric",
+      "content": "WARNING: Low Trust\n- ScamAdviser trust score: 0/100\n- Domain registered January 14, 2026 (3 months old)\n- FAKE testimonials (DevForum avatars + fabricated names)\n- No DevForum, GitHub, Twitter, or community presence",
+      "source": "obsidian:Competitors\\Competitor — BloxToolkit.md#chunk1",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "bloxtoolkit"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_mfj3",
+      "type": "metric",
+      "content": "What It Is\nWeb-only toolkit. Game idea generator, thumbnail gen, icon gen, Luau code gen. No Studio plugin.",
+      "source": "obsidian:Competitors\\Competitor — BloxToolkit.md#chunk2",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "bloxtoolkit"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_49ne",
+      "type": "metric",
+      "content": "Pricing\n$19-79/mo. No free tier.",
+      "source": "obsidian:Competitors\\Competitor — BloxToolkit.md#chunk3",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "bloxtoolkit"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_b9uo",
+      "type": "metric",
+      "content": "Only Useful Insight\nTheir game idea generator concept is good. We built a better version today.",
+      "source": "obsidian:Competitors\\Competitor — BloxToolkit.md#chunk4",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "bloxtoolkit"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_q1i6",
+      "type": "metric",
+      "content": "# ForgeGUI (forgegui.com)\n#competitor #forgegui\nDate: 2026-04-13",
+      "source": "obsidian:Competitors\\Competitor — ForgeGUI.md#chunk0",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "forgegui"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_suot",
+      "type": "metric",
+      "content": "Company\n- **Entity**: ForgeGUI Inc.\n- **Built with**: bolt.new (StackBlitz AI)\n- **Twitter**: @forgeguiai (no posts)",
+      "source": "obsidian:Competitors\\Competitor — ForgeGUI.md#chunk1",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "forgegui"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_zpm0",
+      "type": "metric",
+      "content": "What It Is\nImage generation tool ONLY. Thumbnails, icons, GUI assets, clothing. NOT a game builder. No Studio plugin. No code generation.",
+      "source": "obsidian:Competitors\\Competitor — ForgeGUI.md#chunk2",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "forgegui"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_54uz",
+      "type": "metric",
+      "content": "Tech Stack\n- Vite + React SPA\n- Supabase Auth (with Web3/Solana planned)\n- Supabase DB (`azyjlkhpdgafuobyxoax.supabase.co`)",
+      "source": "obsidian:Competitors\\Competitor — ForgeGUI.md#chunk3",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "forgegui"
+      ]
+    },
+    {
+      "id": "obs_1776832519733_t8vb",
+      "type": "metric",
+      "content": "Features We Should Copy\n- Public remix gallery (community sharing)\n- Prompt guide page (teaches users) — DONE (we built this today)\n- Credit-based pricing per generation type",
+      "source": "obsidian:Competitors\\Competitor — ForgeGUI.md#chunk4",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.733Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "forgegui"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_kzm4",
+      "type": "metric",
+      "content": "# Lemonade (lemonade.gg)\n#competitor #lemonade\nDate: 2026-04-13",
+      "source": "obsidian:Competitors\\Competitor — Lemonade.md#chunk0",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "lemonade"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_9w55",
+      "type": "metric",
+      "content": "Company\n- **Location**: San Francisco\n- **Founder**: @nicolasvizi\n- **Traction**: Claims 100K+ creators",
+      "source": "obsidian:Competitors\\Competitor — Lemonade.md#chunk1",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "lemonade"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_9yor",
+      "type": "metric",
+      "content": "Tech Stack\n- Next.js + Clerk v6.33.1 + Supabase (server-side) on Vercel\n- Mixpanel + rrweb session recording\n- Plugin on Creator Store (Asset ID 85716018250741)",
+      "source": "obsidian:Competitors\\Competitor — Lemonade.md#chunk2",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "lemonade"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_6355",
+      "type": "metric",
+      "content": "KEY FEATURE: Roblox OAuth\n\"Sign in with Roblox\" — zero friction. Every Roblox dev already has an account.",
+      "source": "obsidian:Competitors\\Competitor — Lemonade.md#chunk3",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "lemonade"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_5l22",
+      "type": "metric",
+      "content": "Pricing\n| Plan | Price | Credits |\n|------|-------|---------|\n| Free | $0 | 1/day |\n| Paid | $20/mo | 100 prompts |\n\n$0.20/prompt is expensive. SuperBullet offers 55x more at same price.",
+      "source": "obsidian:Competitors\\Competitor — Lemonade.md#chunk4",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "lemonade"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_b5z3",
+      "type": "metric",
+      "content": "Reality Check\n- In their own demo: cats fell through floors, NPCs walked off maps\n- Described as \"boilerplate only\" by competitors\n- 2-3 minute processing for complex prompts\n- Trustpilot: 3.4/5 (3 reviews)",
+      "source": "obsidian:Competitors\\Competitor — Lemonade.md#chunk5",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "lemonade"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_k77u",
+      "type": "metric",
+      "content": "Our Advantage\nWe're faster, have more modes, better architecture. But they have Roblox OAuth and 100K users.",
+      "source": "obsidian:Competitors\\Competitor — Lemonade.md#chunk6",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "lemonade"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_m5sd",
+      "type": "metric",
+      "content": "What We Should Copy\n- Roblox OAuth (their #1 UX win)\n- Mixpanel + rrweb (understand users)",
+      "source": "obsidian:Competitors\\Competitor — Lemonade.md#chunk7",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "lemonade"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_5yzp",
+      "type": "metric",
+      "content": "# Rebirth (userebirth.com)\n#competitor #rebirth\nDate: 2026-04-13",
+      "source": "obsidian:Competitors\\Competitor — Rebirth.md#chunk0",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "rebirth"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_4voz",
+      "type": "metric",
+      "content": "Company\n- **Location**: England\n- **Team**: Unknown (no named team members)\n- **Traction**: Claims 50K+ users, 2K+ prompts/day",
+      "source": "obsidian:Competitors\\Competitor — Rebirth.md#chunk1",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "rebirth"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_dewu",
+      "type": "metric",
+      "content": "Tech Stack\n- Next.js + Turbopack, Supabase Auth, Fly.io backend\n- Stripe, Rewardful affiliates, Umami analytics\n- Plugin on Creator Store (Asset ID 124244262358116)",
+      "source": "obsidian:Competitors\\Competitor — Rebirth.md#chunk2",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "rebirth"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_uano",
+      "type": "metric",
+      "content": "Pricing\n| Plan | Price | Credits |\n|------|-------|---------|\n| Free | $0 | 5 credits |\n| Hobby | $8.99/mo | 100 prompts |\n| Pro | $15.99/mo | 300 prompts |",
+      "source": "obsidian:Competitors\\Competitor — Rebirth.md#chunk3",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "rebirth"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_r7gc",
+      "type": "metric",
+      "content": "Strengths\n- Cheapest competitor ($8.99 entry)\n- TikTok marketing active\n- 6 SEO blog posts\n- Affiliate program (Rewardful)\n- Plugin on Creator Store",
+      "source": "obsidian:Competitors\\Competitor — Rebirth.md#chunk4",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "rebirth"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_wtsm",
+      "type": "metric",
+      "content": "Weaknesses\n- Their docs warn AI struggles with 1000+ line scripts\n- Recommends \"chain small prompts\" (complex builds fail)\n- No 3D, no images, no mesh\n- Unknown team (bus factor)\n- No DevForum presence",
+      "source": "obsidian:Competitors\\Competitor — Rebirth.md#chunk5",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "rebirth"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_v53z",
+      "type": "metric",
+      "content": "Our Advantage\n9-agent orchestrator, image gen, mesh gen, more AI modes. But they're cheaper and have more users.",
+      "source": "obsidian:Competitors\\Competitor — Rebirth.md#chunk6",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "rebirth"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_9wva",
+      "type": "metric",
+      "content": "# Ropilot (ropilot.ai)\n#competitor #ropilot\nDate: 2026-04-13",
+      "source": "obsidian:Competitors\\Competitor — Ropilot.md#chunk0",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "ropilot"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_kh1i",
+      "type": "metric",
+      "content": "Company\n- **Entity**: ROSUITE LLC, 131 Continental Dr Suite 305, Newark, DE 19713\n- **Creator**: \"ClassifiedCoach\" — open-source plugin Sept 2024, commercialized Jan 2026\n- **Team**: Solo dev / very small team",
+      "source": "obsidian:Competitors\\Competitor — Ropilot.md#chunk1",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "ropilot"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_ldyz",
+      "type": "metric",
+      "content": "How It Works\nBYOK (Bring Your Own Key) — users must have their own OpenAI/Anthropic API keys.\nDesktop app (required) + Studio plugin + npm MCP CLI package.",
+      "source": "obsidian:Competitors\\Competitor — Ropilot.md#chunk2",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "ropilot"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_4tw3",
+      "type": "metric",
+      "content": "Tech Stack\n- Frontend: Vanilla HTML/CSS/JS (no framework)\n- Auth: Firebase (Google OAuth only)\n- Hosting: Cloudflare\n- Payments: Stripe\n- AI: User's own Anthropic/OpenAI keys",
+      "source": "obsidian:Competitors\\Competitor — Ropilot.md#chunk3",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "ropilot"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_henl",
+      "type": "metric",
+      "content": "Pricing\n| Plan | Monthly | Actions/Mo | + API Costs |\n|------|---------|-----------|------------|\n| Free | $0 | 250 | + your API bill |\n| Light | $20 | 6,750 | + your API bill |\n| Pro | $50 | 22,500 | + your API bill |\n| Max | $250 | 168,750 | + your API bill |",
+      "source": "obsidian:Competitors\\Competitor — Ropilot.md#chunk4",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "ropilot"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_lut0",
+      "type": "metric",
+      "content": "Strengths\n- MCP support + npm CLI (works with Claude Code, Cursor)\n- Playtest input simulation\n- Desktop app = faster local execution\n- 250 free actions",
+      "source": "obsidian:Competitors\\Competitor — Ropilot.md#chunk5",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "ropilot"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_abyq",
+      "type": "metric",
+      "content": "Weaknesses\n- BYOK = $40-300+/mo total cost (users pay twice)\n- Desktop app = friction (download, install, run alongside Studio)\n- Zero documented user-built games\n- Unsigned installers\n- Vanilla JS frontend = small team signal",
+      "source": "obsidian:Competitors\\Competitor — Ropilot.md#chunk6",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "ropilot"
+      ]
+    },
+    {
+      "id": "obs_1776832519734_kbhg",
+      "type": "metric",
+      "content": "Our Advantage Over Them\nWe include AI inference. One bill. No API keys. Web-based (no download).",
+      "source": "obsidian:Competitors\\Competitor — Ropilot.md#chunk7",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.734Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "ropilot"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_85hp",
+      "type": "metric",
+      "content": "# Competitive Intelligence Report — ForjeGames vs 5 Competitors",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk0",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_jyon",
+      "type": "metric",
+      "content": "Generated April 13, 2026 — FINAL VERSION (all research agents completed)\n\n---",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk1",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_9qeq",
+      "type": "metric",
+      "content": "EXECUTIVE SUMMARY\n\nWe analyzed 5 direct competitors to ForjeGames. Key strategic findings:",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk2",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_6u8d",
+      "type": "metric",
+      "content": "1. **ForjeGames has the most sophisticated AI architecture** (9-agent orchestrator, multi-provider, 9 modes) — no competitor matches this\n2. **Ropilot is BYOK** (bring your own API key) — users pay Ropilot $20-250/mo AND pay OpenAI/Anthropic separately. ForjeGames including AI inference is a massive UX/pricing advantage\n3. **Lemonade uses Roblox OAuth** — zero-friction auth for the target audience. We should add this\n4. **Our $30/mo pricing is 2-3x competitors** — Rebirth is $8.99-15.99/mo, Ropilot starts at $20/mo (+ API costs)\n5. **Nobody has our orchestrator, canvas editor, mesh generation, or checkpoint system** — these are genuine differentiators\n6. **All competitors lack** multi-agent coordination, image generation depth (13 styles), 3D mesh, Robux payments\n\n---",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk3",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_os79",
+      "type": "metric",
+      "content": "1. ROPILOT (ropilot.ai) — MOST TECHNICALLY ADVANCED COMPETITOR",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk4",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_b5en",
+      "type": "metric",
+      "content": "Company\n- **Entity**: ROSUITE, LLC, 131 Continental Dr Suite 305, Newark, DE 19713\n- **Creator**: \"ClassifiedCoach\" (Twitter/GitHub) — started as open-source plugin Sept 2024, commercialized Jan 2026\n- **Launched**: January 24, 2026 (~3 months ago)\n- **Team**: Solo dev / very small team (vanilla JS frontend, unsigned installers)",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk5",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_s88m",
+      "type": "metric",
+      "content": "Architecture (TWO components — critical difference from us)\n1. **Ropilot Studio** = Desktop app (Windows/macOS/Linux) — the agent harness/orchestrator\n2. **Roblox Studio Plugin** — lightweight, pairs with desktop app via MCP\n3. **npm package**: `ropilot` v0.1.50 (MIT) — MCP CLI bridge for Claude/Cursor integration",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk6",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_cu0m",
+      "type": "metric",
+      "content": "AI Models — CRITICAL FINDING\n**Ropilot is BYOK (Bring Your Own Key).** Users must have their own API keys from:\n- Anthropic Claude\n- OpenAI (GPT-5.4 shown in demos)\n- Google Gemini (from open-source version)\n\n**This means Ropilot charges for orchestration, NOT AI inference.** Users pay Ropilot $20-250/mo PLUS their own OpenAI/Anthropic bills ($20-50+/mo). Total cost: $40-300+/mo.\n\n**ForjeGames advantage: All-inclusive pricing. One bill, one relationship.**",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk7",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_yzjr",
+      "type": "metric",
+      "content": "How Their AI Pipeline Works\n1. Plugin traverses Roblox services (`GetDescendants()`), extracts all Script/LocalScript/ModuleScript source code\n2. Combines static instruction schema + serialized codebase + user prompt\n3. HTTP request to user's selected AI provider\n4. Response parsed as structured JSON with `changes` array (action type, target script, line numbers, code)\n5. Three action types: ModifyExisting (comments out original + inserts new), AddOnly, NewScript\n6. Full undo history tracking\n7. Automated playtest with input simulation + screenshot capture",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk8",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_okcu",
+      "type": "metric",
+      "content": "Pricing\n| Plan | Monthly | Annual | Actions/Month | Concurrent |\n|------|---------|--------|--------------|------------|\n| Free | $0 | $0 | 250 (~5 features) | 1 |\n| Light | $20 | $16.70 | 6,750* | 1 |\n| Pro | $50 | $41.70 | 22,500* | 2 |\n| Max | $250 | $208.30 | 168,750* | 5 |\n*Includes 50% launch bonus. AI inference NOT included — users pay separately.",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk9",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_xv5r",
+      "type": "metric",
+      "content": "Key Features We're Missing\n- **Desktop app** (agent harness runs locally, not web)\n- **MCP CLI npm package** (plug into Claude Code / Cursor)\n- **User-selectable AI provider** in plugin settings\n- **Input simulation** during playtest (keyboard/mouse automation via VirtualInputManager)\n- **Invite code system** on login (controlled growth)",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk10",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_t4zr",
+      "type": "metric",
+      "content": "Strategic Assessment\nRopilot's BYOK model is their **biggest vulnerability**. Young Roblox developers don't want to manage API keys and separate billing. Our all-inclusive model is simpler. Their desktop app requirement adds friction vs our web-based approach. But their MCP integration with Claude Code/Cursor is innovative.\n\n---",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk11",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_un8z",
+      "type": "metric",
+      "content": "2. REBIRTH (userebirth.com) — STRONGEST TRACTION",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk12",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_rgh7",
+      "type": "metric",
+      "content": "Company\n- **Location**: England (laws of England and Wales)\n- **Traction Claims**: 50K+ users, 2M+ Robux earned from Rebirth-built games, 2,000+ prompts/day\n- **Social**: @UseRebirthAI (Twitter), @userebirth (TikTok), Discord: discord.gg/RvJMuMnkHf\n- **Contact**: support@userebirth.com\n- **Founded**: ~Q1 2026 (blog content starts March 2026)",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk13",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_ioe9",
+      "type": "metric",
+      "content": "Tech Stack\n| Layer | Technology |\n|-------|-----------|\n| Frontend | Next.js 15 + Turbopack (same as us) |\n| Auth | Supabase Auth (Google OAuth only) |\n| Database | Supabase (PostgreSQL + Realtime) |\n| Backend/AI | Fly.io (vibegame1.fly.dev) |\n| Payments | Stripe |\n| Analytics | Umami (privacy-focused, self-hosted) |\n| Affiliates | Rewardful (data-rewardful=\"14300a\") |\n| Animation | DotLottie WASM + custom WebGL shaders |\n| Plugin | Creator Store (Asset ID 124244262358116) |",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk14",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_s9t9",
+      "type": "metric",
+      "content": "AI Model\n- **NOT DISCLOSED** — deliberately hidden\n- Claims \"deep understanding of Roblox APIs and context awareness\"\n- Likely a multimodal model (GPT-4o or Claude) behind the Fly.io proxy\n- Third-party providers \"may use your data for training\"",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk15",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_fonu",
+      "type": "metric",
+      "content": "Pricing (cheapest competitor)\n| Plan | Price | Credits/mo |\n|------|-------|-----------|\n| Free | $0 | 5 credits on signup |\n| Hobby | $8.99/mo | 100 prompts |\n| Pro | $15.99/mo | 300 prompts |\n1 credit = 1 prompt regardless of task size. Earn more via Discord.",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk16",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_2o30",
+      "type": "metric",
+      "content": "Best Practices They Recommend (reveals AI limitations)\n- \"Keep scripts modular — a 1000-line script is hard for AI to reason about\" (context window limits)\n- \"Copy-paste exact error messages\" (AI needs precise context)\n- \"Review security-critical code\" (known quality gaps)\n- \"Chain small prompts\" rather than one-shot complex builds (complex generation fails)",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk17",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_9sda",
+      "type": "metric",
+      "content": "Named Competitors (from their blog)\n- Lemonade — \"generates code in text box, must copy-paste, no scene context\"\n- SuperbulletAI — \"tokens run out fast on complex tasks\"\n- RMod — \"requires more setup, smaller community\"\n- Roblox 4D Creation — \"asset creation only, no scripts/UI\"",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk18",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_0xcc",
+      "type": "metric",
+      "content": "Key Features We're Missing\n- **Affiliate program** (Rewardful — professional tracking)\n- **TikTok marketing** (active, reaching young audience)\n- **SEO blog** (6 posts, coordinated March 2026 launch)\n- **Fly.io separate compute** (isolates AI from web server)\n- **$8.99 entry price** (we're 3.3x more expensive)\n- **50K user traction** (if real)\n\n---",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk19",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_wi00",
+      "type": "metric",
+      "content": "3. LEMONADE (lemonade.gg) — CLOSEST STACK, BEST AUTH",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk20",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_8l2m",
+      "type": "metric",
+      "content": "Company\n- **Location**: San Francisco\n- **Founder**: @nicolasvizi (Twitter/X)\n- **Traction Claims**: 100,000+ creators\n- **Social**: @gg_lemonade, Discord: discord.com/invite/lemonade\n- **Founded**: ~September 2025",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk21",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_v5g5",
+      "type": "metric",
+      "content": "Tech Stack (nearly identical to ours!)\n| Layer | Technology |\n|-------|-----------|\n| Frontend | Next.js (App Router) on Vercel |\n| Auth | **Clerk** v6.33.1 (`pk_live_Y2xlcmsubGVtb25hZGUuZ2ck`) |\n| Database | Supabase (server-side only — smart security) |\n| Payments | Clerk Checkout + Stripe |\n| Analytics | **Mixpanel** + **rrweb** session recording + Vercel Analytics/SpeedInsights |\n| Plugin | Creator Store \"Lemonade AI\" (Asset ID 85716018250741) |",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk22",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_midq",
+      "type": "metric",
+      "content": "Auth — CRITICAL FINDING\n**Lemonade uses \"Sign in with Roblox\"** as their PRIMARY auth. The sign-up page says: \"Signing in will take you to the official Roblox website. We only see your display name and avatar.\"\n\n**This is genius for the Roblox demographic. Every user already has a Roblox account. Zero friction.** We should add Roblox OAuth.",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk23",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_v60h",
+      "type": "metric",
+      "content": "AI Model\n- Uses \"top-tier private models\" — refuses to name them\n- FAQ: claims to outperform \"open-source models\" used by Roblox Assistant\n- Suspected **Gemini** (DevForum user mentioned \"Gemini 3\" in Lemonade context)\n- Context augmentation: \"We improve generation by selectively passing our own context data\"\n- Pipeline: Prompt received → Lemonade context data injected → Model generation",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk24",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_58if",
+      "type": "metric",
+      "content": "Pricing\n| Plan | Price | Allocation |\n|------|-------|-----------|\n| Free | $0 | 1 credit/day (was 4 prompts) |\n| Paid | $20/mo | 100 prompts |\n**$0.20/prompt is EXPENSIVE** — SuperBulletAI offers 55x more at same price.",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk25",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_rrub",
+      "type": "metric",
+      "content": "Key Features\n- **Roblox OAuth** (zero-friction for target audience)\n- **Agent Playtest** (autonomous test-and-fix loop)\n- **Version Control** (rollback to any past prompt iteration)\n- **Cross-device** (mobile-friendly web UI)\n- **Console log mirroring** (view Studio output in browser)\n- **Mixpanel + rrweb** (advanced user analytics + session replay)",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk26",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_014a",
+      "type": "metric",
+      "content": "What They CANNOT Do (per competitor comparison)\n- No code diff/comparison view\n- No 3D model generation\n- No animation generation\n- No VFX generation\n- No UI icon generation\n- Cannot make \"production-ready\" systems (described as \"boilerplate only\")\n- 2-3 minute processing for complex prompts (SLOW)\n\n---",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk27",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_nn4r",
+      "type": "metric",
+      "content": "4. FORGEGUI (forgegui.com) — UI/DESIGN NICHE",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk28",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_e0jt",
+      "type": "metric",
+      "content": "Company\n- **Entity**: ForgeGUI, Inc. (formally incorporated)\n- **Twitter/X**: @forgeguiai\n- **Discord**: discord.gg/R6k7xSKG3V\n- **Built with**: bolt.new (StackBlitz) — Project ID: 4bc6871d-7991-41e6-9116-6bceb500ad5a",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk29",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_8ydx",
+      "type": "metric",
+      "content": "Tech Stack\n| Layer | Technology |\n|-------|-----------|\n| Frontend | Vite + React SPA |\n| Auth | Supabase Auth (includes Web3/Solana wallet support!) |\n| Database | Supabase (`azyjlkhpdgafuobyxoax.supabase.co`) v2.71.1 |\n| Built with | bolt.new (AI code generation platform) |\n| Dev server | localhost:9999 |",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk30",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_fhrl",
+      "type": "metric",
+      "content": "Supabase Tables/RPC Found in JS\n- `client_errors` — error logging\n- `get_public_user_count` — social proof counter\n- `get_assets_generated_today` — daily volume tracking",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk31",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_1p7x",
+      "type": "metric",
+      "content": "Credit System\n- Thumbnails/Icons: 4 credits each\n- GUI assets: 3-5 credits (mostly 5)\n- Edit/refine mode available\n- Consistency system for style across assets",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk32",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_ygn3",
+      "type": "metric",
+      "content": "Key Features\n- **Public remix gallery** (fork others' designs)\n- **Prompt guide page** (teaching users)\n- **Thumbnails, Icons, GUI assets, Clothing** generation\n- **Style consistency** across generated assets\n- **YouTube tutorials** embedded\n- **Web3/Solana auth planned** (in Supabase config)",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk33",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_1e05",
+      "type": "metric",
+      "content": "Assessment\nForgeGUI is NOT a real builder — web-only, no Studio plugin, no code execution. Built quickly with bolt.new. Weakest technical competitor. But their remix gallery and prompt guide are features worth copying.\n\n---",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk34",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_p1tr",
+      "type": "metric",
+      "content": "5. BLOXTOOLKIT (bloxtoolkit.com) — BROADEST BUT FAKEST",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk35",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_hg7e",
+      "type": "metric",
+      "content": "Company\n- Domain registered: January 14, 2026 (3 months old)\n- **ScamAdviser trust score: 0/100** (flagged as risky)\n- **FAKE TESTIMONIALS** — avatar images scraped from DevForum users, names fabricated (\"Lena Sparks\", \"Skyler Hart\", \"Mara Quinn\")\n- No DevForum presence, no GitHub, no Twitter, no npm packages",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk36",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_gln9",
+      "type": "metric",
+      "content": "Tech Stack\n| Layer | Technology |\n|-------|-----------|\n| Frontend | Next.js + Turbopack (marketing), separate app at app.bloxtoolkit.com |\n| Auth | Custom email/password + Google OAuth (no third-party service) |\n| Analytics | PostHog (full: session replay, surveys, dead click, web vitals) + GA4 |\n| CDN | CloudFront |\n| Fonts | Space Grotesk + Geist Mono |",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk37",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_efga",
+      "type": "metric",
+      "content": "Pricing (most expensive)\n| Plan | Price | Credits | Images | Batches |\n|------|-------|---------|--------|---------|\n| Starter | $19/mo | 500 | 250 | 3/batch |\n| Growth | $39/mo | 1,200 | 600 | 5/batch |\n| Pro | $79/mo | 2,800 | 1,400 | 7/batch |",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk38",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_y7dk",
+      "type": "metric",
+      "content": "AI\n- Idea Generator: explicitly \"GPT-based\" (OpenAI confirmed)\n- Code Assistant: \"Luau answers only, Roblox services enforced\"\n- Image Gen: Unknown model, 12 style presets, HD upscaling, reference image upload",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk39",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    },
+    {
+      "id": "obs_1776832519735_cv6v",
+      "type": "metric",
+      "content": "Assessment\nNot a serious competitor. Web-only, no Studio integration, fake testimonials, 3-month-old domain with 0/100 trust. But validates market willingness to pay $19-79/mo for Roblox AI tools.\n\n---",
+      "source": "obsidian:Competitors\\Full Competitive Analysis.md#chunk40",
+      "confidence": 85,
+      "timestamp": "2026-04-22T04:35:19.735Z",
+      "usageCount": 0,
+      "tags": [
+        "competitors",
+        "full competitive analysis"
+      ]
+    }
+  ],
+  "conversationCount": 0,
+  "lastUpdated": "2026-04-22T04:35:19.740Z",
+  "version": 2
+}
