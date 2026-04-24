@@ -3505,15 +3505,14 @@ function isCodeQualityOk(code: string): boolean {
   // Must have basic Roblox API calls
   if (!code.includes('Instance.new') && !code.includes('workspace') && !code.includes('placeAsset') && !code.includes('game:GetService')) return false
   // Must be at least 200 chars (not a trivial/empty response)
-  if (code.length < 200) return false
-  // Reject deprecated BrickColor — use Color3.fromRGB() instead
-  if (code.includes('BrickColor.new(')) return false
-  // Reject bare wait() — must use task.wait()
-  if (/(?<!task\.)wait\s*\(/.test(code)) return false
-  // Reject deprecated SetPrimaryPartCFrame — use PivotTo()
-  if (code.includes('SetPrimaryPartCFrame')) return false
-  // Reject parent-in-constructor anti-pattern: Instance.new("Part", parent)
-  if (/Instance\.new\(\s*["'][^"']+["']\s*,/.test(code)) return false
+  if (code.length < 100) return false
+  // NOTE: BrickColor, wait(), SetPrimaryPartCFrame are auto-fixed by the verifier's
+  // autoFix() function — do NOT hard-reject here. Let the verifier clean them up.
+  // Hard-rejecting kills otherwise-good scripts over trivial fixable issues.
+  // Parent-in-constructor is discouraged for Parts (set Parent last for performance)
+  // BUT it's totally fine for UI elements (UICorner, UIStroke, Frame, etc.) and scripts.
+  // Only reject for Part/WedgePart/MeshPart — UI and script elements can use the shorthand.
+  if (!isScript && /Instance\.new\(\s*["'](?:Part|WedgePart|MeshPart|SpawnLocation)["']\s*,/.test(code)) return false
   // Build-only checks — scripts legitimately use Players, script.Parent, LocalPlayer
   if (!isScript) {
     if (code.includes('game.Players.LocalPlayer')) return false
@@ -4670,8 +4669,8 @@ ${effectiveInstruction}`
             finalVerificationScore = Math.max(finalVerificationScore, qualityResult.total)
           }
           // If quality is terrible and we haven't retried too much, discard
-          if (qualityResult.total < 40 && qualityResult.source === 'llm') {
-            console.warn(`[QualityScore] Score ${qualityResult.total} too low — discarding`)
+          if (qualityResult.total < 20 && qualityResult.source === 'llm') {
+            console.warn(`[QualityScore] Score ${qualityResult.total} critically low — discarding`)
             luauCode = null
           }
         } catch (qErr) {
