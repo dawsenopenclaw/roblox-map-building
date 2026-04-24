@@ -292,6 +292,24 @@ function BuildFeedbackCard({
   prompt?: string
 }) {
   const [voted, setVoted] = useState<'up' | 'down' | null>(null)
+  const [suggestionOpen, setSuggestionOpen] = useState(false)
+  const [suggestionText, setSuggestionText] = useState('')
+  const [suggestionSent, setSuggestionSent] = useState(false)
+
+  const submitSuggestion = () => {
+    if (!suggestionText.trim() || suggestionSent) return
+    setSuggestionSent(true)
+    fetch('/api/ai/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        suggestion: suggestionText.trim(),
+        prompt: prompt || '',
+        code: luauCode || '',
+        score: qualityScore,
+      }),
+    }).catch(() => {})
+  }
 
   const submitVote = (worked: boolean) => {
     if (voted) return
@@ -522,6 +540,84 @@ function BuildFeedbackCard({
           }}>
             {voted === 'up' ? 'Recorded as working — this helps future builds' : 'Recorded — we\'ll learn from this'}
           </span>
+        )}
+      </div>
+
+      {/* Suggestion input — teach the AI */}
+      <div style={{ marginTop: 6 }}>
+        {!suggestionOpen && !suggestionSent && (
+          <button
+            onClick={() => setSuggestionOpen(true)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '4px 10px', borderRadius: 8,
+              background: 'transparent', border: '1px solid rgba(212,175,55,0.15)',
+              color: 'rgba(212,175,55,0.6)', fontSize: 10, fontWeight: 500,
+              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'rgba(212,175,55,0.9)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(212,175,55,0.6)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.15)' }}
+          >
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M3 13 L6 10 L14 2" />
+              <path d="M10 6 L14 2" />
+              <line x1="1" y1="15" x2="15" y2="15" />
+            </svg>
+            Teach the AI
+          </button>
+        )}
+
+        {suggestionOpen && !suggestionSent && (
+          <div style={{
+            display: 'flex', gap: 6, alignItems: 'flex-end',
+            animation: 'msgFadeUp 0.2s ease-out forwards',
+          }}>
+            <textarea
+              value={suggestionText}
+              onChange={e => setSuggestionText(e.target.value)}
+              placeholder="Tell the AI what to do better next time... (e.g. &quot;doors should be taller&quot; or &quot;add more windows&quot;)"
+              maxLength={500}
+              rows={2}
+              style={{
+                flex: 1, padding: '8px 10px', borderRadius: 10,
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(212,175,55,0.2)',
+                color: '#e4e4e7', fontSize: 11, fontFamily: 'inherit',
+                resize: 'none', outline: 'none', lineHeight: 1.4,
+              }}
+              onFocus={e => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.45)' }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.2)' }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitSuggestion() } }}
+              autoFocus
+            />
+            <button
+              onClick={submitSuggestion}
+              disabled={!suggestionText.trim()}
+              style={{
+                padding: '8px 14px', borderRadius: 10,
+                background: suggestionText.trim() ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${suggestionText.trim() ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                color: suggestionText.trim() ? '#D4AF37' : '#52525B',
+                fontSize: 11, fontWeight: 600, cursor: suggestionText.trim() ? 'pointer' : 'default',
+                fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
+              }}
+            >
+              Send
+            </button>
+          </div>
+        )}
+
+        {suggestionSent && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            fontSize: 10, color: 'rgba(212,175,55,0.7)', fontWeight: 500,
+            animation: 'msgFadeUp 0.2s ease-out forwards',
+          }}>
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <polyline points="2 8 6 12 14 4" />
+            </svg>
+            Suggestion recorded — the AI will learn from this
+          </div>
         )}
       </div>
     </div>

@@ -561,3 +561,43 @@ export async function learnFromIteration(
     console.warn('[SelfImprove] learnFromIteration:', err instanceof Error ? err.message : err)
   }
 }
+
+// ─── User Suggestion Learning ──────────────────────────────────────────
+// When ANY user types a suggestion in the editor, it becomes a permanent rule.
+// This is the most direct way users shape the AI's behavior.
+
+export async function learnFromSuggestion(
+  suggestion: string,
+  prompt: string | null,
+  score: number | null,
+): Promise<void> {
+  try {
+    const rule = `USER RULE: ${suggestion}`
+
+    // Check if we already have this exact rule
+    const existing = rulesCache.find(r => r.rule === rule)
+    if (existing) {
+      // Multiple users submitted the same suggestion — boost hard
+      existing.confidence = Math.min(100, existing.confidence + 20)
+      existing.occurrences += 5
+      await persistRule(existing)
+      console.log(`[SelfImprove] Suggestion reinforced (${existing.occurrences} votes): "${suggestion.slice(0, 60)}"`)
+      return
+    }
+
+    // New suggestion — create as high-confidence rule immediately
+    const newRule: LearnedRule = {
+      rule,
+      confidence: 85, // User suggestions start very high
+      source: 'user-feedback',
+      occurrences: 5, // Weight as 5x to match vote weighting
+      category: undefined, // Global — applies to all builds
+      createdAt: new Date(),
+    }
+    rulesCache.push(newRule)
+    await persistRule(newRule)
+    console.log(`[SelfImprove] New user suggestion learned: "${suggestion.slice(0, 60)}"`)
+  } catch (err) {
+    console.warn('[SelfImprove] learnFromSuggestion:', err instanceof Error ? err.message : err)
+  }
+}
