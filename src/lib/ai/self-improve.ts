@@ -124,20 +124,21 @@ export async function learnFromFeedback(
 ): Promise<void> {
   try {
     if (positive) {
-      // Extract what made this build good — reinforce patterns
+      // Extract what made this build good — reinforce HARD (user votes = 5x weight)
       const goodPatterns = extractGoodPatterns(code)
       for (const pattern of goodPatterns) {
         const existing = rulesCache.find(r => r.rule === pattern)
         if (existing) {
-          existing.confidence = Math.min(100, existing.confidence + 10)
-          existing.occurrences++
+          // User votes are 5x more important than automated signals
+          existing.confidence = Math.min(100, existing.confidence + 50)
+          existing.occurrences += 5
           await persistRule(existing)
         } else {
           const newRule: LearnedRule = {
             rule: pattern,
-            confidence: 70,
+            confidence: 85, // Start high — user explicitly approved this
             source: 'user-feedback',
-            occurrences: 1,
+            occurrences: 5,
             category: category || undefined,
             createdAt: new Date(),
           }
@@ -146,14 +147,27 @@ export async function learnFromFeedback(
         }
       }
     } else {
-      // User said it's bad — extract what went wrong
+      // User said it's bad — learn AGGRESSIVELY (user rejection = strongest signal)
       const badPatterns = extractBadPatterns(code)
       for (const pattern of badPatterns) {
         const existing = rulesCache.find(r => r.rule === pattern)
         if (existing) {
-          existing.confidence = Math.min(100, existing.confidence + 15)
-          existing.occurrences++
+          // User rejection = 5x weight, never ignore what users hate
+          existing.confidence = Math.min(100, existing.confidence + 75)
+          existing.occurrences += 5
           await persistRule(existing)
+        } else {
+          // New bad pattern from user rejection — start very high confidence
+          const newRule: LearnedRule = {
+            rule: pattern,
+            confidence: 90,
+            source: 'user-feedback',
+            occurrences: 5,
+            category: category || undefined,
+            createdAt: new Date(),
+          }
+          rulesCache.push(newRule)
+          await persistRule(newRule)
         }
       }
     }

@@ -48,6 +48,12 @@ const GAME_SYSTEMS: SystemCategory[] = [
         how: 'DevProduct for each amount (10,50,100,500). BillboardGui above player head showing total donated. Leaderboard for top donors. Sound effect on donate.' },
       { name: 'Rebirth System', keywords: ['rebirth', 'prestige', 'reset', 'new game plus'],
         how: 'IntValue "Rebirths" in leaderstats. Cost = baseAmount * 2^rebirths. On rebirth: reset coins to 0, increment rebirths, multiply all earnings by 1+rebirths*0.5. Confirmation GUI before rebirth.' },
+      { name: 'Coin Magnet', keywords: ['coin magnet', 'attract coins', 'magnet', 'coin pull', 'magnet upgrade'],
+        how: 'Invisible sphere around player (magnitude check every 0.1s). Coins within range fly toward player via TweenService position tween (0.3s). Upgrade increases range (10→30 studs). Visual: yellow trail on attracted coins via Trail instance.' },
+      { name: 'Luck/Multiplier System', keywords: ['luck', 'luck multiplier', 'drop rate', 'rarity boost', 'luck potion'],
+        how: 'NumberValue "Luck" (default 1.0) per player. Gamepasses/potions increase temporarily (task.delay to reset). Affects: weighted random rolls multiplied by Luck value (luck=2 doubles rare chance). HUD display shows current luck. Color changes from white→gold at high luck.' },
+      { name: 'Crop/Farm Market', keywords: ['sell crops', 'farm market', 'sell farm', 'crop value', 'farm economy'],
+        how: 'Market NPC with ProximityPrompt. Sell screen: ScrollingFrame listing player crops with quantity. Price per unit varies by crop rarity. "Sell All" button. Server validates inventory, deducts crops, adds coins. Price fluctuation: random modifier 0.8-1.2 per crop that changes every 5 minutes. Persist in DataStore.' },
     ],
   },
 
@@ -73,6 +79,16 @@ const GAME_SYSTEMS: SystemCategory[] = [
         how: 'Large Model with Humanoid (high HP). AI: patrol → detect player in range → chase → attack pattern (3 moves cycling). Health phases at 75%/50%/25% change behavior. Loot drop on death. Respawn timer.' },
       { name: 'Tower Defense', keywords: ['tower defense', 'td', 'turret', 'wave', 'defend'],
         how: 'Path: series of CFrame waypoints. Enemies spawn, walk path via Humanoid:MoveTo. Towers: ClickDetector to place. Each tower: Region3 scan for enemies, attack nearest. Waves: spawn count increases. Currency per kill.' },
+      { name: 'Weapon Upgrade Tree', keywords: ['weapon upgrade', 'sword upgrade', 'gun upgrade', 'weapon level', 'blacksmith'],
+        how: 'Config table {level, damage, speed, special_effect}. Upgrade at blacksmith NPC (ProximityPrompt). Server checks coins >= cost, deducts, increments weapon level in DataStore. Visual changes per level: size scale, particle color, trail color. Max level 10.' },
+      { name: 'Capture the Flag', keywords: ['capture the flag', 'ctf', 'flag', 'flag capture'],
+        how: 'Two team bases with flag Part (BrickColor team color). Touch enemy flag → weld to HumanoidRootPart via WeldConstraint. Return to own base (Touched) → score +1 point. On death: flag drops (unweld, Part.CFrame = death position). Own flag must be at base to score.' },
+      { name: 'Team Deathmatch', keywords: ['team deathmatch', 'tdm', 'team kills', 'team score'],
+        how: 'Two teams, colored SpawnLocations at team bases. Kill = +1 to team IntValue score. Respawn 5s delay (task.wait). Match timer 300s. Team with most kills wins. Score displayed via BillboardGui at each base. RemoteEvent syncs scores to all clients.' },
+      { name: 'Shield/Block System', keywords: ['shield', 'block', 'parry', 'guard', 'deflect'],
+        how: 'Tool or keybind (F) activates block. BoolValue "Blocking" set server-side. On damage: if Blocking=true, reduce damage by 80%, play block sound, spark ParticleEmitter at impact point. Perfect block (within 0.15s of attack): full reflect, attacker stunned 0.5s. Stamina cost while holding block.' },
+      { name: 'Loot Drop System', keywords: ['loot drop', 'item drop', 'loot', 'drop item', 'loot bag'],
+        how: 'On enemy death: roll weighted random table for each potential drop. Spawn physical Part items at death position with slight random BodyVelocity outward. BillboardGui shows item name/rarity. Touched by player → RemoteEvent → server adds to inventory. Despawn uncollected items after 60s via Debris:AddItem.' },
     ],
   },
 
@@ -148,6 +164,12 @@ const GAME_SYSTEMS: SystemCategory[] = [
         how: 'Server tracks start time per player. Display: TextLabel updating every frame via RenderStepped. Format: minutes:seconds.milliseconds. Save best time to OrderedDataStore. Global leaderboard.' },
       { name: 'Zone Unlock', keywords: ['zone', 'area', 'unlock area', 'region'],
         how: 'Invisible Part as zone boundary. Touched: check if player has required level/coins. If yes, allow entry. If no, push back with BodyVelocity. Locked zones: visible barrier (ForceField or glass wall).' },
+      { name: 'Battle Pass', keywords: ['battle pass', 'battlepass', 'season pass', 'pass tiers', 'pass rewards'],
+        how: '50 tiers. XP earned from playing increments IntValue "BattlePassXP". Each tier threshold = tier * 500 XP. Reward tables: free_track[tier] and premium_track[tier]. GamePass unlocks premium track. ScreenGui: horizontal progress bar with tier icons. Weekly challenges grant bonus XP.' },
+      { name: 'Daily Challenges', keywords: ['daily challenge', 'daily quest', 'daily mission', 'daily task', 'daily objectives'],
+        how: 'Table of challenge templates [{description, type, target, reward}]. 3 selected daily via math.random seeded by math.floor(os.time()/86400). Track progress per player in DataStore. Reset at midnight UTC (os.time() % 86400 check). UI: checklist ScreenGui with progress bars per challenge.' },
+      { name: 'Seasonal Events', keywords: ['seasonal event', 'holiday event', 'limited time event', 'event season', 'event shop'],
+        how: 'Date-checked: os.date table checks month/day range. Load holiday decorations from ServerStorage:Clone() when active. Limited-time shop items in separate event shop GUI. Event currency (separate IntValue). Leaderboard for event score via OrderedDataStore. Auto-cleanup: decorations Destroy() when event ends.' },
     ],
   },
 
@@ -213,6 +235,12 @@ const GAME_SYSTEMS: SystemCategory[] = [
         how: 'Trail instance. Attach to two Attachments on a Part (top and bottom). Set Color, Lifetime, Transparency. Add to sword swings, running, dashing.' },
       { name: 'Footstep Sounds', keywords: ['footstep', 'walk sound', 'step sound'],
         how: 'Humanoid.Running:Connect. Detect material via Raycast down. Play material-specific sound (grass, concrete, wood, metal). Randomize pitch slightly for variety.' },
+      { name: 'Achievement Popup', keywords: ['achievement popup', 'achievement notification', 'unlock popup', 'badge popup'],
+        how: 'ScreenGui notification Frame anchored right-center. TweenService slides in from right (UDim2 X 1→0.7) + scale (0.8→1). Gold frame, icon ImageLabel, title TextLabel, description TextLabel. Auto-dismiss after 4s (TweenService slide out). Queue system: table of pending popups, show next after dismiss. Sound effect on appear.' },
+      { name: 'Damage Indicator Direction', keywords: ['damage direction', 'hit direction', 'damage arrow', 'damage indicator'],
+        how: 'On TakeDamage: calculate angle from victim HumanoidRootPart to attacker. Use math.atan2 to get screen-space angle. Rotate arrow Frame by that angle. Red semi-transparent arrow ImageLabel in ScreenGui. TweenService fade Transparency 0→1 over 2s then destroy.' },
+      { name: 'Speed Lines Effect', keywords: ['speed lines', 'motion lines', 'fast effect', 'speed visual'],
+        how: 'Multiple Beam instances radiating from center attachment. Enable during high speed (Humanoid.WalkSpeed > 30 or BodyVelocity magnitude check). Intensity (Width0/Width1) scales with speed. ColorSequence white→transparent. LocalScript in StarterPlayerScripts updating each frame.' },
     ],
   },
 
@@ -247,6 +275,12 @@ const GAME_SYSTEMS: SystemCategory[] = [
         how: 'DataStore "Settings". Table: {musicVolume, sfxVolume, sensitivity, quality, keybinds}. RemoteEvent "UpdateSetting". Apply on join. Default values for new players.' },
       { name: 'Global Leaderboard', keywords: ['global leaderboard', 'all time', 'top players globally'],
         how: 'OrderedDataStore. SetAsync(userId, score) on meaningful events. GetSortedAsync(false, 100) for top 100. Display in ScreenGui. Cache 60s to avoid throttling.' },
+      { name: 'Session Lock', keywords: ['session lock', 'data lock', 'double join', 'duplicate data', 'session guard'],
+        how: 'DataStore key "lock_{userId}" stores os.time() on join. On join: GetAsync lock key, if exists and os.time()-lock < 300 → warn player "already in game" and kick. SetAsync lock on join. RemoveAsync on PlayerRemoving. Prevents data duplication from double-join or server crash edge cases.' },
+      { name: 'Data Migration', keywords: ['data migration', 'data version', 'save migration', 'data upgrade'],
+        how: 'Version number stored in save table ("version" key, default 1). On load: compare to current version constant. Run migration functions in order: v1→v2 renames keys, adds new fields with defaults, removes obsolete keys. Never lose data — always migrate forward. Log migrations via print.' },
+      { name: 'DataStore Backup', keywords: ['data backup', 'backup save', 'rollback data', 'data restore'],
+        how: 'On each save: write to primary key "p_{userId}" and backup key "backup_{userId}" (with timestamp attribute). On load failure: pcall primary, if error → load backup. Backup rotates: keep last 3 saves via keys backup_0/1/2, cycle with modulo. Admin command to force restore from backup.' },
     ],
   },
 
@@ -285,6 +319,16 @@ const GAME_SYSTEMS: SystemCategory[] = [
         how: 'BodyVelocity + BodyGyro on HumanoidRootPart. WASD = horizontal velocity. Space/Shift = up/down. Camera-relative movement. Toggle on/off. Particle trail while flying.' },
       { name: 'Swimming', keywords: ['swim', 'water', 'underwater', 'dive'],
         how: 'Detect water: Raycast down, check Terrain material = Water. In water: reduce gravity (BodyForce upward), slower WalkSpeed, bubble ParticleEmitter, oxygen bar depleting.' },
+      { name: 'Slide/Crouch', keywords: ['slide', 'crouch', 'sliding', 'crouch mechanic', 'low ceiling'],
+        how: 'UserInputService bind C key. On press: Humanoid.HipHeight reduces from 2→0.5, camera TweenService lowers, WalkSpeed halved. Slide trigger: if sprinting when crouching, BodyVelocity forward impulse (magnitude*1.5) + LinearVelocity for 0.5s. Stand up: check Raycast upward for clearance before restoring HipHeight.' },
+      { name: 'Rope Swing', keywords: ['rope swing', 'swing', 'rope', 'vine swing', 'parkour swing'],
+        how: 'RopeConstraint between player HumanoidRootPart Attachment and ceiling Attachment. Player grabs via ProximityPrompt. Physics takes over (no BodyVelocity, let constraint simulate). Release: destroy constraint at velocity peak for max distance. Detect peak via velocity magnitude decreasing. Parkour combo with wall jump.' },
+      { name: 'Bounce Pad', keywords: ['bounce pad', 'bounce', 'jump pad', 'launch pad', 'spring pad'],
+        how: 'Part with Touched event. On player touch: apply BodyVelocity in Part.CFrame.UpVector direction. Force scales by Part BrickColor: green=50, yellow=100, red=200. Debris:AddItem(bv, 0.2). Sound (spring/boing) + ParticleEmitter burst on bounce. Cooldown 0.5s per player to prevent multi-trigger.' },
+      { name: 'Conveyor Belt', keywords: ['conveyor belt', 'moving floor', 'conveyor', 'treadmill', 'moving ground'],
+        how: 'Part with VectorForce or AssemblyLinearVelocity set on Touching players. Use Touched + TouchEnded to track players on belt. Apply lateral velocity in belt direction each Heartbeat while on belt. Configurable speed + direction (Part.CFrame.LookVector * speed). Useful for factory tycoons, obstacle courses.' },
+      { name: 'Zipline', keywords: ['zipline', 'zip line', 'cable slide', 'wire slide'],
+        how: 'Two Attachment endpoints with Beam visual (rope). ProximityPrompt at start. On grab: AlignPosition constraint pulls character along line via Lerp (alpha 0→1 over duration). Character faces direction of travel. Release early with Jump key. Sound: whoosh during slide. Can be one-way or bidirectional (prompt at both ends).' },
     ],
   },
 
@@ -334,6 +378,122 @@ const GAME_SYSTEMS: SystemCategory[] = [
         how: 'ScreenGui with dramatic presentation. Current multiplier + next multiplier preview. Cost display. "REBIRTH" button with glow animation. On rebirth: screen flash (white Frame, fade in/out), reset currency, increment multiplier. Particle burst effect.' },
       { name: 'Map Voting', keywords: ['map vote', 'vote map', 'map selection'],
         how: 'ScreenGui: 3 map options as cards with ViewportFrame previews. Click to vote. Live vote counts per option. Timer 15s. Server picks winner (most votes). Teleport all players. Tie = random.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // RACING & VEHICLES
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Racing & Vehicles',
+    systems: [
+      { name: 'Racing Lap System', keywords: ['racing', 'lap', 'laps', 'race track', 'lap counter', 'race position', 'finish line'],
+        how: 'Waypoints table of Parts along track. Invisible trigger Parts at each waypoint (Touched). Server tracks per-player: {currentWaypoint, lapsCompleted, position}. Finish line detection via Touched on final Part. Results screen: OrderedDataStore sorts finish times. BillboardGui shows "1st/2nd/3rd" above players in real time.' },
+      { name: 'Drift Mechanic', keywords: ['drift', 'drifting', 'drift score', 'drift boost', 'car drift'],
+        how: 'VehicleSeat throttle + steer values. Detect sideways velocity: dot product of HumanoidRootPart.Velocity and HumanoidRootPart.CFrame.RightVector. If |dot| > threshold (8) AND speed > 20 → drifting. Drift score accumulates per second. Smoke ParticleEmitter on rear wheel Attachments during drift. Boost reward (BodyVelocity impulse) after drift chain ends.' },
+      { name: 'Nitro/Boost System', keywords: ['nitro', 'boost', 'turbo', 'speed boost', 'nos', 'boost pickup'],
+        how: 'BodyVelocity impulse in look direction on boost. Cooldown 10s (tick() tracking). Charge by collecting pickup Parts (Touched → add charge) or drifting. Visual effects: fire ParticleEmitter at exhaust, TweenService FOV increase (70→90) via Camera.FieldOfView, Beam speed lines from front.' },
+      { name: 'Lap Timer & Ghost', keywords: ['lap timer', 'ghost car', 'ghost lap', 'best lap', 'ghost race'],
+        how: 'Record player CFrame + timestamp every 0.1s into table during lap. On next lap: spawn transparent clone, replay CFrame table via TweenService sequence. Best lap time + CFrame table persisted in DataStore. Ghost only visible to that player (LocalScript filtering). Lap time TextLabel in HUD.' },
+      { name: 'Vehicle Upgrade Shop', keywords: ['vehicle upgrade', 'car upgrade', 'car stats', 'car shop', 'vehicle stats', 'handling upgrade'],
+        how: 'Config table per vehicle {speed=1, handling=1, turbo=0, armor=1} each stat 1-10. Upgrade cost = stat^2 * baseCost, multiplies with each level. ViewportFrame preview of vehicle in shop GUI. Apply upgrades: VehicleSeat MaxSpeed and Torque properties. Save upgrades to DataStore per vehicle.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // HORROR & SURVIVAL
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Horror & Survival',
+    systems: [
+      { name: 'Jumpscare System', keywords: ['jumpscare', 'jump scare', 'horror scare', 'scare', 'horror'],
+        how: 'Invisible trigger Part + Touched. On trigger: fullscreen white/black ImageLabel flash (Transparency 0→1 over 0.3s). Loud Sound played in player (Volume 1, RollOffMaxDistance 0 for global). Camera shake (offset CFrame random values). 2s cooldown per player stored in table to prevent spam.' },
+      { name: 'Chase AI', keywords: ['chase ai', 'monster chase', 'horror ai', 'enemy chase', 'stalker ai'],
+        how: 'NPC states: idle→alert→chase→lost. Alert: player in FOV (dot product of LookVector to playerDir > 0.7) AND magnitude < 60. Chase: PathfindingService:CreatePath(), ComputeAsync to player, follow waypoints. WalkSpeed 24 during chase. Lost state: return to patrol after 10s idle (no player sighting). Sound effects per state.' },
+      { name: 'Hiding Mechanic', keywords: ['hide', 'hiding', 'closet', 'hiding spot', 'stealth hide'],
+        how: 'ProximityPrompt on hiding spot Parts (closet, bed, box). On hide: character Transparency=1 on all Parts, Camera.CameraSubject switches to hiding spot CameraValue. Server marks player as hidden in table. AI pathfinding skips hidden players (check table before targeting). Exit via ProximityPrompt re-press.' },
+      { name: 'Sanity System', keywords: ['sanity', 'insanity', 'mental health', 'horror sanity', 'hallucination'],
+        how: 'NumberValue "Sanity" 0-100 per player. Drains: near monster -5/s, in dark area (no nearby PointLight) -2/s, alone -1/s. Restore: in lit safe zones +3/s. Below 30: BlurEffect Size increases (TweenService), ColorCorrectionEffect shifts blue. Below 10: jumpscare chance on heartbeat. Restore via light sources and safe zones.' },
+      { name: 'Flashlight Tool', keywords: ['flashlight', 'torch', 'flashlight battery', 'horror light'],
+        how: 'Tool with SpotLight child (Range 40, Angle 45, Brightness 5). Toggle E key: SpotLight.Enabled. Battery NumberValue 100→0 draining over 120s. Recharge at generator stations (ProximityPrompt, 3s hold). Flicker effect when battery < 20: task.spawn loop toggling Enabled rapidly with random short intervals.' },
+      { name: 'Generator Puzzle', keywords: ['generator', 'generator puzzle', 'power generator', 'activate generator', 'escape puzzle'],
+        how: 'N generators scattered (config: generatorCount=4). Each has ProximityPrompt "Hold to Start" (HoldDuration=3). On activate: play sound, Part BrickColor turns green, increment IntValue "GeneratorsActive". When all activated: door Parts Transparency=1 CanCollide=false, PointLights turn on, escape path revealed via TweenService.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // ANIME & POWER SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Anime & Power Systems',
+    systems: [
+      { name: 'Power Awakening', keywords: ['awakening', 'power awakening', 'power unlock', 'transform unlock', 'ability unlock'],
+        how: 'Requirements table {level=50, questComplete=true}. On trigger: Camera.CameraType=Scriptable, zoom in TweenService. Screen flash (white ImageLabel). Aura ParticleEmitter appears on HumanoidRootPart (size increases). New abilities added to player config. Each tier has color theme (blue→red→gold). Save awakened state to DataStore.' },
+      { name: 'Aura/Effect System', keywords: ['aura', 'power aura', 'ki aura', 'energy aura', 'battle aura'],
+        how: 'Multiple ParticleEmitter layers on HumanoidRootPart: base aura (low rate), power aura (medium), rage aura (high rate burst). Color sequence based on power level (blue→purple→red→gold). Rate and Size increase during charging (hold input). SelectionBox or PointLight to add glow. All emitters managed by server, replicated.' },
+      { name: 'Transformation Sequence', keywords: ['transformation', 'transform', 'super form', 'power up sequence', 'powerup cutscene'],
+        how: 'Camera.CameraType=Scriptable, pan around character via TweenService keyframes. Screen flash. Swap accessory via HumanoidDescription (hair color, accessory ids). ParticleEmitter burst (Rate 500 for 1s then 0). Sound (power up SFX). Apply new stat multipliers to ModuleScript config. Revert on toggle or timer.' },
+      { name: 'Combo Attack Chain', keywords: ['combo chain', 'combo attack', 'combo window', 'attack chain', 'timing combo'],
+        how: 'Table of {animation, damage, knockback, timingWindow}. On attack input: if within timingWindow (0.3-0.5s) of last hit → advance chain index, else reset to 0. Play animation[index], apply damage*comboMultiplier. Miss timing → reset combo, lower damage. Screen shake intensity scales with combo depth. Sound pitch increases per hit.' },
+      { name: 'Stand/Summon System', keywords: ['stand', 'summon', 'familiar', 'spirit summon', 'companion summon'],
+        how: 'Model cloned from ServerStorage on summon (E key toggle). AlignPosition: Stand follows player at offset (+5 studs right). AlignOrientation: faces same direction as player. Own RemoteEvents per ability (Q/E/R for stand moves). Cooldown table per ability. Destroy model on de-summon. Only one active (check if already summoned).' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // ROLEPLAY & SOCIAL
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Roleplay & Social',
+    systems: [
+      { name: 'Job System', keywords: ['job', 'jobs', 'occupation', 'work', 'salary', 'job board'],
+        how: 'Table of jobs {name, uniform, salaryPerMinute, tasks}. Job board with ProximityPrompt per job. On pick: apply HumanoidDescription uniform, set StringValue "Job". task.spawn loop pays salary every 60s (IntValue += salaryPerMinute). Quit button in HUD. Fire via admin/NPC. Save current job to DataStore.' },
+      { name: 'Phone/Tablet UI', keywords: ['phone ui', 'phone app', 'tablet ui', 'in-game phone', 'mobile ui'],
+        how: 'ScreenGui "Phone" with draggable outer Frame (InputBegan/Changed/Ended for drag). Inner app grid. Apps: contacts (player list), messages (DataStore conversations), settings, camera (Screenshot via ScreenGui). Minimize to corner via TweenService scale. Notification badges (IntValue per app). Back button navigation.' },
+      { name: 'House System', keywords: ['house', 'home', 'housing', 'plot house', 'player house', 'furniture'],
+        how: 'Plot Parts (24x24 foundation) in workspace per player slot. Placement mode: ghost preview clone follows mouse (Mouse.Hit). Grid snapping: math.floor(pos/4)*4. Furniture catalog in ScreenGui (ScrollingFrame). Serialize layout: {name, cframe, size, color, material} table per piece. Save to DataStore. TeleportService for visiting other players houses.' },
+      { name: 'Roleplay Name Tag', keywords: ['name tag', 'role tag', 'custom name', 'display name', 'rp tag'],
+        how: 'BillboardGui above head (StudsOffset Y=2.5). Custom TextBox input for display name. Role dropdown (Doctor/Police/Civilian/etc). Frame color coded by role (red=police, white=doctor, blue=civilian). TextLabel for name + smaller TextLabel for role title. Persist both in DataStore.' },
+      { name: 'Emote Wheel', keywords: ['emote wheel', 'emote menu', 'radial emote', 'hold emote', 'gesture wheel'],
+        how: 'Hold E key: show radial ScreenGui (8 ImageButton segments arranged in circle via UDim2 sin/cos positioning). Mouse direction from center picks segment (math.atan2 of mouse delta from center). Highlight hovered segment. Release E: play selected Animation. Cancel: release on center. Each segment has icon + emote name label.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // BASE BUILDING & STRATEGY
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Base Building & Strategy',
+    systems: [
+      { name: 'Plot/Land System', keywords: ['plot', 'land', 'claim plot', 'land claim', 'player plot'],
+        how: 'Predefined plot Parts in workspace (named "Plot1", "Plot2"...). Claim via ProximityPrompt (1 plot per player). Owner stored in DataStore + Part:SetAttribute("Owner", userId). Boundary enforcement: position clamped inside plot AABB on Heartbeat. BillboardGui shows owner name. Release on leave or "Abandon" button.' },
+      { name: 'Grid Placement System', keywords: ['grid placement', 'grid build', 'place on grid', 'snap grid', 'build grid'],
+        how: 'Mouse.Hit position snapped: math.floor(pos/gridSize + 0.5)*gridSize per axis. Ghost preview: transparent clone follows snapped position. Click to place: Instance:Clone(), anchor, parent to player plot. R key: rotate 90° (CFrame * CFrame.Angles(0, math.pi/2, 0)). X key: delete mode (click to remove placed parts). Validate inside plot bounds before placing.' },
+      { name: 'Blueprint System', keywords: ['blueprint', 'save build', 'load build', 'share build', 'build template'],
+        how: 'Serialize current build: iterate plot children, store [{name, cframe, size, color, material}]. Save to DataStore as JSON string under key "blueprint_{userId}_{slotId}". Load: decode JSON, recreate each Part with stored properties. Share: store under public key "shared_{blueprintId}", others load via ID. ScreenGui slot picker.' },
+      { name: 'Resource Gathering', keywords: ['resource', 'gather', 'harvest resource', 'chop tree', 'mine rock', 'resource node'],
+        how: 'Clickable resource nodes (tree, rock, ore) with ClickDetector. On click: play animation, yield resources after 1s (RemoteEvent → server adds to inventory). IntValue "Health" on node depletes per harvest. Respawn timer 30-120s (task.delay). Visual depletion: TweenService size shrink + Transparency increase. Respawn: reset size, Transparency=0.' },
+      { name: 'Tower Merge System', keywords: ['tower merge', 'merge tower', 'combine towers', 'merge upgrade', 'tower combine'],
+        how: 'Two identical towers adjacent (magnitude < 6): show merge prompt (BillboardGui button). On merge: destroy both, create next tier tower. Tier increases: damage*1.5, range*1.2 per tier. Visual: Part size *1.2, BrickColor changes per tier (green→blue→purple→gold). Max tier 5. Track tier in Part:SetAttribute("Tier").' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // MINIGAMES & PARTY
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Minigames & Party',
+    systems: [
+      { name: 'Obby Section Generator', keywords: ['obby', 'obstacle course', 'obby generator', 'obby stages', 'parkour course'],
+        how: 'Series of platform Parts at increasing difficulty. Gap between platforms increases with stage (2→8 studs). Moving platforms: TweenService ping-pong between two positions. Spinner obstacles: HingeConstraint with AngularVelocity motor. Kill bricks: Part Touched → Humanoid.Health=0. Checkpoint SpawnLocations every 5 stages. Stage counter BillboardGui.' },
+      { name: 'Trivia Game', keywords: ['trivia', 'quiz', 'trivia game', 'quiz game', 'question game'],
+        how: 'Question bank table [{question, choices: [4 strings], correct: 1-4}]. Round: RemoteEvent shows question + 4 TextButton choices to all players. 15s timer CountdownLabel. On answer: server validates, +100 score for correct. 10 rounds total. Winner = highest score. ScreenGui results screen with final rankings.' },
+      { name: 'Simon Says', keywords: ['simon says', 'simon', 'follow leader', 'copy leader', 'pattern game'],
+        how: 'Leader broadcasts command via RemoteEvent ("Jump", "Touch Red", "Dance"). Players must perform within 3s. Detect jump: Humanoid.StateChanged to Jumping. Touch color: Part.Touched check Part BrickColor. Emote: AnimationTrack check. Wrong action or timeout: eliminate player (Kick to lobby or spectate mode). Last player wins.' },
+      { name: 'Musical Chairs', keywords: ['musical chairs', 'music chairs', 'chair game', 'musical game'],
+        how: 'Seats (Seat instances) in circle. Sound plays (Looped=true). Server stops sound at random interval (10-20s). Players rush to sit (Seat.Occupant check). After 2s: eliminate player with no seat (teleport to spectate area). Remove one Seat per round (Destroy). Last player seated wins. Round start/end UI.' },
+      { name: 'Freeze Tag', keywords: ['freeze tag', 'frozen', 'freeze game', 'tag freeze', 'ice tag'],
+        how: 'Two teams: Taggers and Runners. Tagger Touched Runner: RemoteEvent → set Runner Humanoid.WalkSpeed=0, apply ForceField visual (blue tint). Runner touches frozen teammate: unfreeze (WalkSpeed restore, ForceField remove). Timer 120s. Taggers win if all Runners frozen simultaneously. Runners win if timer expires. Score tracked.' },
     ],
   },
 ]

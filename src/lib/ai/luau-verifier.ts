@@ -493,6 +493,130 @@ function scoreQuality(code: string, errors: VerificationError[]): { score: numbe
     warnings.push({ type: 'performance', message: `${parentSecondArg} instances use Instance.new(class, parent) — set Parent LAST for better performance` })
   }
 
+  // 9. Door height validation — doors should be 4x7-8 studs for character fit
+  const doorParts = code.match(/(?:door|entrance|gate).*?Size\s*=\s*Vector3\.new\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/gi) || []
+  for (const m of doorParts) {
+    const nums = m.match(/Vector3\.new\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/i)
+    if (nums) {
+      const y = parseFloat(nums[2])
+      if (y < 6.5 || y > 10) {
+        score -= 5
+        warnings.push({ type: 'proportion', message: `Door height ${y} studs — should be 7-8 for character fit (characters are ~6 studs)` })
+      }
+    }
+  }
+
+  // 10. Material theme consistency — penalize mixing incompatible materials
+  const materials = [...new Set((code.match(/Enum\.Material\.(\w+)/g) || []).map(m => m.replace('Enum.Material.', '')))]
+  const naturalMats = materials.filter(m => ['Grass', 'LeafyGrass', 'Sand', 'Snow', 'Ice', 'Mud', 'Rock'].includes(m))
+  const industrialMats = materials.filter(m => ['DiamondPlate', 'CorrodedMetal', 'Metal'].includes(m))
+  if (naturalMats.length >= 2 && industrialMats.length >= 2 && !isScriptCode) {
+    score -= 5
+    warnings.push({ type: 'theme', message: `Mixed natural (${naturalMats.join(',')}) and industrial (${industrialMats.join(',')}) materials — pick a consistent theme` })
+  }
+
+  // 11. Interior validation — buildings with walls should have floor + ceiling
+  const hasWall = /wall|exterior|facade/i.test(code)
+  const hasFloor = /floor|ground|base|foundation/i.test(code)
+  const hasCeiling = /ceiling|roof|top/i.test(code)
+  if (hasWall && totalParts > 20 && !isScriptCode) {
+    if (!hasFloor) {
+      score -= 5
+      warnings.push({ type: 'structure', message: 'Building has walls but no floor — add a ground/base part' })
+    }
+    if (!hasCeiling) {
+      score -= 3
+      warnings.push({ type: 'structure', message: 'Building has walls but no ceiling/roof — add a roof or ceiling part' })
+    }
+  }
+
+  // 12. Furniture proportionality — tables should be ~3 studs high, chairs ~2.5
+  const tableParts = code.match(/(?:table|desk|counter).*?Size\s*=\s*Vector3\.new\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/gi) || []
+  for (const m of tableParts) {
+    const nums = m.match(/Vector3\.new\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/i)
+    if (nums) {
+      const y = parseFloat(nums[2])
+      if (y > 6) {
+        score -= 3
+        warnings.push({ type: 'proportion', message: `Table/desk height ${y} studs — should be ~3 studs (waist height for 6-stud character)` })
+      }
+    }
+  }
+
+  // 13. Window transparency check — windows should have Glass material + transparency
+  const windowMentions = (code.match(/window|glass.*pane|skylight/gi) || []).length
+  const hasGlass = code.includes('Enum.Material.Glass')
+  const hasTransparency = code.includes('Transparency') && code.match(/Transparency\s*=\s*0\.[2-7]/g)
+  if (windowMentions > 0 && !hasGlass && !isScriptCode) {
+    score -= 5
+    warnings.push({ type: 'visual', message: 'Windows mentioned but no Glass material used — windows should use Enum.Material.Glass with 0.3-0.5 Transparency' })
+  }
+
+  // 14. Empty interior detection — buildings with 30+ parts should have interior detail
+  if (totalParts >= 30 && !isScriptCode) {
+    const hasInterior = /table|chair|desk|shelf|bed|couch|lamp|cabinet|counter|stool|rug|carpet|bookcase|painting|clock/i.test(code)
+    const hasLighting = code.includes('PointLight') || code.includes('SpotLight')
+    if (!hasInterior && hasWall) {
+      score -= 8
+      warnings.push({ type: 'detail', message: 'Building has 30+ parts but no interior furniture — add tables, chairs, lamps, shelves for realism' })
+    }
+    if (!hasLighting && hasWall) {
+      score -= 5
+      warnings.push({ type: 'detail', message: 'Interior building has no lighting — add PointLight/SpotLight instances' })
+    }
+  }
+
+  // 15. Color palette harmony — detect clashing RGB values
+  const rgbMatches = code.match(/Color3\.fromRGB\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g) || []
+  if (rgbMatches.length >= 5 && !isScriptCode) {
+    const colors = rgbMatches.slice(0, 20).map(m => {
+      const nums = m.match(/(\d+)/g)
+      return nums ? { r: parseInt(nums[0]), g: parseInt(nums[1]), b: parseInt(nums[2]) } : null
+    }).filter(Boolean) as { r: number; g: number; b: number }[]
+
+    // Check for fully saturated clashing primaries (pure red + pure blue + pure green = ugly)
+    const hasPureRed = colors.some(c => c.r > 230 && c.g < 50 && c.b < 50)
+    const hasPureBlue = colors.some(c => c.r < 50 && c.g < 50 && c.b > 230)
+    const hasPureGreen = colors.some(c => c.r < 50 && c.g > 230 && c.b < 50)
+    if ([hasPureRed, hasPureBlue, hasPureGreen].filter(Boolean).length >= 2) {
+      score -= 5
+      warnings.push({ type: 'visual', message: 'Fully saturated primary colors clashing — use muted/natural tones for cohesive look' })
+    }
+  }
+
+  // 16. Sound/Decal ID validation — check for empty asset IDs
+  if (code.includes('SoundId') && !code.match(/SoundId\s*=\s*["']rbxassetid:\/\/\d+["']/)) {
+    score -= 5
+    warnings.push({ type: 'asset', message: 'Sound created but SoundId not set to a valid rbxassetid:// — sound will be silent' })
+  }
+  if (code.includes('TextureId') && !code.match(/TextureId\s*=\s*["']rbxassetid:\/\/\d+["']/) && !code.includes('Texture = ""')) {
+    score -= 3
+    warnings.push({ type: 'asset', message: 'Texture/Decal created but TextureId not set — will be invisible' })
+  }
+
+  // 17. Script architecture check — server logic in LocalScript or client logic in Script
+  if (code.includes('ServerScriptService') && code.includes('LocalPlayer')) {
+    score -= 15
+    warnings.push({ type: 'architecture', message: 'LocalPlayer accessed in server context — LocalPlayer only exists on client. Use Players.PlayerAdded for server-side player handling.' })
+  }
+  if (code.includes('StarterPlayerScripts') && code.includes('DataStoreService')) {
+    score -= 15
+    warnings.push({ type: 'architecture', message: 'DataStoreService used in client script — DataStore is server-only. Move data operations to a server Script and use RemoteEvents.' })
+  }
+
+  // 18. Wall thickness check — walls thinner than 0.5 studs look paper-thin
+  const wallParts = code.match(/(?:wall|side|exterior|facade|partition).*?Size\s*=\s*Vector3\.new\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/gi) || []
+  for (const m of wallParts) {
+    const nums = m.match(/Vector3\.new\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/i)
+    if (nums) {
+      const sizes = [parseFloat(nums[1]), parseFloat(nums[2]), parseFloat(nums[3])].sort((a, b) => a - b)
+      if (sizes[0] < 0.3 && sizes[1] > 5) {
+        score -= 3
+        warnings.push({ type: 'proportion', message: `Wall thickness ${sizes[0]} studs — minimum 0.5 for visual quality` })
+      }
+    }
+  }
+
   // Bonus for good practices
   if (code.includes('workspace.CurrentCamera')) score += 5 // Camera-relative placement
   if (code.includes('Raycast')) score += 5 // Ground detection
@@ -519,6 +643,13 @@ function scoreQuality(code: string, errors: VerificationError[]): { score: numbe
   // Script quality bonuses
   if (code.includes('pcall') || code.includes('xpcall')) score += 2 // Error handling
   if (code.includes('task.wait') && !code.includes('wait(')) score += 2 // Modern API
+
+  // Structural bonuses
+  if (code.includes('WedgePart') || code.includes('CornerWedgePart')) score += 3 // Roof/detail shapes
+  if (totalParts >= 50) score += 5 // High detail
+  if (totalParts >= 100) score += 5 // Very high detail
+  if (materials.length >= 4) score += 3 // Material variety
+  if (colorCount >= 5) score += 3 // Color variety
 
   return { score: Math.max(0, Math.min(100, score)), warnings }
 }
