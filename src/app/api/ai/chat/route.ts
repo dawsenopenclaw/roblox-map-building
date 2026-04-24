@@ -4439,17 +4439,29 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       }
     }
 
+    // ── PROMPT SIZE GUARD: cap enriched prompt to prevent context overflow ──
+    // Models have context limits. If we inject too much knowledge, the model
+    // either truncates, errors, or produces garbage. Cap at 12K chars (~3K tokens).
+    const MAX_ENRICHED_CHARS = 12000
+    if (enrichedCodePrompt.length > MAX_ENRICHED_CHARS + effectivePrompt.length) {
+      const injectedSize = enrichedCodePrompt.length - effectivePrompt.length
+      console.warn(`[PromptGuard] Enriched prompt too large (${injectedSize} chars injected). Trimming to ${MAX_ENRICHED_CHARS} chars.`)
+      enrichedCodePrompt = effectivePrompt + enrichedCodePrompt.slice(effectivePrompt.length, effectivePrompt.length + MAX_ENRICHED_CHARS)
+    }
+    console.log(`[PromptSize] System prompt: ${enrichedCodePrompt.length} chars, instruction: ${effectiveInstruction.length} chars`)
+
     // Single-pass: race both models — first valid result wins (fallback for staged pipeline, primary for simple builds)
     let buildRace: { result: string; index: number } | null = null
+    const outputTokens = isScriptIntent ? 16384 : 8192 // Scripts need more output space
     if (!luauCode) {
       console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
       // 4 providers racing — first to respond wins
       // Groq first (fastest), Anthropic (reliable), Gemini (quota issues), OpenRouter (fallback)
       buildRace = await raceNonNull(
-        callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 8192),
-        callAnthropicChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 8192),
-        callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 8192),
-        callOpenRouterChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 8192),
+        callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
+        callAnthropicChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
+        callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
+        callOpenRouterChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
       )
     }
 

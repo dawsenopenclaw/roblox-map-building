@@ -1657,7 +1657,12 @@ export function getArchitectureKnowledge(intent: string, gameType?: string): str
     sections.push(BUILD_PATTERNS.substring(0, 3000));
   }
 
-  return sections.join('\n\n');
+  // Hard cap: never exceed 4000 chars total to leave room for other knowledge
+  const combined = sections.join('\n\n');
+  if (combined.length > 4000) {
+    return combined.substring(0, 4000);
+  }
+  return combined;
 }
 
 // ---------------------------------------------------------------------------
