@@ -1,7 +1,7 @@
 --[[
-  ForjeGames Studio Plugin — UI.lua
-  Dark navy theme matching forjegames.com/editor exactly
-  bg #050810 | surface #0A0F20 | elevated #121832 | gold #D4AF37
+  ForjeGames Studio Plugin — UI.lua (Simplified)
+  Space theme: #050510 bg, stars, #D4AF37 gold accent
+  3 elements: code entry, connect button, undo last build
 --]]
 
 local UI = {}
@@ -11,26 +11,21 @@ local UI = {}
 -- ============================================================
 function UI.build(widget, state, COLORS, pluginRef)
 
-  -- Exact colors from forjegames.com/editor CSS variables
   local C = {
-    bg        = Color3.fromHex("050810"),  -- --background
-    surface   = Color3.fromHex("0A0F20"),  -- --surface (panels)
-    surface2  = Color3.fromHex("0E1428"),  -- --surface-2 (cards)
-    elevated  = Color3.fromHex("121832"),  -- --surface-elevated (hover/active)
-    gold      = Color3.fromHex("D4AF37"),  -- --gold
-    goldLight = Color3.fromHex("FFD166"),  -- --gold-light (hover)
-    goldGlow  = Color3.fromHex("1a1608"),  -- gold-glow bg tint
-    text      = Color3.fromHex("FFFFFF"),  -- bright white for max readability
-    textSoft  = Color3.fromHex("E4E4E7"),  -- --foreground-soft
-    textSec   = Color3.fromHex("C8CCD8"),  -- brighter muted for readability
-    textDim   = Color3.fromHex("9CA3B8"),  -- brighter subtle text
+    bg        = Color3.fromHex("050510"),  -- deep space black
+    surface   = Color3.fromHex("0A0F20"),
+    surface2  = Color3.fromHex("0E1428"),
+    gold      = Color3.fromHex("D4AF37"),
+    goldLight = Color3.fromHex("FFD166"),
+    text      = Color3.fromHex("FFFFFF"),
+    textSec   = Color3.fromHex("C8CCD8"),
+    textDim   = Color3.fromHex("9CA3B8"),
     success   = Color3.fromHex("22c55e"),
     error     = Color3.fromHex("ef4444"),
     warning   = Color3.fromHex("f59e0b"),
-    border    = Color3.fromHex("1a1f35"),  -- rgba(255,255,255,0.06) on #050810
-    borderFocus = Color3.fromHex("3d3520"), -- rgba(212,175,55,0.3) on dark
-    input     = Color3.fromHex("080d1a"),  -- slightly darker than bg
-    inputBorder = Color3.fromHex("1a1f35"),
+    border    = Color3.fromHex("1a1f35"),
+    borderFocus = Color3.fromHex("3d3520"),
+    input     = Color3.fromHex("080d1a"),
   }
 
   local TweenService = game:GetService("TweenService")
@@ -54,7 +49,6 @@ function UI.build(widget, state, COLORS, pluginRef)
   starsLayer.ZIndex                = 1
   starsLayer.Parent                = root
 
-  -- Create floating stars
   local stars = {}
   for i = 1, 40 do
     local star = Instance.new("Frame")
@@ -76,67 +70,30 @@ function UI.build(widget, state, COLORS, pluginRef)
   end
 
   -- Animate stars: gentle drift + twinkle
-  local function animateStar(star, idx)
+  local function animateStar(star)
     local duration = RNG:NextNumber(8, 20)
     local startX = RNG:NextNumber(0, 1)
     local startY = RNG:NextNumber(0, 1)
     local endX   = startX + RNG:NextNumber(-0.15, 0.15)
-    local endY   = startY - RNG:NextNumber(0.05, 0.2) -- drift upward
+    local endY   = startY - RNG:NextNumber(0.05, 0.2)
 
     star.Position = UDim2.new(startX, 0, startY, 0)
 
-    -- Drift tween
-    local driftTween = TweenService:Create(star, TweenInfo.new(
+    TweenService:Create(star, TweenInfo.new(
       duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true
-    ), { Position = UDim2.new(endX, 0, endY, 0) })
-    driftTween:Play()
+    ), { Position = UDim2.new(endX, 0, endY, 0) }):Play()
 
-    -- Twinkle tween (separate)
     local twinkleDuration = RNG:NextNumber(2, 5)
-    local twinkleTween = TweenService:Create(star, TweenInfo.new(
+    TweenService:Create(star, TweenInfo.new(
       twinkleDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true
-    ), { BackgroundTransparency = RNG:NextNumber(0.6, 0.95) })
-    twinkleTween:Play()
+    ), { BackgroundTransparency = RNG:NextNumber(0.6, 0.95) }):Play()
   end
 
   for i, star in ipairs(stars) do
     task.defer(function()
-      task.wait(RNG:NextNumber(0, 2)) -- stagger start
-      animateStar(star, i)
+      task.wait(RNG:NextNumber(0, 2))
+      animateStar(star)
     end)
-  end
-
-  -- ── Multiple Nebula Clouds ─────────────────────────────────
-  local nebulaConfigs = {
-    { color = C.gold,                    size = 220, startX = 0.6, startY = 0.2, endX = 0.3, endY = 0.5, dur = 28, transp = 0.93 },
-    { color = Color3.fromHex("4060ff"),  size = 180, startX = 0.2, startY = 0.6, endX = 0.5, endY = 0.3, dur = 32, transp = 0.95 },
-    { color = Color3.fromHex("8040c0"),  size = 140, startX = 0.8, startY = 0.7, endX = 0.4, endY = 0.8, dur = 22, transp = 0.96 },
-  }
-
-  for ni, nc in ipairs(nebulaConfigs) do
-    local neb = Instance.new("Frame")
-    neb.Name                  = "Nebula_" .. ni
-    neb.Size                  = UDim2.new(0, nc.size, 0, nc.size)
-    neb.Position              = UDim2.new(nc.startX, -nc.size/2, nc.startY, -nc.size/2)
-    neb.BackgroundColor3      = nc.color
-    neb.BackgroundTransparency = nc.transp
-    neb.BorderSizePixel       = 0
-    neb.ZIndex                = 1
-    neb.Parent                = root
-
-    local nc2 = Instance.new("UICorner")
-    nc2.CornerRadius = UDim.new(1, 0)
-    nc2.Parent       = neb
-
-    -- Drift
-    TweenService:Create(neb, TweenInfo.new(
-      nc.dur, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true
-    ), { Position = UDim2.new(nc.endX, -nc.size/2, nc.endY, -nc.size/2) }):Play()
-
-    -- Pulse size
-    TweenService:Create(neb, TweenInfo.new(
-      nc.dur * 0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true
-    ), { Size = UDim2.new(0, nc.size * 1.3, 0, nc.size * 1.3) }):Play()
   end
 
   -- ── Shooting Stars ────────────────────────────────────────
@@ -152,7 +109,6 @@ function UI.build(widget, state, COLORS, pluginRef)
     ss.ZIndex                = 2
     ss.Parent                = starsLayer
 
-    -- Fade trail effect via UIGradient
     local grad = Instance.new("UIGradient")
     grad.Color = ColorSequence.new({
       ColorSequenceKeypoint.new(0, Color3.fromHex("ffffff")),
@@ -181,7 +137,6 @@ function UI.build(widget, state, COLORS, pluginRef)
     end)
   end
 
-  -- Spawn shooting stars at random intervals
   task.spawn(function()
     while root.Parent do
       task.wait(RNG:NextNumber(3, 8))
@@ -191,83 +146,47 @@ function UI.build(widget, state, COLORS, pluginRef)
     end
   end)
 
-  -- ── Header ────────────────────────────────────────────────
-  local header = Instance.new("Frame")
-  header.Name             = "Header"
-  header.Size             = UDim2.new(1, 0, 0, 56)
-  header.BackgroundColor3 = C.surface
-  header.BackgroundTransparency = 0.15
-  header.BorderSizePixel  = 0
-  header.ZIndex           = 10
-  header.Parent           = root
+  -- ── Content container (centered vertically) ───────────────
+  local content = Instance.new("Frame")
+  content.Name             = "Content"
+  content.Size             = UDim2.new(1, -40, 0, 340)
+  content.Position         = UDim2.new(0, 20, 0.5, -170)
+  content.BackgroundTransparency = 1
+  content.BorderSizePixel  = 0
+  content.ZIndex           = 10
+  content.Parent           = root
 
-  -- Gold accent line at top with shimmer
-  local topAccent = Instance.new("Frame")
-  topAccent.Name             = "TopAccent"
-  topAccent.Size             = UDim2.new(1, 0, 0, 2)
-  topAccent.Position         = UDim2.new(0, 0, 0, 0)
-  topAccent.BackgroundColor3 = C.gold
-  topAccent.BorderSizePixel  = 0
-  topAccent.ZIndex           = 11
-  topAccent.ClipsDescendants = true
-  topAccent.Parent           = header
-
-  -- Shimmer highlight that sweeps across the accent line
-  local shimmer = Instance.new("Frame")
-  shimmer.Name                  = "Shimmer"
-  shimmer.Size                  = UDim2.new(0.3, 0, 1, 0)
-  shimmer.Position              = UDim2.new(-0.3, 0, 0, 0)
-  shimmer.BackgroundColor3      = Color3.fromHex("ffffff")
-  shimmer.BackgroundTransparency = 0.5
-  shimmer.BorderSizePixel       = 0
-  shimmer.ZIndex                = 12
-  shimmer.Parent                = topAccent
-
-  local shimmerGrad = Instance.new("UIGradient")
-  shimmerGrad.Transparency = NumberSequence.new({
-    NumberSequenceKeypoint.new(0, 1),
-    NumberSequenceKeypoint.new(0.4, 0),
-    NumberSequenceKeypoint.new(0.6, 0),
-    NumberSequenceKeypoint.new(1, 1),
-  })
-  shimmerGrad.Parent = shimmer
-
-  -- Loop shimmer sweep
-  task.spawn(function()
-    while root.Parent do
-      shimmer.Position = UDim2.new(-0.3, 0, 0, 0)
-      local sw = TweenService:Create(shimmer, TweenInfo.new(
-        2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut
-      ), { Position = UDim2.new(1.0, 0, 0, 0) })
-      sw:Play()
-      sw.Completed:Wait()
-      task.wait(4) -- pause between sweeps
-    end
-  end)
-
-  -- Logo icon (gold diamond)
+  -- ── Logo / Title ──────────────────────────────────────────
   local logoIcon = Instance.new("TextLabel")
   logoIcon.Name                  = "LogoIcon"
   logoIcon.Text                  = "\226\156\166" -- ✦
   logoIcon.Font                  = Enum.Font.SourceSans
-  logoIcon.TextSize              = 18
+  logoIcon.TextSize              = 22
   logoIcon.TextColor3            = C.gold
   logoIcon.BackgroundTransparency = 1
-  logoIcon.Size                  = UDim2.new(0, 24, 0, 24)
-  logoIcon.Position              = UDim2.new(0, 14, 0, 16)
-  logoIcon.Parent                = header
+  logoIcon.Size                  = UDim2.new(1, 0, 0, 24)
+  logoIcon.Position              = UDim2.new(0, 0, 0, 0)
+  logoIcon.TextXAlignment        = Enum.TextXAlignment.Center
+  logoIcon.ZIndex                = 10
+  logoIcon.Parent                = content
+
+  -- Rotate the star icon
+  TweenService:Create(logoIcon, TweenInfo.new(
+    6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, false
+  ), { Rotation = 360 }):Play()
 
   local logoText = Instance.new("TextLabel")
   logoText.Name                  = "LogoText"
   logoText.Text                  = "ForjeGames"
   logoText.Font                  = Enum.Font.GothamBold
-  logoText.TextSize              = 15
-  logoText.TextColor3            = C.text
+  logoText.TextSize              = 20
+  logoText.TextColor3            = C.gold
   logoText.BackgroundTransparency = 1
-  logoText.Size                  = UDim2.new(0, 120, 0, 20)
-  logoText.Position              = UDim2.new(0, 38, 0, 12)
-  logoText.TextXAlignment        = Enum.TextXAlignment.Left
-  logoText.Parent                = header
+  logoText.Size                  = UDim2.new(1, 0, 0, 24)
+  logoText.Position              = UDim2.new(0, 0, 0, 28)
+  logoText.TextXAlignment        = Enum.TextXAlignment.Center
+  logoText.ZIndex                = 10
+  logoText.Parent                = content
 
   local versionLabel = Instance.new("TextLabel")
   versionLabel.Name                  = "Version"
@@ -276,35 +195,61 @@ function UI.build(widget, state, COLORS, pluginRef)
   versionLabel.TextSize              = 11
   versionLabel.TextColor3            = C.textDim
   versionLabel.BackgroundTransparency = 1
-  versionLabel.Size                  = UDim2.new(0, 40, 0, 14)
-  versionLabel.Position              = UDim2.new(0, 38, 0, 33)
-  versionLabel.TextXAlignment        = Enum.TextXAlignment.Left
-  versionLabel.Parent                = header
+  versionLabel.Size                  = UDim2.new(1, 0, 0, 14)
+  versionLabel.Position              = UDim2.new(0, 0, 0, 54)
+  versionLabel.TextXAlignment        = Enum.TextXAlignment.Center
+  versionLabel.ZIndex                = 10
+  versionLabel.Parent                = content
 
-  -- Status indicator (right side of header)
+  -- ── Status indicator ──────────────────────────────────────
   local statusFrame = Instance.new("Frame")
   statusFrame.Name             = "StatusFrame"
-  statusFrame.Size             = UDim2.new(0, 80, 0, 24)
-  statusFrame.Position         = UDim2.new(1, -94, 0, 16)
+  statusFrame.Size             = UDim2.new(0, 120, 0, 26)
+  statusFrame.Position         = UDim2.new(0.5, -60, 0, 76)
   statusFrame.BackgroundColor3 = state.authenticated and Color3.fromHex("061e14") or C.surface
   statusFrame.BorderSizePixel  = 0
-  statusFrame.Parent           = header
+  statusFrame.ZIndex           = 10
+  statusFrame.Parent           = content
 
   local statusCorner = Instance.new("UICorner")
-  statusCorner.CornerRadius = UDim.new(0, 12)
+  statusCorner.CornerRadius = UDim.new(0, 13)
   statusCorner.Parent       = statusFrame
 
   local statusDot = Instance.new("Frame")
   statusDot.Name             = "StatusDot"
-  statusDot.Size             = UDim2.new(0, 6, 0, 6)
-  statusDot.Position         = UDim2.new(0, 10, 0.5, -3)
+  statusDot.Size             = UDim2.new(0, 8, 0, 8)
+  statusDot.Position         = UDim2.new(0, 12, 0.5, -4)
   statusDot.BackgroundColor3 = state.authenticated and C.success or C.textDim
   statusDot.BorderSizePixel  = 0
+  statusDot.ZIndex           = 11
   statusDot.Parent           = statusFrame
 
   local dotCorner = Instance.new("UICorner")
   dotCorner.CornerRadius = UDim.new(1, 0)
   dotCorner.Parent       = statusDot
+
+  -- Pulsing glow ring
+  local dotGlow = Instance.new("Frame")
+  dotGlow.Name                  = "DotGlow"
+  dotGlow.Size                  = UDim2.new(0, 14, 0, 14)
+  dotGlow.Position              = UDim2.new(0, 9, 0.5, -7)
+  dotGlow.BackgroundColor3      = state.authenticated and C.success or C.textDim
+  dotGlow.BackgroundTransparency = 0.7
+  dotGlow.BorderSizePixel       = 0
+  dotGlow.ZIndex                = 10
+  dotGlow.Parent                = statusFrame
+
+  local dotGlowCorner = Instance.new("UICorner")
+  dotGlowCorner.CornerRadius = UDim.new(1, 0)
+  dotGlowCorner.Parent       = dotGlow
+
+  TweenService:Create(dotGlow, TweenInfo.new(
+    1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true
+  ), {
+    Size = UDim2.new(0, 20, 0, 20),
+    Position = UDim2.new(0, 6, 0.5, -10),
+    BackgroundTransparency = 0.9,
+  }):Play()
 
   local statusText = Instance.new("TextLabel")
   statusText.Name                  = "StatusText"
@@ -313,271 +258,113 @@ function UI.build(widget, state, COLORS, pluginRef)
   statusText.TextSize              = 12
   statusText.TextColor3            = state.authenticated and C.success or C.textDim
   statusText.BackgroundTransparency = 1
-  statusText.Size                  = UDim2.new(1, -24, 1, 0)
-  statusText.Position              = UDim2.new(0, 22, 0, 0)
+  statusText.Size                  = UDim2.new(1, -30, 1, 0)
+  statusText.Position              = UDim2.new(0, 26, 0, 0)
   statusText.TextXAlignment        = Enum.TextXAlignment.Left
+  statusText.ZIndex                = 11
   statusText.Parent                = statusFrame
 
-  -- Pulsing glow ring behind status dot
-  local dotGlow = Instance.new("Frame")
-  dotGlow.Name                  = "DotGlow"
-  dotGlow.Size                  = UDim2.new(0, 14, 0, 14)
-  dotGlow.Position              = UDim2.new(0, 6, 0.5, -7)
-  dotGlow.BackgroundColor3      = state.authenticated and C.success or C.textDim
-  dotGlow.BackgroundTransparency = 0.7
-  dotGlow.BorderSizePixel       = 0
-  dotGlow.ZIndex                = 9
-  dotGlow.Parent                = statusFrame
-
-  local dotGlowCorner = Instance.new("UICorner")
-  dotGlowCorner.CornerRadius = UDim.new(1, 0)
-  dotGlowCorner.Parent       = dotGlow
-
-  -- Pulse animation
-  TweenService:Create(dotGlow, TweenInfo.new(
-    1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true
-  ), {
-    Size = UDim2.new(0, 20, 0, 20),
-    Position = UDim2.new(0, 3, 0.5, -10),
-    BackgroundTransparency = 0.9,
-  }):Play()
-
-  -- Logo sparkle: rotating ✦
-  TweenService:Create(logoIcon, TweenInfo.new(
-    6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, false
-  ), { Rotation = 360 }):Play()
-
-  -- Header border
-  local headerBorder = Instance.new("Frame")
-  headerBorder.Name             = "HeaderBorder"
-  headerBorder.Size             = UDim2.new(1, 0, 0, 1)
-  headerBorder.Position         = UDim2.new(0, 0, 1, -1)
-  headerBorder.BackgroundColor3 = C.border
-  headerBorder.BorderSizePixel  = 0
-  headerBorder.Parent           = header
-
-  -- ── Scrollable content ────────────────────────────────────
-  local scroll = Instance.new("ScrollingFrame")
-  scroll.Name                  = "Content"
-  scroll.Size                  = UDim2.new(1, 0, 1, -56)
-  scroll.Position              = UDim2.new(0, 0, 0, 56)
-  scroll.BackgroundTransparency = 1
-  scroll.BorderSizePixel       = 0
-  scroll.ScrollBarThickness    = 3
-  scroll.ScrollBarImageColor3  = C.gold
-  scroll.AutomaticCanvasSize   = Enum.AutomaticSize.Y
-  scroll.CanvasSize            = UDim2.new(0, 0, 0, 0)
-  scroll.ZIndex                = 10
-  scroll.Parent                = root
-
-  local layout = Instance.new("UIListLayout")
-  layout.FillDirection       = Enum.FillDirection.Vertical
-  layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-  layout.SortOrder           = Enum.SortOrder.LayoutOrder
-  layout.Padding             = UDim.new(0, 8)
-  layout.Parent              = scroll
-
-  local pad = Instance.new("UIPadding")
-  pad.PaddingTop    = UDim.new(0, 12)
-  pad.PaddingLeft   = UDim.new(0, 12)
-  pad.PaddingRight  = UDim.new(0, 12)
-  pad.PaddingBottom = UDim.new(0, 12)
-  pad.Parent        = scroll
-
-  -- ── Helper: glassmorphic chat-bubble card with entrance anim ──
-  local cardIndex = 0
-  local function makeCard(name, height, order)
-    cardIndex = cardIndex + 1
-    local myIndex = cardIndex
-
-    local f = Instance.new("Frame")
-    f.Name                  = name
-    f.Size                  = UDim2.new(1, 0, 0, height)
-    f.BackgroundColor3      = C.surface2
-    f.BackgroundTransparency = 1  -- start invisible for entrance anim
-    f.BorderSizePixel       = 0
-    f.LayoutOrder           = order
-    f.ZIndex                = 10
-    f.Parent                = scroll
-
-    -- Chat bubble corners (rounder)
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 16)
-    corner.Parent       = f
-
-    -- Glass border: subtle glow stroke
-    local stroke = Instance.new("UIStroke")
-    stroke.Color        = Color3.fromHex("2a3050")
-    stroke.Thickness    = 1
-    stroke.Transparency = 1  -- start invisible
-    stroke.Parent       = f
-
-    -- Inner glow: faint gold shimmer at top of card
-    local glow = Instance.new("Frame")
-    glow.Name                  = "InnerGlow"
-    glow.Size                  = UDim2.new(1, -2, 0, 1)
-    glow.Position              = UDim2.new(0, 1, 0, 1)
-    glow.BackgroundColor3      = C.gold
-    glow.BackgroundTransparency = 1
-    glow.BorderSizePixel       = 0
-    glow.ZIndex                = 11
-    glow.Parent                = f
-
-    local glowCorner = Instance.new("UICorner")
-    glowCorner.CornerRadius = UDim.new(0, 16)
-    glowCorner.Parent       = glow
-
-    -- Entrance animation: staggered fade-in + scale
-    task.defer(function()
-      task.wait(0.15 * myIndex)  -- stagger each card
-
-      -- Fade in card
-      TweenService:Create(f, TweenInfo.new(
-        0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out
-      ), { BackgroundTransparency = 0.25 }):Play()
-
-      -- Fade in stroke
-      TweenService:Create(stroke, TweenInfo.new(
-        0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out
-      ), { Transparency = 0.2 }):Play()
-
-      -- Fade in glow
-      TweenService:Create(glow, TweenInfo.new(
-        0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out
-      ), { BackgroundTransparency = 0.85 }):Play()
-    end)
-
-    -- Hover: card lifts (slight glass brighten)
-    f.InputBegan:Connect(function(input)
-      if input.UserInputType == Enum.UserInputType.MouseMovement then
-        TweenService:Create(f, TweenInfo.new(0.2), { BackgroundTransparency = 0.15 }):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.2), { Color = Color3.fromHex("3a4a70"), Transparency = 0.1 }):Play()
-      end
-    end)
-    f.InputEnded:Connect(function(input)
-      if input.UserInputType == Enum.UserInputType.MouseMovement then
-        TweenService:Create(f, TweenInfo.new(0.3), { BackgroundTransparency = 0.25 }):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.3), { Color = Color3.fromHex("2a3050"), Transparency = 0.2 }):Play()
-      end
-    end)
-
-    return f
-  end
-
-  -- ============================================================
-  -- 1. CONNECTION CARD
-  -- ============================================================
-  local authCard = makeCard("AuthCard", state.authenticated and 100 or 210, 1)
-
-  -- Card header with icon
-  local authIcon = Instance.new("TextLabel")
-  authIcon.Name                  = "AuthIcon"
-  authIcon.Text                  = state.authenticated and "\226\156\147" or "\240\159\148\151" -- ✓ or 🔗
-  authIcon.Font                  = Enum.Font.SourceSans
-  authIcon.TextSize              = 16
-  authIcon.TextColor3            = state.authenticated and C.success or C.gold
-  authIcon.BackgroundTransparency = 1
-  authIcon.Size                  = UDim2.new(0, 20, 0, 20)
-  authIcon.Position              = UDim2.new(0, 14, 0, 14)
-  authIcon.Parent                = authCard
-
-  local authTitle = Instance.new("TextLabel")
-  authTitle.Name                  = "AuthTitle"
-  authTitle.Text                  = state.authenticated and "Connected" or "Connect to ForjeGames"
-  authTitle.Font                  = Enum.Font.GothamBold
-  authTitle.TextSize              = 16
-  authTitle.TextColor3            = C.text
-  authTitle.BackgroundTransparency = 1
-  authTitle.Size                  = UDim2.new(1, -80, 0, 18)
-  authTitle.Position              = UDim2.new(0, 38, 0, 14)
-  authTitle.TextXAlignment        = Enum.TextXAlignment.Left
-  authTitle.Parent                = authCard
-
-  local authStatus = Instance.new("TextLabel")
-  authStatus.Name                  = "AuthStatus"
-  authStatus.Text                  = state.authenticated and "Session active" or "Enter your 6-character connection code"
-  authStatus.Font                  = Enum.Font.Gotham
-  authStatus.TextSize              = 14
-  authStatus.TextColor3            = C.textSec
-  authStatus.BackgroundTransparency = 1
-  authStatus.Size                  = UDim2.new(1, -28, 0, 14)
-  authStatus.Position              = UDim2.new(0, 38, 0, 34)
-  authStatus.TextXAlignment        = Enum.TextXAlignment.Left
-  authStatus.TextWrapped           = true
-  authStatus.Parent                = authCard
-
-  -- Code input area (hidden when authenticated) — glass pill style
+  -- ── Code Input Box ────────────────────────────────────────
   local codeInputFrame = Instance.new("Frame")
   codeInputFrame.Name                  = "CodeInputFrame"
-  codeInputFrame.Size                  = UDim2.new(1, -28, 0, 44)
-  codeInputFrame.Position              = UDim2.new(0, 14, 0, 60)
+  codeInputFrame.Size                  = UDim2.new(1, 0, 0, 48)
+  codeInputFrame.Position              = UDim2.new(0, 0, 0, 118)
   codeInputFrame.BackgroundColor3      = C.input
-  codeInputFrame.BackgroundTransparency = 0.3
+  codeInputFrame.BackgroundTransparency = 0.2
   codeInputFrame.BorderSizePixel       = 0
   codeInputFrame.Visible               = not state.authenticated
-  codeInputFrame.Parent                = authCard
+  codeInputFrame.ZIndex                = 10
+  codeInputFrame.Parent                = content
 
   local codeInputCorner = Instance.new("UICorner")
   codeInputCorner.CornerRadius = UDim.new(0, 12)
   codeInputCorner.Parent       = codeInputFrame
 
   local codeInputStroke = Instance.new("UIStroke")
-  codeInputStroke.Color        = Color3.fromHex("2a3050")
-  codeInputStroke.Thickness    = 1
+  codeInputStroke.Color        = C.border
+  codeInputStroke.Thickness    = 1.5
   codeInputStroke.Transparency = 0.2
   codeInputStroke.Parent       = codeInputFrame
 
   local codeBox = Instance.new("TextBox")
   codeBox.Name             = "CodeBox"
-  codeBox.PlaceholderText  = "Enter code (e.g. ABC123)"
+  codeBox.PlaceholderText  = "Enter code"
   codeBox.PlaceholderColor3 = C.textDim
   codeBox.Text             = ""
   codeBox.Font             = Enum.Font.GothamBold
-  codeBox.TextSize         = 18
+  codeBox.TextSize         = 20
   codeBox.TextColor3       = C.text
   codeBox.BackgroundTransparency = 1
   codeBox.Size             = UDim2.new(1, -16, 1, 0)
   codeBox.Position         = UDim2.new(0, 8, 0, 0)
   codeBox.TextXAlignment   = Enum.TextXAlignment.Center
   codeBox.ClearTextOnFocus = false
+  codeBox.ZIndex           = 11
   codeBox.Parent           = codeInputFrame
+
+  -- Gold border on focus
+  codeBox.Focused:Connect(function()
+    TweenService:Create(codeInputStroke, TweenInfo.new(0.2), {
+      Color = C.gold, Thickness = 2
+    }):Play()
+  end)
+  codeBox.FocusLost:Connect(function()
+    TweenService:Create(codeInputStroke, TweenInfo.new(0.2), {
+      Color = C.border, Thickness = 1.5
+    }):Play()
+  end)
 
   -- Instruction text
   local instrLabel = Instance.new("TextLabel")
   instrLabel.Name                  = "InstrLabel"
   instrLabel.Text                  = "Get your code at forjegames.com/editor"
   instrLabel.Font                  = Enum.Font.Gotham
-  instrLabel.TextSize              = 13
+  instrLabel.TextSize              = 12
   instrLabel.TextColor3            = C.textDim
   instrLabel.BackgroundTransparency = 1
-  instrLabel.Size                  = UDim2.new(1, -28, 0, 14)
-  instrLabel.Position              = UDim2.new(0, 14, 0, 106)
+  instrLabel.Size                  = UDim2.new(1, 0, 0, 14)
+  instrLabel.Position              = UDim2.new(0, 0, 0, 170)
   instrLabel.TextXAlignment        = Enum.TextXAlignment.Center
   instrLabel.Visible               = not state.authenticated
-  instrLabel.Parent                = authCard
+  instrLabel.ZIndex                = 10
+  instrLabel.Parent                = content
 
-  -- Connect / Disconnect button — glass pill
+  -- ── Auth status text (shown when connected) ───────────────
+  local authStatus = Instance.new("TextLabel")
+  authStatus.Name                  = "AuthStatus"
+  authStatus.Text                  = state.authenticated and "Session active" or ""
+  authStatus.Font                  = Enum.Font.Gotham
+  authStatus.TextSize              = 13
+  authStatus.TextColor3            = C.textSec
+  authStatus.BackgroundTransparency = 1
+  authStatus.Size                  = UDim2.new(1, 0, 0, 16)
+  authStatus.Position              = UDim2.new(0, 0, 0, 122)
+  authStatus.TextXAlignment        = Enum.TextXAlignment.Center
+  authStatus.ZIndex                = 10
+  authStatus.Parent                = content
+
+  -- ── Connect / Disconnect Button ───────────────────────────
   local authBtn = Instance.new("TextButton")
   authBtn.Name                  = "AuthBtn"
-  authBtn.Size                  = UDim2.new(1, -28, 0, 40)
-  authBtn.Position              = UDim2.new(0, 14, 0, state.authenticated and 56 or 128)
+  authBtn.Size                  = UDim2.new(1, 0, 0, 44)
+  authBtn.Position              = UDim2.new(0, 0, 0, 194)
   authBtn.BackgroundColor3      = state.authenticated and C.surface2 or C.gold
   authBtn.BackgroundTransparency = state.authenticated and 0.4 or 0
   authBtn.BorderSizePixel       = 0
   authBtn.Text                  = state.authenticated and "Disconnect" or "Connect"
   authBtn.Font                  = Enum.Font.GothamBold
-  authBtn.TextSize              = 15
-  authBtn.TextColor3            = state.authenticated and C.textSec or Color3.fromHex("050810")
+  authBtn.TextSize              = 16
+  authBtn.TextColor3            = state.authenticated and C.textSec or Color3.fromHex("050510")
   authBtn.AutoButtonColor       = false
   authBtn.ZIndex                = 11
-  authBtn.Parent                = authCard
+  authBtn.Parent                = content
 
   local authBtnCorner = Instance.new("UICorner")
   authBtnCorner.CornerRadius = UDim.new(0, 12)
   authBtnCorner.Parent       = authBtn
 
   local authBtnStroke = Instance.new("UIStroke")
-  authBtnStroke.Color        = state.authenticated and Color3.fromHex("2a3050") or C.borderFocus
+  authBtnStroke.Color        = state.authenticated and C.border or C.borderFocus
   authBtnStroke.Thickness    = 1
   authBtnStroke.Transparency = 0.2
   authBtnStroke.Parent       = authBtn
@@ -599,7 +386,42 @@ function UI.build(widget, state, COLORS, pluginRef)
     end
   end)
 
-  -- Error display label (hidden by default)
+  -- ── Undo Last Build Button ────────────────────────────────
+  local undoBtn = Instance.new("TextButton")
+  undoBtn.Name                  = "UndoBtn"
+  undoBtn.Size                  = UDim2.new(1, 0, 0, 38)
+  undoBtn.Position              = UDim2.new(0, 0, 0, 248)
+  undoBtn.BackgroundColor3      = C.surface
+  undoBtn.BackgroundTransparency = 0.4
+  undoBtn.BorderSizePixel       = 0
+  undoBtn.Text                  = "Undo Last Build"
+  undoBtn.Font                  = Enum.Font.GothamSemibold
+  undoBtn.TextSize              = 14
+  undoBtn.TextColor3            = C.textSec
+  undoBtn.AutoButtonColor       = false
+  undoBtn.ZIndex                = 11
+  undoBtn.Parent                = content
+
+  local undoBtnCorner = Instance.new("UICorner")
+  undoBtnCorner.CornerRadius = UDim.new(0, 12)
+  undoBtnCorner.Parent       = undoBtn
+
+  local undoBtnStroke = Instance.new("UIStroke")
+  undoBtnStroke.Color        = C.border
+  undoBtnStroke.Thickness    = 1
+  undoBtnStroke.Transparency = 0.3
+  undoBtnStroke.Parent       = undoBtn
+
+  undoBtn.MouseEnter:Connect(function()
+    undoBtn.BackgroundTransparency = 0.2
+    undoBtn.TextColor3 = C.text
+  end)
+  undoBtn.MouseLeave:Connect(function()
+    undoBtn.BackgroundTransparency = 0.4
+    undoBtn.TextColor3 = C.textSec
+  end)
+
+  -- ── Error label ───────────────────────────────────────────
   local errorLabel = Instance.new("TextLabel")
   errorLabel.Name                  = "ErrorLabel"
   errorLabel.Text                  = ""
@@ -607,329 +429,33 @@ function UI.build(widget, state, COLORS, pluginRef)
   errorLabel.TextSize              = 13
   errorLabel.TextColor3            = C.error
   errorLabel.BackgroundTransparency = 1
-  errorLabel.Size                  = UDim2.new(1, -28, 0, 14)
-  errorLabel.Position              = UDim2.new(0, 14, 0, 170)
+  errorLabel.Size                  = UDim2.new(1, 0, 0, 16)
+  errorLabel.Position              = UDim2.new(0, 0, 0, 296)
   errorLabel.TextXAlignment        = Enum.TextXAlignment.Center
-  errorLabel.Visible               = false
   errorLabel.TextWrapped           = true
-  errorLabel.Parent                = authCard
+  errorLabel.Visible               = false
+  errorLabel.ZIndex                = 10
+  errorLabel.Parent                = content
 
-  -- ============================================================
-  -- 2. SYNC STATUS CARD
-  -- ============================================================
-  local syncCard = makeCard("SyncCard", 80, 2)
+  -- ── Footer ────────────────────────────────────────────────
+  local footer = Instance.new("TextLabel")
+  footer.Name                  = "Footer"
+  footer.Text                  = "forjegames.com"
+  footer.Font                  = Enum.Font.Gotham
+  footer.TextSize              = 11
+  footer.TextColor3            = C.textDim
+  footer.BackgroundTransparency = 1
+  footer.Size                  = UDim2.new(1, 0, 0, 16)
+  footer.Position              = UDim2.new(0, 0, 1, -24)
+  footer.TextXAlignment        = Enum.TextXAlignment.Center
+  footer.ZIndex                = 10
+  footer.Parent                = root
 
-  local syncIcon = Instance.new("TextLabel")
-  syncIcon.Name                  = "SyncIcon"
-  syncIcon.Text                  = "\226\134\187" -- ↻
-  syncIcon.Font                  = Enum.Font.SourceSans
-  syncIcon.TextSize              = 16
-  syncIcon.TextColor3            = C.textDim
-  syncIcon.BackgroundTransparency = 1
-  syncIcon.Size                  = UDim2.new(0, 20, 0, 20)
-  syncIcon.Position              = UDim2.new(0, 14, 0, 14)
-  syncIcon.Parent                = syncCard
-
-  local syncTitle = Instance.new("TextLabel")
-  syncTitle.Name                  = "SyncTitle"
-  syncTitle.Text                  = "Studio Sync"
-  syncTitle.Font                  = Enum.Font.GothamBold
-  syncTitle.TextSize              = 15
-  syncTitle.TextColor3            = C.text
-  syncTitle.BackgroundTransparency = 1
-  syncTitle.Size                  = UDim2.new(1, -80, 0, 16)
-  syncTitle.Position              = UDim2.new(0, 38, 0, 12)
-  syncTitle.TextXAlignment        = Enum.TextXAlignment.Left
-  syncTitle.Parent                = syncCard
-
-  local connStatusLabel = Instance.new("TextLabel")
-  connStatusLabel.Name                  = "ConnStatus"
-  connStatusLabel.Text                  = "Waiting for connection..."
-  connStatusLabel.Font                  = Enum.Font.Gotham
-  connStatusLabel.TextSize              = 13
-  connStatusLabel.TextColor3            = C.textDim
-  connStatusLabel.BackgroundTransparency = 1
-  connStatusLabel.Size                  = UDim2.new(1, -28, 0, 14)
-  connStatusLabel.Position              = UDim2.new(0, 38, 0, 30)
-  connStatusLabel.TextXAlignment        = Enum.TextXAlignment.Left
-  connStatusLabel.Parent                = syncCard
-
-  local lastSyncLabel = Instance.new("TextLabel")
-  lastSyncLabel.Name                  = "LastSync"
-  lastSyncLabel.Text                  = ""
-  lastSyncLabel.Font                  = Enum.Font.Gotham
-  lastSyncLabel.TextSize              = 13
-  lastSyncLabel.TextColor3            = C.textDim
-  lastSyncLabel.BackgroundTransparency = 1
-  lastSyncLabel.Size                  = UDim2.new(1, -28, 0, 14)
-  lastSyncLabel.Position              = UDim2.new(0, 38, 0, 48)
-  lastSyncLabel.TextXAlignment        = Enum.TextXAlignment.Left
-  lastSyncLabel.Parent                = syncCard
-
-  local pingLabel = Instance.new("TextLabel")
-  pingLabel.Name                  = "Ping"
-  pingLabel.Text                  = ""
-  pingLabel.Font                  = Enum.Font.Gotham
-  pingLabel.TextSize              = 12
-  pingLabel.TextColor3            = C.textDim
-  pingLabel.BackgroundTransparency = 1
-  pingLabel.Size                  = UDim2.new(0, 60, 0, 14)
-  pingLabel.Position              = UDim2.new(1, -74, 0, 14)
-  pingLabel.TextXAlignment        = Enum.TextXAlignment.Right
-  pingLabel.Parent                = syncCard
-
-  -- ============================================================
-  -- 3. QUICK ACTIONS CARD
-  -- ============================================================
-  local actionsCard = makeCard("ActionsCard", 200, 3)
-
-  local actionsIcon = Instance.new("TextLabel")
-  actionsIcon.Name                  = "ActionsIcon"
-  actionsIcon.Text                  = "\226\154\161" -- ⚡
-  actionsIcon.Font                  = Enum.Font.SourceSans
-  actionsIcon.TextSize              = 14
-  actionsIcon.TextColor3            = C.gold
-  actionsIcon.BackgroundTransparency = 1
-  actionsIcon.Size                  = UDim2.new(0, 20, 0, 20)
-  actionsIcon.Position              = UDim2.new(0, 14, 0, 12)
-  actionsIcon.Parent                = actionsCard
-
-  local actionsTitle = Instance.new("TextLabel")
-  actionsTitle.Name                  = "ActionsTitle"
-  actionsTitle.Text                  = "Quick Actions"
-  actionsTitle.Font                  = Enum.Font.GothamBold
-  actionsTitle.TextSize              = 15
-  actionsTitle.TextColor3            = C.text
-  actionsTitle.BackgroundTransparency = 1
-  actionsTitle.Size                  = UDim2.new(1, -40, 0, 16)
-  actionsTitle.Position              = UDim2.new(0, 38, 0, 14)
-  actionsTitle.TextXAlignment        = Enum.TextXAlignment.Left
-  actionsTitle.Parent                = actionsCard
-
-  -- Action button helper (glass pill style)
-  local function makeActionBtn(parent, text, yPos, isPrimary)
-    local btn = Instance.new("TextButton")
-    btn.Name                  = "Btn_" .. text:gsub("%s+", "_")
-    btn.Size                  = UDim2.new(1, -28, 0, 36)
-    btn.Position              = UDim2.new(0, 14, 0, yPos)
-    btn.BackgroundColor3      = isPrimary and C.goldGlow or C.surface
-    btn.BackgroundTransparency = isPrimary and 0.3 or 0.4
-    btn.BorderSizePixel       = 0
-    btn.Text                  = text
-    btn.Font                  = Enum.Font.GothamSemibold
-    btn.TextSize              = 14
-    btn.TextColor3            = isPrimary and C.gold or C.textSec
-    btn.AutoButtonColor       = false
-    btn.ZIndex                = 11
-    btn.Parent                = parent
-
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 12)
-    c.Parent       = btn
-
-    local s = Instance.new("UIStroke")
-    s.Color        = isPrimary and C.borderFocus or Color3.fromHex("2a3050")
-    s.Thickness    = 1
-    s.Transparency = 0.3
-    s.Parent       = btn
-
-    local hoverTransp = isPrimary and 0.1 or 0.2
-    local normalTransp = isPrimary and 0.3 or 0.4
-
-    btn.MouseEnter:Connect(function()
-      btn.BackgroundTransparency = hoverTransp
-      if isPrimary then
-        btn.TextColor3 = C.goldLight
-      else
-        btn.TextColor3 = C.text
-      end
-    end)
-    btn.MouseLeave:Connect(function()
-      btn.BackgroundTransparency = normalTransp
-      btn.TextColor3 = isPrimary and C.gold or C.textSec
-    end)
-
-    return btn
-  end
-
-  local actionButtons = {}
-  local actions = {
-    { text = "Generate Terrain",  primary = true },
-    { text = "Generate City",     primary = true },
-    { text = "Insert Asset",      primary = true },
-    { text = "Undo Last AI Op",   primary = false },
-  }
-
-  for i, action in ipairs(actions) do
-    local yPos = 40 + (i - 1) * 40
-    actionButtons[i] = makeActionBtn(actionsCard, action.text, yPos, action.primary)
-  end
-
-  actionsCard.Size = UDim2.new(1, 0, 0, 40 + #actions * 40 + 8)
-
-  -- ============================================================
-  -- 4. RECENT BUILDS CARD
-  -- ============================================================
-  local recentCard = makeCard("RecentCard", 120, 4)
-
-  local recentIcon = Instance.new("TextLabel")
-  recentIcon.Name                  = "RecentIcon"
-  recentIcon.Text                  = "\240\159\147\139" -- 📋
-  recentIcon.Font                  = Enum.Font.SourceSans
-  recentIcon.TextSize              = 14
-  recentIcon.TextColor3            = C.textSec
-  recentIcon.BackgroundTransparency = 1
-  recentIcon.Size                  = UDim2.new(0, 20, 0, 20)
-  recentIcon.Position              = UDim2.new(0, 14, 0, 12)
-  recentIcon.Parent                = recentCard
-
-  local recentTitle = Instance.new("TextLabel")
-  recentTitle.Name                  = "RecentTitle"
-  recentTitle.Text                  = "Recent Builds"
-  recentTitle.Font                  = Enum.Font.GothamBold
-  recentTitle.TextSize              = 15
-  recentTitle.TextColor3            = C.text
-  recentTitle.BackgroundTransparency = 1
-  recentTitle.Size                  = UDim2.new(1, -40, 0, 16)
-  recentTitle.Position              = UDim2.new(0, 38, 0, 14)
-  recentTitle.TextXAlignment        = Enum.TextXAlignment.Left
-  recentTitle.Parent                = recentCard
-
-  local recentList = Instance.new("Frame")
-  recentList.Name             = "RecentList"
-  recentList.Size             = UDim2.new(1, -28, 1, -44)
-  recentList.Position         = UDim2.new(0, 14, 0, 40)
-  recentList.BackgroundTransparency = 1
-  recentList.Parent           = recentCard
-
-  local recentListLayout = Instance.new("UIListLayout")
-  recentListLayout.FillDirection = Enum.FillDirection.Vertical
-  recentListLayout.Padding       = UDim.new(0, 4)
-  recentListLayout.Parent        = recentList
-
-  local emptyLabel = Instance.new("TextLabel")
-  emptyLabel.Name                  = "EmptyLabel"
-  emptyLabel.Text                  = "No builds yet — connect to get started"
-  emptyLabel.Font                  = Enum.Font.Gotham
-  emptyLabel.TextSize              = 14
-  emptyLabel.TextColor3            = C.textDim
-  emptyLabel.BackgroundTransparency = 1
-  emptyLabel.Size                  = UDim2.new(1, 0, 0, 40)
-  emptyLabel.TextXAlignment        = Enum.TextXAlignment.Center
-  emptyLabel.Parent                = recentList
-
-  -- ============================================================
-  -- 5. UPDATE BANNER (hidden by default, shown when update available)
-  -- ============================================================
-  local updateBanner = Instance.new("Frame")
-  updateBanner.Name             = "UpdateBanner"
-  updateBanner.Size             = UDim2.new(1, 0, 0, 0)  -- collapsed by default
-  updateBanner.BackgroundColor3 = Color3.fromHex("1a1200")
-  updateBanner.BorderSizePixel  = 0
-  updateBanner.ClipsDescendants = true
-  updateBanner.LayoutOrder      = 10
-  updateBanner.Visible          = false
-  updateBanner.Parent           = scroll
-
-  local bannerStroke = Instance.new("UIStroke")
-  bannerStroke.Color       = C.gold
-  bannerStroke.Thickness   = 1
-  bannerStroke.Transparency = 0.5
-  bannerStroke.Parent      = updateBanner
-
-  local bannerCorner = Instance.new("UICorner")
-  bannerCorner.CornerRadius = UDim.new(0, 8)
-  bannerCorner.Parent       = updateBanner
-
-  -- Gold accent bar at top of banner
-  local bannerAccent = Instance.new("Frame")
-  bannerAccent.Name             = "BannerAccent"
-  bannerAccent.Size             = UDim2.new(1, 0, 0, 2)
-  bannerAccent.BackgroundColor3 = C.gold
-  bannerAccent.BorderSizePixel  = 0
-  bannerAccent.Parent           = updateBanner
-
-  local bannerIcon = Instance.new("TextLabel")
-  bannerIcon.Name                  = "BannerIcon"
-  bannerIcon.Text                  = "\226\172\134" -- ⬆ (up arrow)
-  bannerIcon.Font                  = Enum.Font.SourceSans
-  bannerIcon.TextSize              = 16
-  bannerIcon.TextColor3            = C.gold
-  bannerIcon.BackgroundTransparency = 1
-  bannerIcon.Size                  = UDim2.new(0, 20, 0, 20)
-  bannerIcon.Position              = UDim2.new(0, 12, 0, 10)
-  bannerIcon.Parent                = updateBanner
-
-  local bannerTitle = Instance.new("TextLabel")
-  bannerTitle.Name                  = "BannerTitle"
-  bannerTitle.Text                  = "Update Available"
-  bannerTitle.Font                  = Enum.Font.GothamBold
-  bannerTitle.TextSize              = 15
-  bannerTitle.TextColor3            = C.gold
-  bannerTitle.BackgroundTransparency = 1
-  bannerTitle.Size                  = UDim2.new(1, -44, 0, 18)
-  bannerTitle.Position              = UDim2.new(0, 36, 0, 8)
-  bannerTitle.TextXAlignment        = Enum.TextXAlignment.Left
-  bannerTitle.Parent                = updateBanner
-
-  local bannerChangelog = Instance.new("TextLabel")
-  bannerChangelog.Name                  = "BannerChangelog"
-  bannerChangelog.Text                  = ""
-  bannerChangelog.Font                  = Enum.Font.Gotham
-  bannerChangelog.TextSize              = 13
-  bannerChangelog.TextColor3            = C.textSec
-  bannerChangelog.BackgroundTransparency = 1
-  bannerChangelog.Size                  = UDim2.new(1, -24, 0, 28)
-  bannerChangelog.Position              = UDim2.new(0, 12, 0, 28)
-  bannerChangelog.TextXAlignment        = Enum.TextXAlignment.Left
-  bannerChangelog.TextWrapped           = true
-  bannerChangelog.Parent                = updateBanner
-
-  local downloadBtn = Instance.new("TextButton")
-  downloadBtn.Name                  = "DownloadBtn"
-  downloadBtn.Size                  = UDim2.new(1, -24, 0, 32)
-  downloadBtn.Position              = UDim2.new(0, 12, 0, 60)
-  downloadBtn.BackgroundColor3      = C.gold
-  downloadBtn.BorderSizePixel       = 0
-  downloadBtn.Text                  = "Download Update"
-  downloadBtn.Font                  = Enum.Font.GothamBold
-  downloadBtn.TextSize              = 14
-  downloadBtn.TextColor3            = Color3.fromHex("0a0a0a")
-  downloadBtn.AutoButtonColor       = false
-  downloadBtn.Parent                = updateBanner
-
-  local dlBtnCorner = Instance.new("UICorner")
-  dlBtnCorner.CornerRadius = UDim.new(0, 8)
-  dlBtnCorner.Parent       = downloadBtn
-
-  -- Hover effect
-  downloadBtn.MouseEnter:Connect(function()
-    downloadBtn.BackgroundColor3 = C.goldLight
-  end)
-  downloadBtn.MouseLeave:Connect(function()
-    downloadBtn.BackgroundColor3 = C.gold
-  end)
-
-  -- _downloadUrl is set when showUpdateBanner is called
-  local _downloadUrl = "https://forjegames.com/download"
-  downloadBtn.MouseButton1Click:Connect(function()
-    -- Roblox plugins cannot open URLs directly; print to Output so devs can click it
-    print("[ForjeGames] Download the latest plugin at: " .. _downloadUrl)
-    -- Also attempt GuiService:OpenBrowserWindow if available (some Studio versions support it)
-    local ok = pcall(function()
-      local GuiService = game:GetService("GuiService")
-      GuiService:OpenBrowserWindow(_downloadUrl)
-    end)
-    if not ok then
-      warn("[ForjeGames] Copy this URL to update: " .. _downloadUrl)
-    end
-  end)
-
-  -- Force-update overlay: covers action buttons with a blocking message
+  -- ── Force-update overlay (hidden by default) ──────────────
   local forceUpdateOverlay = Instance.new("Frame")
   forceUpdateOverlay.Name             = "ForceUpdateOverlay"
   forceUpdateOverlay.Size             = UDim2.new(1, 0, 1, 0)
-  forceUpdateOverlay.BackgroundColor3 = Color3.fromHex("050810")
+  forceUpdateOverlay.BackgroundColor3 = C.bg
   forceUpdateOverlay.BackgroundTransparency = 0.1
   forceUpdateOverlay.BorderSizePixel  = 0
   forceUpdateOverlay.ZIndex           = 20
@@ -938,7 +464,7 @@ function UI.build(widget, state, COLORS, pluginRef)
 
   local overlayLabel = Instance.new("TextLabel")
   overlayLabel.Name                  = "OverlayLabel"
-  overlayLabel.Text                  = "Plugin update required\nPlease update to continue using ForjeGames.\nCheck the Studio Output for the download link."
+  overlayLabel.Text                  = "Plugin update required\nPlease update to continue.\nCheck Output for the download link."
   overlayLabel.Font                  = Enum.Font.GothamBold
   overlayLabel.TextSize              = 14
   overlayLabel.TextColor3            = C.gold
@@ -951,22 +477,108 @@ function UI.build(widget, state, COLORS, pluginRef)
   overlayLabel.Parent                = forceUpdateOverlay
 
   -- ============================================================
-  -- 6. FOOTER
+  -- Hidden refs needed by Plugin.lua for compatibility
+  -- These elements exist but are not visible in the simplified UI
   -- ============================================================
-  local footer = Instance.new("TextLabel")
-  footer.Name                  = "Footer"
-  footer.Text                  = "forjegames.com"
-  footer.Font                  = Enum.Font.Gotham
-  footer.TextSize              = 12
-  footer.TextColor3            = C.textDim
-  footer.BackgroundTransparency = 1
-  footer.Size                  = UDim2.new(1, 0, 0, 20)
-  footer.LayoutOrder           = 99
-  footer.TextXAlignment        = Enum.TextXAlignment.Center
-  footer.Parent                = scroll
+
+  -- authTitle / authIcon / authCard: Plugin.lua reads these in setAuthenticated
+  local authTitle = Instance.new("TextLabel")
+  authTitle.Name = "AuthTitle"
+  authTitle.Text = state.authenticated and "Connected" or "Connect to ForjeGames"
+  authTitle.BackgroundTransparency = 1
+  authTitle.Size = UDim2.new(0, 0, 0, 0)
+  authTitle.Visible = false
+  authTitle.Parent = root
+
+  local authIcon = Instance.new("TextLabel")
+  authIcon.Name = "AuthIcon"
+  authIcon.Text = state.authenticated and "\226\156\147" or "\240\159\148\151"
+  authIcon.TextColor3 = state.authenticated and C.success or C.gold
+  authIcon.BackgroundTransparency = 1
+  authIcon.Size = UDim2.new(0, 0, 0, 0)
+  authIcon.Visible = false
+  authIcon.Parent = root
+
+  -- authCard: a virtual frame so setAuthenticated/setDisconnected can set .Size
+  local authCard = Instance.new("Frame")
+  authCard.Name = "AuthCard"
+  authCard.Size = UDim2.new(0, 0, 0, 0)
+  authCard.Visible = false
+  authCard.Parent = root
+
+  -- Sync status refs (hidden, used by Plugin.lua status updates)
+  local syncIcon = Instance.new("TextLabel")
+  syncIcon.Name = "SyncIcon"
+  syncIcon.TextColor3 = C.textDim
+  syncIcon.BackgroundTransparency = 1
+  syncIcon.Size = UDim2.new(0, 0, 0, 0)
+  syncIcon.Visible = false
+  syncIcon.Parent = root
+
+  local connStatusLabel = Instance.new("TextLabel")
+  connStatusLabel.Name = "ConnStatus"
+  connStatusLabel.Text = "Waiting for connection..."
+  connStatusLabel.TextColor3 = C.textDim
+  connStatusLabel.BackgroundTransparency = 1
+  connStatusLabel.Size = UDim2.new(0, 0, 0, 0)
+  connStatusLabel.Visible = false
+  connStatusLabel.Parent = root
+
+  local lastSyncLabel = Instance.new("TextLabel")
+  lastSyncLabel.Name = "LastSync"
+  lastSyncLabel.Text = ""
+  lastSyncLabel.BackgroundTransparency = 1
+  lastSyncLabel.Size = UDim2.new(0, 0, 0, 0)
+  lastSyncLabel.Visible = false
+  lastSyncLabel.Parent = root
+
+  local pingLabel = Instance.new("TextLabel")
+  pingLabel.Name = "Ping"
+  pingLabel.Text = ""
+  pingLabel.BackgroundTransparency = 1
+  pingLabel.Size = UDim2.new(0, 0, 0, 0)
+  pingLabel.Visible = false
+  pingLabel.Parent = root
+
+  -- Recent builds refs (hidden, used by addRecentBuild)
+  local recentCard = Instance.new("Frame")
+  recentCard.Name = "RecentCard"
+  recentCard.Size = UDim2.new(0, 0, 0, 0)
+  recentCard.Visible = false
+  recentCard.Parent = root
+
+  local recentList = Instance.new("Frame")
+  recentList.Name = "RecentList"
+  recentList.Size = UDim2.new(0, 0, 0, 0)
+  recentList.Visible = false
+  recentList.Parent = recentCard
+
+  local recentListLayout = Instance.new("UIListLayout")
+  recentListLayout.FillDirection = Enum.FillDirection.Vertical
+  recentListLayout.Padding       = UDim.new(0, 4)
+  recentListLayout.Parent        = recentList
+
+  local emptyLabel = Instance.new("TextLabel")
+  emptyLabel.Name = "EmptyLabel"
+  emptyLabel.Text = ""
+  emptyLabel.Visible = false
+  emptyLabel.Parent = recentList
+
+  -- actionButtons array: [1]=terrain, [2]=city, [3]=asset, [4]=undo
+  -- Only [4] (undo) is wired; the rest are dummy buttons for compatibility
+  local actionButtons = {}
+  for i = 1, 3 do
+    local dummy = Instance.new("TextButton")
+    dummy.Name = "DummyAction_" .. i
+    dummy.Visible = false
+    dummy.Size = UDim2.new(0, 0, 0, 0)
+    dummy.Parent = root
+    actionButtons[i] = dummy
+  end
+  actionButtons[4] = undoBtn  -- real undo button
 
   -- ============================================================
-  -- Public API
+  -- Public API (refs)
   -- ============================================================
   local refs = {
     statusDot       = statusDot,
@@ -992,107 +604,83 @@ function UI.build(widget, state, COLORS, pluginRef)
     COLORS          = C,
   }
 
-  -- ── Show update banner ──
-  -- info: { latestVersion: string, downloadUrl: string, changelog: string, forceUpdate: bool }
+  -- ── Show update banner (prints to output) ──
+  local _downloadUrl = "https://forjegames.com/download"
+
   function refs.showUpdateBanner(info)
     _downloadUrl = info.downloadUrl or _downloadUrl
-
     local versionStr = info.latestVersion and ("v" .. info.latestVersion) or "latest"
-    bannerTitle.Text = "Update Available (" .. versionStr .. ")"
-
-    local targetHeight
+    print("[ForjeGames] Plugin update available: " .. versionStr)
+    print("[ForjeGames] Download: " .. _downloadUrl)
     if info.changelog and #info.changelog > 0 then
-      bannerChangelog.Text    = info.changelog
-      bannerChangelog.Visible = true
-      downloadBtn.Position    = UDim2.new(0, 12, 0, 62)
-      targetHeight            = 104
-    else
-      bannerChangelog.Visible = false
-      downloadBtn.Position    = UDim2.new(0, 12, 0, 34)
-      targetHeight            = 76
+      print("[ForjeGames] What's new: " .. info.changelog)
     end
-
-    if info.forceUpdate then
-      bannerTitle.Text      = "Update Required (" .. versionStr .. ")"
-      bannerTitle.TextColor3 = C.error
-      bannerIcon.TextColor3  = C.error
-      bannerStroke.Color     = C.error
-      updateBanner.BackgroundColor3 = Color3.fromHex("1a0000")
-    end
-
-    -- Start collapsed, then animate to full height
-    updateBanner.Size    = UDim2.new(1, 0, 0, 0)
-    updateBanner.Visible = true
-
-    TweenService:Create(updateBanner, TweenInfo.new(
-      0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out
-    ), { Size = UDim2.new(1, 0, 0, targetHeight) }):Play()
+    -- Show in error label area
+    errorLabel.Text = "Update available: " .. versionStr
+    errorLabel.TextColor3 = C.warning
+    errorLabel.Visible = true
   end
 
-  -- ── Force-update lock: disables plugin functionality ──
+  -- ── Force-update lock ──
   function refs.setForceUpdateLock(locked)
     forceUpdateOverlay.Visible = locked
-    -- Dim action buttons so intent is clear
-    for _, btn in ipairs(actionButtons) do
-      if locked then
-        btn.Active              = false
-        btn.BackgroundTransparency = 0.7
-        btn.TextTransparency    = 0.5
-      else
-        btn.Active              = true
-        btn.BackgroundTransparency = 0.3
-        btn.TextTransparency    = 0
-      end
+    authBtn.Active = not locked
+    undoBtn.Active = not locked
+    if locked then
+      authBtn.BackgroundTransparency = 0.7
+      undoBtn.BackgroundTransparency = 0.7
     end
   end
 
   -- ── Update: authenticated ──
   function refs.setAuthenticated(email)
     authTitle.Text       = "Connected"
-    authTitle.TextColor3 = C.text
-    authIcon.Text        = "\226\156\147" -- ✓
+    authIcon.Text        = "\226\156\147" -- checkmark
     authIcon.TextColor3  = C.success
     authStatus.Text      = email and ("Signed in as " .. email) or "Session active"
     authStatus.TextColor3 = C.textSec
+    authStatus.Visible   = true
     authBtn.Text         = "Disconnect"
     authBtn.TextColor3   = C.textSec
     authBtn.BackgroundColor3 = C.surface2
+    authBtn.BackgroundTransparency = 0.4
+    authBtnStroke.Color  = C.border
     codeInputFrame.Visible = false
     instrLabel.Visible     = false
     errorLabel.Visible     = false
-    authCard.Size          = UDim2.new(1, 0, 0, 100)
-    authBtn.Position       = UDim2.new(0, 14, 0, 56)
-    statusDot.BackgroundColor3 = C.success
-    statusText.Text            = "Online"
-    statusText.TextColor3      = C.success
+    statusDot.BackgroundColor3   = C.success
+    dotGlow.BackgroundColor3     = C.success
+    statusText.Text              = "Online"
+    statusText.TextColor3        = C.success
     statusFrame.BackgroundColor3 = Color3.fromHex("061e14")
   end
 
   -- ── Update: disconnected ──
   function refs.setDisconnected()
     authTitle.Text       = "Connect to ForjeGames"
-    authTitle.TextColor3 = C.text
-    authIcon.Text        = "\240\159\148\151" -- 🔗
+    authIcon.Text        = "\240\159\148\151" -- link
     authIcon.TextColor3  = C.gold
-    authStatus.Text      = "Enter your 6-character connection code"
-    authStatus.TextColor3 = C.textSec
+    authStatus.Text      = ""
+    authStatus.Visible   = false
     authBtn.Text         = "Connect"
-    authBtn.TextColor3   = Color3.fromHex("0a0a0a")
+    authBtn.TextColor3   = Color3.fromHex("050510")
     authBtn.BackgroundColor3 = C.gold
+    authBtn.BackgroundTransparency = 0
+    authBtnStroke.Color  = C.borderFocus
     codeInputFrame.Visible = true
     instrLabel.Visible     = true
     errorLabel.Visible     = false
-    authCard.Size          = UDim2.new(1, 0, 0, 210)
-    authBtn.Position       = UDim2.new(0, 14, 0, 128)
-    statusDot.BackgroundColor3 = C.textDim
-    statusText.Text            = "Offline"
-    statusText.TextColor3      = C.textDim
+    statusDot.BackgroundColor3   = C.textDim
+    dotGlow.BackgroundColor3     = C.textDim
+    statusText.Text              = "Offline"
+    statusText.TextColor3        = C.textDim
     statusFrame.BackgroundColor3 = C.surface
   end
 
   -- ── Update: show error ──
   function refs.showError(msg)
     errorLabel.Text    = msg or ""
+    errorLabel.TextColor3 = C.error
     errorLabel.Visible = (msg ~= nil and msg ~= "")
   end
 
@@ -1109,90 +697,33 @@ function UI.build(widget, state, COLORS, pluginRef)
     end
   end
 
-  -- ── Update: rich connection status ──
-  -- statusKey: "connecting"|"connected"|"reconnecting"|"disconnected"|"http_disabled"|"idle"
-  -- messageOverride: optional string to display in connStatusLabel
+  -- ── Rich connection status ──
   function refs.setConnectionStatus(statusKey, messageOverride)
     local STATUS_MAP = {
-      connecting    = { label = "Connecting...",               color = C.warning, dot = C.warning, bg = Color3.fromHex("1c1107"), header = "Connecting..."  },
-      connected     = { label = "Syncing with forjegames.com", color = C.success, dot = C.success, bg = Color3.fromHex("052e16"), header = "Online"          },
-      reconnecting  = { label = "Reconnecting...",             color = C.warning, dot = C.warning, bg = Color3.fromHex("1c1107"), header = "Reconnecting..." },
-      disconnected  = { label = "Disconnected",               color = C.error,   dot = C.error,   bg = Color3.fromHex("1f0707"), header = "Offline"         },
-      http_disabled = { label = "Error: HTTP not enabled",    color = C.error,   dot = C.error,   bg = Color3.fromHex("1f0707"), header = "Error"           },
-      idle          = { label = "Waiting for connection...",   color = C.textDim, dot = C.textDim, bg = Color3.fromHex("1c1917"), header = "Offline"         },
+      connecting    = { label = "Connecting...",               color = C.warning, dot = C.warning, bg = Color3.fromHex("1c1107"), header = "Connecting..."   },
+      connected     = { label = "Syncing with forjegames.com", color = C.success, dot = C.success, bg = Color3.fromHex("052e16"), header = "Online"           },
+      reconnecting  = { label = "Reconnecting...",             color = C.warning, dot = C.warning, bg = Color3.fromHex("1c1107"), header = "Reconnecting..."  },
+      disconnected  = { label = "Disconnected",               color = C.error,   dot = C.error,   bg = Color3.fromHex("1f0707"), header = "Offline"          },
+      http_disabled = { label = "Error: HTTP not enabled",    color = C.error,   dot = C.error,   bg = Color3.fromHex("1f0707"), header = "Error"            },
+      idle          = { label = "Waiting for connection...",   color = C.textDim, dot = C.textDim, bg = Color3.fromHex("1c1917"), header = "Offline"          },
     }
 
     local d = STATUS_MAP[statusKey] or STATUS_MAP.idle
 
-    -- Sync card
     connStatusLabel.Text       = messageOverride or d.label
     connStatusLabel.TextColor3 = d.color
     syncIcon.TextColor3        = d.color
 
-    -- Header pill
     statusDot.BackgroundColor3   = d.dot
+    dotGlow.BackgroundColor3     = d.dot
     statusText.Text              = d.header
     statusText.TextColor3        = d.color
     statusFrame.BackgroundColor3 = d.bg
   end
 
-  -- ── Add recent build ──
+  -- ── Add recent build (no-op in simplified UI, kept for compat) ──
   function refs.addRecentBuild(buildName, buildType, timestamp)
-    emptyLabel.Visible = false
-
-    local entry = Instance.new("Frame")
-    entry.Name             = "Build_" .. tostring(timestamp)
-    entry.Size             = UDim2.new(1, 0, 0, 26)
-    entry.BackgroundTransparency = 1
-    entry.Parent           = recentList
-
-    local dot = Instance.new("Frame")
-    dot.Size             = UDim2.new(0, 5, 0, 5)
-    dot.Position         = UDim2.new(0, 0, 0.5, -2)
-    dot.BackgroundColor3 = C.gold
-    dot.BorderSizePixel  = 0
-    dot.Parent           = entry
-
-    local dotC = Instance.new("UICorner")
-    dotC.CornerRadius = UDim.new(1, 0)
-    dotC.Parent       = dot
-
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Text                  = buildName
-    nameLabel.Font                  = Enum.Font.Gotham
-    nameLabel.TextSize              = 13
-    nameLabel.TextColor3            = C.text
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Size                  = UDim2.new(0.6, -14, 1, 0)
-    nameLabel.Position              = UDim2.new(0, 14, 0, 0)
-    nameLabel.TextXAlignment        = Enum.TextXAlignment.Left
-    nameLabel.TextTruncate           = Enum.TextTruncate.AtEnd
-    nameLabel.Parent                = entry
-
-    local typeLabel = Instance.new("TextLabel")
-    typeLabel.Text                  = buildType
-    typeLabel.Font                  = Enum.Font.Gotham
-    typeLabel.TextSize              = 13
-    typeLabel.TextColor3            = C.gold
-    typeLabel.BackgroundTransparency = 1
-    typeLabel.Size                  = UDim2.new(0.4, 0, 1, 0)
-    typeLabel.Position              = UDim2.new(0.6, 0, 0, 0)
-    typeLabel.TextXAlignment        = Enum.TextXAlignment.Right
-    typeLabel.Parent                = entry
-
-    -- Keep only last 5
-    local children = recentList:GetChildren()
-    local count = 0
-    for _, c in ipairs(children) do
-      if c:IsA("Frame") then count = count + 1 end
-    end
-    if count > 5 then
-      for _, c in ipairs(children) do
-        if c:IsA("Frame") then c:Destroy() break end
-      end
-    end
-
-    recentCard.Size = UDim2.new(1, 0, 0, 40 + math.min(count + 1, 5) * 30 + 8)
+    -- Silent: simplified UI does not show recent builds list
   end
 
   return refs
