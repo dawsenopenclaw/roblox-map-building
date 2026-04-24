@@ -183,6 +183,53 @@ export async function createCustomPlanCheckoutSession({
   )
 }
 
+/**
+ * One-time custom token purchase — user picks any amount, price calculated dynamically.
+ * Rate: $1 per 100 tokens ($10/1K). Uses inline price_data so no Stripe Price needed.
+ */
+export async function createCustomTokenPurchaseSession({
+  customerId,
+  userId,
+  tokenAmount,
+  successUrl,
+  cancelUrl,
+}: {
+  customerId: string
+  userId: string
+  tokenAmount: number
+  successUrl: string
+  cancelUrl: string
+}) {
+  // Rate: $1 per 100 tokens = 1 cent per token
+  const priceCents = tokenAmount // 1 cent per token = $10 per 1000
+  const today = new Date().toISOString().slice(0, 10)
+  return stripe.checkout.sessions.create(
+    {
+      customer: customerId,
+      mode: 'payment',
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: 'usd',
+            unit_amount: priceCents,
+            product_data: {
+              name: `${tokenAmount.toLocaleString()} ForjeGames Tokens`,
+              metadata: { type: 'custom_tokens', tokenAmount: String(tokenAmount) },
+            },
+          },
+        },
+      ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      automatic_tax: { enabled: true },
+      customer_update: { address: 'auto' },
+      metadata: { userId, type: 'custom_tokens', tokenAmount: String(tokenAmount) },
+    },
+    { idempotencyKey: `checkout_ct_${userId}_${tokenAmount}_${today}_${Date.now()}` },
+  )
+}
+
 export async function createBillingPortalSession({ customerId, returnUrl }: { customerId: string; returnUrl: string }) {
   return stripe.billingPortal.sessions.create({
     customer: customerId,

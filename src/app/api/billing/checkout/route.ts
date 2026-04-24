@@ -13,6 +13,10 @@ const schema = z.union([
     type: z.literal('token_pack'),
     packSlug: z.string(),
   }),
+  z.object({
+    type: z.literal('custom_tokens'),
+    tokenAmount: z.number().int().min(100).max(100000),
+  }),
 ])
 
 export async function POST(req: NextRequest) {
@@ -129,6 +133,19 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         tokenPackSlug: pack.slug,
         successUrl: `${appUrl}/tokens?tokens_added=true`,
+        cancelUrl: `${appUrl}/tokens`,
+      })
+      return NextResponse.json({ url: session.url })
+    }
+
+    if (parsed.data.type === 'custom_tokens') {
+      const { createCustomTokenPurchaseSession } = await import('@/lib/stripe')
+      const tokenAmount = parsed.data.tokenAmount
+      const session = await createCustomTokenPurchaseSession({
+        customerId,
+        userId: user.id,
+        tokenAmount,
+        successUrl: `${appUrl}/tokens?tokens_added=true&amount=${tokenAmount}`,
         cancelUrl: `${appUrl}/tokens`,
       })
       return NextResponse.json({ url: session.url })

@@ -126,6 +126,27 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Custom token purchase — any amount the user chose
+        if (isPaid && session.metadata?.type === 'custom_tokens' && session.metadata.tokenAmount) {
+          const tokenAmount = parseInt(session.metadata.tokenAmount, 10)
+          if (tokenAmount > 0 && tokenAmount <= 100000) {
+            const alreadyCredited = await db.tokenTransaction.findFirst({
+              where: { metadata: { path: ['sessionId'], equals: session.id } },
+              select: { id: true },
+            })
+            if (!alreadyCredited) {
+              const paymentIntentId = typeof session.payment_intent === 'string'
+                ? session.payment_intent
+                : session.payment_intent?.toString() ?? undefined
+              await earnTokens(userId, tokenAmount, 'PURCHASE', `Purchased ${tokenAmount.toLocaleString()} custom tokens`, {
+                sessionId: session.id,
+                paymentIntentId,
+              })
+              console.log(`[Stripe] Custom token purchase: ${tokenAmount} tokens for user ${userId}`)
+            }
+          }
+        }
+
         // Template purchase — record DB purchase + notify creator
         if (isPaid && session.metadata?.type === 'template_purchase' && session.metadata.templateId) {
           const { templateId, buyerId } = session.metadata
