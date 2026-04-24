@@ -418,15 +418,16 @@ export function CommandPalette({
       shortcut: 'G+E',
       action: wrap('nav-editor', () => navigate('/editor')),
     },
-    {
-      id: 'nav-marketplace',
-      group: 'Navigation',
-      label: 'Marketplace',
-      description: 'Browse asset templates',
-      icon: '◈',
-      shortcut: 'G+M',
-      action: wrap('nav-marketplace', () => navigate('/marketplace')),
-    },
+    // Marketplace hidden — re-releasing later
+    // {
+    //   id: 'nav-marketplace',
+    //   group: 'Navigation',
+    //   label: 'Marketplace',
+    //   description: 'Browse asset templates',
+    //   icon: '◈',
+    //   shortcut: 'G+M',
+    //   action: wrap('nav-marketplace', () => navigate('/marketplace')),
+    // },
     {
       id: 'nav-game-dna',
       group: 'Navigation',

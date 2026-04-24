@@ -497,7 +497,8 @@ interface ActionDef {
 
 const ACTIONS: ActionDef[] = [
   { href: '/editor',      icon: '⚡', title: 'Open Editor',        description: 'Generate terrain, scripts, assets with AI', badge: 'Gold' },
-  { href: '/marketplace', icon: '🛒', title: 'Browse Marketplace', description: 'Free & premium Roblox assets' },
+  // Marketplace hidden — re-releasing later
+  // { href: '/marketplace', icon: '🛒', title: 'Browse Marketplace', description: 'Free & premium Roblox assets' },
   { href: '/download',    icon: '🔌', title: 'Download Plugin',    description: 'Sync builds directly to Roblox Studio' },
   { href: '/referrals',   icon: '🎁', title: 'Invite a Friend',    description: 'Share ForjeAI and earn bonus tokens' },
 ]

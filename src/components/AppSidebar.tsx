@@ -92,7 +92,8 @@ const NAV_MAIN = [
   { href: '/dashboard',    label: 'Dashboard',    Icon: IconDashboard },
   { href: '/editor',       label: 'Editor',       Icon: IconEditor },
   { href: '/projects',     label: 'Projects',     Icon: IconProjects },
-  { href: '/marketplace',  label: 'Marketplace',  Icon: IconMarketplace },
+  // Marketplace hidden — re-releasing later
+  // { href: '/marketplace',  label: 'Marketplace',  Icon: IconMarketplace },
 ]
 
 const NAV_ACCOUNT = [

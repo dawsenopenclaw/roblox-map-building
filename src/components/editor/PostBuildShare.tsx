@@ -87,15 +87,7 @@ export function PostBuildShare({ visible, prompt, onDismiss }: PostBuildSharePro
         <span className="hidden sm:inline">Post</span>
       </a>
 
-      {/* Marketplace */}
-      <Link
-        href="/marketplace/submit"
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#D4AF37]/80 hover:text-[#D4AF37] hover:bg-[#D4AF37]/5 transition-colors"
-        title="Submit to marketplace"
-      >
-        <Upload className="w-3.5 h-3.5" />
-        <span className="hidden sm:inline">Publish</span>
-      </Link>
+      {/* Marketplace hidden — re-releasing later */}
 
       {/* Dismiss */}
       <button
