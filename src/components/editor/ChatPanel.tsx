@@ -4069,6 +4069,7 @@ export function ChatPanel({
   const [stylePreset, setStylePreset] = useState<string | null>(null)
   const [mobileImageControlsOpen, setMobileImageControlsOpen] = useState(false)
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
+  const [plusPanelOpen, setPlusPanelOpen] = useState(false)
   const [showScrollBtn, setShowScrollBtn] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [isPulsing, setIsPulsing] = useState(false)
@@ -4334,70 +4335,7 @@ export function ChatPanel({
   return (
     <div style={{ flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
 
-      {/* ── Mode Switcher Pill Bar ── */}
-      {onAIModeChange && hasMessages && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '10px 20px',
-            borderBottom: '1px solid rgba(255,255,255,0.03)',
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
-            flexShrink: 0,
-            background: 'rgba(5,8,16,0.5)',
-          }}
-        >
-          {MODE_PILLS.map(({ mode, label, color }) => {
-            const active = aiMode === mode
-            return (
-              <button
-                key={mode}
-                onClick={() => onAIModeChange(mode)}
-                style={{
-                  position: 'relative',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '7px 16px',
-                  borderRadius: 20,
-                  border: active ? `1px solid ${color}30` : '1px solid transparent',
-                  background: active ? `${color}10` : 'transparent',
-                  color: active ? color : '#71717A',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease-out',
-                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                  boxShadow: active ? `0 0 16px ${color}10` : 'none',
-                  letterSpacing: '-0.01em',
-                }}
-                onMouseEnter={e => { if (!active) { e.currentTarget.style.color = '#A1A1AA'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' } }}
-                onMouseLeave={e => { if (!active) { e.currentTarget.style.color = '#71717A'; e.currentTarget.style.background = 'transparent' } }}
-              >
-                {label}
-                {active && (
-                  <div style={{
-                    position: 'absolute',
-                    bottom: -1,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '50%',
-                    height: 2,
-                    borderRadius: 1,
-                    background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
-                    boxShadow: `0 0 8px ${color}40`,
-                    transition: 'all 0.2s ease-out',
-                  }} />
-                )}
-              </button>
-            )
-          })}
-        </div>
-      )}
+      {/* Mode Switcher Pill Bar — hidden by default, revealed via + button in input */}
 
       {/* ── Messages Area ── */}
       <div
@@ -4802,8 +4740,118 @@ export function ChatPanel({
             </div>
           )}
 
-          {/* Input row: attach + textarea + voice + send */}
+          {/* ── Plus Panel — mode + preset picker, slides up from input ── */}
+          {plusPanelOpen && onAIModeChange && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                padding: '10px 0 8px',
+                animation: 'plusPanelSlide 0.2s ease-out forwards',
+              }}
+            >
+              {/* Mode buttons */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 6 }}>Mode</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {MODE_PILLS.map(({ mode, label, color }) => {
+                    const active = aiMode === mode
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => { onAIModeChange(mode); setPlusPanelOpen(false) }}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: 16,
+                          border: active ? `1px solid ${color}40` : '1px solid rgba(255,255,255,0.08)',
+                          background: active ? `${color}15` : 'rgba(255,255,255,0.04)',
+                          color: active ? color : '#71717A',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease-out',
+                          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                        }}
+                        onMouseEnter={e => { if (!active) { e.currentTarget.style.color = '#A1A1AA'; e.currentTarget.style.background = 'rgba(255,255,255,0.07)' } }}
+                        onMouseLeave={e => { if (!active) { e.currentTarget.style.color = active ? color : '#71717A'; e.currentTarget.style.background = active ? `${color}15` : 'rgba(255,255,255,0.04)' } }}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              {/* Quick presets */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 6 }}>Quick Start</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {[
+                    { label: 'Medieval Castle', prompt: 'Build a medieval castle with towers, walls, and a drawbridge' },
+                    { label: 'Tycoon Factory', prompt: 'Build a tycoon factory with conveyor belts, machines, and storage' },
+                    { label: 'Obby Course', prompt: 'Build an obby course with jumps, lava, and checkpoints' },
+                    { label: 'Modern House', prompt: 'Build a modern house with rooms, furniture, and a garden' },
+                    { label: 'Spaceship', prompt: 'Build a spaceship with cockpit, engine room, and cargo bay' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => {
+                        setInput(preset.prompt)
+                        if (onAIModeChange) onAIModeChange('build')
+                        setPlusPanelOpen(false)
+                        // Focus the textarea
+                        if (taRef && 'current' in taRef && taRef.current) taRef.current.focus()
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 16,
+                        border: '1px solid rgba(212,175,55,0.15)',
+                        background: 'rgba(212,175,55,0.06)',
+                        color: 'rgba(212,175,55,0.8)',
+                        fontSize: 12,
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease-out',
+                        fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(212,175,55,0.12)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(212,175,55,0.06)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.15)' }}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Input row: plus + attach + textarea + voice + send */}
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+            {/* Plus button — toggles mode/preset panel */}
+            {onAIModeChange && (
+              <button
+                type="button"
+                onClick={() => setPlusPanelOpen(v => !v)}
+                title="Modes & presets"
+                style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  border: 'none',
+                  background: plusPanelOpen ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.04)',
+                  color: plusPanelOpen ? '#D4AF37' : '#52525B',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, transition: 'all 0.2s ease-out',
+                  transform: plusPanelOpen ? 'rotate(45deg)' : 'rotate(0deg)',
+                }}
+                onMouseEnter={e => { if (!plusPanelOpen) { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#A1A1AA' } }}
+                onMouseLeave={e => { if (!plusPanelOpen) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#52525B' } }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
+            )}
             {/* Attach image (paperclip) */}
             <label
               title="Attach image"
@@ -5043,6 +5091,10 @@ export function ChatPanel({
           0%   { background-position: 200% center; }
           50%  { background-position: -200% center; }
           100% { background-position: 200% center; }
+        }
+        @keyframes plusPanelSlide {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>

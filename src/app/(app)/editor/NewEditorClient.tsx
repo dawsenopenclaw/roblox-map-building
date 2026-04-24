@@ -1371,12 +1371,23 @@ function TopBar({
 
         {/* Right: connection dot + menu button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {isConnected && (
-            <div title={placeName || 'Connected'} style={{
-              width: 8, height: 8, borderRadius: '50%', background: '#4ADE80',
-              boxShadow: '0 0 6px rgba(74,222,128,0.6)', flexShrink: 0,
+          {/* Studio connection indicator */}
+          <div title={isConnected ? (placeName || 'Connected') : 'Not connected'} style={{
+            position: 'relative', width: 8, height: 8, flexShrink: 0,
+          }}>
+            <div style={{
+              position: 'absolute', inset: 0, borderRadius: '50%',
+              background: isConnected ? '#4ADE80' : '#52525B',
+              boxShadow: isConnected ? '0 0 6px rgba(74,222,128,0.6)' : 'none',
             }} />
-          )}
+            {isConnected && (
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                background: '#4ADE80',
+                animation: 'studioConnPulse 2.5s ease-in-out infinite',
+              }} />
+            )}
+          </div>
           {onNewChat && (
             <button
               onClick={onNewChat}
@@ -1415,6 +1426,14 @@ function TopBar({
           @keyframes connectedPing {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0; transform: scale(2.8); }
+          }
+          @keyframes studioConnPulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 0; transform: scale(2.5); }
+          }
+          @keyframes studioConnFastPulse {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 0; transform: scale(2); }
           }
         `}</style>
       </div>
@@ -1540,7 +1559,7 @@ function TopBar({
               title={latencyMs != null ? `${latencyMs}ms latency` : undefined}>
               <div style={{ position: 'relative', width: 5, height: 5, flexShrink: 0 }}>
                 <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: dotColor,
-                  animation: 'connectedPing 2s ease-in-out infinite' }} />
+                  animation: isReconnecting ? 'studioConnFastPulse 1s ease-in-out infinite' : 'studioConnPulse 2.5s ease-in-out infinite' }} />
                 <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: dotColor,
                   boxShadow: `0 0 4px ${dotColor}80` }} />
               </div>
@@ -1659,6 +1678,14 @@ function TopBar({
         @keyframes connectedPing {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0; transform: scale(2.8); }
+        }
+        @keyframes studioConnPulse {
+          0%, 100% { opacity: 0.6; transform: scale(1); }
+          50% { opacity: 0; transform: scale(2.5); }
+        }
+        @keyframes studioConnFastPulse {
+          0%, 100% { opacity: 0.7; transform: scale(1); }
+          50% { opacity: 0; transform: scale(2); }
         }
       `}</style>
     </div>
