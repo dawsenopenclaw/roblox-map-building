@@ -345,7 +345,7 @@ function BuildFeedbackCard({
     ? ['Add lighting and atmosphere', 'Add more detail to this build', 'What should I build next?']
     : tier === 'good'
     ? ['Make it more detailed', 'Fix any issues with this build', 'Enhance the materials and colors']
-    : ['Try building this again with more detail', 'Break this into smaller steps', 'Show me a simpler version']
+    : ['Try again with more detail', 'Break into smaller steps', 'Try a simpler version']
 
   return (
     <div
@@ -438,7 +438,7 @@ function BuildFeedbackCard({
 
       {/* Hint text */}
       <p style={{
-        fontSize: 11, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5,
+        fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5,
         margin: '0 0 8px 0',
       }}>
         {cfg.hint}
@@ -550,12 +550,12 @@ function BuildFeedbackCard({
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
               padding: '4px 10px', borderRadius: 8,
-              background: 'transparent', border: '1px solid rgba(212,175,55,0.15)',
-              color: 'rgba(212,175,55,0.6)', fontSize: 10, fontWeight: 500,
+              background: 'transparent', border: '1px solid rgba(212,175,55,0.25)',
+              color: 'rgba(212,175,55,0.75)', fontSize: 10, fontWeight: 500,
               cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
             }}
             onMouseEnter={e => { e.currentTarget.style.color = 'rgba(212,175,55,0.9)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(212,175,55,0.6)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.15)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(212,175,55,0.75)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)' }}
           >
             <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M3 13 L6 10 L14 2" />
@@ -1015,7 +1015,7 @@ function ConversationFeedbackButtons({
           </button>
         )}
         {replySent && (
-          <span style={{ fontSize: 10, color: 'rgba(74,222,128,0.7)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 11, color: 'rgba(74,222,128,0.8)', fontWeight: 600, background: 'rgba(74,222,128,0.06)', padding: '3px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="2 8 6 12 14 4" /></svg>
             Sent — the AI will learn from this
           </span>

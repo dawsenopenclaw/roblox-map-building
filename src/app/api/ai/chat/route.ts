@@ -2717,14 +2717,10 @@ end
 
 local function P(name: string, cf: CFrame, size: Vector3, mat: Enum.Material, col: Color3, parent: Instance?): Part
   local p=Instance.new("Part")
-  p.Name=name
-  p.CFrame=cf
-  p.Size=size
-  p.Material=mat
-  p.Color=col
-  p.Anchored=true
-  p.CastShadow=(size.X>CONFIG.SHADOW_MIN_SIZE and size.Y>CONFIG.SHADOW_MIN_SIZE)
-  p.CollisionFidelity=Enum.CollisionFidelity.Box
+  p.Name=name; p.CFrame=cf; p.Size=size; p.Material=mat; p.Color=vc(col)
+  p.Anchored=true; p.TopSurface=Enum.SurfaceType.Smooth; p.BottomSurface=Enum.SurfaceType.Smooth
+  p.CastShadow=(size.X>2 and size.Y>2); p.CollisionFidelity=Enum.CollisionFidelity.Box
+  CS:AddTag(p,CONFIG.TAG)
   p.Parent=parent or getFolder(CONFIG.DEFAULT_FOLDER)
   return p
 end
@@ -4451,7 +4447,7 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
 
     // Single-pass: race both models — first valid result wins (fallback for staged pipeline, primary for simple builds)
     let buildRace: { result: string; index: number } | null = null
-    const outputTokens = isScriptIntent ? 16384 : 8192 // Scripts need more output space
+    const outputTokens = isScriptIntent ? 32768 : 16384 // Scripts and builds need more room to avoid truncation
     if (!luauCode) {
       console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
       // 4 providers racing — first to respond wins
@@ -4663,14 +4659,14 @@ ${effectiveInstruction}`
             response: luauCode,
             mode: isScriptIntent ? 'script' : 'build',
           })
-          console.log(`[QualityScore] ${qualityResult.total}/100 (${qualityResult.source}) — ${qualityResult.reasoning.slice(0, 80)}`)
+          console.log(`[QualityScore] model=${model} score=${qualityResult.total}/100 (${qualityResult.source}) — ${qualityResult.reasoning.slice(0, 80)}`)
           // Use quality score to boost or override verification score
           if (qualityResult.source === 'llm') {
             finalVerificationScore = Math.max(finalVerificationScore, qualityResult.total)
           }
           // If quality is terrible and we haven't retried too much, discard
-          if (qualityResult.total < 20 && qualityResult.source === 'llm') {
-            console.warn(`[QualityScore] Score ${qualityResult.total} critically low — discarding`)
+          if (qualityResult.total < 15 && qualityResult.source === 'llm') {
+            console.warn(`[QualityScore] model=${model} score=${qualityResult.total} critically low — discarding`)
             luauCode = null
           }
         } catch (qErr) {
@@ -4767,7 +4763,7 @@ ${effectiveInstruction}`
       // This uses fewer tokens and is less likely to hit rate limits
       const lightPrompt = isScriptIntent
         ? `You are a Roblox Luau script generator. Output ONLY a \`\`\`lua code block. Create Script/LocalScript instances with .Source containing game logic. Use pcall for DataStore, task.wait() not wait(). Wrap in ChangeHistoryService recording.`
-        : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. Use Instance.new("Part") for every object. Set Anchored=true, Material, Color3.fromRGB(), Size, Position on every part. Never use SmoothPlastic. Wrap in ChangeHistoryService recording. Place relative to workspace.CurrentCamera.`
+        : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. Use Instance.new("Part") for every object. Set Anchored=true, Material, Color3.fromRGB(), Size, Position on every part. Never use SmoothPlastic. Wrap in ChangeHistoryService recording. Place relative to workspace.CurrentCamera. Minimum 30 parts. Wrap in ChangeHistoryService recording.`
       const lightInstruction = isScriptIntent
         ? `Script "${message}" in Roblox. Output a complete runnable Luau script. Create Script instances with .Source property containing the game logic. Parent to ServerScriptService. First write 2 sentences explaining what it does, then the code.`
         : `Build "${message}" in Roblox Studio. Output working Luau code with 15+ parts. Use varied materials (Concrete, Wood, Brick, Slate, Metal, Glass). Add PointLight to any light sources. First write 2 sentences describing the build, then the code.`

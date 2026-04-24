@@ -395,6 +395,17 @@ function extractGoodPatterns(code: string): string[] {
   if ((code.match(/Enum\.Material\.\w+/g) || []).length >= 4) patterns.push('Use 4+ different materials for visual variety')
   if (code.includes('UICorner') && code.includes('UIStroke')) patterns.push('Use UICorner + UIStroke on all GUI elements for polished look')
   if (code.includes('TweenService') && code.includes('ScreenGui')) patterns.push('Animate all GUI transitions with TweenService')
+  if (code.includes('ProximityPrompt')) patterns.push('Use ProximityPrompt for player interactions — user liked this')
+  if (code.includes('WedgePart')) patterns.push('Use WedgePart for roofs and angled surfaces — better than flat tops')
+  if (code.includes('vc(') || code.includes('Color3.toHSV')) patterns.push('Use color variation (HSV shifts) for natural-looking surfaces')
+  if (code.includes('pcall') && code.includes('DataStore')) patterns.push('Always pcall DataStore operations — robust error handling')
+  if (code.includes('task.spawn') && code.includes('while true')) patterns.push('Use task.spawn for background loops — non-blocking')
+  if (code.includes('Debris:AddItem')) patterns.push('Clean up temporary instances with Debris:AddItem — prevents memory leaks')
+  if (code.includes('Fire') || code.includes('Smoke')) patterns.push('Add Fire/Smoke instances for atmosphere — user liked this')
+  if (code.includes('Sound')) patterns.push('Add Sound instances for immersion — audio makes builds feel alive')
+  const partCount = (code.match(/Instance\.new\s*\(\s*["'](?:Part|WedgePart)/g) || []).length +
+    (code.match(/\bP\s*\(/g) || []).length + (code.match(/\bW\s*\(/g) || []).length
+  if (partCount >= 50) patterns.push(`High part count (${partCount}) correlates with user approval — build detailed`)
   return patterns
 }
 
@@ -402,8 +413,16 @@ function extractBadPatterns(code: string): string[] {
   const patterns: string[] = []
   if (code.includes('SmoothPlastic')) patterns.push('NEVER use SmoothPlastic — user rejected a build using it')
   if (code.includes('BrickColor')) patterns.push('NEVER use BrickColor — user rejected a build using it')
-  if (!code.includes('ScreenGui') && code.includes('shop') || code.includes('ui') || code.includes('menu'))
+  if (!code.includes('ScreenGui') && (code.includes('shop') || code.includes('ui') || code.includes('menu')))
     patterns.push('For UI/shop/menu requests, MUST use ScreenGui not Parts')
+  if (code.includes('wait(') && !code.includes('task.wait')) patterns.push('NEVER use wait() — always task.wait()')
+  if (code.includes('spawn(') && !code.includes('task.spawn')) patterns.push('NEVER use spawn() — always task.spawn()')
+  if (code.includes('game.Workspace')) patterns.push('NEVER use game.Workspace — use workspace global')
+  if (!code.includes('Anchored') && code.includes('Instance.new("Part"')) patterns.push('Parts MUST be anchored — unanchored parts fall through the world')
+  const partCount = (code.match(/Instance\.new\s*\(\s*["']Part["']/g) || []).length
+  if (partCount > 0 && partCount < 10 && !code.includes('ScreenGui')) patterns.push(`Only ${partCount} parts — builds need 30+ parts minimum for quality`)
+  if (!code.includes('PointLight') && !code.includes('SpotLight') && partCount > 15) patterns.push('No lighting in a large build — always add PointLight/SpotLight')
+  if (!code.includes('ChangeHistoryService') && code.includes('Instance.new')) patterns.push('Missing ChangeHistoryService — undo will not work')
   return patterns
 }
 

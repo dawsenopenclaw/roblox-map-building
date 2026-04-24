@@ -769,6 +769,40 @@ function autoFix(code: string, errors: VerificationError[]): string {
     }
   }
 
+  // ── Additional auto-fixes (always run, not tied to specific errors) ──
+
+  // Fix deprecated spawn() → task.spawn()
+  fixed = fixed.replace(/\bspawn\s*\(\s*function/g, 'task.spawn(function')
+
+  // Fix deprecated delay() → task.delay()
+  fixed = fixed.replace(/\bdelay\s*\(\s*(\d)/g, 'task.delay($1')
+
+  // Fix game.Workspace → workspace
+  fixed = fixed.replace(/\bgame\.Workspace\b/g, 'workspace')
+  fixed = fixed.replace(/\bgame:GetService\s*\(\s*["']Workspace["']\s*\)/g, 'workspace')
+
+  // Fix pairs/ipairs → generalized iteration
+  fixed = fixed.replace(/\bfor\s+(\w+)\s*,\s*(\w+)\s+in\s+pairs\s*\(/g, 'for $1, $2 in (')
+  fixed = fixed.replace(/\bfor\s+(\w+)\s*,\s*(\w+)\s+in\s+ipairs\s*\(/g, 'for $1, $2 in (')
+
+  // Fix SetPrimaryPartCFrame → PivotTo
+  fixed = fixed.replace(/\:SetPrimaryPartCFrame\s*\(/g, ':PivotTo(')
+
+  // Add ChangeHistoryService if missing entirely
+  if (!fixed.includes('ChangeHistoryService') && fixed.includes('Instance.new')) {
+    const hasModuleReturn = fixed.includes('return ') && fixed.includes('ModuleScript')
+    if (!hasModuleReturn) {
+      // Wrap the entire code in CH recording
+      fixed = `local CH=game:GetService("ChangeHistoryService")\nlocal rid=CH:TryBeginRecording("ForjeAI")\n${fixed}\nif rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end`
+    }
+  }
+
+  // Remove Instance.new parent-as-second-arg for Parts only (performance fix)
+  fixed = fixed.replace(
+    /Instance\.new\(\s*["'](Part|WedgePart|MeshPart)["']\s*,\s*(\w+)\s*\)/g,
+    (_, cls, parent) => `Instance.new("${cls}") --[[ parent=${parent} set below ]]`
+  )
+
   return fixed
 }
 
