@@ -3564,6 +3564,7 @@ async function freeModelTwoPass(
     const convPrompt = CONVERSATION_PROMPT + (cameraContext ? '\n\n' + cameraContext : '')
     const convRace = await raceNonNull(
       callGroq(convPrompt, message, history, 1024),
+      callAnthropicChat(convPrompt, message, history, 1024),
       callGemini(convPrompt, message, history, 1024),
       callOpenRouterChat(convPrompt, message, history, 1024),
     )
@@ -4416,11 +4417,13 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     let buildRace: { result: string; index: number } | null = null
     if (!luauCode) {
       console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
-      // Groq FIRST (it's working), Gemini second (quota issues), OpenRouter third
+      // 4 providers racing — first to respond wins
+      // Groq first (fastest), Anthropic (reliable), Gemini (quota issues), OpenRouter (fallback)
       buildRace = await raceNonNull(
-        callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 16384),
-        callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 16384),
-        callOpenRouterChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 16384),
+        callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 8192),
+        callAnthropicChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 8192),
+        callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 8192),
+        callOpenRouterChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 8192),
       )
     }
 
@@ -4798,6 +4801,35 @@ function getAnthropicClient(): Anthropic | null {
     _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   }
   return _anthropic
+}
+
+// Quick Anthropic call that matches callGemini/callGroq signature for raceNonNull
+async function callAnthropicChat(
+  systemPrompt: string,
+  userMessage: string,
+  history: Array<{ role: string; content: string }>,
+  maxTokens: number = 4096,
+): Promise<string | null> {
+  const client = getAnthropicClient()
+  if (!client) return null
+  try {
+    const messages = [
+      ...history.map(h => ({ role: h.role as 'user' | 'assistant', content: h.content })),
+      { role: 'user' as const, content: userMessage },
+    ]
+    const res = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages,
+    })
+    const text = res.content?.[0]?.type === 'text' ? res.content[0].text : null
+    if (text) console.log(`[callAnthropicChat] Claude responded (${text.length} chars)`)
+    return text
+  } catch (e) {
+    console.error('[callAnthropicChat] Error:', (e as Error).message)
+    return null
+  }
 }
 
 // Compact core prompt for non-build conversations (~3K tokens instead of ~25K).
