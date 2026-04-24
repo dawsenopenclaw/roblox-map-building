@@ -44,6 +44,7 @@ import { findSimilarSuccesses, findAntiPatterns, formatAsExamples, formatAntiPat
 import { getLearnedRules, learnFromFailure, learnFromStudioError, learnFromPromptPopularity } from '@/lib/ai/self-improve'
 import { awardXP } from '@/lib/ai/ai-xp'
 import { findAllRelevantSystems, formatSystemKnowledge } from '@/lib/ai/game-systems-knowledge'
+import { getArchitectureKnowledge, detectGameType } from '@/lib/ai/roblox-architecture'
 import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
 import { scoreOutput, isObviouslyBroken } from '@/lib/ai/quality-scorer'
 import { getTierPromptModifier, getTierFromSubscription, type QualityTier } from '@/lib/ai/quality-tiers'
@@ -2780,6 +2781,13 @@ SELF-CHECK (validate EVERY line before outputting):
 22. SPATIAL AWARENESS: If STUDIO CONTEXT lists nearby objects, position new builds RELATIVE to them. If user says "near the house" and context shows a house at (10,0,30), build near (10,0,30).
 23. NAMING CONTINUITY: If existing parts are named Wall_1, Wall_2, continue with Wall_3 etc. Match the game's naming patterns.
 
+WHERE TO PUT THINGS (match the game's existing structure):
+- Physical builds (Parts/Models) → Inside workspace. Use existing Map/Buildings/Props folders if they exist. Check workspace:FindFirstChild() first.
+- If no folder exists, create one: local folder = Instance.new("Folder"); folder.Name = "Buildings"; folder.Parent = workspace
+- Organize by type: buildings in Buildings/, decorations in Props/, interactive objects in Interactables/
+- Name parts descriptively: "HouseWall_Front", "RoofSlope_Left", "DoorFrame_1" — never "Part" or "Part1"
+- Group related parts into a Model with a PrimaryPart set
+
 COMPLEXITY RULES:
 - FULL GAME request (tycoon/simulator/RPG/obby) = decompose:
   Phase 1: World + spawn. Phase 2: Core loop. Phase 3: UI. Phase 4: Polish.
@@ -2796,6 +2804,94 @@ COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65
 
 PART TARGETS: Props=15-30, Buildings=50-100, Scenes=80-150, Complex=120-250+. MIN 30 parts for any build. Go HIGHER — detail is everything. A castle with 40 parts looks like a toy. A castle with 150+ parts looks real.
 QUALITY: vc() color variation, trim/molding/frames, interiors furnished (not empty), Glass always 0.3-0.5 transparency with frame, wall thickness 0.5-1.0.
+
+CONSTRUCTION BLUEPRINTS — how to build common structures part by part:
+
+HOUSE (60-100 parts):
+  Foundation: 1 Part(Concrete, dark gray), extends 1 stud beyond walls, 1.5 studs tall
+  Walls (4): Each wall = 1 Part(Brick or Concrete), Size(wallLength, 11, 0.8). Position flush with foundation edges.
+    - Front wall: cut opening for door (use 3 parts: left section + right section + header above door)
+    - Side walls: cut openings for windows (3 parts per window wall: below + above + sides)
+  Windows: Glass Part(Glass, Transparency 0.4) inside window opening + Frame Parts(Wood, dark) around it (4 frame pieces per window)
+  Door: Part(Wood, brown, 4x7.5x0.3) in door opening + DoorFrame Parts(Wood) around it + ProximityPrompt
+  Roof: 2 WedgeParts meeting at ridge, extending 1.5 studs past walls. Material=Slate or Brick.
+    - Add ridge cap (thin Part along top edge)
+    - Add fascia boards (thin Parts along roof edges)
+  Floor: Part(WoodPlanks) inside walls, slightly above foundation
+  Ceiling: Part(Concrete or Plaster) at wall top height
+  Interior walls: thinner Parts (0.5 studs) dividing rooms
+  Porch: Foundation extension + railing Parts + 2 column Parts + overhang roof
+  Chimney: 4 Parts forming rectangular column above roof, Brick material, Smoke instance inside
+  Details: window sills (small Parts below windows), door handle (tiny Part), house number (SurfaceGui)
+  Lighting: PointLight in each room (warm, Brightness 1.5, Range 16), porch light (SpotLight, cool white)
+
+TREE (8-15 parts):
+  Trunk: Part(Wood, brown, Cylinder shape) or 2-3 stacked cylinders with slight size variation
+  Root bumps: 3-4 small WedgeParts at base
+  Canopy: 3-5 Parts(LeafyGrass, green variations via vc()) overlapping to form natural shape
+  Use Ball shape for round trees, Block for angular/low-poly
+  Optional: ParticleEmitter for falling leaves, birds
+
+STREET LAMP (6-8 parts):
+  Base: Part(Concrete, 2x1x2 studs)
+  Pole: Part(Metal, Cylinder, 0.5x10x0.5)
+  Arm: Part(Metal, 0.3x0.3x2) angled outward at top
+  Housing: Part(Metal, 1.5x1x1.5) at arm end
+  Glass: Part(Glass, Transparency 0.3, slightly smaller than housing)
+  Bulb glow: PointLight(Color=255,240,200, Brightness=2, Range=30) inside housing
+  Optional: second arm for double-sided lamp
+
+VEHICLE/CAR (25-40 parts):
+  Body: Main Part(Metal, colored), low and long (8x2.5x4 studs)
+  Hood: WedgePart(Metal, same color) sloping down at front
+  Trunk: slightly raised Part at rear
+  Roof: Part or curved arrangement above body
+  Windshield: Part(Glass, Transparency 0.4) angled back
+  Rear window: Part(Glass, Transparency 0.4)
+  Side windows: 2 Parts(Glass, Transparency 0.4) per side
+  Wheels: 4 Parts(Cylinder, black/dark, 1.5 diameter) at corners
+  Hubcaps: 4 smaller Parts(Metal, silver) on wheel faces
+  Headlights: 2 Parts(Glass, slight yellow) + SpotLight children
+  Tail lights: 2 Parts(Neon, red, small)
+  Bumpers: front/rear Parts(Metal, chrome)
+  Door handles: 4 tiny Parts
+  VehicleSeat inside for driving
+
+CASTLE (120-200+ parts):
+  Outer walls: 4 large Parts(Cobblestone or Granite), 3-4 studs thick, 20+ studs tall
+  Towers: 4 cylindrical arrangements at corners (8 Parts each: stacked cylinders + cone top)
+  Battlements: repeating pattern of merlons on wall tops (Part, gap, Part, gap)
+  Gate: large Part(Wood, reinforced look) + portcullis (Metal bars)
+  Gatehouse: structure around gate with murder holes
+  Keep: central tall building (foundation + walls + windows + roof)
+  Courtyard: Cobblestone floor between walls
+  Moat: Terrain:FillRegion with Water material around castle, or blue transparent Parts
+  Drawbridge: Part(Wood) + HingeConstraint for animation
+  Arrow slits: narrow gaps in walls (thin Parts with spaces)
+  Flags: colored Parts on poles at tower tops, cloth-like (Fabric material)
+  Interior: throne room, great hall, dungeon, armory (each a room with appropriate furniture)
+  Torches: Part(Neon,orange) + Fire + PointLight on walls every 15 studs
+
+MATERIAL PALETTES BY THEME:
+
+  Medieval: Cobblestone(walls), Wood(doors/furniture), Granite(foundations), Brick(chimneys), Slate(roofs), Fabric(banners), Metal(armor/chains), WoodPlanks(floors)
+  Modern: Concrete(walls), Glass(windows), Metal(frames), Marble(floors), Granite(counters), WoodPlanks(accents), Pavement(exterior), Asphalt(roads)
+  Sci-fi: Metal(hull), DiamondPlate(floors), Glass(viewports), Neon(accents only), Concrete(interior), Granite(control panels)
+  Nature: Grass(ground), Rock(cliffs), Sand(paths), Wood(structures), LeafyGrass(foliage), Water(streams), Mud(swamp), Snow(winter)
+  Horror: CorrodedMetal(pipes/walls), Wood(creaky floors), Brick(old walls), Concrete(basement), Cobblestone(paths), Fabric(curtains), Glass(cracked windows)
+  Underwater: Glass(domes), Metal(structures), Concrete(base), Sand(floor), Rock(coral bases), Neon(bioluminescence)
+  Desert: Sandstone(buildings), Sand(ground), Brick(walls), Limestone(columns), Concrete(modern), Rock(cliffs)
+
+COLOR PALETTES BY MOOD:
+
+  Warm/Cozy: walls=210,190,170 | trim=140,100,60 | accent=180,80,40 | floor=160,120,80
+  Cold/Winter: walls=200,210,220 | trim=150,160,170 | accent=100,150,200 | floor=180,185,190
+  Neon/Cyberpunk: bg=20,20,30 | neon1=0,255,200 | neon2=255,0,150 | neon3=100,0,255 | metal=40,40,50
+  Earthy/Natural: ground=120,140,80 | wood=130,85,40 | stone=150,145,135 | leaf=60,120,40
+  Pastel/Cute: pink=255,180,200 | blue=180,200,255 | mint=180,240,220 | yellow=255,240,180 | purple=220,190,255
+  Luxury/Gold: primary=25,25,35 | gold=212,175,55 | marble=240,235,225 | accent=180,150,100
+  Horror/Dark: bg=30,25,20 | blood=120,20,20 | rust=100,60,30 | mold=50,60,40 | bone=200,190,170
+
 GUI/UI GENERATION — when user asks for UI, menu, HUD, shop, inventory, or any screen:
 Create a COMPLETE ScreenGui with proper hierarchy. Use this pattern:
 
@@ -4239,6 +4335,18 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       }
     }
 
+    // Inject Roblox architecture knowledge — teaches the AI WHERE to put things
+    try {
+      const gameType = detectGameType(message)
+      const archKnowledge = getArchitectureKnowledge(intent, gameType)
+      if (archKnowledge) {
+        enrichedCodePrompt += '\n\n' + archKnowledge
+        console.log(`[Architecture] Injected ${gameType ? gameType + ' ' : ''}architecture knowledge (${archKnowledge.length} chars)`)
+      }
+    } catch (archErr) {
+      console.warn('[Architecture] Non-blocking:', archErr instanceof Error ? archErr.message : archErr)
+    }
+
     // Enrich with experience memory (past builds — both successes AND failures)
     // AND inject learned rules from the self-improvement engine
     try {
@@ -4706,6 +4814,152 @@ BEFORE generating ANY code, you MUST:
 5. Reference existing objects by name when modifying: game.Workspace:FindFirstChild("ExistingModel")
 6. Keep the user's existing game structure intact — only add or modify what they asked for
 7. When the user says "make it better" or "improve this" — read what's there and enhance it specifically, don't start over
+
+=== ROBLOX GAME ARCHITECTURE — HOW GAMES ARE BUILT ===
+
+You MUST understand the Roblox Explorer tree and where EVERYTHING goes. This is non-negotiable.
+
+SERVICE MAP — what each service does and what goes inside it:
+
+  Workspace (physical world — what players see and touch)
+  ├── Terrain (voxel landscape — water, grass, mountains, caves)
+  ├── SpawnLocation (where players appear — set TeamColor for team spawns)
+  ├── Map/ or World/ (Folder or Model — ALL physical builds go here)
+  │   ├── Buildings/ (houses, shops, arenas, spawn areas)
+  │   ├── Props/ (trees, rocks, lamps, benches, vehicles, decorations)
+  │   ├── Interactables/ (doors, chests, NPCs, buttons, elevators)
+  │   └── Zones/ (invisible region Parts for zone detection)
+  ├── Enemies/ or NPCs/ (Humanoid models with AI scripts)
+  └── Effects/ (ambient particles, beams, trails)
+
+  ServerScriptService (server-only code — players CANNOT see or access this)
+  ├── GameManager (Script — round system, game state machine)
+  ├── DataManager (Script — DataStore load/save, session locking)
+  ├── CombatHandler (Script — damage, knockback, death, respawn)
+  ├── EconomyHandler (Script — currency, purchases, validation)
+  └── SystemName/ (Folder per system, each containing Script + config)
+
+  ServerStorage (server-only assets — templates, originals, secret data)
+  ├── Templates/ (original Models cloned when needed — enemies, items, maps)
+  ├── Items/ (item definitions, weapon configs, tool models)
+  └── MapPool/ (multiple map Models for map voting systems)
+
+  ReplicatedStorage (shared between server AND client — both can read)
+  ├── Remotes/ (Folder of RemoteEvents + RemoteFunctions)
+  │   ├── PurchaseItem (RemoteEvent — client fires, server validates)
+  │   ├── DealDamage (RemoteEvent — client fires, server applies)
+  │   ├── GetBalance (RemoteFunction — client invokes, server returns)
+  │   └── SyncState (RemoteEvent — server fires, client updates UI)
+  ├── SharedModules/ (ModuleScripts both server and client require())
+  │   ├── ItemData (item names, stats, prices, rarities)
+  │   ├── Config (game constants — speeds, costs, cooldowns)
+  │   └── Utils (shared helper functions)
+  ├── Assets/ (Models, sounds, particles shared between both)
+  └── Events/ (BindableEvents for server-to-server communication)
+
+  StarterGui (GUIs cloned to each player on join/respawn)
+  ├── ShopUI (LocalScript → creates ScreenGui with shop interface)
+  ├── HUD (LocalScript → health bar, currency display, minimap)
+  ├── SettingsMenu (LocalScript → volume, graphics, controls)
+  └── SystemName/ (Folder per system containing LocalScript + child GUIs)
+
+  StarterPlayer
+  ├── StarterPlayerScripts/ (LocalScripts that run once per player)
+  │   ├── CameraController (custom camera, shake, FOV effects)
+  │   ├── InputHandler (keybinds, mobile buttons, gamepad)
+  │   ├── SoundManager (music, ambient, SFX based on zone)
+  │   └── EffectsClient (screen effects, particles, trails)
+  └── StarterCharacterScripts/ (LocalScripts that run per character spawn)
+      ├── AnimationHandler (custom animations, idle, walk, run)
+      └── MovementController (sprint, dash, double jump, wall run)
+
+  Lighting (visual atmosphere — NOT a place for scripts)
+  ├── Atmosphere (fog density, haze, color)
+  ├── Sky (skybox textures, sun, moon)
+  ├── BloomEffect, ColorCorrectionEffect, DepthOfFieldEffect, SunRaysEffect
+  └── Properties: ClockTime, Brightness, Ambient, OutdoorAmbient, FogEnd
+
+  SoundService (global audio settings)
+  ├── Music (Sound — looped background track, Volume 0.3-0.5)
+  ├── AmbientGroup (SoundGroup — wind, birds, machinery)
+  └── SFXGroup (SoundGroup — clicks, impacts, pickups)
+
+  Teams (for team-based games)
+  ├── Red Team (BrickColor, AutoAssignable)
+  └── Blue Team (BrickColor, AutoAssignable)
+
+  ReplicatedFirst (loads BEFORE anything else — loading screens only)
+  └── LoadingScreen (LocalScript — ScreenGui that covers screen until game loads)
+
+CRITICAL RULES FOR PLACEMENT:
+  1. Physical builds (Parts, Models) → ALWAYS inside workspace, ideally in a subfolder (Map/, Buildings/, Props/)
+  2. Server logic (Scripts) → ALWAYS in ServerScriptService — NEVER in workspace (insecure, players can see)
+  3. Client UI (LocalScripts + GUIs) → StarterGui or StarterPlayerScripts
+  4. Shared data (RemoteEvents, ModuleScripts) → ReplicatedStorage
+  5. Secret templates/data → ServerStorage (players cannot access)
+  6. NEVER put Scripts in Lighting, SoundService, or ReplicatedFirst (except loading screen)
+  7. NEVER put game logic in StarterPack (that's for Tools only)
+  8. RemoteEvents go in ReplicatedStorage — BOTH server and client need to reference them
+
+HOW SYSTEMS CONNECT (the communication pattern):
+  Client (LocalScript in StarterGui) ──FireServer()──→ RemoteEvent (in ReplicatedStorage) ──OnServerEvent──→ Server (Script in ServerScriptService)
+  Server ──FireClient(player)──→ RemoteEvent ──OnClientEvent──→ Client (updates UI)
+
+  The server is ALWAYS the authority. Client requests, server validates and executes.
+  Example flow for a shop purchase:
+    1. Client clicks buy button → fireServer("PurchaseItem", itemId)
+    2. Server OnServerEvent → check player has enough coins, check item exists, deduct coins, grant item
+    3. Server → fireClient(player, "PurchaseSuccess", newBalance)
+    4. Client OnClientEvent → update balance display, show success notification
+
+HOW TO READ STUDIO CONTEXT:
+  When you see SCENE TREE, NEARBY OBJECTS, or FOLDERS in the context:
+  - If Folders shows "Map(50)" → that's a folder named "Map" with 50 children. Parent your builds there.
+  - If Objects shows "Wall_3[Part]@(10,5,0)" → there's a part named Wall_3 at position 10,5,0. Build near it if relevant.
+  - If Scripts shows "3 server, 2 local, 1 module" → the game already has scripts. Don't duplicate their functionality.
+  - If Remotes shows "PurchaseItem, DealDamage" → those RemoteEvents exist. Reuse them, don't create new ones with the same purpose.
+  - If Spawns shows "SpawnLocation@(0,1,0)" → players appear there. Build relative to that point for spawn areas.
+
+PROFESSIONAL GAME STRUCTURE EXAMPLES:
+
+  TYCOON:
+    workspace/Map/TycoonPlots/ (individual plots)
+    workspace/Map/Lobby/ (spawn area, shop, leaderboard)
+    ServerScriptService/TycoonManager (handles plots, drops, collecting)
+    ServerScriptService/DataManager (saves tycoon state)
+    ReplicatedStorage/Remotes/ (BuyUpgrade, CollectDrop, Rebirth)
+    ReplicatedStorage/TycoonConfig (prices, tiers, multipliers)
+    StarterGui/TycoonHUD (currency display, upgrade buttons)
+
+  OBBY:
+    workspace/Map/Stages/ (numbered stage models: Stage_1, Stage_2...)
+    workspace/Map/Lobby/ (spawn, leaderboard, shop)
+    workspace/Map/Effects/ (kill bricks, moving platforms, spinners)
+    ServerScriptService/CheckpointManager (tracks player progress)
+    ServerScriptService/TimerManager (speedrun timing, best times)
+    ReplicatedStorage/Remotes/ (CheckpointReached, ResetTimer)
+    StarterGui/ObbyHUD (stage counter, timer display, skip button)
+
+  SIMULATOR:
+    workspace/Map/Zones/ (Zone1_Easy, Zone2_Medium, Zone3_Hard)
+    workspace/Map/Lobby/ (shop, egg area, trade area)
+    workspace/Map/CollectibleSpawns/ (where coins/gems appear)
+    ServerScriptService/SimManager (collection, selling, rebirth)
+    ServerScriptService/PetManager (hatching, equipping, trading)
+    ServerStorage/Templates/Pets/ (pet models to clone)
+    ReplicatedStorage/Remotes/ (Collect, Sell, Hatch, Trade, Rebirth)
+    StarterGui/SimHUD (backpack bar, currency, pet inventory)
+
+  RPG:
+    workspace/Map/Town/ (NPC village, shops, quest givers)
+    workspace/Map/Dungeon/ (enemy spawns, loot, boss arena)
+    workspace/Map/Wilderness/ (exploration, resource nodes)
+    ServerScriptService/CombatManager (damage, skills, cooldowns)
+    ServerScriptService/QuestManager (objectives, rewards, tracking)
+    ServerScriptService/InventoryManager (items, equipment, stats)
+    ServerStorage/Templates/Enemies/ (enemy models + configs)
+    ReplicatedStorage/Remotes/ (Attack, UseSkill, AcceptQuest, EquipItem)
+    StarterGui/RPGHUD (health, mana, XP bars, minimap, inventory)
 
 === ITERATIVE IMPROVEMENT — "MAKE IT BETTER" PROTOCOL ===
 
