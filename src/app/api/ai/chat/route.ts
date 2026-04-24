@@ -8790,8 +8790,13 @@ function detectIntent(message: string): IntentKey {
     return 'conversation'
   }
 
-  // 3. General build verb without specific intent → default build
-  const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design|put|drop|throw down|make it bigger|make it smaller|make it taller|scale it|resize it|move it|rotate it)\b/i.test(trimmed)
+  // 3. Check if message contains script keywords — even without build verbs, these are script requests
+  if (SCRIPT_KEYWORDS.test(trimmed)) {
+    return 'script'
+  }
+
+  // 4. General build verb without specific intent → default build
+  const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design|put|drop|throw down|make it bigger|make it smaller|make it taller|scale it|resize it|move it|rotate it|write|script|code|give me|i need|i want|can you make|could you make|set up|implement|program)\b/i.test(trimmed)
   if (!hasBuildVerb) {
     return 'conversation'
   }
