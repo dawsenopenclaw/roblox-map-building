@@ -1304,8 +1304,27 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
             setIsThinking(false)
             return
           } catch (err) {
-            // Fall through to chat API on error
-            console.error(`[useChat] Specialized ${aiMode} mode failed, falling back to chat:`, err)
+            // For image/mesh mode: show the error, DON'T fall through to chat API
+            // (falling through makes the chat generate Luau code instead of an image)
+            console.error(`[useChat] Specialized ${aiMode} mode failed:`, err)
+            if (aiMode === 'image' || aiMode === 'mesh') {
+              setMessagesSync((prev) => [
+                ...prev.filter((m) => m.id !== statusMsgId),
+                {
+                  id: uid(),
+                  role: 'assistant',
+                  content: aiMode === 'image'
+                    ? 'Image generation failed — the AI image service is temporarily unavailable. Try again in a moment, or try a different prompt.'
+                    : '3D mesh generation failed — the service is temporarily unavailable. Try again in a moment.',
+                  timestamp: new Date(),
+                  model: selectedModel,
+                },
+              ])
+              setLoading(false)
+              setIsThinking(false)
+              return
+            }
+            // For other specialized modes, fall through to chat API
           }
         }
 

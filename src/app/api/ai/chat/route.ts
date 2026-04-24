@@ -4625,31 +4625,11 @@ ${effectiveInstruction}`
         console.warn('[LightRetry] Failed:', lightErr instanceof Error ? lightErr.message : lightErr)
       }
 
-      // Still no code — try template fallback
+      // No code generated — be HONEST with the user. No fake fallback templates.
       if (!luauCode) {
-        console.warn('[SinglePass] Lightweight retry also failed — trying template fallback')
-        // For script intents, use the script template first (ScreenGui, game systems, etc.)
-        if (isScriptIntent) {
-          const scriptFallback = getScriptTemplate(message)
-          if (scriptFallback) {
-            luauCode = scriptFallback
-            model = 'script-template'
-            conversationText = `Here's a complete ${intent} system for "${message}". This includes all the game logic, UI, and server-client communication. Paste it into Studio's command bar to install. Let me know what you'd like to change!`
-            console.log('[ScriptFallback] Used script template instead of build fallback')
-          }
-        }
-        // If no script template matched, or it's a build intent, use build fallback
-        if (!luauCode) {
-          const templateCode = generateFallbackBuild(message)
-          if (templateCode) {
-            luauCode = templateCode
-            model = 'template'
-            conversationText = `Here's a template build for "${message}". The AI models are experiencing high demand right now, so I used a pre-built template as a starting point. Let me know what you'd like to change!`
-          } else {
-            model = 'failed'
-            conversationText = `I'm having trouble generating that build right now. The AI is experiencing high demand — please try again in a moment, or try a simpler prompt first.`
-          }
-        }
+        console.warn('[SinglePass] All AI models failed to generate code for:', message.slice(0, 50))
+        model = 'failed'
+        conversationText = `I wasn't able to generate "${message}" right now — the AI models are under heavy load. Here's what you can do:\n\n1. **Try again** — click the retry button or re-send your message\n2. **Simplify your prompt** — break it into smaller pieces (e.g., "build the walls first" then "add the roof")\n3. **Try a different mode** — switch between Build, Script, or Plan mode\n\nI'm learning from every attempt to get better. Sorry about this!`
       }
     }
 
@@ -12177,38 +12157,24 @@ Set m.PrimaryPart to the base part. No explanation.`,
       }
     }
 
-    // Final fallback — generate a template-based Luau build from the user's message
-    // This ensures EVERY build request produces actual code, even when AI APIs are down
-    // For script intents, prefer the script template over the build fallback
-    const isScriptFinalFallback = SCRIPT_INTENTS.has(intent) || SCRIPT_KEYWORDS.test(message)
-    const scriptFinalFallback = isScriptFinalFallback ? getScriptTemplateStandalone(message) : null
-    const fallbackLuau = scriptFinalFallback || generateFallbackBuild(message)
-    let fbExecuted = false
-    if (fallbackLuau && sessionId) {
-      fbExecuted = await sendCodeToStudio(sessionId, fallbackLuau)
-    }
-    const fbMsg = fbExecuted === true
-      ? `Built and confirmed in Studio! What would you like to change or add?`
-      : fbExecuted === ('queued' as unknown)
-      ? `Sent to Studio — building now. What would you like to change or add?`
-      : `Here's the build code! Click **"Import to Studio"** to place it in your game. Make sure the Studio plugin is connected first — [install it here](/download) if you haven't.`
+    // Final fallback — be honest, no fake templates
+    const failMsg = `I wasn't able to generate "${message.slice(0, 60)}" — all AI models are currently unavailable. Please try again in a moment. I'm logging this so I can improve.`
+    // Record the failure for learning
+    void learnFromFailure(message, '', 0, ['All models failed to respond'], detectCategory(message)).catch(() => {})
     if (wantsStream) {
-      return trackableStream(fbMsg, {
+      return trackableStream(failMsg, {
         intent,
-        hasCode: true,
+        hasCode: false,
         tokensUsed,
-        executedInStudio: fbExecuted,
-        model: 'template',
+        model: 'failed',
       }) as unknown as NextResponse
     }
     return NextResponse.json({
-      message: fbMsg,
+      message: failMsg,
       tokensUsed,
       intent,
-      hasCode: true,
-      luauCode: fallbackLuau,
-      executedInStudio: fbExecuted,
-      model: 'template',
+      hasCode: false,
+      model: 'failed',
     })
   }
 
