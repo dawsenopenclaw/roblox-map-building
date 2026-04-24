@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { listProjects, deleteProject } from '@/hooks/useProject'
+import { listProjects, deleteProject, labelProject } from '@/hooks/useProject'
 import type { ProjectData } from '@/hooks/useProject'
 
 // ─── Types ───────────────────────────────────────────────────────────────────────
@@ -193,10 +193,13 @@ function StatusBadge({ status }: { status: ProjectStatus }) {
 interface ProjectCardProps {
   project: ProjectData
   onDelete: (id: string) => void
+  onLabel: (id: string, label: string) => void
 }
 
-function ProjectCard({ project, onDelete }: ProjectCardProps) {
+function ProjectCard({ project, onDelete, onLabel }: ProjectCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [editingLabel, setEditingLabel] = useState(false)
+  const [labelInput, setLabelInput] = useState(project.label || '')
   const status = useMemo(() => getProjectStatus(project), [project])
   const tokens = useMemo(() => getProjectTokens(project), [project])
 
@@ -263,6 +266,34 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
             >
               {formatRelativeTime(project.updatedAt)}
             </p>
+            {/* Label badge */}
+            {editingLabel ? (
+              <input
+                type="text"
+                value={labelInput}
+                onChange={(e) => setLabelInput(e.target.value)}
+                onBlur={() => { onLabel(project.id, labelInput); setEditingLabel(false) }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { onLabel(project.id, labelInput); setEditingLabel(false) } if (e.key === 'Escape') setEditingLabel(false) }}
+                placeholder="Add label..."
+                autoFocus
+                className="mt-1 w-full px-2 py-0.5 text-[10px] rounded-md bg-white/5 border border-purple-500/30 text-purple-300 outline-none focus:border-purple-500/60"
+                onClick={(e) => e.preventDefault()}
+              />
+            ) : (
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingLabel(true) }}
+                className="mt-1 inline-flex items-center gap-1 text-[10px] transition-colors"
+                style={{
+                  color: project.label ? '#a855f7' : '#52525b',
+                  background: project.label ? 'rgba(147,51,234,0.1)' : 'transparent',
+                  border: project.label ? '1px solid rgba(147,51,234,0.2)' : '1px solid transparent',
+                  borderRadius: 6,
+                  padding: '1px 6px',
+                }}
+              >
+                {project.label || '+ Label'}
+              </button>
+            )}
           </div>
 
           {/* Delete button */}
@@ -447,6 +478,9 @@ interface FilterBarProps {
   onQueryChange: (q: string) => void
   statusFilter: StatusFilter
   onStatusChange: (s: StatusFilter) => void
+  labelFilter: string
+  onLabelChange: (l: string) => void
+  labels: string[]
   total: number
 }
 
@@ -457,7 +491,7 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'published', label: 'Published' },
 ]
 
-function FilterBar({ query, onQueryChange, statusFilter, onStatusChange, total }: FilterBarProps) {
+function FilterBar({ query, onQueryChange, statusFilter, onStatusChange, labelFilter, onLabelChange, labels, total }: FilterBarProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-3 mb-6">
       {/* Search */}
@@ -531,6 +565,38 @@ function FilterBar({ query, onQueryChange, statusFilter, onStatusChange, total }
         ))}
       </div>
 
+      {/* Label filter pills */}
+      {labels.length > 0 && (
+        <div
+          className="flex items-center gap-1 p-1 rounded-xl flex-wrap"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <button
+            onClick={() => onLabelChange('all')}
+            className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
+            style={labelFilter === 'all'
+              ? { background: 'rgba(147,51,234,0.15)', border: '1px solid rgba(147,51,234,0.3)', color: '#a855f7' }
+              : { background: 'transparent', border: '1px solid transparent', color: '#71717a' }
+            }
+          >
+            All Labels
+          </button>
+          {labels.map((label) => (
+            <button
+              key={label}
+              onClick={() => onLabelChange(label)}
+              className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
+              style={labelFilter === label
+                ? { background: 'rgba(147,51,234,0.15)', border: '1px solid rgba(147,51,234,0.3)', color: '#a855f7' }
+                : { background: 'transparent', border: '1px solid transparent', color: '#71717a' }
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Count */}
       <div className="hidden sm:flex items-center text-xs text-zinc-600 whitespace-nowrap self-center">
         {total} project{total !== 1 ? 's' : ''}
@@ -578,6 +644,7 @@ export function ProjectsClient() {
   const [mounted, setMounted] = useState(false)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [labelFilter, setLabelFilter] = useState<string>('all')
 
   useEffect(() => {
     setProjects(listProjects())
@@ -589,19 +656,34 @@ export function ProjectsClient() {
     setProjects((prev) => prev.filter((p) => p.id !== id))
   }, [])
 
+  const handleLabel = useCallback((id: string, label: string) => {
+    labelProject(id, label)
+    setProjects((prev) => prev.map((p) => p.id === id ? { ...p, label: label.trim() || undefined } : p))
+  }, [])
+
+  // Get unique labels from all projects
+  const allLabels = useMemo(() => {
+    const labels = new Set<string>()
+    projects.forEach((p) => { if (p.label) labels.add(p.label) })
+    return Array.from(labels).sort()
+  }, [projects])
+
   const filtered = useMemo(() => {
     let result = projects
     if (query.trim()) {
       const q = query.toLowerCase()
-      result = result.filter((p) => p.name.toLowerCase().includes(q))
+      result = result.filter((p) => p.name.toLowerCase().includes(q) || (p.label && p.label.toLowerCase().includes(q)))
     }
     if (statusFilter !== 'all') {
       result = result.filter((p) => getProjectStatus(p).key === statusFilter)
     }
+    if (labelFilter !== 'all') {
+      result = result.filter((p) => p.label === labelFilter)
+    }
     return result
-  }, [projects, query, statusFilter])
+  }, [projects, query, statusFilter, labelFilter])
 
-  const isFiltered = query.trim().length > 0 || statusFilter !== 'all'
+  const isFiltered = query.trim().length > 0 || statusFilter !== 'all' || labelFilter !== 'all'
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -647,6 +729,9 @@ export function ProjectsClient() {
             onQueryChange={setQuery}
             statusFilter={statusFilter}
             onStatusChange={setStatusFilter}
+            labelFilter={labelFilter}
+            onLabelChange={setLabelFilter}
+            labels={allLabels}
             total={filtered.length}
           />
 
@@ -655,7 +740,7 @@ export function ProjectsClient() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filtered.map((project) => (
-                <ProjectCard key={project.id} project={project} onDelete={handleDelete} />
+                <ProjectCard key={project.id} project={project} onDelete={handleDelete} onLabel={handleLabel} />
               ))}
             </div>
           )}

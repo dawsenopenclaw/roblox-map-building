@@ -29,6 +29,7 @@ export interface SerializedSceneBlock {
 export interface ProjectData {
   id: string
   name: string
+  label?: string // User-defined category label (e.g., "Tycoon", "Obby", "RPG")
   createdAt: string
   updatedAt: string
   messages: SerializedMessage[]
@@ -107,6 +108,19 @@ export function renameProject(id: string, newName: string): void {
   saveProjectData({
     ...existing,
     name: newName.trim() || 'Untitled Project',
+    updatedAt: new Date().toISOString(),
+  })
+}
+
+/**
+ * Set a category label on a project (e.g., "Tycoon", "Obby", "RPG").
+ */
+export function labelProject(id: string, label: string): void {
+  const existing = loadProjectData(id)
+  if (!existing) return
+  saveProjectData({
+    ...existing,
+    label: label.trim() || undefined,
     updatedAt: new Date().toISOString(),
   })
 }
