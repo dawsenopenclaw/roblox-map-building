@@ -2688,12 +2688,19 @@ local CONFIG = table.freeze({
   SHADOW_MIN_SIZE = 2,
 })
 
+-- FIND OR CREATE workspace container (reuse existing, never duplicate)
 local map: Model = workspace:FindFirstChild("Map") :: Model or Instance.new("Model")
-map.Name="Map"
-map.Parent=workspace
+if not workspace:FindFirstChild("Map") then
+  map.Name="Map"
+  map.Parent=workspace
+end
 
--- HELPERS
+-- HELPERS — always reuse existing folders, never create duplicates
 local function getFolder(n: string): Folder
+  -- Check workspace root first (some games put folders at top level)
+  local existing = workspace:FindFirstChild(n)
+  if existing and existing:IsA("Folder") then return existing :: Folder end
+  -- Check inside Map container
   local f = map:FindFirstChild(n) :: Folder or Instance.new("Folder")
   f.Name=n
   f.Parent=map
@@ -2769,6 +2776,9 @@ SELF-CHECK (validate EVERY line before outputting):
 18. HumanoidRootPart: NEVER destroy or reparent — only modify CFrame/Velocity
 19. Module organization: ServerScriptService for server, StarterPlayerScripts for client, ReplicatedStorage for shared
 20. NEVER output placeholder comments like "-- add logic here" or "-- TODO". Output REAL working code.
+21. FOLDER REUSE: Always workspace:FindFirstChild("Name") before creating. NEVER create duplicate top-level Models/Folders.
+22. SPATIAL AWARENESS: If STUDIO CONTEXT lists nearby objects, position new builds RELATIVE to them. If user says "near the house" and context shows a house at (10,0,30), build near (10,0,30).
+23. NAMING CONTINUITY: If existing parts are named Wall_1, Wall_2, continue with Wall_3 etc. Match the game's naming patterns.
 
 COMPLEXITY RULES:
 - FULL GAME request (tycoon/simulator/RPG/obby) = decompose:
@@ -4099,6 +4109,12 @@ QUALITY REQUIREMENTS:
 - Currency/balance display that updates live from leaderstats
 - Item cards with icon, name, description, price, and buy button
 - Loading states and error handling for server responses
+
+WORKSPACE AWARENESS — check STUDIO CONTEXT before creating:
+- If STUDIO CONTEXT shows existing RemoteEvents (e.g. "Remotes: ShopPurchase, DealDamage"), REUSE them — do NOT create duplicates.
+- If folders like "ForjeAI_ShopSystem" already exist in ServerScriptService, UPDATE the existing scripts instead of creating new ones.
+- Check: local existing = game:GetService("ServerScriptService"):FindFirstChild("ForjeAI_SystemName") — if it exists, update its children, don't recreate.
+- If SCENE TREE shows scripts, read their names and avoid conflicts.
 
 WHAT YOU MUST NOT DO:
 - DO NOT use Instance.new("Part") — this is NOT a build request
@@ -10715,6 +10731,16 @@ DAMAGE MODULE:
     parts.push(`  4. Match existing material/color palette from NEARBY OBJECTS`)
     parts.push(`  5. Always Anchored=true, always wrap in ChangeHistoryService recording`)
     parts.push(`  6. Ground placement: Y = ${bodyStudioCtx.groundY ?? 'unknown'} + objectHeight/2`)
+    parts.push(``)
+    parts.push(`FOLDER AWARENESS (CRITICAL — use existing game structure):`)
+    parts.push(`  1. LOOK AT SCENE TREE above. If folders exist (Map, Buildings, Props, etc.), parent builds into THOSE folders — do NOT create a new "Map" model if one already exists.`)
+    parts.push(`  2. To find an existing folder: local folder = workspace:FindFirstChild("FolderName") — if it exists, use it. Only create if missing.`)
+    parts.push(`  3. Parent logic: scripts → ServerScriptService, GUIs → StarterGui, shared → ReplicatedStorage, physical builds → existing Map/folder in workspace.`)
+    parts.push(`  4. If NEARBY OBJECTS show parts inside a folder like "workspace.Map.Buildings" → parent your new build into that same folder to keep the game organized.`)
+    parts.push(`  5. NEVER create duplicate top-level models/folders. Check workspace:FindFirstChild() first.`)
+    parts.push(`  6. If the user says "add a tree near the house" and NEARBY OBJECTS shows a house → position the tree relative to that house's position, not just at camera.`)
+    parts.push(`  7. Match the naming pattern of nearby objects. If existing parts are named "Wall_1", "Wall_2", name yours "Wall_3" etc.`)
+    parts.push(`  8. If existing objects use a specific material palette (e.g. mostly Wood and Brick), match it.`)
     parts.push(`=== END STUDIO CONTEXT ===`)
 
     cameraContext = '\n\n' + parts.join('\n')
@@ -10900,7 +10926,15 @@ PLACEMENT RULES:
 - Character height = 5.5 studs, door = 4x7 studs, room = 12 studs high
 - Don't overlap existing objects -- check nearby list
 - Place on ground: new object Y = groundY + (object height / 2)
-- Match existing material/color palette from objects list`
+- Match existing material/color palette from objects list
+
+FOLDER AWARENESS (CRITICAL):
+- Check Folders list above. If a folder like "Map" or "Buildings" exists, use workspace:FindFirstChild("Map") and parent into it — do NOT create a duplicate.
+- If the Objects list shows parts inside "workspace.Map.Props", parent new props into that same folder path.
+- NEVER create a new top-level Model/Folder if one with the same name already exists. Use FindFirstChild first.
+- Scripts go in ServerScriptService, GUIs in StarterGui, shared modules in ReplicatedStorage.
+- Match naming patterns of nearby objects — if they use "Tree_1", "Tree_2", continue the sequence.
+- If user references something near an existing object, position relative to that object, not just at camera.`
       }
 
     } catch {
