@@ -55,26 +55,19 @@ function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
 
 export default function AuthLayoutClient({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden" style={{ background: '#050810' }}>
-      {/* Background effects */}
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden" style={{ background: '#050510' }}>
+      {/* Space background gradient */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(212,175,55,0.02) 40%, transparent 70%)',
+          background: 'radial-gradient(ellipse at 50% 20%, rgba(212,175,55,0.05) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(100,60,180,0.04) 0%, transparent 50%), radial-gradient(ellipse at 20% 70%, rgba(60,100,180,0.03) 0%, transparent 50%)',
         }}
       />
+      {/* Stars layer */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(circle at 50% 30%, rgba(212,175,55,0.08) 0%, transparent 50%)',
-        }}
-      />
-      {/* Subtle grid */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03]"
-        style={{
-          backgroundImage: 'linear-gradient(#D4AF37 1px, transparent 1px), linear-gradient(90deg, #D4AF37 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
+          backgroundImage: 'radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.4), transparent), radial-gradient(1px 1px at 25% 35%, rgba(255,255,255,0.3), transparent), radial-gradient(1px 1px at 40% 10%, rgba(255,255,255,0.25), transparent), radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,0.35), transparent), radial-gradient(1px 1px at 70% 20%, rgba(255,255,255,0.3), transparent), radial-gradient(1px 1px at 85% 55%, rgba(255,255,255,0.2), transparent), radial-gradient(1.5px 1.5px at 15% 60%, rgba(212,175,55,0.4), transparent), radial-gradient(1px 1px at 30% 80%, rgba(255,255,255,0.3), transparent), radial-gradient(1px 1px at 50% 70%, rgba(255,255,255,0.2), transparent), radial-gradient(1.5px 1.5px at 65% 85%, rgba(255,255,255,0.35), transparent), radial-gradient(1px 1px at 80% 40%, rgba(255,255,255,0.25), transparent), radial-gradient(1px 1px at 90% 75%, rgba(255,255,255,0.3), transparent), radial-gradient(1px 1px at 5% 90%, rgba(255,255,255,0.2), transparent), radial-gradient(1px 1px at 35% 55%, rgba(255,255,255,0.15), transparent), radial-gradient(1px 1px at 75% 65%, rgba(212,175,55,0.3), transparent), radial-gradient(1px 1px at 95% 10%, rgba(255,255,255,0.25), transparent), radial-gradient(1px 1px at 45% 25%, rgba(255,255,255,0.2), transparent), radial-gradient(1px 1px at 60% 50%, rgba(255,255,255,0.15), transparent)',
         }}
       />
 
@@ -99,7 +92,7 @@ export default function AuthLayoutClient({ children }: { children: React.ReactNo
       {/* Feature pills */}
       <div className="relative z-10 flex flex-wrap justify-center gap-2 mb-8">
         {[
-          '144+ AI agents',
+          '200+ AI agents',
           '3D mesh generation',
           '13 image styles',
           'Live Studio sync',

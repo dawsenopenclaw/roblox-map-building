@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
-import { GlassPanel } from './GlassPanel'
+// GlassPanel removed — not used in ChatPanel
 import type { ChatMessage, MeshResult, ModelId, ModelOption } from '@/app/(app)/editor/hooks/useChat'
 import { MODELS } from '@/app/(app)/editor/hooks/useChat'
 import { McpToolCard, type McpToolResult } from './McpToolCard'
@@ -9,8 +9,7 @@ import { McpToolbar } from './McpToolbar'
 import { ModelPreview } from './ModelPreview'
 import { VoiceInputButton } from './VoiceInputButton'
 import { VoiceOutputToggle } from './VoiceOutputToggle'
-import { CheckpointPanel } from './CheckpointPanel'
-import { CheckpointTimeline } from './CheckpointTimeline'
+// CheckpointPanel and CheckpointTimeline removed — not used in ChatPanel
 import { computeLineDiff, hasDiff } from '@/lib/simple-diff'
 import {
   AIModeSelector,
@@ -4588,22 +4587,18 @@ export function ChatPanel({
                   cursor: 'pointer',
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   whiteSpace: 'nowrap',
-                  backdropFilter: 'blur(8px)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.03)',
                   letterSpacing: '-0.01em',
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, rgba(212,175,55,0.14) 0%, rgba(212,175,55,0.08) 100%)'
                   e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)'
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2), 0 0 12px rgba(212,175,55,0.08), inset 0 1px 0 rgba(255,255,255,0.05)'
+                  e.currentTarget.style.transform = 'translateY(-1px)'
                   e.currentTarget.style.color = '#D4AF37'
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(212,175,55,0.03) 100%)'
                   e.currentTarget.style.borderColor = 'rgba(212,175,55,0.12)'
                   e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.03)'
                   e.currentTarget.style.color = 'rgba(212,175,55,0.9)'
                 }}
               >
@@ -4766,47 +4761,28 @@ export function ChatPanel({
           />
         )}
 
-        {/* ── Main input container — cyberglass ── */}
+        {/* ── Main input container ── */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             gap: 0,
-            background: 'linear-gradient(135deg, rgba(15,20,40,0.65) 0%, rgba(20,25,50,0.55) 50%, rgba(15,20,40,0.65) 100%)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            borderRadius: 24,
-            padding: '14px 18px',
-            transition: 'border-color 0.3s ease-out, box-shadow 0.3s ease-out',
-            backdropFilter: 'blur(30px) saturate(1.4)',
-            WebkitBackdropFilter: 'blur(30px) saturate(1.4)',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)',
+            background: 'rgba(15,18,35,0.6)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 20,
+            padding: '12px 16px',
+            transition: 'border-color 0.2s ease-out',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
             position: 'relative',
-            overflow: 'hidden',
           }}
           onFocusCapture={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(212,175,55,0.30)'
-            e.currentTarget.style.boxShadow = '0 8px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(212,175,55,0.10), 0 0 80px rgba(212,175,55,0.06), inset 0 1px 0 rgba(255,230,160,0.12), inset 0 -1px 0 rgba(255,255,255,0.04)'
+            e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)'
           }}
           onBlurCapture={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'
-            e.currentTarget.style.boxShadow = '0 8px 40px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.03)'
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
           }}
         >
-          {/* Cyberglass animated shimmer */}
-          <div aria-hidden style={{
-            position: 'absolute', inset: 0,
-            background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.03) 40%, rgba(212,175,55,0.04) 50%, rgba(255,255,255,0.03) 60%, transparent 80%)',
-            backgroundSize: '200% 100%',
-            animation: 'glassShimmer 6s ease-in-out infinite',
-            pointerEvents: 'none',
-            borderRadius: 'inherit',
-          }} />
-          {/* Top highlight edge */}
-          <div aria-hidden style={{
-            position: 'absolute', top: 0, left: '10%', right: '10%', height: 1,
-            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)',
-            pointerEvents: 'none',
-          }} />
           {/* Attached image preview */}
           {(imagePreviewUrl || pastedImagePreview) && (
             <div style={{
@@ -5090,7 +5066,7 @@ export function ChatPanel({
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   transform: sendPressed ? 'scale(0.88)' : 'scale(1)',
                   boxShadow: (input.trim() || imageFile)
-                    ? '0 0 20px rgba(212,175,55,0.25), 0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,230,160,0.3)'
+                    ? '0 0 12px rgba(212,175,55,0.15)'
                     : 'none',
                 }}
               >
@@ -5193,11 +5169,6 @@ export function ChatPanel({
         @keyframes spin {
           from { transform: rotate(0deg); }
           to   { transform: rotate(360deg); }
-        }
-        @keyframes glassShimmer {
-          0%   { background-position: 200% center; }
-          50%  { background-position: -200% center; }
-          100% { background-position: 200% center; }
         }
         @keyframes plusPanelSlide {
           from { opacity: 0; transform: translateY(8px); }
