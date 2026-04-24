@@ -24,7 +24,7 @@ export const metadata: Metadata = createMetadata({
 })
 
 const STATS = [
-  { value: '55', label: 'AI Agents', sub: 'Specialized for every game system' },
+  { value: '200+', label: 'AI Agents', sub: 'Specialized for every game system' },
   { value: '500K+', label: 'Marketplace Assets', sub: 'Verified Roblox-ready assets' },
   { value: '5+', label: 'AI Models', sub: 'Best model for each task, automatically' },
   { value: '10 min', label: 'Time to First Map', sub: 'From sign-up to published game' },
@@ -328,7 +328,7 @@ export default function AboutPage() {
               Our AI team
             </h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed" style={{ color: '#71717A' }}>
-              ForjeGames is built by one founder and 55 specialized AI agents — each handling a
+              ForjeGames is built by one founder and 200+ specialized AI agents — each handling a
               different layer of game creation, from terrain to texture to economy.
             </p>
           </div>

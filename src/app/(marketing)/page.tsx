@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { createMetadata } from '@/lib/metadata'
 import HomeClient from './HomeClient'
 
-const HOMEPAGE_TITLE = 'ForjeGames — Build Roblox Games with AI | Voice to Game, 3D Generation'
+const HOMEPAGE_TITLE = 'Build Roblox Games with AI | Voice to Game, 3D Generation'
 const HOMEPAGE_DESC =
   'The #1 AI Roblox game builder. Generate terrain, buildings, scripts, and 3D assets from text or voice — synced live to Roblox Studio. Build 10x faster. Free to start.'
 
