@@ -787,7 +787,140 @@ terrain:WriteVoxels(region, 4, mats, occs)
 if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end`
   }
 
-  // Default fallback — match the request, not always a house
+  // ── Detect more specific build types before falling through to default ──
+  const wantsCastle = /castle|fortress|keep|stronghold|medieval|kingdom|throne/i.test(msg)
+  const wantsCar = /car|vehicle|truck|van|jeep|bus|automobile|race\s*car/i.test(msg)
+  const wantsBoat = /boat|ship|yacht|canoe|raft|vessel|pirate\s*ship/i.test(msg)
+  const wantsBridge = /bridge|overpass|walkway|crossing/i.test(msg)
+  const wantsTower = /tower|lighthouse|watchtower|clock\s*tower|bell\s*tower/i.test(msg)
+  const wantsFence = /fence|wall|barrier|gate|railing/i.test(msg)
+  const wantsBench = /bench|seat|chair|stool/i.test(msg)
+  const wantsLamp = /lamp|light\s*pole|street\s*light|lantern|torch/i.test(msg)
+  const wantsFountain = /fountain|water\s*feature|statue|monument/i.test(msg)
+
+  // Route to specific mini-templates for common objects
+  if (wantsCastle) {
+    return `-- ForjeAI: ${label}
+local CH=game:GetService("ChangeHistoryService") local rid=CH:TryBeginRecording("ForjeAI: ${label}")
+local cam=workspace.CurrentCamera local sp=cam.CFrame.Position+cam.CFrame.LookVector*40
+local gr=workspace:Raycast(sp+Vector3.new(0,50,0),Vector3.new(0,-200,0)) sp=Vector3.new(sp.X,gr and gr.Position.Y or 0,sp.Z)
+local m=Instance.new("Model") m.Name="${label}"
+local function P(n,cf,sz,mt,cl) local p=Instance.new("Part") p.Name=n p.Anchored=true p.CFrame=cf p.Size=sz p.Material=mt p.Color=cl p.Parent=m return p end
+local stone=Color3.fromRGB(140,135,125) local dark=Color3.fromRGB(90,85,80) local wood=Color3.fromRGB(100,65,30)
+-- Base platform
+P("Base",CFrame.new(sp+Vector3.new(0,0.5,0)),Vector3.new(50,1,50),Enum.Material.Cobblestone,Color3.fromRGB(120,115,110))
+-- Main walls (4 sides)
+P("WallN",CFrame.new(sp+Vector3.new(0,10,24)),Vector3.new(50,18,2),Enum.Material.Brick,stone)
+P("WallS",CFrame.new(sp+Vector3.new(0,10,-24)),Vector3.new(50,18,2),Enum.Material.Brick,stone)
+P("WallE",CFrame.new(sp+Vector3.new(24,10,0)),Vector3.new(2,18,48),Enum.Material.Brick,stone)
+P("WallW",CFrame.new(sp+Vector3.new(-24,10,0)),Vector3.new(2,18,48),Enum.Material.Brick,stone)
+-- 4 corner towers
+for i,pos in {{-24,24},{24,24},{-24,-24},{24,-24}} do
+  P("Tower"..i,CFrame.new(sp+Vector3.new(pos[1],12,pos[2])),Vector3.new(6,22,6),Enum.Material.Brick,dark)
+  P("TowerTop"..i,CFrame.new(sp+Vector3.new(pos[1],24,pos[2])),Vector3.new(7,1,7),Enum.Material.Granite,dark)
+  -- Battlements on each tower
+  for j=0,3 do
+    local a=j*math.pi/2 local ox=math.cos(a)*3.5 local oz=math.sin(a)*3.5
+    P("Merlon"..i.."_"..j,CFrame.new(sp+Vector3.new(pos[1]+ox,25.5,pos[2]+oz)),Vector3.new(1.5,2,1.5),Enum.Material.Brick,dark)
+  end
+end
+-- Gate
+P("GateArch",CFrame.new(sp+Vector3.new(0,12,-24)),Vector3.new(8,6,2.5),Enum.Material.Granite,dark)
+P("GateDoor",CFrame.new(sp+Vector3.new(0,5,-24)),Vector3.new(6,8,1),Enum.Material.Wood,wood)
+-- Interior keep
+P("KeepFloor",CFrame.new(sp+Vector3.new(0,1.5,5)),Vector3.new(20,0.5,20),Enum.Material.Cobblestone,Color3.fromRGB(130,125,120))
+P("KeepWall1",CFrame.new(sp+Vector3.new(0,8,15)),Vector3.new(20,12,1),Enum.Material.Brick,stone)
+P("KeepWall2",CFrame.new(sp+Vector3.new(-10,8,5)),Vector3.new(1,12,20),Enum.Material.Brick,stone)
+-- Torches
+for i,pos in {{-22,6,22},{22,6,22},{-22,6,-22},{22,6,-22},{-3,6,-24},{3,6,-24}} do
+  local tp=P("Torch"..i,CFrame.new(sp+Vector3.new(pos[1],pos[2],pos[3])),Vector3.new(0.4,2,0.4),Enum.Material.Wood,wood)
+  local fire=Instance.new("Fire") fire.Size=3 fire.Heat=5 fire.Parent=tp
+  local tl=Instance.new("PointLight") tl.Brightness=1.5 tl.Range=16 tl.Color=Color3.fromRGB(255,180,80) tl.Parent=tp
+end
+m.Parent=workspace
+if rid then CH:FinishRecording(rid,Enum.FinishRecordingOperation.Commit) end`
+  }
+
+  if (wantsCar) {
+    return `-- ForjeAI: ${label}
+local CH=game:GetService("ChangeHistoryService") local rid=CH:TryBeginRecording("ForjeAI: ${label}")
+local cam=workspace.CurrentCamera local sp=cam.CFrame.Position+cam.CFrame.LookVector*15
+local gr=workspace:Raycast(sp+Vector3.new(0,50,0),Vector3.new(0,-200,0)) sp=Vector3.new(sp.X,gr and gr.Position.Y or 0,sp.Z)
+local m=Instance.new("Model") m.Name="${label}"
+local function P(n,cf,sz,mt,cl) local p=Instance.new("Part") p.Name=n p.Anchored=true p.CFrame=cf p.Size=sz p.Material=mt p.Color=cl p.Parent=m return p end
+local body=Color3.fromRGB(200,30,30) local metal=Color3.fromRGB(60,60,65) local glass=Color3.fromRGB(180,210,240)
+P("Chassis",CFrame.new(sp+Vector3.new(0,1.5,0)),Vector3.new(6,1.5,12),Enum.Material.Metal,body)
+P("Hood",CFrame.new(sp+Vector3.new(0,2.5,-3)),Vector3.new(5.5,0.8,4),Enum.Material.Metal,body)
+P("Cabin",CFrame.new(sp+Vector3.new(0,3.5,1)),Vector3.new(5,2.5,5),Enum.Material.Metal,body)
+local w=P("Windshield",CFrame.new(sp+Vector3.new(0,3.5,-1.3))*CFrame.Angles(math.rad(15),0,0),Vector3.new(4.5,2,0.15),Enum.Material.Glass,glass)
+w.Transparency=0.4
+local rw=P("RearWindow",CFrame.new(sp+Vector3.new(0,3.5,3.3))*CFrame.Angles(math.rad(-10),0,0),Vector3.new(4.5,2,0.15),Enum.Material.Glass,glass)
+rw.Transparency=0.4
+P("Roof",CFrame.new(sp+Vector3.new(0,4.85,1)),Vector3.new(5.2,0.3,5.2),Enum.Material.Metal,body)
+P("Trunk",CFrame.new(sp+Vector3.new(0,2.2,4.5)),Vector3.new(5.5,0.8,3),Enum.Material.Metal,body)
+P("Bumper_F",CFrame.new(sp+Vector3.new(0,1,-6.2)),Vector3.new(6,0.8,0.5),Enum.Material.Metal,metal)
+P("Bumper_R",CFrame.new(sp+Vector3.new(0,1,6.2)),Vector3.new(6,0.8,0.5),Enum.Material.Metal,metal)
+-- Wheels (cylinders)
+for _,wpos in {{-3,0.6,-3.5},{3,0.6,-3.5},{-3,0.6,3.5},{3,0.6,3.5}} do
+  local wh=Instance.new("Part") wh.Shape=Enum.PartType.Cylinder wh.Name="Wheel" wh.Size=Vector3.new(1.2,1.8,1.8)
+  wh.CFrame=CFrame.new(sp+Vector3.new(wpos[1],wpos[2],wpos[3]))*CFrame.Angles(0,0,math.rad(90))
+  wh.Material=Enum.Material.Metal wh.Color=Color3.fromRGB(30,30,30) wh.Anchored=true wh.Parent=m
+end
+-- Headlights
+for _,side in {-2,2} do
+  local hl=P("Headlight",CFrame.new(sp+Vector3.new(side,2,-5.8)),Vector3.new(1,0.6,0.3),Enum.Material.Neon,Color3.fromRGB(255,255,220))
+  local pl=Instance.new("PointLight") pl.Brightness=2 pl.Range=20 pl.Color=Color3.fromRGB(255,255,230) pl.Parent=hl
+end
+m.Parent=workspace
+if rid then CH:FinishRecording(rid,Enum.FinishRecordingOperation.Commit) end`
+  }
+
+  if (wantsLamp) {
+    return `-- ForjeAI: ${label}
+local CH=game:GetService("ChangeHistoryService") local rid=CH:TryBeginRecording("ForjeAI: ${label}")
+local cam=workspace.CurrentCamera local sp=cam.CFrame.Position+cam.CFrame.LookVector*10
+local gr=workspace:Raycast(sp+Vector3.new(0,50,0),Vector3.new(0,-200,0)) sp=Vector3.new(sp.X,gr and gr.Position.Y or 0,sp.Z)
+local m=Instance.new("Model") m.Name="${label}"
+local function P(n,cf,sz,mt,cl) local p=Instance.new("Part") p.Name=n p.Anchored=true p.CFrame=cf p.Size=sz p.Material=mt p.Color=cl p.Parent=m return p end
+P("Base",CFrame.new(sp+Vector3.new(0,0.25,0)),Vector3.new(2,0.5,2),Enum.Material.Concrete,Color3.fromRGB(100,95,90))
+local pole=Instance.new("Part") pole.Shape=Enum.PartType.Cylinder pole.Name="Pole" pole.Size=Vector3.new(12,0.6,0.6)
+pole.CFrame=CFrame.new(sp+Vector3.new(0,6.5,0))*CFrame.Angles(0,0,math.rad(90)) pole.Material=Enum.Material.Metal
+pole.Color=Color3.fromRGB(50,50,55) pole.Anchored=true pole.Parent=m
+P("Arm",CFrame.new(sp+Vector3.new(1.5,12,0)),Vector3.new(3,0.3,0.3),Enum.Material.Metal,Color3.fromRGB(50,50,55))
+P("Housing",CFrame.new(sp+Vector3.new(2.8,11.5,0)),Vector3.new(1.5,1,1.5),Enum.Material.Metal,Color3.fromRGB(60,60,65))
+local gl=P("Glass",CFrame.new(sp+Vector3.new(2.8,11,0)),Vector3.new(1.2,0.6,1.2),Enum.Material.Glass,Color3.fromRGB(255,240,200))
+gl.Transparency=0.3
+local pl=Instance.new("PointLight") pl.Brightness=2 pl.Range=25 pl.Color=Color3.fromRGB(255,220,170) pl.Parent=gl
+P("Cap",CFrame.new(sp+Vector3.new(2.8,12.1,0)),Vector3.new(1.6,0.2,1.6),Enum.Material.Metal,Color3.fromRGB(55,55,60))
+m.Parent=workspace
+if rid then CH:FinishRecording(rid,Enum.FinishRecordingOperation.Commit) end`
+  }
+
+  if (wantsBench) {
+    return `-- ForjeAI: ${label}
+local CH=game:GetService("ChangeHistoryService") local rid=CH:TryBeginRecording("ForjeAI: ${label}")
+local cam=workspace.CurrentCamera local sp=cam.CFrame.Position+cam.CFrame.LookVector*8
+local gr=workspace:Raycast(sp+Vector3.new(0,50,0),Vector3.new(0,-200,0)) sp=Vector3.new(sp.X,gr and gr.Position.Y or 0,sp.Z)
+local m=Instance.new("Model") m.Name="${label}"
+local function P(n,cf,sz,mt,cl) local p=Instance.new("Part") p.Name=n p.Anchored=true p.CFrame=cf p.Size=sz p.Material=mt p.Color=cl p.Parent=m return p end
+local wd=Color3.fromRGB(120,80,40) local mt=Color3.fromRGB(55,55,60)
+-- Legs
+P("LegFL",CFrame.new(sp+Vector3.new(-2.5,1,0.8)),Vector3.new(0.3,2,0.3),Enum.Material.Metal,mt)
+P("LegFR",CFrame.new(sp+Vector3.new(2.5,1,0.8)),Vector3.new(0.3,2,0.3),Enum.Material.Metal,mt)
+P("LegBL",CFrame.new(sp+Vector3.new(-2.5,1.5,-0.8)),Vector3.new(0.3,3,0.3),Enum.Material.Metal,mt)
+P("LegBR",CFrame.new(sp+Vector3.new(2.5,1.5,-0.8)),Vector3.new(0.3,3,0.3),Enum.Material.Metal,mt)
+-- Seat slats
+for i=0,3 do P("Slat"..i,CFrame.new(sp+Vector3.new(0,2.1,-0.6+i*0.5)),Vector3.new(5.5,0.2,0.4),Enum.Material.Wood,wd) end
+-- Back slats
+for i=0,2 do P("Back"..i,CFrame.new(sp+Vector3.new(0,2.8+i*0.5,-1)),Vector3.new(5.5,0.4,0.2),Enum.Material.Wood,wd) end
+-- Armrests
+P("ArmL",CFrame.new(sp+Vector3.new(-2.5,2.5,0)),Vector3.new(0.3,0.3,2),Enum.Material.Metal,mt)
+P("ArmR",CFrame.new(sp+Vector3.new(2.5,2.5,0)),Vector3.new(0.3,0.3,2),Enum.Material.Metal,mt)
+m.Parent=workspace
+if rid then CH:FinishRecording(rid,Enum.FinishRecordingOperation.Commit) end`
+  }
+
+  // Default fallback — uses the label from the user's request, not always "house"
   return `-- ForjeAI Build: ${label}
 local CH = game:GetService("ChangeHistoryService")
 local CS = game:GetService("CollectionService")
