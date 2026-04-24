@@ -314,21 +314,30 @@ async function loadRulesIfStale(): Promise<void> {
   if (Date.now() - rulesCacheTime < RULES_CACHE_TTL && rulesCache.length > 0) return
   try {
     const rows = await db.buildFeedback.findMany({
-      where: { buildType: 'rule', model: 'self-improve' },
+      where: { buildType: 'rule' },
       orderBy: { score: 'desc' },
       take: 50,
-      select: { prompt: true, score: true, category: true, createdAt: true },
+      select: { prompt: true, score: true, category: true, model: true, createdAt: true },
     })
-    rulesCache = rows.map(r => ({
-      rule: r.prompt || '',
-      confidence: r.score,
-      source: 'failure-pattern' as const,
-      occurrences: 1,
-      category: r.category || undefined,
-      createdAt: r.createdAt,
-    }))
+    // Deduplicate by rule text — keep highest confidence version
+    const ruleMap = new Map<string, LearnedRule>()
+    for (const r of rows) {
+      const ruleText = r.prompt || ''
+      const existing = ruleMap.get(ruleText)
+      if (!existing || r.score > existing.confidence) {
+        ruleMap.set(ruleText, {
+          rule: ruleText,
+          confidence: r.score,
+          source: (r.model === 'user-suggestion' ? 'user-feedback' : 'failure-pattern') as 'user-feedback' | 'failure-pattern',
+          occurrences: r.model === 'user-suggestion' ? 5 : 1,
+          category: r.category || undefined,
+          createdAt: r.createdAt,
+        })
+      }
+    }
+    rulesCache = Array.from(ruleMap.values())
     rulesCacheTime = Date.now()
-    console.log(`[SelfImprove] Loaded ${rulesCache.length} learned rules from DB`)
+    console.log(`[SelfImprove] Loaded ${rulesCache.length} learned rules from DB (${rows.length} rows, deduplicated)`)
   } catch {
     rulesCacheTime = Date.now() // Don't retry immediately on failure
   }
@@ -572,20 +581,23 @@ export async function learnFromSuggestion(
   score: number | null,
 ): Promise<void> {
   try {
+    // The suggest API route handles DB persistence — this function ONLY
+    // pushes to the in-memory rulesCache so the rule takes effect immediately
+    // without waiting for the next loadRulesIfStale() DB refresh cycle.
     const rule = `USER RULE: ${suggestion}`
 
-    // Check if we already have this exact rule
+    // Check if we already have this exact rule in memory
     const existing = rulesCache.find(r => r.rule === rule)
     if (existing) {
       // Multiple users submitted the same suggestion — boost hard
       existing.confidence = Math.min(100, existing.confidence + 20)
       existing.occurrences += 5
-      await persistRule(existing)
-      console.log(`[SelfImprove] Suggestion reinforced (${existing.occurrences} votes): "${suggestion.slice(0, 60)}"`)
+      // Don't call persistRule — the API route already updated the DB row
+      console.log(`[SelfImprove] Suggestion reinforced in-memory (${existing.occurrences} votes): "${suggestion.slice(0, 60)}"`)
       return
     }
 
-    // New suggestion — create as high-confidence rule immediately
+    // New suggestion — push to in-memory cache for immediate effect
     const newRule: LearnedRule = {
       rule,
       confidence: 85, // User suggestions start very high
@@ -595,8 +607,8 @@ export async function learnFromSuggestion(
       createdAt: new Date(),
     }
     rulesCache.push(newRule)
-    await persistRule(newRule)
-    console.log(`[SelfImprove] New user suggestion learned: "${suggestion.slice(0, 60)}"`)
+    // Don't call persistRule — the API route already wrote to DB with model='user-suggestion'
+    console.log(`[SelfImprove] New user suggestion cached in-memory: "${suggestion.slice(0, 60)}"`)
   } catch (err) {
     console.warn('[SelfImprove] learnFromSuggestion:', err instanceof Error ? err.message : err)
   }

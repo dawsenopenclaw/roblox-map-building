@@ -40,9 +40,9 @@ export async function POST(req: NextRequest) {
   const ruleHash = simpleHash(ruleText)
 
   try {
-    // Check for duplicate suggestions
+    // Check for duplicate suggestions (stored as buildType 'rule' so getLearnedRules picks them up)
     const existing = await db.buildFeedback.findFirst({
-      where: { promptHash: ruleHash, buildType: 'suggestion' },
+      where: { promptHash: ruleHash, buildType: 'rule', model: 'user-suggestion' },
     })
 
     if (existing) {
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       await db.buildFeedback.create({
         data: {
           promptHash: ruleHash,
-          prompt: `USER SUGGESTION: ${ruleText}`,
+          prompt: `USER RULE: ${ruleText}`,
           code: code ? code.slice(0, 5000) : 'USER_SUGGESTION',
           worked: true,
           score: 85, // High confidence — user explicitly wrote this
