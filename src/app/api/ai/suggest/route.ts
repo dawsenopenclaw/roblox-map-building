@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { auth } from '@clerk/nextjs/server'
 
 const suggestSchema = z.object({
   suggestion: z.string().min(3).max(500),
@@ -77,9 +78,49 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`[Suggest] New user suggestion: "${ruleText.slice(0, 80)}"`)
+
+    // Post to private Discord channel so Vyren can see all suggestions
+    const token = process.env.DISCORD_BOT_TOKEN
+    if (token) {
+      try {
+        let userName = 'Anonymous'
+        try {
+          const session = await auth()
+          if (session?.userId) {
+            const { clerkClient } = await import('@clerk/nextjs/server')
+            const client = await clerkClient()
+            const user = await client.users.getUser(session.userId)
+            userName = user.firstName || user.username || 'User'
+          }
+        } catch { /* anonymous */ }
+
+        const category = detectSuggestionCategory(ruleText)
+        const SUGGESTIONS_CHANNEL = '1497113526437810258'
+        await fetch(`https://discord.com/api/v10/channels/${SUGGESTIONS_CHANNEL}/messages`, {
+          method: 'POST',
+          headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            embeds: [{
+              title: 'Teach the AI — User Suggestion',
+              color: 0xD4AF37,
+              fields: [
+                { name: 'User', value: userName, inline: true },
+                { name: 'Category', value: category, inline: true },
+                { name: 'Score Context', value: `${score ?? '?'}/100`, inline: true },
+                { name: 'Suggestion', value: ruleText.slice(0, 1024) },
+                ...(prompt ? [{ name: 'Original Prompt', value: prompt.slice(0, 512) }] : []),
+              ],
+              timestamp: new Date().toISOString(),
+              footer: { text: 'ForjeGames AI Learning' },
+            }],
+          }),
+        })
+      } catch (discordErr) {
+        console.warn('[Suggest] Discord post failed:', discordErr instanceof Error ? discordErr.message : discordErr)
+      }
+    }
   } catch (err) {
     console.warn('[Suggest] DB error:', err instanceof Error ? err.message : err)
-    // Still return success — we don't want to discourage users from submitting
   }
 
   return NextResponse.json({ success: true })
