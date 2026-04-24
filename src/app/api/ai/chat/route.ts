@@ -621,9 +621,94 @@ function generateFallbackBuild(message: string): string {
   const name = msg.replace(/build\s*(me\s*)?|create\s*|make\s*|add\s*(a\s*)?|place\s*(a\s*)?/gi, '').trim() || 'Structure'
   const label = name.charAt(0).toUpperCase() + name.slice(1)
 
-  // Detect if the user wants something SIMPLE (flat land, baseplate, platform, floor)
+  // Detect specific build types so the fallback MATCHES the request
   const wantsFlat = /flat\s*(land|terrain|ground|plate|floor|surface|area|space)|baseplate|platform|ground\s*plane|empty\s*(land|map|world)|start(ing)?\s*(area|zone|place)/i.test(msg)
   const wantsTerrain = /terrain|landscape|hill|mountain|island|valley|forest|ocean|river|lake|biome/i.test(msg)
+  const wantsTree = /tree|oak|pine|palm|bush|plant|flower|garden|forest/i.test(msg)
+  const wantsStore = /store|shop|market|stall|booth|vendor|merchant/i.test(msg)
+
+  // ── Tree fallback ──
+  if (wantsTree && !wantsStore) {
+    return `-- ForjeAI: ${label}
+local CH = game:GetService("ChangeHistoryService")
+local rid = CH:TryBeginRecording("ForjeAI: ${label}")
+local cam = workspace.CurrentCamera
+local sp = cam.CFrame.Position + cam.CFrame.LookVector * 20
+local groundRay = workspace:Raycast(sp + Vector3.new(0, 50, 0), Vector3.new(0, -200, 0))
+local groundY = groundRay and groundRay.Position.Y or 0
+sp = Vector3.new(sp.X, groundY, sp.Z)
+local m = Instance.new("Model") m.Name = "${label}"
+local function P(n,cf,sz,mt,cl) local p=Instance.new("Part") p.Name=n p.Anchored=true p.CFrame=cf p.Size=sz p.Material=mt p.Color=cl p.Parent=m return p end
+-- Trunk
+local trunk = Instance.new("Part") trunk.Shape = Enum.PartType.Cylinder trunk.Name = "Trunk"
+trunk.Size = Vector3.new(12, 1.8, 1.8) trunk.CFrame = CFrame.new(sp + Vector3.new(0, 6, 0)) * CFrame.Angles(0, 0, math.rad(90))
+trunk.Material = Enum.Material.Wood trunk.Color = Color3.fromRGB(101, 67, 33) trunk.Anchored = true trunk.Parent = m
+-- Roots
+P("Root1", CFrame.new(sp + Vector3.new(1.2, 0.5, 0.8)), Vector3.new(0.6, 1, 0.6), Enum.Material.Wood, Color3.fromRGB(90, 60, 28))
+P("Root2", CFrame.new(sp + Vector3.new(-1, 0.5, -0.6)), Vector3.new(0.5, 1, 0.5), Enum.Material.Wood, Color3.fromRGB(85, 55, 25))
+P("Root3", CFrame.new(sp + Vector3.new(-0.5, 0.5, 1.2)), Vector3.new(0.4, 0.8, 0.4), Enum.Material.Wood, Color3.fromRGB(95, 62, 30))
+-- Foliage clusters (spheres at different heights)
+for i, data in {
+  {offset = Vector3.new(0, 13, 0), diameter = 10, color = Color3.fromRGB(34, 120, 34)},
+  {offset = Vector3.new(3, 11, 2), diameter = 7, color = Color3.fromRGB(40, 130, 40)},
+  {offset = Vector3.new(-3, 12, -1), diameter = 8, color = Color3.fromRGB(30, 110, 30)},
+  {offset = Vector3.new(1, 14.5, -2), diameter = 6, color = Color3.fromRGB(45, 135, 45)},
+  {offset = Vector3.new(-2, 10.5, 3), diameter = 6.5, color = Color3.fromRGB(38, 125, 38)},
+} do
+  local leaf = Instance.new("Part") leaf.Shape = Enum.PartType.Ball leaf.Name = "Foliage_"..i
+  leaf.Size = Vector3.new(data.diameter, data.diameter, data.diameter)
+  leaf.CFrame = CFrame.new(sp + data.offset) leaf.Material = Enum.Material.Grass
+  leaf.Color = data.color leaf.Anchored = true leaf.Parent = m
+end
+-- Ground patch
+P("GroundPatch", CFrame.new(sp + Vector3.new(0, 0.05, 0)), Vector3.new(14, 0.1, 14), Enum.Material.Grass, Color3.fromRGB(65, 120, 50))
+m.Parent = workspace
+if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end`
+  }
+
+  // ── Store/shop fallback ──
+  if (wantsStore) {
+    return `-- ForjeAI: ${label}
+local CH = game:GetService("ChangeHistoryService")
+local rid = CH:TryBeginRecording("ForjeAI: ${label}")
+local cam = workspace.CurrentCamera
+local sp = cam.CFrame.Position + cam.CFrame.LookVector * 25
+local groundRay = workspace:Raycast(sp + Vector3.new(0, 50, 0), Vector3.new(0, -200, 0))
+local groundY = groundRay and groundRay.Position.Y or 0
+sp = Vector3.new(sp.X, groundY, sp.Z)
+local m = Instance.new("Model") m.Name = "${label}"
+local function P(n,cf,sz,mt,cl) local p=Instance.new("Part") p.Name=n p.Anchored=true p.CFrame=cf p.Size=sz p.Material=mt p.Color=cl p.Parent=m return p end
+-- Floor
+P("Floor", CFrame.new(sp+Vector3.new(0,0.25,0)), Vector3.new(16,0.5,12), Enum.Material.WoodPlanks, Color3.fromRGB(150,110,65))
+-- Walls
+P("BackWall", CFrame.new(sp+Vector3.new(0,5,6)), Vector3.new(16,9,0.6), Enum.Material.Brick, Color3.fromRGB(180,140,100))
+P("LeftWall", CFrame.new(sp+Vector3.new(-8,5,0)), Vector3.new(0.6,9,12), Enum.Material.Brick, Color3.fromRGB(175,135,95))
+P("RightWall", CFrame.new(sp+Vector3.new(8,5,0)), Vector3.new(0.6,9,12), Enum.Material.Brick, Color3.fromRGB(175,135,95))
+-- Front counter
+P("Counter", CFrame.new(sp+Vector3.new(0,2.5,-4)), Vector3.new(10,1.5,2), Enum.Material.Wood, Color3.fromRGB(130,90,50))
+P("CounterTop", CFrame.new(sp+Vector3.new(0,3.35,-4)), Vector3.new(10.5,0.3,2.3), Enum.Material.Marble, Color3.fromRGB(220,215,210))
+-- Shelves on back wall
+for i = 0, 2 do
+  P("Shelf_"..i, CFrame.new(sp+Vector3.new(-4+i*4, 5, 5.5)), Vector3.new(3.5, 0.3, 1.5), Enum.Material.Wood, Color3.fromRGB(120,80,40))
+  P("ShelfItem_"..i, CFrame.new(sp+Vector3.new(-4+i*4, 5.5, 5.5)), Vector3.new(1, 1, 1), Enum.Material.Metal, Color3.fromRGB(200+i*20, 180, 100))
+end
+-- Sign
+P("SignBoard", CFrame.new(sp+Vector3.new(0,8.5,-0.3)), Vector3.new(8,2,0.3), Enum.Material.Wood, Color3.fromRGB(60,40,20))
+-- Awning
+local awning = Instance.new("WedgePart") awning.Name="Awning" awning.Size=Vector3.new(16,2,4)
+awning.CFrame=CFrame.new(sp+Vector3.new(0,8,-2)) awning.Material=Enum.Material.Fabric awning.Color=Color3.fromRGB(180,50,50)
+awning.Anchored=true awning.Parent=m
+-- Door opening (no door — open storefront)
+P("DoorFrame_L", CFrame.new(sp+Vector3.new(-2,5,-6)), Vector3.new(0.4,9,0.4), Enum.Material.Wood, Color3.fromRGB(90,60,30))
+P("DoorFrame_R", CFrame.new(sp+Vector3.new(2,5,-6)), Vector3.new(0.4,9,0.4), Enum.Material.Wood, Color3.fromRGB(90,60,30))
+-- Interior light
+local lp = P("Light", CFrame.new(sp+Vector3.new(0,8.5,0)), Vector3.new(0.8,0.3,0.8), Enum.Material.Glass, Color3.fromRGB(255,220,160))
+local pl = Instance.new("PointLight") pl.Brightness=1.5 pl.Range=18 pl.Color=Color3.fromRGB(255,220,180) pl.Parent=lp
+-- Step
+P("Step", CFrame.new(sp+Vector3.new(0,0.15,-6.5)), Vector3.new(5,0.3,1), Enum.Material.Concrete, Color3.fromRGB(160,155,150))
+m.Parent = workspace
+if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end`
+  }
 
   if (wantsFlat) {
     return `-- ForjeAI: ${label}
