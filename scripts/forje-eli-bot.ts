@@ -788,42 +788,12 @@ function buildWeeklySummary(state: BotState): object[] {
 }
 
 // ─── Auto-Acknowledge in Channel ─────────────────────────────────────────────
-async function acknowledgeInChannel(item: TrackedItem) {
-  // Post a brief acknowledgment reply for critical bugs
-  if (item.type === "bug" && item.severity === "CRITICAL") {
-    const ackEmbed = {
-      description: `\uD83D\uDEA8 **Critical bug logged** — This has been flagged for immediate staff review.\n\nQuality: ${"★".repeat(item.qualityRating)}${"☆".repeat(5 - item.qualityRating)} | Tags: ${item.tags.join(", ") || "general"}`,
-      color: 0xEF4444,
-      footer: { text: "ForjeEli — Automated Bug Triage" },
-    };
-    try {
-      await discordFetch(`/channels/${item.channel}/messages`, {
-        method: "POST",
-        body: JSON.stringify({
-          embeds: [ackEmbed],
-          message_reference: { message_id: item.id },
-        }),
-      });
-    } catch {}
-  }
-
-  // Acknowledge high-quality reports
-  if (item.qualityRating >= 4 && item.type !== "feedback") {
-    const qualityEmbed = {
-      description: `\u2B50 **Quality report** — Great detail, ${item.author}! This helps us fix things faster.`,
-      color: 0xD4AF37,
-      footer: { text: "ForjeEli" },
-    };
-    try {
-      await discordFetch(`/channels/${item.channel}/messages`, {
-        method: "POST",
-        body: JSON.stringify({
-          embeds: [qualityEmbed],
-          message_reference: { message_id: item.id },
-        }),
-      });
-    } catch {}
-  }
+// DISABLED: Per Vyren's instruction — don't post acknowledgments in bug/suggestion
+// channels. Track internally only. Updates go to #announcements.
+async function acknowledgeInChannel(_item: TrackedItem) {
+  // No-op — all acknowledgments are now silent.
+  // Bugs and suggestions are tracked internally without spamming the channels.
+  return
 }
 
 // ─── Main Run Loop ───────────────────────────────────────────────────────────
