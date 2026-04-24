@@ -788,10 +788,20 @@ function ConversationFeedbackButtons({
   messageId,
   content,
   onSend,
+  luauCode,
+  qualityScore,
+  model,
+  intent,
+  userPrompt,
 }: {
   messageId: string
   content: string
   onSend: (msg: string) => void
+  luauCode?: string
+  qualityScore?: number
+  model?: string
+  intent?: string
+  userPrompt?: string
 }) {
   const [feedbackState, setFeedbackState] = useState<'idle' | 'thumbsUp' | 'thumbsDown' | 'done'>('idle')
   const [replyOpen, setReplyOpen] = useState(false)
@@ -801,37 +811,23 @@ function ConversationFeedbackButtons({
   const submitReply = () => {
     const text = replyText.trim()
     if (!text || replySent) return
-    // Send as a new message in the conversation — this naturally teaches the AI
-    // because the AI sees the conversation history on every subsequent message
+    // Send as a new message in the conversation so the AI can fix it now
     onSend(text)
-    // Also save as a suggestion so the AI learns permanently
-    fetch('/api/ai/suggest', {
+    // Post to Discord + DB via /api/ai/report
+    fetch('/api/ai/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        suggestion: text,
-        prompt: content.slice(0, 500),
-        code: '',
-        score: feedbackState === 'thumbsDown' ? 20 : 50,
+        feedback: text,
+        aiResponse: content.slice(0, 2000),
+        userPrompt: userPrompt || '',
+        luauCode: luauCode || '',
+        qualityScore: qualityScore ?? 0,
+        model: model || '',
+        intent: intent || '',
+        isNegative: feedbackState === 'thumbsDown',
       }),
     }).catch(() => {})
-    // Also record as negative feedback if thumbs down
-    if (feedbackState === 'thumbsDown') {
-      fetch('/api/ai/build-feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          promptHash: messageId,
-          code: content.slice(0, 2000),
-          worked: false,
-          score: 20,
-          model: 'user-reply',
-          prompt: text,
-          userVote: false,
-          errorMessage: text,
-        }),
-      }).catch(() => {})
-    }
     setReplySent(true)
     setReplyText('')
     setReplyOpen(false)
@@ -996,70 +992,101 @@ function ConversationFeedbackButtons({
           </svg>
         </button>
 
-        {/* Reply / Report button */}
+        {/* Reply / Report button — VISIBLE */}
         {!replyOpen && !replySent && (
           <button
             onClick={() => setReplyOpen(true)}
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontSize: 10, padding: '3px 8px', borderRadius: 6,
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(255,255,255,0.03)',
-              color: 'rgba(255,255,255,0.35)',
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              fontSize: 11, fontWeight: 600, padding: '5px 12px', borderRadius: 8,
+              border: '1px solid rgba(212,175,55,0.25)',
+              background: 'rgba(212,175,55,0.08)',
+              color: 'rgba(212,175,55,0.8)',
               cursor: 'pointer', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
               transition: 'all 0.15s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(212,175,55,0.8)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(212,175,55,0.18)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.45)'; e.currentTarget.style.color = '#D4AF37' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(212,175,55,0.08)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)'; e.currentTarget.style.color = 'rgba(212,175,55,0.8)' }}
           >
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M1 11l3 3 3-3" /><path d="M4 14V6a4 4 0 014-4h4" />
             </svg>
-            Reply
+            Reply / Report
           </button>
+        )}
+        {replySent && (
+          <span style={{ fontSize: 10, color: 'rgba(74,222,128,0.7)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="2 8 6 12 14 4" /></svg>
+            Sent — the AI will learn from this
+          </span>
         )}
       </div>
 
-      {/* Reply input — tell the AI what's wrong or what to fix */}
+      {/* Reply/Report box — big, visible, prominent */}
       {replyOpen && !replySent && (
         <div style={{
-          display: 'flex', gap: 6, alignItems: 'flex-end', marginTop: 4,
+          marginTop: 8, padding: '10px 12px', borderRadius: 12,
+          background: feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.04)' : 'rgba(212,175,55,0.04)',
+          border: `1px solid ${feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.2)' : 'rgba(212,175,55,0.2)'}`,
           animation: 'msgFadeUp 0.2s ease-out forwards',
         }}>
-          <textarea
-            value={replyText}
-            onChange={e => setReplyText(e.target.value)}
-            placeholder={feedbackState === 'thumbsDown'
-              ? "What went wrong? (e.g. 'the script errored' or 'it built the wrong thing')"
-              : "Tell the AI what to change or improve..."}
-            maxLength={500}
-            rows={2}
-            style={{
-              flex: 1, padding: '8px 10px', borderRadius: 10,
-              background: 'rgba(255,255,255,0.03)',
-              border: `1px solid ${feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.2)' : 'rgba(212,175,55,0.2)'}`,
-              color: '#e4e4e7', fontSize: 11, fontFamily: 'inherit',
-              resize: 'none', outline: 'none', lineHeight: 1.4,
-            }}
-            onFocus={e => { e.currentTarget.style.borderColor = feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.4)' : 'rgba(212,175,55,0.4)' }}
-            onBlur={e => { e.currentTarget.style.borderColor = feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.2)' : 'rgba(212,175,55,0.2)' }}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitReply() } }}
-            autoFocus
-          />
-          <button
-            onClick={submitReply}
-            disabled={!replyText.trim()}
-            style={{
-              padding: '8px 14px', borderRadius: 10,
-              background: replyText.trim() ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${replyText.trim() ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.06)'}`,
-              color: replyText.trim() ? '#D4AF37' : '#52525B',
-              fontSize: 11, fontWeight: 600, cursor: replyText.trim() ? 'pointer' : 'default',
-              fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
-            }}
-          >
-            Send
-          </button>
+          <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 6, color: feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.8)' : 'rgba(212,175,55,0.8)' }}>
+            {feedbackState === 'thumbsDown' ? 'Report a problem — this will be sent to the dev team' : 'Reply to the AI — it will learn from your feedback'}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <textarea
+              value={replyText}
+              onChange={e => setReplyText(e.target.value)}
+              placeholder={feedbackState === 'thumbsDown'
+                ? "What went wrong? e.g. 'the script errored on line 5' or 'it built a house but I asked for a castle'"
+                : "What should the AI do differently? e.g. 'make the door taller' or 'add more lights'"}
+              maxLength={1000}
+              rows={3}
+              style={{
+                flex: 1, padding: '10px 12px', borderRadius: 10,
+                background: 'rgba(0,0,0,0.3)',
+                border: `1.5px solid ${feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.3)' : 'rgba(212,175,55,0.3)'}`,
+                color: '#e4e4e7', fontSize: 13, fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                resize: 'none', outline: 'none', lineHeight: 1.5,
+              }}
+              onFocus={e => { e.currentTarget.style.borderColor = feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.6)' : 'rgba(212,175,55,0.6)' }}
+              onBlur={e => { e.currentTarget.style.borderColor = feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.3)' : 'rgba(212,175,55,0.3)' }}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitReply() } }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <button
+                onClick={submitReply}
+                disabled={!replyText.trim()}
+                style={{
+                  padding: '10px 18px', borderRadius: 10,
+                  background: replyText.trim()
+                    ? (feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.2)' : 'rgba(212,175,55,0.2)')
+                    : 'rgba(255,255,255,0.03)',
+                  border: `1.5px solid ${replyText.trim()
+                    ? (feedbackState === 'thumbsDown' ? 'rgba(239,68,68,0.4)' : 'rgba(212,175,55,0.4)')
+                    : 'rgba(255,255,255,0.06)'}`,
+                  color: replyText.trim()
+                    ? (feedbackState === 'thumbsDown' ? '#EF4444' : '#D4AF37')
+                    : '#52525B',
+                  fontSize: 12, fontWeight: 700, cursor: replyText.trim() ? 'pointer' : 'default',
+                  fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                }}
+              >
+                {feedbackState === 'thumbsDown' ? 'Report' : 'Send'}
+              </button>
+              <button
+                onClick={() => { setReplyOpen(false); setReplyText('') }}
+                style={{
+                  padding: '4px 10px', borderRadius: 6, background: 'transparent',
+                  border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 10,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -2468,6 +2495,11 @@ function MessageBubbleImpl({
             messageId={msg.id}
             content={msg.content}
             onSend={onSend}
+            luauCode={msg.luauCode}
+            qualityScore={msg.qualityScore}
+            model={msg.model}
+            intent={msg.intent}
+            userPrompt={userPrompt}
           />
         )}
         {/*
