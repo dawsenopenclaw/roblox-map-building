@@ -1135,6 +1135,57 @@ function RenderMessageContent({
   return <>{parts}</>
 }
 
+// ─── Step Progress Card — Lemonade-style visible build progress ──────────────
+
+function StepProgressCard({ content }: { content: string }) {
+  const stepMatch = content.match(/Step (\d+)\/(\d+):\s*(.+)/)
+  if (!stepMatch) return null
+  const current = parseInt(stepMatch[1])
+  const total = parseInt(stepMatch[2])
+  const title = stepMatch[3]
+  const steps = Array.from({ length: total }, (_, i) => i + 1)
+
+  return (
+    <div style={{
+      padding: '14px 16px', borderRadius: 14,
+      background: 'linear-gradient(135deg, rgba(15,20,40,0.6), rgba(20,25,50,0.5))',
+      border: '1px solid rgba(212,175,55,0.12)',
+      backdropFilter: 'blur(12px)',
+      fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#D4AF37', letterSpacing: '0.05em', textTransform: 'uppercase' as const }}>Building</span>
+        <span style={{ fontSize: 11, color: '#71717A', fontWeight: 600 }}>Step {current}/{total}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {steps.map((s) => {
+          const done = s < current
+          const active = s === current
+          return (
+            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: !done && !active ? 0.35 : 1, transition: 'opacity 0.3s' }}>
+              <div style={{
+                width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                border: done ? '2px solid #4ADE80' : active ? '2px solid #D4AF37' : '2px solid rgba(255,255,255,0.1)',
+                background: done ? 'rgba(74,222,128,0.15)' : active ? 'rgba(212,175,55,0.1)' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {done && <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="#4ADE80" strokeWidth="2.5" strokeLinecap="round"><polyline points="2 6 5 9 10 3" /></svg>}
+                {active && <div style={{ width: 6, height: 6, borderRadius: 2, background: '#D4AF37', animation: 'statusPulse 1.5s ease-in-out infinite' }} />}
+              </div>
+              <span style={{ fontSize: 12, fontWeight: active ? 600 : 400, color: done ? '#4ADE80' : active ? '#FAFAFA' : '#52525B' }}>
+                {active ? title : `Step ${s}`}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ marginTop: 10, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${(current / total) * 100}%`, background: 'linear-gradient(90deg, #D4AF37, #4ADE80)', borderRadius: 2, transition: 'width 0.5s ease-out' }} />
+      </div>
+    </div>
+  )
+}
+
 // ─── Build success particle burst (CSS-only) ─────────────────────────────────
 
 function BuildSuccessCelebration() {
@@ -1675,6 +1726,11 @@ function MessageBubbleImpl({
   }
 
   if (isStatus) {
+    // Step progress card — renders when content matches "Step N/M: title"
+    if (/Step \d+\/\d+:/.test(msg.content)) {
+      return <StepProgressCard content={msg.content} />
+    }
+
     const contentLower = msg.content.toLowerCase()
     const isSuccess = contentLower.includes('studio') && !contentLower.includes('thinking') && !contentLower.includes('failed') && !contentLower.includes('connect')
     const isBuildSent = contentLower.includes('check your viewport') || contentLower.includes('sent to roblox studio')

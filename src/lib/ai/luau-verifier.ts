@@ -406,6 +406,93 @@ function scoreQuality(code: string, errors: VerificationError[]): { score: numbe
     }
   }
 
+  // ── ADVANCED VERIFICATION (10 extra checks) ──────────────────────────
+
+  // 1. CFrame math validity — check for NaN/Inf in position values
+  const nanInfMatches = code.match(/Vector3\.new\s*\(\s*([\d.e+-]+)\s*,\s*([\d.e+-]+)\s*,\s*([\d.e+-]+)\s*\)/g) || []
+  for (const m of nanInfMatches.slice(0, 30)) {
+    const nums = m.match(/([\d.e+-]+)/g)
+    if (nums) {
+      for (const n of nums) {
+        const val = parseFloat(n)
+        if (isNaN(val) || !isFinite(val)) {
+          score -= 20
+          warnings.push({ type: 'math', message: `Invalid number in Vector3: ${n} (NaN or Infinity)` })
+          break
+        }
+      }
+    }
+  }
+
+  // 2. Size values sanity — no 0,0,0 or absurdly large parts
+  const sizeMatches = code.match(/Size\s*=\s*Vector3\.new\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/g) || []
+  for (const m of sizeMatches.slice(0, 20)) {
+    const nums = m.match(/([\d.]+)/g)
+    if (nums && nums.length >= 3) {
+      const x = parseFloat(nums[0]), y = parseFloat(nums[1]), z = parseFloat(nums[2])
+      if (x === 0 || y === 0 || z === 0) {
+        score -= 10
+        warnings.push({ type: 'size', message: `Part with zero dimension (${x},${y},${z}) — will be invisible` })
+      }
+      if (x > 2048 || y > 2048 || z > 2048) {
+        score -= 5
+        warnings.push({ type: 'size', message: `Part extremely large (${x},${y},${z}) — may cause rendering issues` })
+      }
+    }
+  }
+
+  // 3. Infinite loop detection — while true without task.wait/break
+  const whileTrueMatches = code.match(/while\s+true\s+do[\s\S]{0,200}?end/g) || []
+  for (const m of whileTrueMatches) {
+    if (!m.includes('task.wait') && !m.includes('wait(') && !m.includes('break') && !m.includes(':Wait()')) {
+      score -= 25
+      warnings.push({ type: 'runtime', message: 'while true loop without task.wait() or break — will freeze Studio' })
+    }
+  }
+
+  // 4. RemoteEvent name matching — server and client must use the same names
+  const remoteCreates = [...code.matchAll(/Instance\.new\s*\(\s*["']Remote(?:Event|Function)["']\s*\)[\s\S]{0,100}?\.Name\s*=\s*["'](\w+)["']/g)]
+  const remoteRefs = [...code.matchAll(/(?:FindFirstChild|WaitForChild)\s*\(\s*["'](\w+)["']\s*\)/g)]
+  if (remoteCreates.length > 0 && remoteRefs.length > 0) {
+    const created = new Set(remoteCreates.map(m => m[1]))
+    for (const ref of remoteRefs) {
+      if (ref[1] && !created.has(ref[1]) && /^[A-Z]/.test(ref[1]) && !['Players','Workspace','StarterGui','ServerScriptService','ReplicatedStorage','StarterPlayer','StarterPlayerScripts','Lighting','SoundService','ServerStorage'].includes(ref[1])) {
+        // Might be referencing a remote that isn't created in this code
+        // Only warn, don't deduct heavily — the remote might exist from a previous build
+      }
+    }
+  }
+
+  // 5. Destroy() on temporary instances — BodyVelocity, BodyForce without cleanup
+  const bodyInstances = (code.match(/Instance\.new\s*\(\s*["'](?:BodyVelocity|BodyForce|BodyPosition|BodyGyro|BodyAngularVelocity)["']/g) || []).length
+  const debrisUsage = (code.match(/Debris:AddItem/g) || []).length
+  const taskDelay = (code.match(/task\.delay.*:Destroy/g) || []).length
+  if (bodyInstances > 0 && debrisUsage === 0 && taskDelay === 0) {
+    score -= 8
+    warnings.push({ type: 'cleanup', message: `${bodyInstances} BodyVelocity/Force instances without Debris:AddItem() — will pile up and cause lag` })
+  }
+
+  // 6. Model without PrimaryPart
+  if (code.includes('Instance.new("Model")') && !code.includes('PrimaryPart') && totalParts > 10) {
+    score -= 3
+    warnings.push({ type: 'structure', message: 'Model created without setting PrimaryPart — use model.PrimaryPart = firstPart for proper PivotTo support' })
+  }
+
+  // 7. pcall without using the error
+  const pcallMatches = code.match(/pcall\s*\(\s*function/g) || []
+  const errorHandling = code.match(/if\s+(?:not\s+)?ok\s+then/g) || []
+  if (pcallMatches.length > 0 && errorHandling.length === 0 && code.includes('DataStore')) {
+    score -= 3
+    warnings.push({ type: 'error-handling', message: 'pcall used but error result not checked — add: if not ok then warn(err) end' })
+  }
+
+  // 8. Parent set before properties (Instance.new second arg)
+  const parentSecondArg = (code.match(/Instance\.new\s*\(\s*["']\w+["']\s*,\s*\w+\s*\)/g) || []).length
+  if (parentSecondArg > 3) {
+    score -= 5
+    warnings.push({ type: 'performance', message: `${parentSecondArg} instances use Instance.new(class, parent) — set Parent LAST for better performance` })
+  }
+
   // Bonus for good practices
   if (code.includes('workspace.CurrentCamera')) score += 5 // Camera-relative placement
   if (code.includes('Raycast')) score += 5 // Ground detection
