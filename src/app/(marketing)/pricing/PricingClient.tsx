@@ -1302,7 +1302,57 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
           ))}
         </div>
 
-        {/* Comparison table and duplicate token packs removed — tokens-only model */}
+        {/* ------------------------------------------------------------------ */}
+        {/* Competitor comparison                                               */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="max-w-4xl mx-auto mb-24">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+              How we compare
+            </h2>
+            <p className="text-[#6B7699] text-sm">
+              Honest comparison. We win on features, they may win on price.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-white/[0.06]" style={{ background: 'rgba(8,10,22,0.6)' }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="text-left py-3 px-4 text-[#6B7699] font-medium">Feature</th>
+                  <th className="py-3 px-4 text-[#D4AF37] font-bold">ForjeGames</th>
+                  <th className="py-3 px-4 text-[#7574cf] font-medium">Lemonade</th>
+                  <th className="py-3 px-4 text-[#ef4444] font-medium">Rebirth</th>
+                  <th className="py-3 px-4 text-[#3b82f6] font-medium">Ropilot</th>
+                </tr>
+              </thead>
+              <tbody className="text-[#8B95B0]">
+                {[
+                  ['AI Models', '4+ (Gemini, Groq, Claude, OpenRouter)', '15 via OpenRouter', '1-2', 'BYOK (you pay)'],
+                  ['Script Generation', '200+ specialist agents', 'General AI', 'Basic', 'MCP-based'],
+                  ['3D Mesh Generation', 'Built-in (Meshy)', 'No', 'Hunyuan3D', 'No'],
+                  ['Image Generation', '13 styles', 'No', 'Reference upload', 'No'],
+                  ['Error Self-Repair', '3-attempt loop', 'Auto-fix', 'No', 'Playtest loop'],
+                  ['Code Review', 'Auto (Security/Perf/Reliability)', 'No', 'No', 'No'],
+                  ['Knowledge Base', '25 API patterns injected', 'Context injection', 'No', 'No'],
+                  ['Version Control', 'Checkpoints', 'Prompt rollback', 'No', 'No'],
+                  ['Studio Plugin', 'Live sync + console', 'File sync', 'Basic', 'Desktop app'],
+                  ['Starting Price', 'Free (10/day)', 'Free (1/day)', '$8.99/mo', '$20/mo + API keys'],
+                ].map(([feature, forje, lemonade, rebirth, ropilot], i) => (
+                  <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                    <td className="py-2.5 px-4 text-white font-medium">{feature}</td>
+                    <td className="py-2.5 px-4 text-center text-[#D4AF37]">{forje}</td>
+                    <td className="py-2.5 px-4 text-center">{lemonade}</td>
+                    <td className="py-2.5 px-4 text-center">{rebirth}</td>
+                    <td className="py-2.5 px-4 text-center">{ropilot}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-center text-xs text-[#3F3F46] mt-4">
+            Data from public websites as of April 2026. Competitors may have updated since.
+          </p>
+        </div>
 
         {/* ------------------------------------------------------------------ */}
         {/* Social proof                                                        */}
