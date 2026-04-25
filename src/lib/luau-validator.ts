@@ -402,6 +402,32 @@ export function validateAndFixLuau(code: string): ValidationResult {
     if (anchoredWarnIdx !== -1) warnings.splice(anchoredWarnIdx, 1)
   }
 
+  // 29. Ensure the Model is parented to workspace — #1 reason "builds don't appear"
+  // AI generates code, creates Model, adds parts, but forgets m.Parent = workspace
+  if (fixed.includes('Instance.new("Model")') && !fixed.includes('.Parent = workspace') && !fixed.includes('.Parent=workspace')) {
+    // Find the model variable name
+    const modelMatch = fixed.match(/local\s+(\w+)\s*=\s*Instance\.new\("Model"\)/)
+    if (modelMatch) {
+      const modelVar = modelMatch[1]
+      // Append parenting at the end, before FinishRecording if present
+      if (fixed.includes('FinishRecording')) {
+        fixed = fixed.replace(
+          /(if\s+rid\s+then\s+CH:FinishRecording)/,
+          `${modelVar}.Parent = workspace\ngame:GetService("Selection"):Set({${modelVar}})\n$1`
+        )
+      } else {
+        fixed += `\n${modelVar}.Parent = workspace\ngame:GetService("Selection"):Set({${modelVar}})\n`
+      }
+      fixes.push(`Added: ${modelVar}.Parent = workspace (model was never parented — build would be invisible)`)
+    }
+  }
+
+  // 30. Ensure FinishRecording is called — without this, undo doesn't work
+  if (fixed.includes('TryBeginRecording') && !fixed.includes('FinishRecording')) {
+    fixed += '\nif rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end\n'
+    fixes.push('Added: FinishRecording call (undo support was missing)')
+  }
+
   return {
     valid: warnings.length === 0,
     fixedCode: fixed,
