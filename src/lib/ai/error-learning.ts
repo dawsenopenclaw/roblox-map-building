@@ -8,7 +8,7 @@
  */
 
 import 'server-only'
-import { prisma } from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 
 interface ErrorLogEntry {
   sessionId?: string | null
