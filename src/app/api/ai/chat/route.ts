@@ -3752,11 +3752,14 @@ local function P(n,sx,sy,sz,rx,ry,rz,mat,r,g,b,t)
   p.Material=Enum.Material[mat] p.Color=Color3.fromRGB(r,g,b)
   if t then p.Transparency=t end p.Parent=m return p
 end
--- W() = WedgePart (roofs, ramps). Same args as P.
-local function W(n,sx,sy,sz,rx,ry,rz,mat,r,g,b)
+-- W() = WedgePart (roofs, ramps). Same args as P + optional rotY (degrees).
+-- For gable roofs: left side W(...) + right side W(..., rotY=180) to face opposite.
+local function W(n,sx,sy,sz,rx,ry,rz,mat,r,g,b,rotY)
   local p=Instance.new("WedgePart") p.Name=n p.Anchored=true
-  p.Size=Vector3.new(sx,sy,sz) p.CFrame=CFrame.new(sp.X+rx,gy+ry,sp.Z+rz)
-  p.Material=Enum.Material[mat] p.Color=Color3.fromRGB(r,g,b) p.Parent=m return p
+  p.Size=Vector3.new(sx,sy,sz)
+  local cf=CFrame.new(sp.X+rx,gy+ry,sp.Z+rz)
+  if rotY then cf=cf*CFrame.Angles(0,math.rad(rotY),0) end
+  p.CFrame=cf p.Material=Enum.Material[mat] p.Color=Color3.fromRGB(r,g,b) p.Parent=m return p
 end
 -- Cyl() = cylinder (poles, trunks). Args: name, height, diameter, relX,relY,relZ, mat, R,G,B
 local function Cyl(n,h,d,rx,ry,rz,mat,r,g,b)
@@ -3795,6 +3798,7 @@ CALL FORMAT CHEATSHEET:
   P("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Material", R,G,B)         -- box
   P("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Glass", 180,215,240, 0.4) -- transparent
   W("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Material", R,G,B)         -- wedge/roof
+  W("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Material", R,G,B, 180)  -- flipped wedge (opposite roof slope)
   Cyl("name", height, diameter, posX,posY,posZ, "Material", R,G,B)         -- cylinder
   Ball("name", diameter, posX,posY,posZ, "Material", R,G,B)                -- sphere
   Light(parentPart, brightness, range, R,G,B)                              -- point light
@@ -4078,7 +4082,7 @@ P("WinBR_Sill", 4.2,0.3,1, 5,4.2,8.6, "Concrete", 200,195,185)
 -- ═══ CEILING & ROOF ═══
 P("Ceiling", 22,0.5,16, 0,11.65,0, "Concrete", 230,228,225)
 W("Roof_L", 13,3.5,18, -5.5,13.4,0, "Slate", vc(75,65,55))
-W("Roof_R", 13,3.5,18, 5.5,13.4,0, "Slate", vc(75,65,55))
+W("Roof_R", 13,3.5,18, 5.5,13.4,0, "Slate", vc(75,65,55), 180)
 P("RoofRidge", 0.6,0.4,19, 0,15.2,0, "Wood", 90,60,30)
 P("RoofFascia_L", 0.3,0.5,19, -12,11.8,0, "Wood", 100,65,30)
 P("RoofFascia_R", 0.3,0.5,19, 12,11.8,0, "Wood", 100,65,30)
