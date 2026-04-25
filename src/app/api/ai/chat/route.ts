@@ -5059,6 +5059,22 @@ ${effectiveInstruction}`
       }
     }
 
+    // ── BUILD AMPLIFIER: multiply detail 100X before Studio ──────────
+    // Takes the AI's basic output and injects AAA lighting, terrain,
+    // interior lights, shadow bases, and color variation automatically.
+    if (luauCode && !isScriptIntent) {
+      try {
+        const { amplifyBuild } = await import('@/lib/ai/build-amplifier')
+        const amplified = amplifyBuild(luauCode)
+        if (amplified.injections.length > 0 && amplified.injections[0] !== 'skipped — script code') {
+          luauCode = amplified.code
+          console.log(`[BuildAmplifier] Injected ${amplified.injections.length} enhancements into build`)
+        }
+      } catch (ampErr) {
+        console.warn('[BuildAmplifier] Non-blocking error:', ampErr instanceof Error ? ampErr.message : ampErr)
+      }
+    }
+
     // Auto-execute in Studio + error recovery loop
     if (luauCode && sessionId) {
       try {
