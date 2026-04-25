@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ForjeLogo } from '@/components/ForjeLogo'
 
 // Server Component — no interactivity
 const PRODUCT_LINKS = [
@@ -134,11 +135,10 @@ export default function Footer() {
           <div>
             <Link
               href="/"
-              className="inline-block font-extrabold text-2xl tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] rounded"
+              className="inline-block focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] rounded"
               aria-label="ForjeGames home"
             >
-              <span style={{ color: '#D4AF37' }}>Forje</span>
-              <span className="text-white">Games</span>
+              <ForjeLogo size={24} />
             </Link>
             <p className="text-[#8B95B0] text-sm mt-2 max-w-xs leading-relaxed">
               Your game. Forjed by AI.

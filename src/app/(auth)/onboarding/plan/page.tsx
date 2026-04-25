@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ForjeLogo } from '@/components/ForjeLogo'
 import { Check, Zap, Rocket, Building2 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -111,10 +112,7 @@ export default function OnboardingPlanPage() {
             <polygon points="16,8 24,13 24,19 16,24 8,19 8,13" fill="#D4AF37" opacity="0.6" />
             <circle cx="16" cy="16" r="3" fill="#D4AF37" />
           </svg>
-          <span className="text-lg font-bold tracking-tight">
-            <span className="text-white">Forje</span>
-            <span style={{ color: '#D4AF37' }}>Games</span>
-          </span>
+          <ForjeLogo size={18} />
         </Link>
       </div>
 

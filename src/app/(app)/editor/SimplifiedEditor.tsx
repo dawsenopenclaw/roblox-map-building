@@ -32,6 +32,7 @@ import { BuildProgressDashboard } from '@/components/editor/BuildProgressDashboa
 import { FirstBuildModal } from '@/components/editor/FirstBuildModal'
 import { PostBuildShare } from '@/components/editor/PostBuildShare'
 import { UpgradeNudge } from '@/components/editor/UpgradeNudge'
+import ConsolePanel from '@/components/editor/ConsolePanel'
 
 // ─── Right Sidebar — AI Context Panel ────────────────────────────────────
 
@@ -249,6 +250,8 @@ function EditorInner() {
   const [showShareBar, setShowShareBar] = useState(false)
   const [lastBuildPrompt, setLastBuildPrompt] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [consoleOpen, setConsoleOpen] = useState(false)
+  const [consoleErrors, setConsoleErrors] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -715,6 +718,72 @@ function EditorInner() {
           />
         )}
       </div>
+
+      {/* Console panel — collapsible bottom strip when Studio connected */}
+      {studio.isConnected && (
+        <div style={{
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          background: 'rgba(10,10,10,0.95)',
+          position: 'relative',
+          zIndex: 2,
+        }}>
+          {/* Console toggle bar */}
+          <button
+            onClick={() => setConsoleOpen(v => !v)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 16px',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: '#71717A',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <polyline points="4,17 10,11 4,5" />
+              <line x1="12" y1="19" x2="20" y2="19" />
+            </svg>
+            <span>Console</span>
+            {consoleErrors > 0 && (
+              <span style={{
+                background: 'rgba(239,68,68,0.2)',
+                color: '#ef4444',
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '1px 6px',
+                borderRadius: 8,
+                minWidth: 18,
+                textAlign: 'center',
+              }}>
+                {consoleErrors}
+              </span>
+            )}
+            <span style={{ flex: 1 }} />
+            <svg
+              width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              style={{ transform: consoleOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+            >
+              <polyline points="6,9 12,15 18,9" />
+            </svg>
+          </button>
+
+          {/* Console content */}
+          {consoleOpen && (
+            <div style={{ height: 200, overflow: 'hidden' }}>
+              <ConsolePanel
+                sessionId={studio.sessionId}
+                isConnected={studio.isConnected}
+                active={consoleOpen}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Build progress dashboard */}
       {activeBuildId && (

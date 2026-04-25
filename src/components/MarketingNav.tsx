@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth, SignInButton, SignUpButton } from '@clerk/nextjs'
 import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy, BookOpen, Activity, Rocket, LayoutDashboard, Settings } from 'lucide-react'
+import { ForjeLogo } from '@/components/ForjeLogo'
 import type { LucideIcon } from 'lucide-react'
 
 // Language switcher removed until translations are complete
@@ -117,11 +118,10 @@ function MarketingNav() {
         {/* Logo — left */}
         <Link
           href="/"
-          className="flex-shrink-0 font-extrabold text-xl tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] rounded"
+          className="flex-shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] rounded"
           aria-label="ForjeGames home"
         >
-          <span style={{ color: '#D4AF37' }}>Forje</span>
-          <span className="text-white">Games</span>
+          <ForjeLogo size={20} />
         </Link>
 
         {/* Desktop nav — center, sharing space with logo + CTA via flex-1 */}

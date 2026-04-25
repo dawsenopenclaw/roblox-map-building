@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { ForjeLogo } from '@/components/ForjeLogo'
 
 const TOTAL_STEPS = 5
 const CURRENT_STEP = 2
@@ -101,7 +102,7 @@ export default function ParentalConsentPage() {
         />
         <div className="relative z-10 max-w-md w-full text-center">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold"><span className="text-white">Forje</span><span className="text-[#D4AF37]">Games</span></h1>
+            <h1 className="text-2xl"><ForjeLogo size={24} /></h1>
           </div>
           <div
             className="rounded-xl p-8"
@@ -167,7 +168,7 @@ export default function ParentalConsentPage() {
       <div className="relative z-10 max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold"><span className="text-white">Forje</span><span className="text-[#D4AF37]">Games</span></h1>
+          <h1 className="text-2xl"><ForjeLogo size={24} /></h1>
         </div>
 
         {/* Card */}

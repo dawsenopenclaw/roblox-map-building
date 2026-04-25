@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { ForjeLogo } from '@/components/ForjeLogo'
 import { useAuth, useClerk } from '@clerk/nextjs'
 
 function LogoMark() {
@@ -75,10 +76,7 @@ export default function AuthLayoutClient({ children }: { children: React.ReactNo
       <div className="relative z-10 text-center mb-8">
         <Link href="/" className="inline-flex items-center gap-3 select-none group mb-4">
           <LogoMark />
-          <span className="text-2xl font-bold tracking-tight transition-opacity duration-150 group-hover:opacity-80">
-            <span className="text-white">Forje</span>
-            <span style={{ color: '#D4AF37' }}>Games</span>
-          </span>
+          <ForjeLogo size={24} className="transition-opacity duration-150 group-hover:opacity-80" />
         </Link>
         <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight mb-3">
           The only cursor you ever need for{' '}

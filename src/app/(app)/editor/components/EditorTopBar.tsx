@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import { TokenBalanceWidget } from '@/components/TokenBalanceWidget'
+import { ForjeLogo } from '@/components/ForjeLogo'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import type { ModelId } from '@/app/(app)/editor/hooks/useChat'
 import { MODELS } from '@/app/(app)/editor/hooks/useChat'
@@ -117,11 +118,7 @@ export function EditorTopBar({
             display: 'flex', alignItems: 'center', gap: 1,
           }}
         >
-          <span style={{
-            color: '#D4AF37',
-            textShadow: '0 0 20px rgba(212,175,55,0.3)',
-          }}>Forje</span>
-          {!isMobile && <span style={{ color: '#FAFAFA' }}>Games</span>}
+          <ForjeLogo size={17} style={{ textShadow: '0 0 20px rgba(212,175,55,0.3)' }} />
         </Link>
       </div>
 

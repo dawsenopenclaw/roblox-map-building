@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ForjeLogo } from '@/components/ForjeLogo'
 import type { ChatSession, ChatSessionMeta } from '../hooks/useChat'
 
 interface LeftDrawerProps {
@@ -316,10 +317,7 @@ export function LeftDrawer({
           borderTop: '1px solid rgba(255,255,255,0.03)',
           display: 'flex', alignItems: 'center', gap: 6,
         }}>
-          <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '-0.02em' }}>
-            <span style={{ color: '#D4AF37' }}>Forje</span>
-            <span style={{ color: '#52525B' }}>Games</span>
-          </span>
+          <ForjeLogo size={12} style={{ opacity: 0.5 }} />
           <span style={{ fontSize: 10, color: '#27272A', marginLeft: 'auto' }}>v1.0 Beta</span>
         </div>
       </div>

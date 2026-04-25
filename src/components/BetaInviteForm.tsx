@@ -168,10 +168,10 @@ export function BetaInviteForm({ redirectTo = '/editor', hideRedirect = false }:
       )}
       <p className="mt-4 text-xs text-neutral-500">
         Don&apos;t have a code?{' '}
-        <a href="/waitlist" className="text-amber-400 underline-offset-2 hover:underline">
-          Join the waitlist
+        <a href="/sign-up" className="text-amber-400 underline-offset-2 hover:underline">
+          Sign up
         </a>{' '}
-        to get notified when we open sign-ups.
+        to get started.
       </p>
     </form>
   )

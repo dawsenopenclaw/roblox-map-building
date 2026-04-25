@@ -102,7 +102,7 @@ export default async function BetaInvitePage() {
 
       <p className="mt-10 text-center text-xs text-neutral-600">
         Codes are single-use unless marked otherwise. Lost your code?{' '}
-        <a href="/contact" className="text-amber-500 hover:underline">
+        <a href="/help" className="text-amber-500 hover:underline">
           Contact us
         </a>
         .

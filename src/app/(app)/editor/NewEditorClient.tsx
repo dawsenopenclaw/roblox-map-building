@@ -27,6 +27,8 @@ import { saveProject, loadProject, type ProjectData } from '@/hooks/useProject'
 import { useAutoPlaytest } from '@/hooks/useAutoPlaytest'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { MobileBottomSheet } from '@/components/editor/MobileBottomSheet'
+import { PluginUpdateBanner } from '@/components/editor/PluginUpdateBanner'
+import ConsolePanel from '@/components/editor/ConsolePanel'
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -258,8 +260,8 @@ function EditorProfileDropdown({ user }: { user: { imageUrl?: string; firstName?
           {/* Sign out */}
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <a
-              href="/sign-out"
-              onClick={(e) => { e.preventDefault(); setOpen(false); window.location.href = '/sign-out' }}
+              href="#"
+              onClick={(e) => { e.preventDefault(); setOpen(false); window.location.href = '/sign-in' }}
               style={{ display: 'block', padding: '8px 14px', fontSize: 12, color: 'rgba(239,68,68,0.8)', textDecoration: 'none', transition: 'background 0.1s' }}
               onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.06)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -2614,6 +2616,7 @@ function EditorInner() {
   // studioWizardOpen — true only when user explicitly clicks "Connect Studio" in top bar.
   // On first visit (no hasConnectedBefore flag) the wizard is never auto-shown.
   const [studioWizardOpen, setStudioWizardOpen] = useState(false)
+  const [showConsole, setShowConsole] = useState(false)
   const chatPanelRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
 
@@ -3454,6 +3457,9 @@ function EditorInner() {
         </div>
       )}
 
+      {/* Plugin update notification */}
+      <PluginUpdateBanner />
+
       {/* Background */}
       <SpaceBackground />
 
@@ -3530,6 +3536,37 @@ function EditorInner() {
               compact={false}
               {...aiModeProps}
             />
+            {/* Console panel toggle + panel (only when Studio connected) */}
+            {studio.isConnected && (
+              <>
+                <button
+                  onClick={() => setShowConsole(!showConsole)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{
+                    background: showConsole ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.04)',
+                    color: showConsole ? '#D4AF37' : '#71717A',
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                  }}
+                >
+                  <span style={{ fontFamily: 'monospace' }}>&gt;_</span>
+                  Console {showConsole ? '(hide)' : '(show)'}
+                </button>
+                {showConsole && (
+                  <div style={{ height: 200, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <ConsolePanel
+                      sessionId={studio.sessionId}
+                      isConnected={studio.isConnected}
+                      active={showConsole}
+                      onFixError={(errorMsg) => {
+                        chat.setInput(errorMsg)
+                        void chat.sendMessage(errorMsg)
+                        setShowConsole(false)
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </div>
         ) : effectiveLayout === 'cinematic' ? (
           /* ── Cinematic: fullscreen viewport + floating chat ───────────────── */

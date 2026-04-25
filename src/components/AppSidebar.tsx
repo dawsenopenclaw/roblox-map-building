@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useClerk, useUser } from '@clerk/nextjs'
+import { ForjeLogo } from '@/components/ForjeLogo'
 
 // ─── Keyframes ────────────────────────────────────────────────────────────────
 
@@ -243,10 +244,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
             >
               F
             </span>
-            <span className="font-bold text-sm tracking-tight truncate">
-              <span style={{ color: '#D4AF37' }}>Forje</span>
-              <span className="text-white">Games</span>
-            </span>
+            <ForjeLogo size={14} />
           </Link>
           <button
             onClick={onClose}
