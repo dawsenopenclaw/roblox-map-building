@@ -29,6 +29,7 @@ const LEGAL_LINKS = [
 
 const COMPANY_LINKS = [
   { href: '/about', label: 'About' },
+  { href: '/affiliates', label: 'Affiliates' },
   { href: 'mailto:support@forjegames.com', label: 'Support' },
   { href: 'https://discord.gg/forjegames', label: 'Discord' },
   { href: 'https://twitter.com/forjegames', label: 'Twitter / X' },
