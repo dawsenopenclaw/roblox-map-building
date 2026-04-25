@@ -617,31 +617,67 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
   }
 
   // Pass 1b: detect P() helper calls from the CODE_GENERATION_PROMPT template.
-  // The AI's standard template uses P("name", CFrame, Size, Material, Color)
-  // for every part instead of Instance.new("Part") + property assignments.
-  // Without this pass, the translator produces 0 commands for most AI builds.
+  // TWO formats supported:
+  //   OLD: P("name", CFrame.new(...), Vector3.new(sx,sy,sz), Enum.Material.X, Color3.fromRGB(r,g,b))
+  //   NEW: P("name", sx,sy,sz, rx,ry,rz, "Material", R,G,B [,transparency])
+  // The NEW format is what our current prompt template uses. Without this,
+  // the translator produces 0 commands and the plugin falls back to loadstring.
+
+  // NEW format: P("name", sx,sy,sz, rx,ry,rz, "Material", R,G,B [,t])
+  const RE_P_SHORT = /(?:local\s+\w+\s*=\s*)?P\(\s*["']([^"']+)["']\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*["'](\w+)["']\s*,\s*(.+?)\s*\)/
+
   for (const line of lines) {
+    // Try NEW short format first (most common from our prompt template)
+    const ms = RE_P_SHORT.exec(line)
+    if (ms) {
+      const name = ms[1]
+      const size = { x: parseFloat(ms[2]), y: parseFloat(ms[3]), z: parseFloat(ms[4]) }
+      const position = { x: parseFloat(ms[5]), y: parseFloat(ms[6]), z: parseFloat(ms[7]) }
+      const material = ms[8]
+      // Color args: could be "R,G,B" or "vc(R,G,B)" — extract the numbers
+      const colorStr = ms[9]
+      let color = { r: 163, g: 162, b: 165 }
+      const rgbMatch = colorStr.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+      if (rgbMatch) {
+        color = { r: parseInt(rgbMatch[1]), g: parseInt(rgbMatch[2]), b: parseInt(rgbMatch[3]) }
+      }
+      // Optional transparency (last arg after R,G,B)
+      let transparency: number | undefined
+      const tMatch = colorStr.match(/,\s*(0\.\d+)\s*$/)
+      if (tMatch) transparency = parseFloat(tMatch[1])
+
+      if (!partStates.has(name)) {
+        const cmd: CreatePartCommand = {
+          type: 'create_part',
+          name,
+          position,
+          size,
+          color,
+          material,
+          anchored: true,
+          parentName: 'Workspace',
+        }
+        if (transparency !== undefined) (cmd as unknown as Record<string, unknown>).transparency = transparency
+        commands.push(cmd)
+      }
+      continue
+    }
+
+    // Try OLD format: P("name", CFrame.new(...), Vector3.new(...), Enum.Material.X, Color3.fromRGB(...))
     const m = RE_P_HELPER.exec(line)
     if (!m) continue
 
     const name = m[1]
-    const cfRaw = m[2]    // CFrame.new(sp+Vector3.new(x,y,z)) or CFrame.new(x,y,z,...)
-    const sizeRaw = m[3]  // Vector3.new(sx,sy,sz)
-    const matRaw = m[4]   // Enum.Material.X
-    const colRaw = m[5]   // Color3.fromRGB(r,g,b)
-    // m[6] is optional parent argument
+    const cfRaw = m[2]
+    const sizeRaw = m[3]
+    const matRaw = m[4]
+    const colRaw = m[5]
 
-    // Extract position from CFrame — look for Vector3.new inside the CFrame argument
-    // Common patterns:
-    //   CFrame.new(sp+Vector3.new(5,0,10))   → extract the offset vector
-    //   CFrame.new(Vector3.new(5,0,10))       → same
-    //   CFrame.new(5,0,10)                    → direct numbers
     let position = { x: 0, y: 0, z: 0 }
     const v3InCf = RE_VECTOR3.exec(cfRaw)
     if (v3InCf) {
       position = { x: parseFloat(v3InCf[1]), y: parseFloat(v3InCf[2]), z: parseFloat(v3InCf[3]) }
     } else {
-      // Try direct CFrame.new(x,y,z) pattern
       const cfDirect = /CFrame\.new\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)/.exec(cfRaw)
       if (cfDirect) {
         position = { x: parseFloat(cfDirect[1]), y: parseFloat(cfDirect[2]), z: parseFloat(cfDirect[3]) }
@@ -652,8 +688,6 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
     const color = parseColor(colRaw) ?? { r: 163, g: 162, b: 165 }
     const material = parseMaterial(matRaw) ?? 'Concrete'
 
-    // Don't duplicate if Instance.new already picked up a part with the same var name
-    // (unlikely since P() is a different pattern, but safety)
     if (!partStates.has(name)) {
       commands.push({
         type: 'create_part',
@@ -665,6 +699,64 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         anchored: true,
         parentName: 'Workspace',
       })
+    }
+  }
+
+  // Pass 1b2: detect W() (WedgePart), Cyl() (Cylinder), Ball() helper calls
+  const RE_W_SHORT = /(?:local\s+\w+\s*=\s*)?W\(\s*["']([^"']+)["']\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*["'](\w+)["']\s*,\s*(.+?)\s*\)/
+  const RE_CYL_SHORT = /(?:local\s+\w+\s*=\s*)?Cyl\(\s*["']([^"']+)["']\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*["'](\w+)["']\s*,\s*(.+?)\s*\)/
+  const RE_BALL_SHORT = /(?:local\s+\w+\s*=\s*)?Ball\(\s*["']([^"']+)["']\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*["'](\w+)["']\s*,\s*(.+?)\s*\)/
+
+  for (const line of lines) {
+    // WedgePart: W("name", sx,sy,sz, rx,ry,rz, "Mat", R,G,B)
+    const wm = RE_W_SHORT.exec(line)
+    if (wm) {
+      const rgbM = wm[9].match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+      commands.push({
+        type: 'create_part',
+        name: wm[1],
+        size: { x: parseFloat(wm[2]), y: parseFloat(wm[3]), z: parseFloat(wm[4]) },
+        position: { x: parseFloat(wm[5]), y: parseFloat(wm[6]), z: parseFloat(wm[7]) },
+        color: rgbM ? { r: parseInt(rgbM[1]), g: parseInt(rgbM[2]), b: parseInt(rgbM[3]) } : { r: 75, g: 60, b: 50 },
+        material: wm[8],
+        anchored: true,
+        parentName: 'Workspace',
+      } as CreatePartCommand)
+      continue
+    }
+    // Cylinder: Cyl("name", height, diameter, rx,ry,rz, "Mat", R,G,B)
+    const cm = RE_CYL_SHORT.exec(line)
+    if (cm) {
+      const d = parseFloat(cm[3])
+      const rgbM = cm[8].match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+      commands.push({
+        type: 'create_part',
+        name: cm[1],
+        size: { x: parseFloat(cm[2]), y: d, z: d },
+        position: { x: parseFloat(cm[4]), y: parseFloat(cm[5]), z: parseFloat(cm[6]) },
+        color: rgbM ? { r: parseInt(rgbM[1]), g: parseInt(rgbM[2]), b: parseInt(rgbM[3]) } : { r: 100, g: 65, b: 30 },
+        material: cm[7],
+        anchored: true,
+        parentName: 'Workspace',
+      } as CreatePartCommand)
+      continue
+    }
+    // Ball: Ball("name", diameter, rx,ry,rz, "Mat", R,G,B)
+    const bm = RE_BALL_SHORT.exec(line)
+    if (bm) {
+      const d = parseFloat(bm[2])
+      const rgbM = bm[7].match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+      commands.push({
+        type: 'create_part',
+        name: bm[1],
+        size: { x: d, y: d, z: d },
+        position: { x: parseFloat(bm[3]), y: parseFloat(bm[4]), z: parseFloat(bm[5]) },
+        color: rgbM ? { r: parseInt(rgbM[1]), g: parseInt(rgbM[2]), b: parseInt(rgbM[3]) } : { r: 80, g: 140, b: 40 },
+        material: bm[6],
+        anchored: true,
+        parentName: 'Workspace',
+      } as CreatePartCommand)
+      continue
     }
   }
 
