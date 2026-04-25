@@ -1387,3 +1387,24 @@ model SiteReview {
   @@index([approved, createdAt])
   @@index([userId])
 }
+
+// ─── AI Error Learning ────────────────────────────────────────────────────
+
+model ScriptErrorLog {
+  id           String   @id @default(cuid())
+  sessionId    String?
+  userId       String?
+  errorMessage String   @db.Text
+  errorType    String   // "syntax" | "runtime" | "timeout" | "hallucination"
+  originalCode String   @db.Text
+  fixedCode    String?  @db.Text
+  fixAttempt   Int      @default(1)
+  fixSucceeded Boolean  @default(false)
+  model        String?
+  prompt       String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([errorType])
+  @@index([fixSucceeded])
+  @@index([createdAt])
+}

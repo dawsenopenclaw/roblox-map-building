@@ -59,7 +59,9 @@ import { formatAdditiveRetryPrompt } from '@/lib/ai/build-blueprint'
 import { detectRecommendations, recordRecommendation, getTopRecommendations, formatRecommendations } from '@/lib/ai/recommendation-tracker'
 import { buildRAGSystemPrompt } from '@/lib/ai/rag'
 import { findSpecialist, applySpecialist } from '@/lib/ai/specialists/router'
+import { buildRobloxContext } from '@/lib/ai/roblox-knowledge'
 import { validateBuild } from '@/lib/ai/build-validator'
+import { logScriptError, markErrorFixed, buildFixContext } from '@/lib/ai/error-learning'
 
 // ─── Auto-log conversation to DB (fire-and-forget) ──────────────────────────
 // Persists every user→assistant exchange so admin can review beta tester chats.
@@ -1408,17 +1410,36 @@ async function attemptErrorRecovery(
   errors: string[],
   codePrompt: string,
   attempt: number = 1,
+  userId?: string | null,
 ): Promise<{ fixed: boolean; fixedCode: string | null }> {
   if (attempt > 3 || errors.length === 0) return { fixed: false, fixedCode: null }
 
   console.log(`[ErrorRecovery] Attempt ${attempt}/3 — ${errors.length} errors detected`)
+
+  const errorMessage = errors.join('\n')
+  const errorType = errors.some(e => /syntax|parse|expect/i.test(e)) ? 'syntax' : 'runtime'
+
+  // Log the error to the learning database
+  const logId = await logScriptError({
+    sessionId,
+    userId,
+    errorMessage,
+    errorType,
+    originalCode: originalCode.slice(0, 10000),
+    fixAttempt: attempt,
+    model: 'groq',
+    prompt: codePrompt.slice(0, 2000),
+  })
+
+  // Query past successful fixes for similar errors
+  const pastFixContext = await buildFixContext(errorMessage, errorType)
 
   const fixPrompt = `The following Roblox Luau code was deployed to Studio but threw runtime errors.
 Fix ALL errors and return the COMPLETE corrected code in a \`\`\`lua block.
 
 ERRORS FROM CONSOLE:
 ${errors.map(e => `- ${e}`).join('\n')}
-
+${pastFixContext}
 ORIGINAL CODE:
 \`\`\`lua
 ${originalCode.slice(0, 6000)}
@@ -1443,10 +1464,12 @@ Fix every error. Keep all working code intact. Output the full corrected script.
         const newErrors = await checkConsoleForErrors(sessionId)
         if (newErrors.length === 0) {
           console.log(`[ErrorRecovery] Fix successful on attempt ${attempt}`)
+          // Mark the fix as successful in the learning database
+          if (logId) await markErrorFixed(logId, fixedCode.slice(0, 10000))
           return { fixed: true, fixedCode }
         }
         // Still errors — try again
-        return attemptErrorRecovery(sessionId, fixedCode, newErrors, codePrompt, attempt + 1)
+        return attemptErrorRecovery(sessionId, fixedCode, newErrors, codePrompt, attempt + 1, userId)
       }
     }
   } catch (err) {
@@ -3660,7 +3683,10 @@ async function freeModelTwoPass(
     : ''
   if (specialist) console.log(`[freeModelTwoPass] Specialist: ${specialist.name}`)
 
-  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code.
+  // Inject relevant Roblox API reference snippets based on what the user is building
+  const robloxContext = isScriptIntent ? buildRobloxContext(message) : ''
+
+  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code.
 
 RESPONSE FORMAT (follow EXACTLY):
 1. First, write 4-6 sentences describing what you're creating. Paint the experience — what a player walking through would see and feel. Mention ONE specific detail you're proud of. End with a suggestion for what to do next.
@@ -4913,10 +4939,30 @@ ${effectiveInstruction}`
       }
     }
 
-    // Auto-execute in Studio
+    // Auto-execute in Studio + error recovery loop
     if (luauCode && sessionId) {
       try {
         executedInStudio = await sendCodeToStudio(sessionId, luauCode)
+
+        // Self-healing: check for runtime errors after deployment and auto-fix
+        if (executedInStudio) {
+          // Wait 3 seconds for any runtime errors to surface in Studio console
+          await new Promise(resolve => setTimeout(resolve, 3000))
+          const runtimeErrors = await checkConsoleForErrors(sessionId)
+          if (runtimeErrors.length > 0) {
+            console.log(`[SinglePass] ${runtimeErrors.length} runtime errors detected — entering auto-fix loop`)
+            const recovery = await attemptErrorRecovery(sessionId, luauCode, runtimeErrors, message)
+            if (recovery.fixed && recovery.fixedCode) {
+              luauCode = recovery.fixedCode
+              console.log('[SinglePass] Error recovery successful — code auto-fixed')
+              // Append a note to the conversation so user knows what happened
+              conversationText += `\n\n*I detected ${runtimeErrors.length} runtime error${runtimeErrors.length > 1 ? 's' : ''} and auto-fixed them. The corrected code is now running in Studio.*`
+            } else {
+              console.warn(`[SinglePass] Error recovery failed after 3 attempts — errors: ${runtimeErrors.slice(0, 3).join('; ')}`)
+              conversationText += `\n\n*I noticed some runtime errors in Studio. Try telling me what went wrong and I'll fix it.*`
+            }
+          }
+        }
       } catch (studioErr) {
         console.error('[SinglePass] sendCodeToStudio error:', studioErr instanceof Error ? studioErr.message : studioErr)
       }
@@ -10486,6 +10532,8 @@ interface StreamResponseMeta {
   buildPlan?: unknown
   qualityScore?: number
   buildPartCount?: number
+  /** Build pipeline steps (like Lemonade's "Steps 0/3") */
+  buildSteps?: { step: number; total: number; label: string; status: 'done' | 'running' | 'pending' }[]
   // Conversation tracking — log every exchange for learning
   _userId?: string | null
   _userMessage?: string | null
@@ -11689,6 +11737,21 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         }
       }
       if (wantsStream) {
+        // Build pipeline steps for the progress indicator (matches Lemonade's "Steps 0/3")
+        const steps: StreamResponseMeta['buildSteps'] = []
+        if (SCRIPT_INTENTS.has(intent) || twoPassResult.luauCode) {
+          const total = twoPassResult.executedInStudio ? 4 : 3
+          steps.push({ step: 1, total, label: 'Analyzing prompt', status: 'done' })
+          steps.push({ step: 2, total, label: 'Generating code', status: 'done' })
+          steps.push({ step: 3, total, label: 'Verifying quality', status: 'done' })
+          if (twoPassResult.executedInStudio) {
+            steps.push({ step: 4, total, label: 'Synced to Studio', status: 'done' })
+          }
+        } else if (intent === 'building' || intent === 'terrain' || intent === 'lighting') {
+          steps.push({ step: 1, total: 3, label: 'Planning build', status: 'done' })
+          steps.push({ step: 2, total: 3, label: 'Generating', status: 'done' })
+          steps.push({ step: 3, total: 3, label: twoPassResult.executedInStudio ? 'Placed in Studio' : 'Ready', status: 'done' })
+        }
         return trackableStream(twoPassResult.conversationText, {
           suggestions: twoPassResult.suggestions,
           intent,
@@ -11699,6 +11762,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           model: 'gemini-flash',
           qualityScore: twoPassResult.qualityScore,
           buildPartCount: twoPassResult.buildPartCount,
+          buildSteps: steps.length > 0 ? steps : undefined,
         }) as unknown as NextResponse
       }
       return NextResponse.json({
