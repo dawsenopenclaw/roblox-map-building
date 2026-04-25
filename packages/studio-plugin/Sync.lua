@@ -1068,6 +1068,160 @@ end)
             or workspace
         end
         end -- end of allowExec else-branch
+
+      elseif cmdType == "read_script" then
+        -- Read the .Source of an existing script instance
+        -- Input: { path: "ServerScriptService.GameManager" }
+        -- Queues result back via command_result
+        local target = resolveStructuredPath(cmd.path or "")
+        if not target then
+          target = workspace:FindFirstChild(cmd.path or "", true)
+        end
+        if target and (target:IsA("LuaSourceContainer")) then
+          local src = ""
+          pcall(function() src = target.Source or "" end)
+          Sync.queueChange("script_source", {
+            path = cmd.path,
+            source = src,
+            className = target.ClassName,
+            lineCount = select(2, src:gsub("\n", "\n")) + 1,
+            parent = target.Parent and target.Parent.Name or "",
+            name = target.Name,
+          })
+        else
+          Sync.queueChange("script_source", {
+            path = cmd.path,
+            error = "Script not found: " .. tostring(cmd.path),
+          })
+        end
+
+      elseif cmdType == "modify_script" then
+        -- Replace the .Source of an existing script
+        -- Input: { path: "ServerScriptService.GameManager", source: "new code..." }
+        local target = resolveStructuredPath(cmd.path or "")
+        if not target then
+          target = workspace:FindFirstChild(cmd.path or "", true)
+        end
+        if target and (target:IsA("LuaSourceContainer")) then
+          pcall(function()
+            target.Source = cmd.source or ""
+          end)
+        else
+          warn("[ForjeGames] modify_script: script not found: " .. tostring(cmd.path))
+        end
+
+      elseif cmdType == "get_game_tree" then
+        -- Serialize the DataModel hierarchy and queue it back
+        local tree = { services = {}, totalScripts = 0, totalParts = 0, totalDescendants = 0 }
+        local count = 0
+        local MAX_DESCENDANTS = 500
+        local MAX_DEPTH = 8
+
+        local function serializeChildren(parent, depth)
+          if depth > MAX_DEPTH or count > MAX_DESCENDANTS then return nil end
+          local children = {}
+          local ok, kids = pcall(function() return parent:GetChildren() end)
+          if not ok or not kids then return children end
+          for _, child in ipairs(kids) do
+            count = count + 1
+            if count > MAX_DESCENDANTS then break end
+            local entry = {
+              name = child.Name,
+              className = child.ClassName,
+            }
+            if child:IsA("LuaSourceContainer") then
+              tree.totalScripts = tree.totalScripts + 1
+              local src = ""
+              pcall(function() src = child.Source or "" end)
+              entry.lineCount = select(2, src:gsub("\n", "\n")) + 1
+              local firstLine = src:match("^(.-)\n") or src:sub(1, 80)
+              entry.firstLine = firstLine:sub(1, 80)
+            elseif child:IsA("BasePart") then
+              tree.totalParts = tree.totalParts + 1
+            end
+            local numChildren = 0
+            pcall(function() numChildren = #child:GetChildren() end)
+            if numChildren > 0 and depth < MAX_DEPTH and count < MAX_DESCENDANTS then
+              entry.children = serializeChildren(child, depth + 1)
+              entry.childCount = numChildren
+            elseif numChildren > 0 then
+              entry.childCount = numChildren
+            end
+            table.insert(children, entry)
+          end
+          return children
+        end
+
+        -- Serialize key services
+        local serviceNames = {
+          "Workspace", "ServerScriptService", "ReplicatedStorage",
+          "StarterPlayer", "StarterGui", "Lighting", "SoundService",
+          "ServerStorage", "ReplicatedFirst", "StarterPack",
+        }
+        for _, svcName in ipairs(serviceNames) do
+          local svcOk, svc = pcall(function() return game:GetService(svcName) end)
+          if svcOk and svc then
+            tree.services[svcName] = serializeChildren(svc, 1)
+          end
+        end
+
+        tree.totalDescendants = count
+        Sync.queueChange("game_tree", tree)
+
+      elseif cmdType == "search_scripts" then
+        -- Search all scripts for a keyword
+        -- Input: { query: "DataStore" }
+        local query = cmd.query or ""
+        local results = {}
+        local function searchIn(parent)
+          pcall(function()
+            for _, child in ipairs(parent:GetDescendants()) do
+              if child:IsA("LuaSourceContainer") and #results < 20 then
+                local src = ""
+                pcall(function() src = child.Source or "" end)
+                if src:find(query, 1, true) then
+                  table.insert(results, {
+                    path = child:GetFullName(),
+                    name = child.Name,
+                    className = child.ClassName,
+                  })
+                end
+              end
+            end
+          end)
+        end
+        searchIn(game:GetService("ServerScriptService"))
+        searchIn(game:GetService("ReplicatedStorage"))
+        searchIn(game:GetService("StarterPlayer"))
+        searchIn(game:GetService("StarterGui"))
+        searchIn(workspace)
+        Sync.queueChange("search_results", { query = query, results = results })
+
+      elseif cmdType == "get_dependencies" then
+        -- Extract require() dependency graph from a script
+        -- Input: { path: "ServerScriptService.GameManager" }
+        local target = resolveInstance(cmd.path or "")
+        if target and target:IsA("LuaSourceContainer") then
+          local src = ""
+          pcall(function() src = target.Source or "" end)
+          local deps = {}
+          -- Match require(game.Service.Module) and require(script.Module) patterns
+          for req in src:gmatch("require%(([^%)]+)%)") do
+            local varMatch = src:match("local%s+(%w+)%s*=%s*require%(" .. req:gsub("[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%0") .. "%)")
+            table.insert(deps, {
+              requiredPath = req:match("^%s*(.-)%s*$"), -- trim
+              variableName = varMatch or "",
+            })
+          end
+          Sync.queueChange("dependencies", {
+            path = target:GetFullName(),
+            name = target.Name,
+            dependencies = deps,
+          })
+        else
+          Sync.queueChange("dependencies", { path = cmd.path, error = "Script not found" })
+        end
+
       end
     end)
 
@@ -2404,12 +2558,32 @@ local function walkInstance(inst, depth, tree, counts)
     entry.color = { r = math.floor(col.R * 255), g = math.floor(col.G * 255), b = math.floor(col.B * 255) }
   end
 
-  -- Script metadata: source preview, disabled state, parent path
+  -- Script metadata: source preview, disabled state, parent path, require graph
   if inst:IsA("LuaSourceContainer") then
     counts.scripts = counts.scripts + 1
     local srcOk, src = pcall(function() return inst.Source end)
     if srcOk and type(src) == "string" then
       entry.source = string.sub(src, 1, 500)
+      -- Extract first 3 lines for quick purpose identification
+      local lines = {}
+      local lineCount = 0
+      for line in src:gmatch("[^\n]+") do
+        lineCount = lineCount + 1
+        if lineCount <= 3 then
+          table.insert(lines, line)
+        else
+          break
+        end
+      end
+      entry.firstLines = table.concat(lines, "\n")
+      -- Extract require() dependencies
+      local deps = {}
+      for req in src:gmatch("require%(([^%)]+)%)") do
+        table.insert(deps, req:match("^%s*(.-)%s*$"))
+      end
+      if #deps > 0 then
+        entry.requires = deps
+      end
     end
     entry.disabled = inst:IsA("Script") and inst.Disabled or false
     entry.parentPath = getInstancePath(inst.Parent)
@@ -2443,14 +2617,43 @@ function Sync.gatherFullContext()
   local tree = {}
   local counts = { parts = 0, scripts = 0, lights = 0, models = 0 }
 
+  -- Walk Workspace (parts, models, lights, scripts)
   local ok, err = pcall(function()
     for _, child in ipairs(game.Workspace:GetChildren()) do
       walkInstance(child, 1, tree, counts)
     end
   end)
-
   if not ok then
-    warn("[ForjeGames] gatherFullContext error: " .. tostring(err))
+    warn("[ForjeGames] gatherFullContext workspace error: " .. tostring(err))
+  end
+
+  -- Walk script-heavy services so the AI knows about ALL scripts in the game
+  -- This is what Lemonade calls "contextual Roblox data" — full game awareness
+  local scriptServices = {
+    { name = "ServerScriptService", svc = game:GetService("ServerScriptService") },
+    { name = "ReplicatedStorage", svc = game:GetService("ReplicatedStorage") },
+    { name = "StarterPlayer", svc = game:GetService("StarterPlayer") },
+    { name = "StarterGui", svc = game:GetService("StarterGui") },
+    { name = "ServerStorage", svc = game:GetService("ServerStorage") },
+    { name = "ReplicatedFirst", svc = game:GetService("ReplicatedFirst") },
+  }
+
+  for _, info in ipairs(scriptServices) do
+    pcall(function()
+      local svcNode = {
+        name = info.name,
+        className = "Service",
+        childCount = #info.svc:GetChildren(),
+        children = {},
+        scriptType = "service",
+      }
+      for _, child in ipairs(info.svc:GetChildren()) do
+        walkInstance(child, 2, svcNode.children, counts)
+      end
+      if #svcNode.children > 0 then
+        table.insert(tree, svcNode)
+      end
+    end)
   end
 
   return {
