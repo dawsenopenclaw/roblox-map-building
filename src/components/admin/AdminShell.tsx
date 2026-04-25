@@ -92,13 +92,13 @@ export function AdminShell({
         `}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center gap-2 px-5 border-b border-[#1c1c1c] flex-shrink-0">
+        <Link href="/dashboard" className="h-16 flex items-center gap-2 px-5 border-b border-[#1c1c1c] flex-shrink-0 hover:bg-white/[0.02] transition-colors">
           <div className="w-7 h-7 bg-[#D4AF37] rounded-lg flex items-center justify-center">
             <Shield className="w-4 h-4 text-black" />
           </div>
           <span className="font-bold text-white">Admin</span>
           <span className="text-xs text-[#B0B0B0] ml-auto">ForjeGames</span>
-        </div>
+        </Link>
 
         {/* Demo banner */}
         {isDemo && (

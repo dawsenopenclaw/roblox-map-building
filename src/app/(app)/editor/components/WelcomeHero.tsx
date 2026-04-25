@@ -362,6 +362,63 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
         })}
       </div>
 
+      {/* ─── Try These Prompts ─── */}
+      <div style={{
+        maxWidth: 720,
+        width: '100%',
+        position: 'relative',
+        zIndex: 1,
+      }}>
+        <p style={{ fontSize: 11, color: '#52525B', marginBottom: 8, textAlign: 'center', fontWeight: 600 }}>
+          Try a prompt
+        </p>
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 6,
+          justifyContent: 'center',
+        }}>
+          {[
+            'Build a medieval castle with a throne room',
+            'Create a combat system with abilities',
+            'Make an obby with checkpoints and timer',
+            'Build a horror atmosphere with jump scares',
+            'Create a racing system with leaderboards',
+            'Build a pet following system',
+            'Add an inventory with equippable items',
+            'Create an NPC dialogue system',
+          ].map((prompt) => (
+            <button
+              key={prompt}
+              onClick={() => onQuickAction(prompt, true)}
+              style={{
+                padding: '5px 12px',
+                borderRadius: 20,
+                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(255,255,255,0.02)',
+                color: '#71717A',
+                fontSize: 11,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)'
+                e.currentTarget.style.color = '#D4AF37'
+                e.currentTarget.style.background = 'rgba(212,175,55,0.05)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
+                e.currentTarget.style.color = '#71717A'
+                e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
+              }}
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ─── Hint ─── */}
       <p style={{ fontSize: 11, color: '#3F3F46', textAlign: 'center', position: 'relative', zIndex: 1 }}>
         Type below to start &middot;{' '}
