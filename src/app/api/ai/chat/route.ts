@@ -4733,7 +4733,11 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       }
       if (pastSuccesses.length > 0) {
         enrichedCodePrompt += formatAsExamples(pastSuccesses)
-        console.log(`[ExperienceMemory] Injected ${pastSuccesses.length} successful examples (scores: ${pastSuccesses.map(s => s.score).join(', ')})`)
+        // Add comparison instruction — AI should BEAT the best past build
+        const bestPast = pastSuccesses[0]
+        const bestParts = countPartsInCode(bestPast.code)
+        enrichedCodePrompt += `\n\n=== BUILD COMPARISON TARGET ===\nThe best previous build for a similar request scored ${bestPast.score}/100 with ${bestParts} parts.\nYour build MUST score higher. Use MORE parts (at least ${Math.max(bestParts + 5, 20)}), BETTER materials, MORE detail.\nIf the previous build used ${bestParts} parts, you should use at least ${Math.round(bestParts * 1.2)} parts.\nDon't just copy — IMPROVE on the patterns shown above.\n=== END COMPARISON ===\n`
+        console.log(`[ExperienceMemory] Injected ${pastSuccesses.length} examples + comparison target (beat ${bestPast.score}/100, ${bestParts} parts)`)
       }
       if (pastFailures.length > 0) {
         enrichedCodePrompt += formatAntiPatterns(pastFailures)
@@ -4785,6 +4789,29 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
               `\n\nThe world is being placed in your Studio now. `
             executedInStudio = true
             model = 'world-planner'
+
+            // Record to learning system — each zone is a learning example
+            for (const zr of worldResult.zoneResults) {
+              void recordBuildOutcome(
+                `${plan.gameType} zone: ${zr.zoneId}`,
+                zr.luauCode.slice(0, 5000),
+                zr.antiUglyScore,
+                'world-planner-procedural',
+                {
+                  category: plan.gameType,
+                  partCount: zr.partCount,
+                  buildType: 'build' as const,
+                }
+              ).catch(() => {})
+            }
+            // Record the full game build
+            void recordBuildOutcome(
+              message,
+              `-- World: ${plan.title}\n-- Zones: ${worldResult.completedZones}\n-- Total parts: ${worldResult.totalParts}\n-- Game type: ${plan.gameType}`,
+              Math.round(worldResult.zoneResults.reduce((s, z) => s + z.antiUglyScore, 0) / worldResult.zoneResults.length),
+              'world-planner',
+              { category: plan.gameType, partCount: worldResult.totalParts, buildType: 'build' as const }
+            ).catch(() => {})
           }
         } catch (wpErr) {
           console.warn('[WorldPlanner] Failed, falling through to staged pipeline:', wpErr instanceof Error ? wpErr.message : wpErr)
