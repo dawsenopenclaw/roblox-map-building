@@ -289,14 +289,14 @@ const CATEGORY_REQUIREMENTS: Record<string, CategoryRequirements> = {
   },
   // Map/scene/hub builds — significantly higher requirements
   map: {
-    minParts: 150, minYLevels: 5, minMaterials: 6, minColors: 10, minLights: 6,
-    requiredFeatures: ['path or road', 'light or lamp', 'tree or bush', 'building or shop'],
-    recommendedFeatures: ['fountain or statue', 'bench or seat', 'sign', 'flower or planter', 'fence or boundary', 'terrain'],
+    minParts: 200, minYLevels: 5, minMaterials: 6, minColors: 10, minLights: 8,
+    requiredFeatures: ['path or road', 'light or lamp', 'tree or bush', 'building or shop', 'fence or boundary'],
+    recommendedFeatures: ['fountain or statue', 'bench or seat', 'sign', 'flower or planter', 'terrain', 'npc or character'],
   },
   hub: {
-    minParts: 120, minYLevels: 4, minMaterials: 5, minColors: 8, minLights: 5,
-    requiredFeatures: ['path or road', 'light or lamp', 'tree or bush'],
-    recommendedFeatures: ['fountain or statue', 'bench', 'sign', 'arch or gate', 'fence or boundary'],
+    minParts: 150, minYLevels: 5, minMaterials: 5, minColors: 8, minLights: 6,
+    requiredFeatures: ['path or road', 'light or lamp', 'tree or bush', 'fountain or statue'],
+    recommendedFeatures: ['bench', 'sign', 'arch or gate', 'fence or boundary', 'flower or planter'],
   },
   // Missing game genre categories
   horror: {

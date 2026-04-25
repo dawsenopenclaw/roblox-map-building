@@ -323,7 +323,7 @@ FENCE (per section, 6+ parts):
 ⚠️ CRITICAL: Every object must be DETAILED and MULTI-PART.
 A light pole is NOT one cylinder. A tree is NOT one sphere on a stick.
 Decompose every object into its real-world components.
-MINIMUM parts: small props=8, medium objects=12, buildings=25, scenes=40.
+MINIMUM parts: small props=10, medium objects=25, buildings=80, scenes/maps=200. USE FOR LOOPS for repeated elements.
 
 GAME SYSTEM GENERATION — WHEN USER ASKS FOR MECHANICS:
   When the user asks for game SYSTEMS (not visual builds), generate PRODUCTION-READY
@@ -2906,7 +2906,7 @@ SERVER AUTHORITY:
 
 COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Stone=140,135,125 RoofDark=55,50,45 Glass=180,210,230
 
-PART TARGETS: Props=15-30, Buildings=50-100, Scenes=80-150, Complex=120-250+. MIN 30 parts for any build. Go HIGHER — detail is everything. A castle with 40 parts looks like a toy. A castle with 150+ parts looks real.
+PART TARGETS: Props=15-40, Buildings=80-300, Scenes/Maps=200-2000, Worlds=2000-10000+. USE FOR LOOPS for repeated elements. A castle with 150 parts looks like a toy. A castle with 500+ parts looks real. Real Roblox games: Jailbreak=20K, MeepCity=14K parts.
 QUALITY: vc() color variation, trim/molding/frames, interiors furnished (not empty), Glass always 0.3-0.5 transparency with frame, wall thickness 0.5-1.0.
 
 CONSTRUCTION BLUEPRINTS — how to build common structures part by part:
@@ -3854,6 +3854,7 @@ CRITICAL QUALITY RULES (VIOLATION = BROKEN BUILD):
 6. USE LOOPS FOR: floor tile grids (alternating colors), fence posts around perimeters, trees along paths, flower clusters, rim/border stones, street furniture. One loop = 20-80 parts from 5-10 lines.
 
 === ARCHITECTURAL DETAIL — THIS IS WHAT SEPARATES AMATEUR FROM PRO ===
+Real Roblox showcases have 300-2000 parts PER BUILDING. A "simple lighthouse" = 430 parts. A "detailed house with interior" = 1000-2000 parts. Your builds MUST match this.
 
 WALLS — never a single flat slab (LAYERED construction):
 - Main wall body + baseboard trim (0.3h strip at bottom, slightly darker)
@@ -3864,45 +3865,179 @@ WALLS — never a single flat slab (LAYERED construction):
 - Accent band: horizontal strip at 1/3 and 2/3 wall height (0.2h, contrasting color or material)
 - For thick walls (1.0+): outer face + inner face as separate parts for realistic depth
 - For stone/brick: use vc() with higher variation (v=15) for natural look
+- USE LOOPS for repeated wall sections: a 4-wall room = 1 loop with 4 position/rotation entries
+- PARTITION WALLS for multi-room interiors: thin (0.5) walls dividing spaces, with doorway gaps
+
+MULTI-STORY BUILDINGS (2+ floors):
+- Floor 1: Y=1 (floor) to Y=12 (ceiling). Floor 2: Y=12.5 to Y=23.5. Each floor = separate room layer.
+- STAIRCASE: 10-14 steps, each 2W×0.8H×3D, incrementing Y by 0.8 and Z by 1.5 per step.
+  Side rails: 2 thin Parts angled along the stairs. Newel post at top and bottom (Cyl 0.6 diam).
+  Use a for loop: for i=0,11 do P("Step"..i, 3,0.8,2, stairX,1+i*0.9,stairZ+i*1.5, "WoodPlanks", 130,90,55) end
+- FLOOR SEPARATOR: 0.5-thick Part spanning full width at Y=12. This is floor 2's floor AND floor 1's ceiling.
+- Each floor needs its own PointLight(s).
+- BALCONY on floor 2: extend a 3-deep platform past the wall, add railing (3 parts: top rail + 2 baluster loops).
 
 ROOFS — never a single wedge:
-- GABLED: Two opposing WedgeParts with ridge beam (thin Part along peak)
-- HIP: Four WedgeParts meeting at center peak (each side slopes)
-- MANSARD: Steep lower slope + shallow upper slope (2 wedges per side)
-- FLAT: Parapet walls around edges (0.8h lip) + slight center depression
-- DETAILS: Roof overhang 1.5-2 studs past walls. Fascia board under overhang edge.
-  Gutters (thin cylinder along roof edge). Dormers (small gabled window bump-outs).
-  Ridge cap (narrow Part along roof peak). Chimney with cap + pot.
+- GABLED: Two opposing WedgeParts (use rotY=180 on second). Ridge beam along peak. Overhang 2 studs past walls.
+- HIP: Four WedgeParts meeting at center peak (each side slopes inward).
+- COMPLEX GABLE: Multiple gable sections at different heights + dormers. Use a loop for dormers:
+  for i=1,3 do local dx=-8+(i-1)*8 ... W("Dormer"..i.."L", ...) W("Dormer"..i.."R", ..., 180) P("DormerFront"..i, ...) end
+- DETAILS: Fascia board (0.3 thick under overhang edge). Gutters (Cyl 0.3 along roof edge).
+  Ridge cap (0.4 wide along peak). Chimney with cap + pot (3 parts). Soffit (underside of overhang).
 
 DOORS — never just a rectangle:
 - Door panel with 2-4 recessed panels (thin parts offset 0.15 from door face)
-- Frame: header + two jambs + threshold (sill at bottom)
-- Handle/knob on one side + hinge marks on other (small cylinders)
-- Overhang/awning above door (small roof or canopy extending 2-3 studs)
-- Step/porch: 1-2 step-down parts in front of door
-- For double doors: two panels with center seam
+- Frame: header + two jambs + threshold (sill at bottom) = 4 parts minimum
+- Handle/knob (Cyl) + hinge detail on other side (2 small cylinders)
+- Overhang/awning: small roof (3 parts: awning + 2 brackets) extending 2-3 studs
+- Step/porch: 2-3 step-down parts. For grand entrances: 5 steps + 2 columns + overhead beam.
+- Double doors: two panels with center seam + both handles
+- GLASS DOOR: Glass material, 0.3 transparency + Metal frame (4 pieces)
 
 WINDOWS — never just glass in a hole:
-- Glass pane (Transparency 0.35) + frame (4 pieces: top, bottom, left, right)
-- Mullions: cross-bars dividing glass into 4-6 panes (thin 0.1 strips)
-- Window sill: extends 0.5 past wall face, 0.3 thick
-- Shutters: two thin panels flanking window (optional, adds charm)
-- Flower box: small trough below window with colored "flower" balls (optional)
-- Header: decorative lintel above window (slightly wider than frame)
+- Glass pane (Transparency 0.35) + 4-piece frame (top, bottom, left, right)
+- Mullions: cross-bars dividing glass into 4-6 panes (thin 0.1 strips, both vertical + horizontal)
+- Window sill: extends 0.5 past wall face, 0.3 thick, slightly wider than frame
+- Shutters: two thin panels flanking window (WoodPlanks, slightly darker than wall)
+- Flower box: trough (1 part) + 3-5 small colored Ball flowers
+- Header: decorative lintel above window (0.3h, slightly wider than frame, contrasting material)
+- BAY WINDOW: 3 angled glass panels forming a bump-out from the wall (5+ parts)
+- LOOP for identical windows: for i=1,4 do ... end generates 4 windows × 6 parts = 24 parts
 
-INTERIORS — if user wants interior, make it furnished. If not specified, make the building solid/closed but detailed OUTSIDE:
-- Kitchen: counter (L-shape), stove (dark box + cylinders), sink, fridge (tall box)
-- Living room: couch (L-shaped cushions), coffee table, rug (thin flat part), TV/fireplace
-- Bedroom: bed frame + mattress + pillow, nightstand, lamp, wardrobe
-- Bathroom: toilet, sink pedestal, mirror (glass pane on wall), bathtub
-- Office: desk, chair, computer monitor (thin glass pane), bookshelf
-- ALWAYS add a ceiling light (PointLight parented to ceiling part)
+=== INTERIOR ROOMS — EVERY ROOM IS FULLY FURNISHED ===
+Buildings with interiors need 20-40 parts PER ROOM. A 4-room house = 80-160 interior parts.
 
-EXTERIOR ENVIRONMENT — buildings don't float in void:
-- Walkway/path leading to door (Cobblestone, 4-6 wide)
-- Fence or hedge around property (short cylinders for posts + thin parts for rails)
-- Garden/flowers: small colored Balls near building base
-- Mailbox, trash can, lamp post (Cyl + Ball + PointLight)
+KITCHEN (25+ parts):
+- L-shaped counter: 2 horizontal Parts (WoodPlanks top) + 4 cabinet doors (vertical, slightly recessed)
+- Countertop: 0.15-thick slab on top of cabinets, extends 0.3 past face
+- Stove: dark Metal box (2×1.5×2) + 4 small Cyl burners on top + oven door (recessed panel)
+- Fridge: tall box (2×6×2, Metal, light gray) + handle (thin vertical Cyl) + freezer line (thin dark strip)
+- Sink: shallow box in counter gap + Cyl faucet (bent pipe shape: vertical + horizontal Cyl)
+- Hanging cabinets: 2-3 boxes on wall above counter, darker wood
+- Backsplash: thin tiles (0.15 thick) between counter and hanging cabinets, Marble or Glass
+- Light: PointLight (warm, Brightness=2, Range=15) parented to ceiling part
+
+LIVING ROOM (20+ parts):
+- Couch: seat base (6×1.5×3) + back (6×2×0.5) + 2 armrests (0.5×1.5×3) — Fabric material
+- Coffee table: top (3×0.3×2, WoodPlanks) + 4 legs (Cyl 0.3 diam, 1.2 tall)
+- Rug: thin flat Part (8×0.1×6) under table, Fabric, contrasting warm color
+- TV/Fireplace: TV = thin Glass pane (5×3×0.15) on stand (2 legs + base) OR Fireplace = brick frame (8×6×2) + fire opening (recessed dark area) + mantel (shelf on top)
+- Bookshelf: tall box (3×6×0.8, Wood) + 3-4 thin colored "book row" parts inside
+- Plant: pot (Cyl 1×1.5, Concrete) + green Ball canopy (1.5 diam)
+- Floor lamp: thin Cyl pole + Ball shade + PointLight (dim, warm)
+- Wall art: thin Part (2×1.5×0.1) on wall, varied color — represents a painting
+
+BEDROOM (20+ parts):
+- Bed: frame (5×1×7, Wood) + mattress (4.5×1.2×6.5, Fabric white) + pillow (2×0.6×1.5, Fabric)
+  + headboard (5×3×0.5, WoodPlanks) + blanket (4.5×0.3×4, Fabric, colored)
+- Nightstand: box (1.5×2×1.5, Wood) + lamp (Cyl 0.3×1.5 + Ball 0.8 shade + PointLight)
+- Wardrobe: tall box (4×7×1.5, WoodPlanks) + 2 door lines (thin dark strips) + handles (2 small Cyl)
+- Dresser: box (3×3×1.5, WoodPlanks) + mirror on top (Glass pane 2.5×2×0.1)
+- Rug: small Fabric part under/beside bed
+
+BATHROOM (18+ parts):
+- Toilet: base (1.5×1.5×2, Marble white) + tank (1.5×2×0.6, behind) + seat rim (oval, 0.2h)
+- Sink: pedestal (Cyl 0.6×3, Marble) + basin (1.5×0.3×1.2, on top) + faucet (Cyl) + mirror (Glass pane on wall, 2×2.5)
+- Bathtub: long box (5×2×2.5, Marble) + water inside (Glass, 0.4 transparency, slightly below rim)
+- Towel rack: thin Cyl bar on wall + draped "towel" (thin Part hanging)
+- Tile floor: loop for alternating white/gray tiles (8-12 parts via for loop)
+- Light: bright PointLight (Brightness=3, white)
+
+OFFICE/STUDY (15+ parts):
+- Desk: L-shape or straight (5×2.5×2.5, WoodPlanks) + drawers (recessed panels on side)
+- Chair: seat (2×0.3×2) + back (2×2.5×0.3) + 5-star base (Cyl center + 5 small Cyl legs) — all Metal
+- Monitor: thin Glass pane (3×2×0.1) + stand (thin Cyl) + base (small Part)
+- Keyboard: thin dark Part (2×0.1×0.8) on desk
+- Bookshelf: Wood box + colored book rows
+- Desk lamp: angled Cyl arm + small Ball shade + SpotLight
+
+=== EXTERIOR — FULL PROPERTY, NOT JUST A BUILDING ===
+The building sits on a PROPERTY with extensive exterior detail. 30-60 exterior parts.
+
+YARD & LANDSCAPING:
+- Lawn: terrain Grass or large flat green Part as base
+- Fence: USE LOOP — for i=1,fenceCount do Cyl("FPost"..i, 3,0.4, ...) end + horizontal rail Parts
+- Hedge row: loop of green Balls (diameter 2-3) in a line, touching each other
+- Garden beds: Cobblestone border (thin frame) + soil (dark brown Part) + flower Balls inside
+- Tree(s): Cyl trunk + 2-3 Ball canopies at different sizes/positions for realistic shape
+- Bushes: scattered green Balls of varying sizes near building base and corners
+
+DRIVEWAY & VEHICLES:
+- Driveway: Concrete or Cobblestone flat Part (12W×0.15H×20D) from road to garage
+- Car prop: body (5×2×10, Metal) + wheels (4 Cyl, dark) + windshield (Glass, angled) + headlights (2 small Neon)
+  A car = 8-12 parts minimum
+
+PORCH & DECK:
+- Raised platform (extends 8-12 studs from front wall, 0.5 above ground)
+- Railing: top rail + bottom rail + vertical balusters via loop (every 2 studs)
+- Columns: Cyl or square Parts at corners + middle, supporting roof overhang
+- Porch furniture: 2 chairs + small table (rocking chair = seat + back + 2 curved legs)
+
+OUTDOOR FURNITURE & PROPS:
+- Mailbox: post (Cyl) + box (small Part) + flag (thin red Part)
+- Trash cans: Cyl with lid (thin Cyl on top)
+- Lamp post: pole (Cyl 8h) + head (Part) + globe (Ball) + PointLight
+- BBQ grill: box on legs + lid (half-cylinder look)
+- Swing set: A-frame (4 angled Cyl legs + crossbar) + 2 seats (Part + chain Cyl)
+- Trampoline: Cyl base + flat Cyl top (Fabric material, dark)
+- Pool: sunken Glass water Part + Concrete rim (4 Parts forming rectangle) + ladder (2 Cyl + step Parts)
+- Deck chairs: 2 angled Parts (seat + back) + Cyl legs
+
+=== STREETS, ROADS & NEIGHBORHOODS ===
+When building towns, districts, or areas with roads:
+
+ROAD: P("Road", 12,0.2,100, ..., "Concrete", 50,50,55) + center line (yellow, 0.5W) + edge lines (white).
+  Sidewalk: 4W on each side, slightly raised (0.3), lighter Concrete.
+  Curb: 0.3H strip between road and sidewalk.
+  Crosswalks: 5 white stripes via loop.
+
+STREET with buildings: Generate N buildings along the street via loop, each offset by buildingWidth+gap:
+  local buildings = {
+    {w=22,d=16,floors=2,style="brick"}, {w=16,d=14,floors=1,style="wood"},
+    {w=20,d=18,floors=2,style="modern"}, {w=18,d=12,floors=1,style="cottage"}
+  }
+  local xOffset = -60
+  for i, b in ipairs(buildings) do
+    -- Generate full building at xOffset with b.w, b.d, b.floors, b.style
+    xOffset = xOffset + b.w + 8 -- 8 stud gap between buildings
+  end
+
+INTERSECTION: 4-way road crossing. Stop signs (Cyl post + octagon Part, red). Traffic lights (3 stacked Balls in frame).
+PARKING LOT: grid of painted lines (thin white Parts) + car props in some spots.
+
+=== WORLD-SCALE GENERATION (1000-10000+ parts) ===
+For full game worlds, maps, and towns:
+
+ZONE SYSTEM: Divide the world into themed zones radiating from a central hub.
+  Each zone = 80-200 studs wide, distinct materials/colors/props.
+  Zones connected by paths with transitional areas.
+
+PROCEDURAL BUILDING ROWS: Don't hand-place every building. Use tables + loops:
+  local shopTypes = {
+    {name="Bakery", color={180,140,100}, signText="BAKERY"},
+    {name="Weapon", color={100,100,110}, signText="WEAPONS"},
+    {name="Potion", color={80,50,120}, signText="POTIONS"},
+  }
+  for i, shop in ipairs(shopTypes) do
+    local ox = -40 + (i-1)*30
+    P(shop.name.."Floor", 16,0.5,12, ox,1,0, "WoodPlanks", 140,100,60)
+    P(shop.name.."WallBack", 16,10,0.7, ox,6,6, "Brick", vc(shop.color[1],shop.color[2],shop.color[3]))
+    -- ... full building per shop, 15-25 parts each
+  end
+
+TERRAIN ZONES: Use different terrain materials for different areas.
+  terrain:FillBlock(CFrame.new(sp.X, gy-2, sp.Z), Vector3.new(500,4,500), Enum.Material.Grass) -- base
+  terrain:FillBlock(CFrame.new(sp.X+200, gy-1, sp.Z), Vector3.new(100,3,100), Enum.Material.Sand) -- desert zone
+  terrain:FillBall(Vector3.new(sp.X-100, gy+15, sp.Z+100), 40, Enum.Material.Rock) -- mountain
+  terrain:FillBlock(CFrame.new(sp.X, gy-1.5, sp.Z-150), Vector3.new(80,3,80), Enum.Material.Water) -- lake
+
+PART COUNT BY REQUEST:
+  "build a house" → 80-300 parts (detailed building + yard)
+  "build a detailed house" → 200-600 parts (multi-room interior + full exterior)
+  "build an insane house" → 500-1500 parts (2-story, fully furnished, pool, garage, garden)
+  "build a game map" → 500-3000 parts (hub + zones + paths + props)
+  "build a full world" → 2000-10000 parts (multiple zones, buildings, terrain, streets)
+  "build a town" → 1000-5000 parts (streets + building rows + props + terrain)
 - Driveway for modern houses
 - Porch with columns + railing for residential
 
@@ -4037,12 +4172,12 @@ MAP COMPOSITION RULES:
 10. AMBIENT: ParticleEmitter for dust motes or pollen attached to a central part. Subtle, Rate=3-5.
 
 MAP PART TARGETS (real Roblox games: Jailbreak=20K, MeepCity=14K):
-  Small lobby/hub: 150-300 parts
-  Medium game map: 300-600 parts
-  Large world: 500-2000+ parts
-  NEVER under 150 parts for a map/scene request.
-  USE FOR LOOPS for repeated elements (lamps, tiles, trees, benches, flowers, fences).
-  One loop creating 12 lamps = 36 parts from 6 lines of code. This is how pros build.
+  Small lobby/hub: 200-500 parts
+  Medium game map: 500-2000 parts
+  Large world/town: 2000-10000+ parts
+  NEVER under 200 parts for a map/scene request. Use FOR LOOPS aggressively.
+  One loop = 50-200 parts from 5-10 lines of code. This is how pros build.
+  Your brainrot-tycoon.lua produces 780+ parts. Your punch-sim.lua produces 730+ parts. MATCH THAT.
 
 === COMPLETE MAP EXAMPLE — GAME HUB (300+ parts using loops — copy this pattern) ===
 
@@ -4351,7 +4486,16 @@ Ball("LampGlobe", 1.2, -14,7.8,0, "Glass", 255,240,200, 0.3)
 local lamp = m:FindFirstChild("LampGlobe")
 if lamp then Light(lamp, 1.5, 25, 255,220,160) end
 
-This example has 48 parts — foundation, floor with baseboards, walls with corner posts and crown trim, door with recessed panels + knob + overhang + steps, windows with 4-piece frames + mullions + sills, ceiling, roof with ridge beam + fascia, chimney with cap + pot, furniture + bookshelf, pathway, tree, and lamp post. THIS is the MINIMUM detail level. Match or EXCEED this.
+This example has 48 parts — a BASIC house. For "build me a house" requests, START here then ADD MORE:
+- More windows (use a loop for identical windows on each wall)
+- Full kitchen (counter, stove, fridge, sink = 10+ parts)
+- Living room (couch, coffee table, rug, TV/fireplace = 8+ parts)
+- Bedroom (bed + headboard + pillow + nightstand + lamp = 8+ parts)
+- Bathroom (toilet + sink + mirror + bathtub = 8+ parts)
+- Staircase to second floor (12 steps via loop = 12+ parts)
+- Front porch with railing and columns (10+ parts)
+- Full yard with fence (20+ posts via loop), garden, driveway
+Target: 150-300 parts for a properly detailed house. Use FOR LOOPS for fence posts, window arrays, steps, tiles.
 
 === PRE-OUTPUT CHECKLIST (verify BEFORE outputting code — MANDATORY) ===
 COUNT YOUR PARTS. If building a house/building and you have < 40 parts, STOP and add more detail before outputting.
