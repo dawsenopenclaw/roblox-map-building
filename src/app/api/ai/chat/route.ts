@@ -3810,16 +3810,10 @@ SCALE: Character=5.5 tall. Doors=4W×7.5H. Windows=3-4W×3-4H. Walls=0.8 thick. 
 
 CRITICAL QUALITY RULES:
 0. ALL PARTS MUST GO INTO THE SINGLE MODEL 'm'. The ONLY line referencing workspace directly should be 'm.Parent = workspace' at the end.
-1. MINIMUM PART COUNTS (non-negotiable):
-   - House/building: 80-150 parts. Walls need trim, baseboard, crown. Roof needs ridge, fascia, overhang. Windows need glass+frame+mullions+sill. Doors need panels+frame+handle+steps.
-   - Castle/large build: 150-300 parts.
-   - Vehicle: 30-60 parts.
-   - Furniture/prop: 10-25 parts.
-   - Full environment/world: 200-500 parts.
-   A 15-part house is UNACCEPTABLE. That's a box. Real houses have 80+ distinct parts. Look at the example below and match that density.
-2. EVERY SURFACE NEEDS DETAIL. A wall is NOT one Part. It's: main wall body + baseboard (0.3h dark strip at bottom) + crown molding (0.2h strip at top) + corner post (0.6x0.6 pillar at edges). That's 4 parts per wall section minimum.
+1. PART TARGETS: House=30-50 parts. Castle=50-80. Vehicle=15-30. Prop=5-15. A 10-part house is a box. 30+ parts with trim makes it look real.
+2. ADD TRIM: Walls get baseboard (dark strip at bottom). Windows get frames. Doors get handles. Roofs get ridge beam.
 3. ALWAYS include ChangeHistoryService boilerplate + m.Parent=workspace + FinishRecording at end.
-4. USE vc() ON EVERYTHING. Never flat uniform colors. Every brick, every plank, every stone gets color variation.
+4. USE vc() for color variation on repeated materials.
 
 === ARCHITECTURAL DETAIL — THIS IS WHAT SEPARATES AMATEUR FROM PRO ===
 
@@ -4858,7 +4852,7 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
 
     // Single-pass: race both models — first valid result wins (fallback for staged pipeline, primary for simple builds)
     let buildRace: { result: string; index: number } | null = null
-    const outputTokens = isScriptIntent ? 32768 : 32768 // Builds need 32K tokens for 80-150 part detailed structures
+    const outputTokens = isScriptIntent ? 32768 : 16384 // 16K for builds (30-50 parts), 32K for scripts
     if (!luauCode) {
       console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
       // 4 providers racing — first to respond wins
