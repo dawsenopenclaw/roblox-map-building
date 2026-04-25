@@ -251,6 +251,29 @@ export function amplifyBuild(code: string): { code: string; injections: string[]
   amplified = injectColorVariation(amplified)
   if (amplified.length > beforeVC) injections.push('color variation helper')
 
+  // 6. Ambient particles (dust motes for atmosphere)
+  if (!amplified.includes('ParticleEmitter')) {
+    const particleBlock = `
+-- Ambient dust motes
+pcall(function()
+  local _dustPart = Instance.new("Part") _dustPart.Name = "ambient_dust" _dustPart.Anchored = true
+  _dustPart.Size = Vector3.new(60,1,60) _dustPart.CFrame = CFrame.new(sp.X, gy+8, sp.Z)
+  _dustPart.Transparency = 1 _dustPart.CanCollide = false _dustPart.Parent = m
+  local _pe = Instance.new("ParticleEmitter") _pe.Rate = 3 _pe.Lifetime = NumberRange.new(8,15)
+  _pe.Speed = NumberRange.new(0.3,1) _pe.SpreadAngle = Vector2.new(180,180)
+  _pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,0.05),NumberSequenceKeypoint.new(0.5,0.15),NumberSequenceKeypoint.new(1,0.05)})
+  _pe.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0.8),NumberSequenceKeypoint.new(0.5,0.5),NumberSequenceKeypoint.new(1,1)})
+  _pe.Color = ColorSequence.new(Color3.fromRGB(255,250,230))
+  _pe.LightEmission = 0.3 _pe.Parent = _dustPart
+end)
+`
+    const finalize = amplified.indexOf('m.Parent = workspace')
+    if (finalize !== -1) {
+      amplified = amplified.slice(0, finalize) + particleBlock + '\n' + amplified.slice(finalize)
+      injections.push('ambient dust particle emitter')
+    }
+  }
+
   console.log(`[BuildAmplifier] ${injections.length} enhancements: ${injections.join(', ')}`)
   return { code: amplified, injections }
 }

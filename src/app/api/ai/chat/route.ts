@@ -5628,6 +5628,91 @@ MATERIAL VARIETY:
 - Trim/detail: Wood, Metal, or contrasting wall material
 - Glass: always with Transparency 0.3-0.5, always with a frame Part
 
+=== SHAPE MASTERY — NOT JUST BOXES ===
+Pro Roblox builds use ALL part types, not just boxes. You MUST mix these shapes:
+
+SHAPE TYPES AND WHEN TO USE THEM:
+1. Part (Box) — walls, floors, tables, shelves, frames, slabs, beams
+2. WedgePart — roofs, ramps, sloped surfaces, pointed tops, A-frames
+3. Part + Shape=Cylinder — columns, poles, pipes, tree trunks, wheels, barrels, cups, vases
+4. Part + Shape=Ball — bushes, domes, fruit, decorative spheres, rounded lamps, planet
+5. CornerWedgePart — smooth roof corners, hip roofs, pyramid caps
+6. TrussPart — ladders, scaffolding, climbing surfaces
+7. Thin parts (0.1-0.2 thick) — trim, molding, frames, panels, signs, posters
+
+SHAPE CREATION (use these in your code):
+  -- Cylinder (column, pole, trunk)
+  local col = Instance.new("Part") col.Shape = Enum.PartType.Cylinder
+  col.Size = Vector3.new(HEIGHT, DIAMETER, DIAMETER) -- X=height for cylinders
+  col.CFrame = CFrame.new(x,y,z) * CFrame.Angles(0, 0, math.rad(90)) -- rotate upright
+
+  -- Ball (bush, dome, sphere)
+  local ball = Instance.new("Part") ball.Shape = Enum.PartType.Ball
+  ball.Size = Vector3.new(D, D, D) -- all three must be equal
+
+  -- WedgePart (roof slope, ramp)
+  local wedge = Instance.new("WedgePart")
+  wedge.Size = Vector3.new(WIDTH, HEIGHT, DEPTH) -- slope goes along Z
+  -- Rotate for opposite slope: CFrame * CFrame.Angles(0, math.rad(180), 0)
+
+  -- CornerWedgePart (hip roof corner)
+  local corner = Instance.new("CornerWedgePart")
+
+LOW-POLY TECHNIQUES (makes builds look stylized, not blocky):
+  -- Rotate parts slightly off-axis for organic feel
+  part.CFrame = CFrame.new(x,y,z) * CFrame.Angles(0, math.rad(math.random(-5,5)), 0)
+
+  -- Use Ball shapes for foliage (looks way better than box bushes)
+  for i = 1, 5 do
+    local leaf = Instance.new("Part") leaf.Shape = Enum.PartType.Ball
+    leaf.Size = Vector3.new(3+math.random()*2, 2+math.random()*2, 3+math.random()*2)
+    leaf.CFrame = CFrame.new(trunkX + math.random(-2,2), trunkTopY + math.random(-1,3), trunkZ + math.random(-2,2))
+    leaf.Material = Enum.Material.Grass leaf.Color = Color3.fromRGB(60+math.random(40), 120+math.random(40), 40+math.random(30))
+  end
+
+  -- Use cylinders for rounded furniture legs, lamp poles, pillars
+  -- Use wedges for angled details: awnings, pointed roofs, decorative trim
+
+MEGA MANSION TYCOON TECHNIQUES (extreme detail):
+  -- RULE: Every surface gets at least 2 layers (base + trim)
+  -- Baseboards: thin strip (0.15 tall) along every wall bottom
+  P("baseboard", wallWidth, 0.15, 0.15, wallX, 0.08+gy, wallZ, "Wood", 80,55,25)
+
+  -- Crown molding: thin strip along every ceiling edge
+  P("crown", wallWidth, 0.12, 0.2, wallX, ceilY-0.06, wallZ+0.1, "Marble", 235,230,225)
+
+  -- Door frames: 3 parts (left post, right post, header) around every opening
+  -- Window frames: 4 parts (top, bottom, left, right) around every glass
+  -- Window sills: small ledge extending outward
+
+  -- Furniture detail level:
+  -- Chair = seat + back + 4 legs + 2 armrests (8 parts)
+  -- Table = top + 4 legs + bottom shelf (6 parts)
+  -- Bed = frame + headboard + mattress + 2 pillows + blanket (6 parts)
+  -- Couch = base + 3 cushions + 2 arms + back (7 parts)
+  -- Bookshelf = frame + 4 shelves + 20 books (25+ parts)
+  -- Kitchen counter = base + countertop + backsplash + sink + faucet (8+ parts)
+  -- Lamp = base(cylinder) + stem(cylinder) + shade(cylinder, transparency) + light (4 parts + PointLight)
+
+  -- Exterior detail:
+  -- Chimney = base + cap + smoke(ParticleEmitter)
+  -- Gutter = thin cylinder along roof edge
+  -- Downspout = thin cylinder from gutter to ground
+  -- Awning = wedge or angled part over windows/doors
+  -- Planter = box + soil(brown part) + plant(green balls)
+  -- Mailbox = post(cylinder) + box + flag(thin red part)
+  -- Fence = posts(cylinders) + rails(thin parts) + optional gate
+  -- Street lamp = tall cylinder + arm(angled) + bulb(ball) + PointLight
+  -- Bench = seat + back + 2 legs + 2 armrests
+
+ROOM DETAILING (for interiors):
+  -- Living room: couch, coffee table, TV(thin black part + glow), rug(thin flat part), lamp, bookshelf, window with curtains
+  -- Kitchen: counter, stove(dark parts + red neon burners), fridge(tall gray), sink, cabinets, island, bar stools
+  -- Bedroom: bed, nightstand, dresser(with mirror=Glass), closet door, rug, wall art(thin colored parts)
+  -- Bathroom: bathtub(U-shape from 5 parts), toilet(creative cylinder+box combo), sink, mirror(Glass), towel rack
+  -- Office: desk, chair(with wheels=tiny balls), monitor(thin black+glow), keyboard(thin dark part), bookshelf
+  -- Garden: grass terrain, stone path, flowers(small colored balls on stems), trees, bench, fountain(cylinders+water)
+
 === OBJECT LIBRARY — USE THIS FOR EVERY BUILD ===
 When the user asks for ANY object listed below, build it with EXACTLY the multi-part detail shown. NEVER simplify to a single Part. A Chair is seat+backrest+4 legs. A Tree is trunk+branches+canopy. A House is walls+roof+door+windows+chimney.
 If the user asks for something NOT in this list, extrapolate: what would a real one look like? How many parts? What materials? What colors? Build it like the objects below — multi-part, textured, lit.
