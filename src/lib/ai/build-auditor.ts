@@ -244,8 +244,8 @@ const CATEGORY_REQUIREMENTS: Record<string, CategoryRequirements> = {
   },
   house: {
     minParts: 40, minYLevels: 3, minMaterials: 4, minColors: 5, minLights: 2,
-    requiredFeatures: ['wall', 'door', 'window', 'roof', 'floor'],
-    recommendedFeatures: ['furniture', 'light', 'kitchen or bedroom', 'porch or garden', 'baseboard or trim'],
+    requiredFeatures: ['wall', 'door', 'window', 'roof', 'floor', 'foundation', 'baseboard or trim'],
+    recommendedFeatures: ['furniture', 'light', 'kitchen or bedroom', 'porch or garden'],
   },
   nature: {
     minParts: 25, minYLevels: 3, minMaterials: 3, minColors: 4, minLights: 0,

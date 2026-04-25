@@ -161,7 +161,13 @@ export function extractKeywords(prompt: string): Set<string> {
 
 export function countPartsInCode(code: string): number {
   // Count all physical parts (Part, WedgePart, MeshPart, SpawnLocation, Seat, etc.)
-  return (code.match(/Instance\.new\s*\(\s*["'](?:Part|WedgePart|MeshPart|SpawnLocation|Seat|VehicleSeat|TrussPart|CornerWedgePart)["']\s*\)/g) || []).length
+  const instanceParts = (code.match(/Instance\.new\s*\(\s*["'](?:Part|WedgePart|MeshPart|SpawnLocation|Seat|VehicleSeat|TrussPart|CornerWedgePart)["']\s*\)/g) || []).length
+  // Also count P()/W()/Cyl()/Ball() helper functions used by our AI build prompt
+  const helperParts = (code.match(/\bP\s*\(/g) || []).length
+    + (code.match(/\bW\s*\(/g) || []).length
+    + (code.match(/\bCyl\s*\(/g) || []).length
+    + (code.match(/\bBall\s*\(/g) || []).length
+  return instanceParts + helperParts
 }
 
 /** Count scripted/interactive instances — lights, effects, interactors, UI */

@@ -313,29 +313,45 @@ function scoreQuality(code: string, errors: VerificationError[]): { score: numbe
   const wHelperCount = (code.match(/\bW\s*\(/g) || []).length
   const totalParts = partCount + pHelperCount + cylCount + ballCount + wedgeCount + wHelperCount
   // Script-only code doesn't need parts — detect by service usage, event handling, or module patterns
-  const isScriptCode = code.includes('DataStoreService') || code.includes('RemoteEvent') ||
+  // IMPORTANT: If code has build helpers (P/W/Cyl/Ball) or ForjeAI_Build model creation,
+  // it's a BUILD WITH INTERACTIVITY, not a pure script. Still apply part count checks.
+  const hasBuildHelpers = /\bP\s*\(/.test(code) || /\bW\s*\(/.test(code) || /\bCyl\s*\(/.test(code) || /\bBall\s*\(/.test(code)
+  const hasForjeBuildModel = code.includes('ForjeAI_Build')
+  const hasBuildPatterns = hasBuildHelpers || hasForjeBuildModel
+
+  // Heavy game-logic services that indicate pure scripts (not builds with interactivity)
+  const hasHeavyGameLogic = code.includes('DataStoreService') || code.includes('RemoteEvent') ||
     code.includes('RemoteFunction') || code.includes('Players.PlayerAdded') ||
     code.includes('ModuleScript') || code.includes('BindableEvent') ||
     code.includes('UserInputService') || code.includes('MarketplaceService') ||
     code.includes('TextChatService') || code.includes('PathfindingService') ||
     code.includes('TeleportService') || code.includes('BadgeService') ||
-    code.includes('game:GetService("Players")') ||
-    // GUI/menu scripts (ANY ScreenGui creation = script, not build)
-    code.includes('ScreenGui') || code.includes('BillboardGui') || code.includes('SurfaceGui') ||
-    // Script source pattern (creating scripts with .Source)
-    code.includes('.Source') || code.includes('ServerScriptService') ||
-    code.includes('StarterPlayerScripts') || code.includes('StarterGui') ||
-    code.includes('ReplicatedStorage') || code.includes('StarterPack') ||
-    // UI element creation (TextButton, Frame, etc)
+    code.includes('game:GetService("Players")')
+
+  // UI/GUI patterns
+  const hasGUIPatterns = code.includes('ScreenGui') || code.includes('BillboardGui') || code.includes('SurfaceGui') ||
     code.includes('TextButton') || code.includes('TextLabel') || code.includes('TextBox') ||
     code.includes('ImageButton') || code.includes('ImageLabel') || code.includes('ScrollingFrame') ||
-    code.includes('UIListLayout') || code.includes('UIGridLayout') || code.includes('UICorner') ||
-    // Leaderstats / progression scripts
-    code.includes('leaderstats') || code.includes('IntValue') || code.includes('NumberValue') ||
-    // ProximityPrompt / interactive scripts
-    code.includes('ProximityPrompt') || code.includes('ClickDetector') ||
-    // Tween/animation scripts
+    code.includes('UIListLayout') || code.includes('UIGridLayout') || code.includes('UICorner')
+
+  // Script infrastructure patterns
+  const hasScriptInfra = code.includes('.Source') || code.includes('ServerScriptService') ||
+    code.includes('StarterPlayerScripts') || code.includes('StarterGui') ||
+    code.includes('ReplicatedStorage') || code.includes('StarterPack') ||
+    code.includes('leaderstats') || code.includes('IntValue') || code.includes('NumberValue')
+
+  // Interactive elements (ProximityPrompt, ClickDetector, TweenService)
+  // These alone do NOT make something a script — builds can have doors, buttons, etc.
+  const hasInteractiveOnly = code.includes('ProximityPrompt') || code.includes('ClickDetector') ||
     (code.includes('TweenService') && !code.includes('Instance.new("Part")'))
+
+  // Code is a SCRIPT only if:
+  // 1. It has NO build helpers (P/W/Cyl/Ball) and NO ForjeAI_Build model
+  // 2. AND it has significant game logic services, GUI patterns, or script infrastructure
+  // If it has build helpers + interactive elements, it's a BUILD WITH INTERACTIVITY — still check parts
+  const isScriptCode = !hasBuildPatterns && (
+    hasHeavyGameLogic || hasGUIPatterns || hasScriptInfra || hasInteractiveOnly
+  )
   if (!isScriptCode && totalParts < 8 && code.includes('Instance.new')) {
     score -= 50
     warnings.push({ type: 'complexity', message: `Only ${totalParts} parts — builds MUST have 15+ parts. Single-brick output.` })

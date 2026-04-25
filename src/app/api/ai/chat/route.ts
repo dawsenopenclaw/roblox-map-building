@@ -3634,8 +3634,8 @@ function isCodeQualityOk(code: string): boolean {
   const wedgeCount = (code.match(/\bW\s*\(/g) || []).length
   const totalParts = partCount + pHelperCount + cylCount + ballCount + wedgeCount
 
-  if (totalParts < 3 && !code.includes('placeAsset') && !code.includes('InsertService') && !code.includes('Model')) {
-    console.warn(`[QualityGate] Only ${totalParts} parts — needs at least 3 for a visible build`)
+  if (totalParts < 10 && !code.includes('placeAsset') && !code.includes('InsertService') && !code.includes('Model')) {
+    console.warn(`[QualityGate] Only ${totalParts} parts — needs at least 10 for a visible build`)
     return false
   }
 
@@ -3820,7 +3820,15 @@ COLOR PALETTES (pick based on game style):
   NEON: Ground=25,25,35 Buildings=35,35,50 Trim=0,255,200 Glow=255,0,200
   REALISTIC: Walls=220,215,205 Brick=180,150,100 Concrete=160,160,160 Wood=100,65,30
   DEFAULT: VIBRANT for tycoons/sims, FANTASY for RPGs, REALISTIC for showcases, CANDY for kid games
-SCALE: Character=5.5 tall. Doors=4W×7.5H. Windows=3-4W×3-4H. Walls=0.8 thick. Ceiling=10.5 from ground. Rooms=16×12 min.
+SCALE (pro-builder standard):
+  1 stud = 28cm real-world. Character=5.5 tall (1.54m). Grid=1 stud increments.
+  Walls: 0.7-1.0 thick (0.8 default). Height: 12-14 from floor to ceiling.
+  Doors: 4-5W × 8H (handle at character belly=2.5 from floor).
+  Windows: 3-5W × 3-4H, placed at Y=4-6 (eye level). Frame protrudes 0.3-0.5 from wall.
+  Rooms: 16×14 minimum interior. Ceiling at Y=12-14 above floor.
+  Foundation: 0.5-1.0 thick, extends 0.5-1.0 past wall edges on all sides.
+  Roof overhang: 1.5-2.0 studs past walls. Fascia board under edge.
+  Trim: 0.2-0.4 thick. Baseboards at Y=floor+0.15. Crown at Y=ceiling-0.15.
 
 CRITICAL QUALITY RULES (VIOLATION = BROKEN BUILD):
 0. ALL PARTS MUST GO INTO THE SINGLE MODEL 'm'. The ONLY line referencing workspace directly should be 'm.Parent = workspace' at the end.
@@ -3834,12 +3842,14 @@ CRITICAL QUALITY RULES (VIOLATION = BROKEN BUILD):
 
 === ARCHITECTURAL DETAIL — THIS IS WHAT SEPARATES AMATEUR FROM PRO ===
 
-WALLS — never a single flat slab:
+WALLS — never a single flat slab (LAYERED construction):
 - Main wall body + baseboard trim (0.3h strip at bottom, slightly darker)
 - Corner posts (vertical 0.6x0.6 pillars at wall edges, slightly protruding 0.1)
 - Wall crown/cap (0.2h strip at top, contrasting color)
 - Horizontal siding lines: use 2-3 thin strips (0.15h) across wall face for texture
-- Wainscoting: lower 1/3 of interior walls in darker wood
+- Wainscoting: lower 1/3 of interior walls in darker wood (Wood material, 10-15 darker RGB)
+- Accent band: horizontal strip at 1/3 and 2/3 wall height (0.2h, contrasting color or material)
+- For thick walls (1.0+): outer face + inner face as separate parts for realistic depth
 - For stone/brick: use vc() with higher variation (v=15) for natural look
 
 ROOFS — never a single wedge:
@@ -3882,6 +3892,29 @@ EXTERIOR ENVIRONMENT — buildings don't float in void:
 - Mailbox, trash can, lamp post (Cyl + Ball + PointLight)
 - Driveway for modern houses
 - Porch with columns + railing for residential
+
+=== LAYERED FOUNDATIONS — WHAT SEPARATES PRO FROM AMATEUR ===
+
+Pro builds use LAYERED foundations, not a single slab. Study this pattern from real pro builders:
+
+BASIC FOUNDATION (minimum for any building):
+  P("Foundation", 24,0.6,18, 0,0.3,0, "Concrete", 155,150,145)  -- main base, extends past walls
+
+LAYERED FOUNDATION (what pros actually build):
+  P("GroundShadow", 28,0.15,22, 0,0.08,0, "Concrete", 80,75,70)     -- dark shadow/ground ring
+  P("Foundation_L1", 26,0.5,20, 0,0.4,0, "Cobblestone", 160,155,150) -- bottom layer, widest
+  P("Foundation_L2", 24,0.4,18, 0,0.9,0, "Concrete", 170,165,160)    -- middle layer, slightly narrower
+  P("Foundation_L3", 22,0.3,16, 0,1.25,0, "Concrete", 180,175,170)   -- top layer = floor sits on this
+  Each layer is 2 studs narrower than the one below, creating visible stepped profile.
+
+CIRCULAR FOUNDATION (for spawn areas, fountains, gazebos):
+  Use Cyl() for round bases with 2-3 concentric rings of decreasing diameter.
+  Add decorative rim stones (small Ball parts around the edge) for organic look.
+
+RAISED PORCH FOUNDATION:
+  Front porch on stilts or raised platform, 2-4 studs above main ground.
+  Porch columns (Cyl, 0.8 diameter) + horizontal beam at top + railing (thin Parts).
+  Steps leading up: 3 progressively narrower Parts with 0.4 height each.
 
 === INTERACTIVE OBJECTS — MAKE THINGS COME ALIVE ===
 
@@ -5212,7 +5245,7 @@ ${effectiveInstruction}`
           console.log(`[QualityScore] model=${model} score=${qualityResult.total}/100 (${qualityResult.source}) — ${qualityResult.reasoning.slice(0, 80)}`)
           // Use quality score to boost or override verification score
           if (qualityResult.source === 'llm') {
-            finalVerificationScore = Math.max(finalVerificationScore, qualityResult.total)
+            finalVerificationScore = Math.round(finalVerificationScore * 0.7 + qualityResult.total * 0.3)
           }
           // If quality is terrible and we haven't retried too much, discard
           // Only discard at truly broken scores (< 10) — old threshold 15 was too aggressive
@@ -5235,12 +5268,14 @@ ${effectiveInstruction}`
             // Build passed syntax checks but is INCOMPLETE — additive retry (build on existing code)
             console.warn(`[Audit] Build INCOMPLETE: ${audit.suggestions.slice(0, 3).join('; ')}`)
             // Use additive retry — keeps existing code, adds what's missing
+            // Combine additive retry (existing code context) with audit retry (part/material/light stats)
+            const auditRetryInfo = formatAuditRetryPrompt(audit, message)
             const auditRetryPrompt = formatAdditiveRetryPrompt(
               luauCode!,
               audit.missingFeatures,
               audit.suggestions.slice(0, 5),
               message,
-            )
+            ) + '\n\n' + auditRetryInfo
             try {
               const auditRetryRace = await raceNonNull(
                 callGemini(enrichedCodePrompt, auditRetryPrompt, [], 16384),
