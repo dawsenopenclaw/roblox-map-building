@@ -3051,19 +3051,20 @@ SYSTEMS REFERENCE (use when requested):
 
 ${MARKETPLACE_ASSET_RULES}`
 
-// Gemini API call helper (free tier)
+// Gemini API call helper — supports key rotation via GEMINI_API_KEYS env var
+import { getNextKey, reportRateLimit, reportAuthFailure } from '@/lib/ai/key-rotator'
+
 async function callGemini(
   systemPrompt: string,
   userMessage: string,
   history: Array<{ role: string; content: string }>,
   maxTokens: number = 1024,
 ): Promise<string | null> {
-  const geminiKey = process.env.GEMINI_API_KEY
-  if (!geminiKey) return null
+  // Try up to 3 different keys from the rotation pool
+  for (let keyAttempt = 0; keyAttempt < 3; keyAttempt++) {
+    const geminiKey = getNextKey('GEMINI')
+    if (!geminiKey) return null
 
-  // Fast fail on quota — don't block the race for 17 seconds
-  const RETRY_DELAYS = [1000, 2000]
-  for (let attempt = 0; attempt <= 2; attempt++) {
     try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
@@ -3083,10 +3084,14 @@ async function callGemini(
           }),
         },
       )
-      if (res.status === 429 && attempt < 3) {
-        const delay = RETRY_DELAYS[attempt] ?? 10000
-        console.warn(`[callGemini] 429 rate limited — retrying in ${delay / 1000}s (attempt ${attempt + 1}/3)`)
-        await new Promise(r => setTimeout(r, delay))
+      if (res.status === 429) {
+        // Rate limited — mark this key, try the next one
+        reportRateLimit('GEMINI', geminiKey, 60000)
+        console.warn(`[callGemini] Key ...${geminiKey.slice(-4)} rate limited — rotating to next key (attempt ${keyAttempt + 1}/3)`)
+        continue
+      }
+      if (res.status === 401 || res.status === 403) {
+        reportAuthFailure('GEMINI', geminiKey)
         continue
       }
       if (!res.ok) {
@@ -3103,7 +3108,7 @@ async function callGemini(
       return null
     }
   }
-  console.error('[callGemini] Exhausted retries on 429')
+  console.error('[callGemini] All keys exhausted')
   return null
 }
 
@@ -3121,7 +3126,7 @@ async function callGroq(
   history: Array<{ role: string; content: string }>,
   maxTokens: number = 1024,
 ): Promise<string | null> {
-  const groqKey = process.env.GROQ_API_KEY
+  const groqKey = getNextKey('GROQ') || process.env.GROQ_API_KEY
   if (!groqKey) return null
 
   const messages = [
