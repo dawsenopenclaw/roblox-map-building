@@ -3814,10 +3814,13 @@ COLOR PALETTES (pick based on game style):
   DEFAULT: VIBRANT for tycoons/sims, FANTASY for RPGs, REALISTIC for showcases, CANDY for kid games
 SCALE: Character=5.5 tall. Doors=4W×7.5H. Windows=3-4W×3-4H. Walls=0.8 thick. Ceiling=10.5 from ground. Rooms=16×12 min.
 
-CRITICAL QUALITY RULES:
+CRITICAL QUALITY RULES (VIOLATION = BROKEN BUILD):
 0. ALL PARTS MUST GO INTO THE SINGLE MODEL 'm'. The ONLY line referencing workspace directly should be 'm.Parent = workspace' at the end.
-1. PART TARGETS: House=30-50 parts. Castle=50-80. Vehicle=15-30. Prop=5-15. A 10-part house is a box. 30+ parts with trim makes it look real.
-2. ADD TRIM: Walls get baseboard (dark strip at bottom). Windows get frames. Doors get handles. Roofs get ridge beam.
+1. HARD MINIMUM PART COUNTS — builds below these are REJECTED:
+   House/Building: 40 minimum (target 45-55). Castle: 55+ parts. Vehicle: 20+ parts. Prop/Furniture: 8+ parts.
+   A 15-part house is an ugly box. 40+ parts with trim, frames, sills, posts, and environment makes it REAL.
+   Count your P()/W()/Cyl()/Ball() calls before outputting. If under minimum, ADD: baseboards, corner posts, crown trim, window mullions, door panels, steps, pathway, trees, lamp posts.
+2. ADD TRIM TO EVERYTHING: Walls get baseboard + crown trim + corner posts. Windows get 4-piece frames + mullion + sill. Doors get recessed panels + handle + overhang. Roofs get ridge beam + fascia boards. Buildings get foundation + front steps + pathway.
 3. ALWAYS include ChangeHistoryService boilerplate + m.Parent=workspace + FinishRecording at end.
 4. USE vc() for color variation on repeated materials.
 
@@ -4105,8 +4108,12 @@ if lamp then Light(lamp, 1.5, 25, 255,220,160) end
 
 This example has 48 parts — foundation, floor with baseboards, walls with corner posts and crown trim, door with recessed panels + knob + overhang + steps, windows with 4-piece frames + mullions + sills, ceiling, roof with ridge beam + fascia, chimney with cap + pot, furniture + bookshelf, pathway, tree, and lamp post. THIS is the MINIMUM detail level. Match or EXCEED this.
 
-=== PRE-OUTPUT CHECKLIST (verify BEFORE outputting code) ===
+=== PRE-OUTPUT CHECKLIST (verify BEFORE outputting code — MANDATORY) ===
+COUNT YOUR PARTS. If building a house/building and you have < 40 parts, STOP and add more detail before outputting.
 Before you write your code block, mentally verify:
+[ ] PART COUNT: House ≥ 40, Castle ≥ 55, Vehicle ≥ 20, Prop ≥ 8. Count P()+W()+Cyl()+Ball() calls.
+[ ] TRIM: Baseboards? Corner posts? Crown trim? Window mullions? Door panels? Sills? Fascia?
+[ ] ENVIRONMENT: Pathway? Tree? Lamp post? Steps? At least 3 exterior detail parts.
 [ ] Does the code start with the FULL boilerplate? (CH, rid, cam, sp, gy, m, helpers)
 [ ] Does the code end with m.Parent=workspace AND FinishRecording?
 [ ] Are ALL parts parented to m (not workspace)?

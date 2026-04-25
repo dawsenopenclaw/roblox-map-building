@@ -57,12 +57,19 @@ interface CodeFeatures {
 }
 
 function extractCodeFeatures(code: string): CodeFeatures {
-  // Extract part names from .Name = "..." assignments
+  // Extract part names from .Name = "..." assignments AND P()/W()/Cyl()/Ball() helpers
   const nameMatches = code.match(/\.Name\s*=\s*["']([^"']+)["']/g) || []
-  const partNames = nameMatches.map(m => {
-    const match = m.match(/["']([^"']+)["']/)
-    return match ? match[1].toLowerCase() : ''
-  }).filter(Boolean)
+  const helperNameMatches = code.match(/(?:^|\n)\s*(?:local\s+\w+\s*=\s*)?(?:P|W|Cyl|Ball)\(\s*["']([^"']+)["']/g) || []
+  const partNames = [
+    ...nameMatches.map(m => {
+      const match = m.match(/["']([^"']+)["']/)
+      return match ? match[1].toLowerCase() : ''
+    }),
+    ...helperNameMatches.map(m => {
+      const match = m.match(/["']([^"']+)["']/)
+      return match ? match[1].toLowerCase() : ''
+    }),
+  ].filter(Boolean)
 
   // Materials
   const matMatches = code.match(/Enum\.Material\.(\w+)/g) || []
@@ -74,6 +81,7 @@ function extractCodeFeatures(code: string): CodeFeatures {
   // Parts (all physical parts)
   const parts = (code.match(/Instance\.new\s*\(\s*["'](?:Part|WedgePart|MeshPart|SpawnLocation|Seat|VehicleSeat|TrussPart|CornerWedgePart)["']/g) || []).length
     + (code.match(/\bP\s*\(/g) || []).length  // P() helper
+    + (code.match(/\bW\s*\(/g) || []).length   // W() WedgePart helper
     + (code.match(/\bCyl\s*\(/g) || []).length
     + (code.match(/\bBall\s*\(/g) || []).length
 
@@ -220,24 +228,24 @@ interface CategoryRequirements {
 
 const CATEGORY_REQUIREMENTS: Record<string, CategoryRequirements> = {
   medieval: {
-    minParts: 35, minYLevels: 4, minMaterials: 3, minColors: 4, minLights: 2,
+    minParts: 40, minYLevels: 4, minMaterials: 3, minColors: 4, minLights: 2,
     requiredFeatures: ['wall', 'gate or door', 'roof or tower'],
     recommendedFeatures: ['torch or lantern', 'flag or banner', 'cobblestone path', 'guard npc'],
   },
   'sci-fi': {
-    minParts: 30, minYLevels: 3, minMaterials: 3, minColors: 4, minLights: 3,
+    minParts: 38, minYLevels: 3, minMaterials: 3, minColors: 4, minLights: 3,
     requiredFeatures: ['wall or panel', 'door', 'light'],
     recommendedFeatures: ['control panel', 'screen or display', 'sliding door', 'ambient sound'],
   },
   modern: {
-    minParts: 30, minYLevels: 3, minMaterials: 3, minColors: 5, minLights: 2,
+    minParts: 40, minYLevels: 3, minMaterials: 3, minColors: 5, minLights: 2,
     requiredFeatures: ['wall', 'door or entrance', 'window', 'floor'],
     recommendedFeatures: ['furniture', 'light fixture', 'sign', 'path or sidewalk'],
   },
   house: {
-    minParts: 35, minYLevels: 3, minMaterials: 4, minColors: 5, minLights: 2,
+    minParts: 40, minYLevels: 3, minMaterials: 4, minColors: 5, minLights: 2,
     requiredFeatures: ['wall', 'door', 'window', 'roof', 'floor'],
-    recommendedFeatures: ['furniture', 'light', 'kitchen or bedroom', 'porch or garden'],
+    recommendedFeatures: ['furniture', 'light', 'kitchen or bedroom', 'porch or garden', 'baseboard or trim'],
   },
   nature: {
     minParts: 25, minYLevels: 3, minMaterials: 3, minColors: 4, minLights: 0,
@@ -255,22 +263,22 @@ const CATEGORY_REQUIREMENTS: Record<string, CategoryRequirements> = {
     recommendedFeatures: ['checkpoint', 'kill brick', 'moving platform', 'finish line'],
   },
   pirate: {
-    minParts: 35, minYLevels: 4, minMaterials: 4, minColors: 4, minLights: 2,
+    minParts: 40, minYLevels: 4, minMaterials: 4, minColors: 4, minLights: 2,
     requiredFeatures: ['hull or deck', 'mast or sail'],
     recommendedFeatures: ['cannon', 'wheel', 'flag', 'lantern', 'rope or rigging'],
   },
   military: {
-    minParts: 30, minYLevels: 3, minMaterials: 3, minColors: 3, minLights: 1,
+    minParts: 35, minYLevels: 3, minMaterials: 3, minColors: 3, minLights: 1,
     requiredFeatures: ['wall or barrier', 'entrance or gate'],
     recommendedFeatures: ['watchtower', 'sandbag', 'vehicle', 'flag'],
   },
   farm: {
-    minParts: 30, minYLevels: 3, minMaterials: 4, minColors: 5, minLights: 1,
+    minParts: 35, minYLevels: 3, minMaterials: 4, minColors: 5, minLights: 1,
     requiredFeatures: ['barn or building', 'fence'],
     recommendedFeatures: ['crop row', 'animal pen', 'windmill', 'tractor or cart', 'well'],
   },
   school: {
-    minParts: 30, minYLevels: 3, minMaterials: 3, minColors: 4, minLights: 2,
+    minParts: 38, minYLevels: 3, minMaterials: 3, minColors: 4, minLights: 2,
     requiredFeatures: ['wall', 'door', 'window'],
     recommendedFeatures: ['desk or chair', 'blackboard or whiteboard', 'clock', 'hallway'],
   },
@@ -283,9 +291,9 @@ const CATEGORY_REQUIREMENTS: Record<string, CategoryRequirements> = {
 
 // Default for unknown categories
 const DEFAULT_REQUIREMENTS: CategoryRequirements = {
-  minParts: 25, minYLevels: 3, minMaterials: 3, minColors: 4, minLights: 1,
+  minParts: 30, minYLevels: 3, minMaterials: 3, minColors: 4, minLights: 1,
   requiredFeatures: ['structure or object'],
-  recommendedFeatures: ['light source', 'interactive element', 'detail or decoration'],
+  recommendedFeatures: ['light source', 'interactive element', 'detail or decoration', 'trim or baseboard'],
 }
 
 function checkRequiredFeature(requirement: string, partNames: string[], code: string): boolean {
