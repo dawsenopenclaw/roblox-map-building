@@ -287,6 +287,33 @@ const CATEGORY_REQUIREMENTS: Record<string, CategoryRequirements> = {
     requiredFeatures: ['terrain or landscape'],
     recommendedFeatures: ['variation in height', 'water', 'vegetation', 'path'],
   },
+  // Map/scene/hub builds — significantly higher requirements
+  map: {
+    minParts: 80, minYLevels: 4, minMaterials: 5, minColors: 8, minLights: 4,
+    requiredFeatures: ['path or road', 'light or lamp', 'tree or bush'],
+    recommendedFeatures: ['fountain or statue', 'bench or seat', 'sign', 'flower or planter', 'building or shop'],
+  },
+  hub: {
+    minParts: 70, minYLevels: 4, minMaterials: 5, minColors: 7, minLights: 4,
+    requiredFeatures: ['path or road', 'light or lamp'],
+    recommendedFeatures: ['fountain or statue', 'bench', 'sign', 'arch or gate', 'tree or bush'],
+  },
+  // Missing game genre categories
+  horror: {
+    minParts: 45, minYLevels: 4, minMaterials: 3, minColors: 4, minLights: 3,
+    requiredFeatures: ['wall', 'door', 'light or lamp'],
+    recommendedFeatures: ['window or glass', 'stairs', 'furniture', 'fog or particle', 'cobweb or debris'],
+  },
+  racing: {
+    minParts: 50, minYLevels: 3, minMaterials: 4, minColors: 6, minLights: 2,
+    requiredFeatures: ['road or track', 'barrier or wall'],
+    recommendedFeatures: ['start line', 'checkpoint', 'tree or bush', 'sign', 'lamp or light'],
+  },
+  rpg: {
+    minParts: 55, minYLevels: 4, minMaterials: 4, minColors: 6, minLights: 3,
+    requiredFeatures: ['wall or building', 'door or gate', 'path or road'],
+    recommendedFeatures: ['npc or sign', 'fountain or statue', 'tree or bush', 'torch or lamp', 'shop or chest'],
+  },
 }
 
 // Default for unknown categories

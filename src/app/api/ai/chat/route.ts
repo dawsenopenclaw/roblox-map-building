@@ -3999,17 +3999,139 @@ When user asks for UI/GUI/HUD/menu/shop/inventory, generate a COMPLETE LocalScri
 - Currency display: icon + amount in top bar
 - Sound effects: click sounds on buttons (optional)
 
-=== WORLD BUILDING — COMPLETE ENVIRONMENTS ===
+=== WORLD / MAP / SCENE BUILDING — COMPLETE GAME ENVIRONMENTS ===
 
-When user asks for a "world", "map", "environment", or "scene":
-- Terrain: grass ground, hills, water features, paths
-- Multiple buildings with consistent style
-- Street lamps with PointLights along paths
-- Trees: trunk (Cyl brown) + canopy (Ball green with variation) + leaf particles
-- Ambient sounds: birds, wind, water (if near water)
-- Skybox/Atmosphere/Lighting tuned to mood
-- NPCs or placeholder figures at points of interest
-- Signs with TextLabels on SurfaceGui
+When user asks for a "world", "map", "environment", "scene", "game map", "lobby", "hub", or "spawn area":
+Generate a COMPLETE environment — not a single building. Maps have 80-200+ parts.
+
+MAP COMPOSITION RULES:
+1. CENTRAL HUB: Every map needs a focal point (fountain, statue, spawn pad, welcome arch).
+   Place it at coordinates (0,0,0). Everything else radiates outward.
+2. PATHS: Cobblestone or concrete paths connect hub to zones. Alternating tile colors
+   for visual interest (two shades, every 8 studs). Edge trim (Neon or contrasting color, 0.5 wide).
+3. ZONES: Each gameplay area is 60-100 studs wide, separated by paths.
+   Different zones use different materials/colors but share the same palette family.
+4. STREET FURNITURE: Every 20-30 studs along paths: lamp post (Cyl pole + Metal head + Neon bulb + PointLight),
+   bench (seat + back + 4 legs, Wood material), trash can (Cyl, Metal), planter/flower bed (small colored Balls).
+5. VEGETATION: Trees every 15-25 studs in green areas. Each tree = Cyl trunk (brown) + Ball canopy (green, vc()).
+   Add smaller bushes (small green Balls, diameter 2-3) between trees. Flower clusters at path edges.
+6. TERRAIN: ALWAYS use workspace.Terrain:FillBlock for ground. Never part-based ground.
+   Add hills (FillBall), water features (FillBlock with Water material), sand edges around water.
+7. LIGHTING: ALWAYS include the AAA lighting stack (Atmosphere + Bloom + ColorCorrection + SunRays).
+   Every lamp post gets a PointLight (Range=25-30, warm color). Interior lights separate.
+8. BOUNDARIES: Invisible walls or decorative fences/hedges at map edges. Never let players walk into void.
+9. SIGNAGE: SurfaceGui signs on Parts at key locations (zone names, directions, rules).
+10. AMBIENT: ParticleEmitter for dust motes or pollen attached to a central part. Subtle, Rate=3-5.
+
+MAP PART TARGETS:
+  Small lobby/hub: 80-120 parts
+  Medium game map: 120-200 parts
+  Large world: 200-400+ parts
+  NEVER under 80 parts for a map/scene request.
+
+=== COMPLETE MAP EXAMPLE — GAME HUB PLAZA (copy this pattern for maps) ===
+
+-- ═══ TERRAIN & GROUND ═══
+local terrain = workspace.Terrain
+terrain:FillBlock(CFrame.new(sp.X, gy-2, sp.Z), Vector3.new(200,4,200), Enum.Material.Grass)
+terrain:FillBall(Vector3.new(sp.X+60, gy+3, sp.Z+40), 12, Enum.Material.Grass) -- gentle hill
+terrain:FillBlock(CFrame.new(sp.X+70, gy-1, sp.Z-30), Vector3.new(30,2,30), Enum.Material.Water) -- pond
+terrain:FillBlock(CFrame.new(sp.X+70, gy-0.5, sp.Z-15), Vector3.new(35,1,4), Enum.Material.Sand) -- shore
+
+-- ═══ CENTRAL PLAZA (layered circular foundation) ═══
+Cyl("PlazaShadow", 0.2,52, 0,0.1,0, "Concrete", 70,65,60)
+Cyl("PlazaBase", 1.5,48, 0,0.75,0, "Cobblestone", 160,155,150)
+Cyl("PlazaTop", 0.8,40, 0,1.9,0, "Concrete", 190,185,178)
+-- Plaza border trim (gold neon ring)
+Cyl("PlazaRim", 0.3,49, 0,1.65,0, "Neon", 255,200,40)
+
+-- ═══ FOUNTAIN (center of plaza) ═══
+Cyl("FountainBasin", 1.5,14, 0,1.5,0, "Concrete", 180,175,165)
+Cyl("FountainInner", 1.6,11, 0,1.6,0, "Concrete", 195,190,182)
+Cyl("FountainWater", 0.3,10.5, 0,2.1,0, "Glass", 100,180,220)  -- transparency handled by Glass
+Cyl("FountainPillar", 4,1.5, 0,4,0, "Concrete", 200,195,185)
+Ball("FountainTop", 2, 0,6.5,0, "Concrete", 210,205,195)
+
+-- ═══ WELCOME ARCH ═══
+P("ArchLeft", 3,18,3, -10,10,-50, "Brick", vc(85,70,55))
+P("ArchRight", 3,18,3, 10,10,-50, "Brick", vc(85,70,55))
+P("ArchBeam", 24,3,3, 0,20,-50, "Brick", vc(85,70,55))
+P("ArchSign", 20,4,0.5, 0,20,-48.5, "Concrete", 30,25,40)
+P("ArchGlow", 22,0.4,0.4, 0,18,-50, "Neon", 255,200,40)
+
+-- ═══ PATHS (4 directions from hub) ═══
+-- North path (alternating tile colors)
+P("PathN1", 8,0.4,8, 0,0.3,28, "Cobblestone", 145,135,125)
+P("PathN2", 8,0.4,8, 0,0.3,36, "Cobblestone", 160,150,140)
+P("PathN3", 8,0.4,8, 0,0.3,44, "Cobblestone", 145,135,125)
+P("PathN4", 8,0.4,8, 0,0.3,52, "Cobblestone", 160,150,140)
+-- East path
+P("PathE1", 8,0.4,8, 28,0.3,0, "Cobblestone", 145,135,125)
+P("PathE2", 8,0.4,8, 36,0.3,0, "Cobblestone", 160,150,140)
+P("PathE3", 8,0.4,8, 44,0.3,0, "Cobblestone", 145,135,125)
+P("PathE4", 8,0.4,8, 52,0.3,0, "Cobblestone", 160,150,140)
+
+-- ═══ STREET LAMPS (8 around plaza) ═══
+Cyl("Lamp1_Pole", 9,0.5, 22,5,22, "Metal", 55,55,60)
+P("Lamp1_Head", 2,0.5,2, 22,10,22, "Metal", 75,73,68)
+Ball("Lamp1_Bulb", 1, 22,9.5,22, "Neon", 255,240,180)
+Cyl("Lamp2_Pole", 9,0.5, -22,5,22, "Metal", 55,55,60)
+P("Lamp2_Head", 2,0.5,2, -22,10,22, "Metal", 75,73,68)
+Ball("Lamp2_Bulb", 1, -22,9.5,22, "Neon", 255,240,180)
+Cyl("Lamp3_Pole", 9,0.5, 22,5,-22, "Metal", 55,55,60)
+Ball("Lamp3_Bulb", 1, 22,9.5,-22, "Neon", 255,240,180)
+Cyl("Lamp4_Pole", 9,0.5, -22,5,-22, "Metal", 55,55,60)
+Ball("Lamp4_Bulb", 1, -22,9.5,-22, "Neon", 255,240,180)
+-- PointLights on lamp bulbs
+for _, bname in ipairs({"Lamp1_Bulb","Lamp2_Bulb","Lamp3_Bulb","Lamp4_Bulb"}) do
+  local b = m:FindFirstChild(bname) if b then Light(b, 2, 28, 255,235,160) end
+end
+
+-- ═══ BENCHES (4 around fountain) ═══
+P("Bench1_Seat", 6,0.4,1.5, 10,1.2,8, "Wood", 120,85,50)
+P("Bench1_Back", 6,1.2,0.3, 10,1.8,8.6, "Wood", 115,80,48)
+P("Bench2_Seat", 6,0.4,1.5, -10,1.2,-8, "Wood", 120,85,50)
+P("Bench2_Back", 6,1.2,0.3, -10,1.8,-8.6, "Wood", 115,80,48)
+
+-- ═══ TREES (scattered around) ═══
+Cyl("Tree1_Trunk", 6,1.2, 30,4,15, "Wood", vc(90,60,30))
+Ball("Tree1_Canopy", 7, 30,8,15, "Grass", vc(60,115,40,15))
+Cyl("Tree2_Trunk", 5,1, -25,3.5,30, "Wood", vc(95,65,35))
+Ball("Tree2_Canopy", 6, -25,7,30, "Grass", vc(55,120,45,15))
+Cyl("Tree3_Trunk", 7,1.4, -35,4.5,-20, "Wood", vc(85,58,28))
+Ball("Tree3_Canopy", 8, -35,9,-20, "Grass", vc(65,125,42,15))
+-- Bushes
+Ball("Bush1", 2.5, 18,1.8,25, "Grass", vc(50,100,35,10))
+Ball("Bush2", 2, -15,1.5,20, "Grass", vc(55,110,40,10))
+Ball("Bush3", 3, 35,2,-10, "Grass", vc(48,105,38,10))
+
+-- ═══ FLOWER BEDS (along paths) ═══
+Ball("Flower1", 0.8, 5,1.5,26, "Fabric", 255,100,130)
+Ball("Flower2", 0.8, 6,1.5,27, "Fabric", 255,200,50)
+Ball("Flower3", 0.8, 4,1.5,27, "Fabric", 200,100,255)
+Ball("Flower4", 0.8, -5,1.5,28, "Fabric", 255,140,60)
+Ball("Flower5", 0.8, -6,1.5,26, "Fabric", 255,80,100)
+
+-- ═══ SMALL BUILDING (shop/booth at one side) ═══
+P("Shop_Floor", 12,0.5,10, 50,0.8,0, "WoodPlanks", 140,100,60)
+P("Shop_WallBack", 12,8,0.6, 50,5,5, "Brick", vc(180,140,100))
+P("Shop_WallL", 0.6,8,10, 44,5,0, "Brick", vc(180,140,100))
+P("Shop_WallR", 0.6,8,10, 56,5,0, "Brick", vc(180,140,100))
+P("Shop_Counter", 10,3,1.5, 50,2.5,-4, "WoodPlanks", 130,90,50)
+W("Shop_Roof", 13,3,12, 50,10.5,0, "Slate", vc(75,65,55))
+P("Shop_Sign", 8,2,0.3, 50,9,-5.2, "Wood", 60,40,20)
+
+-- ═══ AAA LIGHTING (always include for maps) ═══
+local L = game:GetService("Lighting")
+L.Technology = Enum.Technology.Future
+L.EnvironmentDiffuseScale = 1
+L.EnvironmentSpecularScale = 1
+L.GlobalShadows = true
+local atm = Instance.new("Atmosphere") atm.Density=0.3 atm.Offset=0.25 atm.Color=Color3.fromRGB(200,210,230) atm.Decay=Color3.fromRGB(120,140,180) atm.Glare=0.5 atm.Haze=1.5 atm.Parent=L
+local bloom = Instance.new("BloomEffect") bloom.Intensity=0.4 bloom.Size=24 bloom.Threshold=0.95 bloom.Parent=L
+local cc = Instance.new("ColorCorrectionEffect") cc.Brightness=0.05 cc.Contrast=0.15 cc.Saturation=-0.1 cc.TintColor=Color3.fromRGB(255,248,240) cc.Parent=L
+
+This map example has 80+ parts: layered plaza, fountain, welcome arch, 4 paths with alternating tiles, 4 lamp posts with lights, benches, 3 trees with canopies, bushes, flower beds, a small shop building, and AAA lighting. THIS is the minimum for a game map. Scale UP from here.
 
 === ADVANCED TECHNIQUES — USE THESE TO MAKE BUILDS PRO-QUALITY ===
 

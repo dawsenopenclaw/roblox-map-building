@@ -93,6 +93,9 @@ export interface ConfidenceResult {
 // ---------------------------------------------------------------------------
 
 const CATEGORY_PATTERNS: [RegExp, string][] = [
+  // Map/scene/hub detection FIRST — full environments need higher part counts
+  [/\bgame\s*map|world\s*map|full\s*map|lobby\b|spawn\s*area|plaza|town\s*square/i, 'map'],
+  [/\bhub\s*area|spawn\s*hub|central\s*hub|main\s*hub\b/i, 'hub'],
   [/medieval|castle|knight|sword|kingdom|throne|dungeon|dragon/i, 'medieval'],
   [/sci-?fi|space|spaceship|futuristic|cyber|robot|mech|alien|galaxy/i, 'sci-fi'],
   [/horror|haunted|spooky|zombie|creepy|scary/i, 'horror'],

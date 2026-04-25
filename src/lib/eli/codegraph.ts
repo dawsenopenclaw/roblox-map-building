@@ -51,6 +51,11 @@ const BOOTSTRAP_NODES: GraphNode[] = [
   { id: 'mansion', label: 'Mansion', type: 'category', avgScore: 0, frequency: 0 },
   { id: 'shop', label: 'Shop/Store', type: 'category', avgScore: 0, frequency: 0 },
   { id: 'cabin', label: 'Cabin', type: 'category', avgScore: 0, frequency: 0 },
+  { id: 'map', label: 'Game Map/Scene', type: 'category', avgScore: 0, frequency: 0 },
+  { id: 'hub', label: 'Hub/Lobby', type: 'category', avgScore: 0, frequency: 0 },
+  { id: 'horror', label: 'Horror', type: 'category', avgScore: 0, frequency: 0 },
+  { id: 'rpg', label: 'RPG/Adventure', type: 'category', avgScore: 0, frequency: 0 },
+  { id: 'racing', label: 'Racing', type: 'category', avgScore: 0, frequency: 0 },
 
   // Components (the building blocks of quality)
   { id: 'foundation', label: 'Foundation', type: 'component', avgScore: 0, frequency: 0 },
@@ -86,6 +91,18 @@ const BOOTSTRAP_NODES: GraphNode[] = [
   { id: 'courtyard', label: 'Courtyard', type: 'component', avgScore: 0, frequency: 0 },
   { id: 'glass_wall', label: 'Floor-to-Ceiling Glass', type: 'component', avgScore: 0, frequency: 0 },
   { id: 'garage', label: 'Garage', type: 'component', avgScore: 0, frequency: 0 },
+  // Map/scene components
+  { id: 'plaza', label: 'Central Plaza', type: 'component', avgScore: 0, frequency: 0 },
+  { id: 'fountain', label: 'Fountain', type: 'component', avgScore: 0, frequency: 0 },
+  { id: 'welcome_arch', label: 'Welcome Arch', type: 'component', avgScore: 0, frequency: 0 },
+  { id: 'cobblestone_path', label: 'Cobblestone Path', type: 'component', avgScore: 0, frequency: 0 },
+  { id: 'bench', label: 'Bench', type: 'component', avgScore: 0, frequency: 0 },
+  { id: 'flower_bed', label: 'Flower Bed', type: 'component', avgScore: 0, frequency: 0 },
+  { id: 'bush', label: 'Bush/Shrub', type: 'component', avgScore: 0, frequency: 0 },
+  { id: 'signpost', label: 'Sign/Signpost', type: 'component', avgScore: 0, frequency: 0 },
+  { id: 'terrain_ground', label: 'Terrain Ground', type: 'component', avgScore: 0, frequency: 0 },
+  { id: 'water_feature', label: 'Pond/River', type: 'component', avgScore: 0, frequency: 0 },
+  { id: 'aaa_lighting', label: 'AAA Lighting Stack', type: 'component', avgScore: 0, frequency: 0 },
 
   // Materials
   { id: 'mat_brick', label: 'Brick', type: 'material', avgScore: 0, frequency: 0 },
@@ -159,6 +176,26 @@ const BOOTSTRAP_EDGES: GraphEdge[] = [
   { from: 'mansion', to: 'balcony', relation: 'suggests', weight: 0.8 },
   { from: 'mansion', to: 'porch', relation: 'requires', weight: 0.8 },
   { from: 'mansion', to: 'garage', relation: 'suggests', weight: 0.7 },
+
+  // Game Map / Scene
+  { from: 'map', to: 'plaza', relation: 'requires', weight: 0.9 },
+  { from: 'map', to: 'cobblestone_path', relation: 'requires', weight: 0.9 },
+  { from: 'map', to: 'lamp_post', relation: 'requires', weight: 0.9 },
+  { from: 'map', to: 'tree', relation: 'requires', weight: 0.8 },
+  { from: 'map', to: 'bench', relation: 'suggests', weight: 0.7 },
+  { from: 'map', to: 'fountain', relation: 'suggests', weight: 0.8 },
+  { from: 'map', to: 'welcome_arch', relation: 'suggests', weight: 0.7 },
+  { from: 'map', to: 'bush', relation: 'suggests', weight: 0.6 },
+  { from: 'map', to: 'flower_bed', relation: 'suggests', weight: 0.6 },
+  { from: 'map', to: 'signpost', relation: 'suggests', weight: 0.6 },
+  { from: 'map', to: 'terrain_ground', relation: 'requires', weight: 0.9 },
+  { from: 'map', to: 'water_feature', relation: 'suggests', weight: 0.5 },
+  { from: 'map', to: 'aaa_lighting', relation: 'requires', weight: 0.9 },
+
+  // Hub / Lobby
+  { from: 'hub', to: 'map', relation: 'requires', weight: 1.0 },
+  { from: 'hub', to: 'fountain', relation: 'requires', weight: 0.9 },
+  { from: 'hub', to: 'welcome_arch', relation: 'suggests', weight: 0.8 },
 
   // Material relationships
   { from: 'house', to: 'mat_brick', relation: 'uses_material', weight: 0.8 },
@@ -268,7 +305,13 @@ export function formatGraphPrompt(userPrompt: string): string {
 
   // Detect category from user prompt
   let category: string | null = null
-  if (/\b(cottage|cozy|rustic)\b/.test(lower)) category = 'cottage'
+  // Map/scene/hub first (highest priority — full environments)
+  if (/\b(game\s*map|world\s*map|full\s*map|lobby|spawn\s*area|plaza|town\s*square|scene|environment)\b/.test(lower)) category = 'map'
+  else if (/\b(hub|spawn\s*hub|central\s*hub)\b/.test(lower)) category = 'hub'
+  else if (/\b(horror|haunted|spooky|scary|creepy)\b/.test(lower)) category = 'horror'
+  else if (/\b(rpg|adventure|quest|village|tavern)\b/.test(lower)) category = 'rpg'
+  else if (/\b(racing|race|track|kart)\b/.test(lower)) category = 'racing'
+  else if (/\b(cottage|cozy|rustic)\b/.test(lower)) category = 'cottage'
   else if (/\b(mansion|luxury|villa|estate)\b/.test(lower)) category = 'mansion'
   else if (/\b(castle|fortress|keep|citadel)\b/.test(lower)) category = 'castle'
   else if (/\b(modern|contemporary|minimalist)\b/.test(lower)) category = 'modern'
@@ -363,6 +406,18 @@ export function detectComponentsInCode(code: string): string[] {
     ['flower_box', /flower.*box|planter/],
     ['glass_wall', /glass.*wall|floor.*ceiling.*glass/],
     ['garage', /garage/],
+    // Map/scene components
+    ['plaza', /plaza|spawn.*pad|hub.*base/],
+    ['fountain', /fountain|basin|spray/],
+    ['welcome_arch', /arch.*beam|welcome|entrance.*arch/],
+    ['cobblestone_path', /path.*cobble|cobblestone.*path|alternating.*tile/],
+    ['bench', /bench.*seat|bench.*back/],
+    ['flower_bed', /flower.*head|flower.*bed|flower.*cluster/],
+    ['bush', /bush/],
+    ['signpost', /surfacegui.*sign|sign.*post|billboardgui/i],
+    ['terrain_ground', /terrain.*fillblock|fillblock.*grass/i],
+    ['water_feature', /fillblock.*water|pond|river|lake/i],
+    ['aaa_lighting', /atmosphere|bloomeffect|colorcorrection/i],
   ]
 
   for (const [id, regex] of detectors) {
