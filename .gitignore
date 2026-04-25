@@ -88,3 +88,4 @@ scripts/.eli-responder-state.json
 scripts/.eli-audit-report.json
 scripts/.eli-screenshots/
 scripts/.eli-beta-issues.json
+.env
