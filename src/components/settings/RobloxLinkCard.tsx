@@ -72,6 +72,34 @@ export default function RobloxLinkCard() {
   const [verificationCode, setVerificationCode] = useState<string | null>(null)
   const [verified, setVerified] = useState(false)
 
+  // Handle OAuth callback params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const success = params.get('success')
+    const oauthError = params.get('error')
+    if (success === 'linked') {
+      // Refresh profile after OAuth link
+      fetchProfile()
+    } else if (oauthError) {
+      const messages: Record<string, string> = {
+        denied: 'You denied the Roblox authorization request.',
+        already_linked: 'This Roblox account is already linked to another ForjeGames user.',
+        token_failed: 'Failed to exchange authorization code. Try again.',
+        expired: 'OAuth session expired. Try again.',
+        state_mismatch: 'Security check failed. Try again.',
+      }
+      setError(messages[oauthError] || `OAuth error: ${oauthError}`)
+    }
+    // Clean URL
+    if (success || oauthError) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('success')
+      url.searchParams.delete('error')
+      window.history.replaceState({}, '', url.toString())
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Fetch current linked profile
   const fetchProfile = useCallback(async () => {
     try {
@@ -326,13 +354,25 @@ export default function RobloxLinkCard() {
             ))}
           </div>
 
-          <button
-            onClick={() => setState('input')}
-            className="inline-flex items-center gap-2 text-sm bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl transition-colors"
-          >
-            <LinkIcon className="w-3.5 h-3.5" />
-            Link Roblox Account
-          </button>
+          <div className="flex flex-wrap gap-3">
+            {/* OAuth — one click, zero friction */}
+            <a
+              href="/api/auth/roblox"
+              className="inline-flex items-center gap-2 text-sm bg-[#00A2FF] hover:bg-[#0090E0] text-white font-bold px-5 py-2.5 rounded-xl transition-colors"
+            >
+              <RobloxIcon className="w-4 h-4" />
+              Sign in with Roblox
+            </a>
+
+            {/* Manual link — fallback */}
+            <button
+              onClick={() => setState('input')}
+              className="inline-flex items-center gap-2 text-sm bg-white/5 hover:bg-white/10 text-gray-300 font-medium px-5 py-2.5 rounded-xl border border-white/10 transition-colors"
+            >
+              <LinkIcon className="w-3.5 h-3.5" />
+              Link Manually
+            </button>
+          </div>
         </>
       )}
 
