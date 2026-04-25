@@ -280,7 +280,7 @@ export default function DownloadClient() {
         }
       }
 
-      // Fallback: trigger a regular browser download
+      // Fallback: trigger a regular browser download + show manual install instructions
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -292,6 +292,7 @@ export default function DownloadClient() {
 
       setInstallStatus('fallback')
       setActiveStep(1)
+
     } catch (err) {
       setInstallStatus('error')
       setInstallError(err instanceof Error ? err.message : 'Download failed')
@@ -379,9 +380,24 @@ export default function DownloadClient() {
         )}
 
         {installStatus === 'fallback' && (
-          <p className="mt-3 text-sm" style={{ color: '#f59e0b' }}>
-            Downloaded! Move <strong>ForjeGames.rbxmx</strong> from your Downloads to the Plugins folder below.
-          </p>
+          <div className="mt-3 text-sm" style={{ color: '#f59e0b' }}>
+            <p className="font-semibold mb-2">Downloaded! One more step:</p>
+            <p className="mb-2">Move <strong>ForjeGames.rbxmx</strong> from your Downloads folder to:</p>
+            <button
+              onClick={() => {
+                const path = activeOS === 'mac'
+                  ? '~/Documents/Roblox/Plugins/'
+                  : '%localappdata%\\Roblox\\Plugins\\'
+                navigator.clipboard.writeText(path).catch(() => {})
+              }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono"
+              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}
+            >
+              {activeOS === 'mac' ? '~/Documents/Roblox/Plugins/' : '%localappdata%\\Roblox\\Plugins\\'}
+              <span style={{ fontSize: 10, opacity: 0.7 }}>Click to copy</span>
+            </button>
+            <p className="mt-2 text-xs" style={{ color: '#71717A' }}>Then restart Roblox Studio.</p>
+          </div>
         )}
 
         {installStatus === 'error' && installError && (
