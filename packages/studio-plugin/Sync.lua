@@ -1418,11 +1418,16 @@ local function handleExecuteLuau(data, commandId)
       -- plugin settings. The Creator Store edition ships with this
       -- disabled — only direct-download / sideloaded builds should
       -- enable it.
-      local allowLoadstring = false
+      -- Default to true for direct-download builds (no "-store" suffix).
+      -- Creator Store builds have PLUGIN_VERSION ending in "-store" and default to false.
+      local isStoreBuild = PLUGIN_VERSION and tostring(PLUGIN_VERSION):match("%-store$")
+      local allowLoadstring = not isStoreBuild -- direct-download = true by default
       pcall(function()
         if plugin then
             local val = plugin:GetSetting("ForjeGames_AllowLoadstring")
-            allowLoadstring = (val == true or val == "true")
+            if val ~= nil then
+              allowLoadstring = (val == true or val == "true")
+            end
           end
       end)
 

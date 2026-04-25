@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-  <!-- ForjeGames Studio Plugin v4.8.0 -->
-  <!-- Built by build-plugin.js on 2026-04-25T04:58:06.968Z -->
+  <!-- ForjeGames Studio Plugin v1.0.0 -->
+  <!-- Built by build-plugin.js on 2026-04-25T20:58:52.972Z -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -3052,11 +3052,16 @@ local function handleExecuteLuau(data, commandId)
       -- plugin settings. The Creator Store edition ships with this
       -- disabled — only direct-download / sideloaded builds should
       -- enable it.
-      local allowLoadstring = false
+      -- Default to true for direct-download builds (no "-store" suffix).
+      -- Creator Store builds have PLUGIN_VERSION ending in "-store" and default to false.
+      local isStoreBuild = PLUGIN_VERSION and tostring(PLUGIN_VERSION):match("%-store$")
+      local allowLoadstring = not isStoreBuild -- direct-download = true by default
       pcall(function()
         if plugin then
             local val = plugin:GetSetting("ForjeGames_AllowLoadstring")
-            allowLoadstring = (val == true or val == "true")
+            if val ~= nil then
+              allowLoadstring = (val == true or val == "true")
+            end
           end
       end)
 
