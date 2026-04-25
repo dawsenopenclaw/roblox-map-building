@@ -11195,7 +11195,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const { getRedis } = await import('@/lib/redis')
         const redis = getRedis()
         if (redis) {
-          const GUEST_LIMIT = 20 // ~100 tokens worth of messages/day (~5 tokens per message avg)
+          const GUEST_LIMIT = 50 // 50 messages/day for anonymous guests (was 20 — too restrictive for demos)
           const DAY_SEC = 86400
           const dayBucket = Math.floor(Date.now() / 1000 / DAY_SEC)
           const key = `rl:guest:ip:${clientIp}:${DAY_SEC}:${dayBucket}`
@@ -11209,7 +11209,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           if (count > GUEST_LIMIT) {
             return NextResponse.json(
               {
-                error: 'You\'ve used your 100 free tokens. Sign up for free to keep building!',
+                error: 'You\'ve hit the daily free limit. Sign up for free to get 1,000 tokens and keep building!',
                 signUpRequired: true,
               },
               {

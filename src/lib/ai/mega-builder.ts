@@ -642,42 +642,115 @@ export function generateShop(x: number, y: number, z: number, w: number = 16, d:
 export function generateHouse(x: number, y: number, z: number, w: number = 20, d: number = 14, floors: number = 1, name: string = 'House'): BuildPart[] {
   const parts: BuildPart[] = []
   const wallH = 10, floorH = 1
+  const n = name
+
+  // Foundation
+  parts.push({ name: `${n}_foundation`, size: [w+2, 0.5, d+2], position: [x, y+0.15, z], rotation: [0,0,0], material: 'Concrete', color: [155,150,145] })
 
   for (let f = 0; f < floors; f++) {
-    const fy = y + f * (wallH + floorH)
-    const prefix = floors > 1 ? `${name}_F${f+1}` : name
+    const fy = y + floorH + f * (wallH + floorH)
+    const p = floors > 1 ? `${n}_F${f+1}` : n
 
     // Floor
-    parts.push({ name: `${prefix}_floor`, size: [w, floorH, d], position: [x, fy+floorH/2, z], rotation: [0,0,0], material: f === 0 ? 'Concrete' : 'WoodPlanks', color: f === 0 ? [160,155,150] : [140,100,60] })
+    parts.push({ name: `${p}_floor`, size: [w, floorH, d], position: [x, fy-floorH/2, z], rotation: [0,0,0], material: f === 0 ? 'WoodPlanks' : 'WoodPlanks', color: f === 0 ? [140,100,60] : [145,105,65] })
+
     // Walls
-    parts.push({ name: `${prefix}_wall_back`, size: [w, wallH, 0.8], position: [x, fy+floorH+wallH/2, z+d/2], rotation: [0,0,0], material: 'Brick', color: [180,150,110] })
-    parts.push({ name: `${prefix}_wall_left`, size: [0.8, wallH, d], position: [x-w/2, fy+floorH+wallH/2, z], rotation: [0,0,0], material: 'Brick', color: [175,145,105] })
-    parts.push({ name: `${prefix}_wall_right`, size: [0.8, wallH, d], position: [x+w/2, fy+floorH+wallH/2, z], rotation: [0,0,0], material: 'Brick', color: [185,155,115] })
-    // Front wall with door (ground floor only)
+    parts.push({ name: `${p}_wall_back`, size: [w, wallH, 0.8], position: [x, fy+wallH/2, z+d/2], rotation: [0,0,0], material: 'Brick', color: [180,150,110] })
+    parts.push({ name: `${p}_wall_left`, size: [0.8, wallH, d], position: [x-w/2, fy+wallH/2, z], rotation: [0,0,0], material: 'Brick', color: [175,145,105] })
+    parts.push({ name: `${p}_wall_right`, size: [0.8, wallH, d], position: [x+w/2, fy+wallH/2, z], rotation: [0,0,0], material: 'Brick', color: [185,155,115] })
+
+    // Front wall with door gap (ground floor) or solid (upper)
     if (f === 0) {
-      parts.push({ name: `${prefix}_wall_front_l`, size: [w/2-2.5, wallH, 0.8], position: [x-w/4-1.25, fy+floorH+wallH/2, z-d/2], rotation: [0,0,0], material: 'Brick', color: [180,150,110] })
-      parts.push({ name: `${prefix}_wall_front_r`, size: [w/2-2.5, wallH, 0.8], position: [x+w/4+1.25, fy+floorH+wallH/2, z-d/2], rotation: [0,0,0], material: 'Brick', color: [180,150,110] })
-      parts.push({ name: `${prefix}_door`, size: [4, 7.5, 0.4], position: [x, fy+floorH+3.75, z-d/2+0.2], rotation: [0,0,0], material: 'Wood', color: [90,55,25] })
+      parts.push({ name: `${p}_wall_fl`, size: [w/2-2.5, wallH, 0.8], position: [x-w/4-1.25, fy+wallH/2, z-d/2], rotation: [0,0,0], material: 'Brick', color: [180,150,110] })
+      parts.push({ name: `${p}_wall_fr`, size: [w/2-2.5, wallH, 0.8], position: [x+w/4+1.25, fy+wallH/2, z-d/2], rotation: [0,0,0], material: 'Brick', color: [180,150,110] })
+      parts.push({ name: `${p}_wall_ft`, size: [5, wallH-7.5, 0.8], position: [x, fy+wallH-1.25, z-d/2], rotation: [0,0,0], material: 'Brick', color: [180,150,110] })
+      // Door + frame + knob + step
+      parts.push({ name: `${p}_door`, size: [4, 7, 0.4], position: [x, fy+3.5, z-d/2+0.2], rotation: [0,0,0], material: 'Wood', color: [85,50,22] })
+      parts.push({ name: `${p}_doorframe_l`, size: [0.3, 7.5, 0.5], position: [x-2.15, fy+3.75, z-d/2], rotation: [0,0,0], material: 'Wood', color: [95,60,28] })
+      parts.push({ name: `${p}_doorframe_r`, size: [0.3, 7.5, 0.5], position: [x+2.15, fy+3.75, z-d/2], rotation: [0,0,0], material: 'Wood', color: [95,60,28] })
+      parts.push({ name: `${p}_doorframe_t`, size: [4.6, 0.3, 0.5], position: [x, fy+7.5, z-d/2], rotation: [0,0,0], material: 'Wood', color: [95,60,28] })
+      parts.push({ name: `${p}_doorknob`, size: [0.3, 0.3, 0.25], position: [x+1.5, fy+4, z-d/2-0.1], rotation: [0,0,0], material: 'Metal', color: [175,170,160], shape: 'Ball' })
+      parts.push({ name: `${p}_doorstep`, size: [5.5, 0.3, 1.5], position: [x, fy+0.15, z-d/2-0.75], rotation: [0,0,0], material: 'Concrete', color: [165,160,155] })
+      // Porch lamp
+      parts.push({ name: `${p}_porch_lamp`, size: [0.6, 0.6, 0.6], position: [x+3, fy+8, z-d/2-0.2], rotation: [0,0,0], material: 'Neon', color: [255,230,180], shape: 'Ball',
+        children: [{ className: 'PointLight', properties: { Brightness: 1.5, Range: 15, Color: [255,220,160] } }] })
     } else {
-      parts.push({ name: `${prefix}_wall_front`, size: [w, wallH, 0.8], position: [x, fy+floorH+wallH/2, z-d/2], rotation: [0,0,0], material: 'Brick', color: [180,150,110] })
+      parts.push({ name: `${p}_wall_front`, size: [w, wallH, 0.8], position: [x, fy+wallH/2, z-d/2], rotation: [0,0,0], material: 'Brick', color: [180,150,110] })
     }
-    // Windows
-    parts.push({ name: `${prefix}_win_l`, size: [3,3,0.2], position: [x-w/3, fy+floorH+5.5, z-d/2+0.1], rotation: [0,0,0], material: 'Glass', color: [180,215,240], transparency: 0.4 })
-    parts.push({ name: `${prefix}_win_r`, size: [3,3,0.2], position: [x+w/3, fy+floorH+5.5, z-d/2+0.1], rotation: [0,0,0], material: 'Glass', color: [180,215,240], transparency: 0.4 })
+
+    // Windows with frames + sills (front, left, right)
+    for (const [wx, wz, side] of [[x-w/3, z-d/2, 'fl'], [x+w/3, z-d/2, 'fr'], [x-w/2, z-d/4, 'sl'], [x+w/2, z+d/4, 'sr']] as Array<[number, number, string]>) {
+      parts.push({ name: `${p}_win_${side}`, size: [3, 3, 0.15], position: [wx, fy+5.5, wz+0.1], rotation: [0,0,0], material: 'Glass', color: [180,215,240], transparency: 0.4 })
+      parts.push({ name: `${p}_wf_${side}_t`, size: [3.4, 0.2, 0.2], position: [wx, fy+7.1, wz], rotation: [0,0,0], material: 'Wood', color: [95,60,28] })
+      parts.push({ name: `${p}_wf_${side}_b`, size: [3.4, 0.2, 0.2], position: [wx, fy+3.9, wz], rotation: [0,0,0], material: 'Wood', color: [95,60,28] })
+      parts.push({ name: `${p}_ws_${side}`, size: [3.6, 0.2, 0.7], position: [wx, fy+3.8, wz-0.3], rotation: [0,0,0], material: 'Concrete', color: [195,190,180] })
+    }
+
+    // Baseboards (all walls)
+    parts.push({ name: `${p}_base_b`, size: [w-1, 0.15, 0.12], position: [x, fy+0.08, z+d/2-0.5], rotation: [0,0,0], material: 'Wood', color: [80,55,25] })
+    parts.push({ name: `${p}_base_l`, size: [0.12, 0.15, d-1], position: [x-w/2+0.5, fy+0.08, z], rotation: [0,0,0], material: 'Wood', color: [80,55,25] })
+    parts.push({ name: `${p}_base_r`, size: [0.12, 0.15, d-1], position: [x+w/2-0.5, fy+0.08, z], rotation: [0,0,0], material: 'Wood', color: [80,55,25] })
+
     // Ceiling + light
-    parts.push({ name: `${prefix}_ceiling`, size: [w, 0.3, d], position: [x, fy+floorH+wallH, z], rotation: [0,0,0], material: 'Concrete', color: [230,225,220],
-      children: [{ className: 'PointLight', properties: { Brightness: 1.5, Range: 25, Color: [255,210,160] } }] })
+    parts.push({ name: `${p}_ceiling`, size: [w, 0.3, d], position: [x, fy+wallH, z], rotation: [0,0,0], material: 'Concrete', color: [235,232,228],
+      children: [{ className: 'PointLight', properties: { Brightness: 1.8, Range: 28, Color: [255,215,170] } }] })
+
+    // ── Interior furniture (ground floor only) ──
+    if (f === 0) {
+      // Living area: couch + coffee table + rug
+      parts.push({ name: `${p}_couch_base`, size: [6, 1.5, 2.5], position: [x+4, fy+0.75, z+d/4], rotation: [0,0,0], material: 'Fabric', color: [60,70,90] })
+      parts.push({ name: `${p}_couch_back`, size: [6, 2, 0.4], position: [x+4, fy+2, z+d/4+1.2], rotation: [0,0,0], material: 'Fabric', color: [55,65,85] })
+      parts.push({ name: `${p}_couch_arm_l`, size: [0.4, 1.8, 2.5], position: [x+7, fy+0.9, z+d/4], rotation: [0,0,0], material: 'Fabric', color: [55,65,85] })
+      parts.push({ name: `${p}_couch_arm_r`, size: [0.4, 1.8, 2.5], position: [x+1, fy+0.9, z+d/4], rotation: [0,0,0], material: 'Fabric', color: [55,65,85] })
+      // Cushions
+      parts.push({ name: `${p}_cushion_1`, size: [1.8, 0.4, 1.8], position: [x+2.5, fy+1.7, z+d/4-0.2], rotation: [0,5,0], material: 'Fabric', color: [70,80,100] })
+      parts.push({ name: `${p}_cushion_2`, size: [1.8, 0.4, 1.8], position: [x+5.5, fy+1.7, z+d/4-0.2], rotation: [0,-3,0], material: 'Fabric', color: [75,85,105] })
+      // Coffee table
+      parts.push({ name: `${p}_ctable_top`, size: [3, 0.2, 2], position: [x+4, fy+1.5, z], rotation: [0,0,0], material: 'Wood', color: [120,80,40] })
+      parts.push({ name: `${p}_ctable_leg`, size: [1.5, 0.4, 0.4], position: [x+4, fy+0.75, z], rotation: [0,0,0], material: 'Wood', color: [110,70,35], shape: 'Cylinder' })
+      // Rug
+      parts.push({ name: `${p}_rug`, size: [8, 0.04, 5], position: [x+3, fy+0.02, z+1], rotation: [0,5,0], material: 'Fabric', color: [130,40,40] })
+
+      // Kitchen area: counter + stove + fridge
+      parts.push({ name: `${p}_counter`, size: [6, 3, 2], position: [x-5, fy+1.5, z+d/4], rotation: [0,0,0], material: 'Granite', color: [55,55,60] })
+      parts.push({ name: `${p}_counter_top`, size: [6.2, 0.15, 2.2], position: [x-5, fy+3.08, z+d/4], rotation: [0,0,0], material: 'Marble', color: [230,225,215] })
+      parts.push({ name: `${p}_stove`, size: [2, 0.1, 2], position: [x-3, fy+3.2, z+d/4], rotation: [0,0,0], material: 'Metal', color: [40,40,45] })
+      parts.push({ name: `${p}_burner_1`, size: [0.6, 0.6, 0.6], position: [x-2.5, fy+3.3, z+d/4-0.4], rotation: [0,0,0], material: 'Neon', color: [200,50,30], shape: 'Cylinder' })
+      parts.push({ name: `${p}_burner_2`, size: [0.6, 0.6, 0.6], position: [x-3.5, fy+3.3, z+d/4+0.4], rotation: [0,0,0], material: 'Neon', color: [200,50,30], shape: 'Cylinder' })
+      parts.push({ name: `${p}_fridge`, size: [2.5, 6, 2], position: [x-8, fy+3, z+d/4], rotation: [0,0,0], material: 'Metal', color: [200,200,205] })
+      parts.push({ name: `${p}_fridge_handle`, size: [0.15, 2, 0.15], position: [x-6.8, fy+4, z+d/4-1.05], rotation: [0,0,0], material: 'Metal', color: [180,180,185] })
+
+      // Dining table + chairs
+      parts.push({ name: `${p}_dtable`, size: [5, 0.2, 3], position: [x-3, fy+2.8, z-2], rotation: [0,0,0], material: 'WoodPlanks', color: [135,90,45] })
+      for (let leg = 0; leg < 4; leg++) {
+        const lx = x - 3 + (leg % 2 === 0 ? -2 : 2)
+        const lz = z - 2 + (leg < 2 ? -1 : 1)
+        parts.push({ name: `${p}_dtleg_${leg}`, size: [0.3, 2.6, 0.3], position: [lx, fy+1.3, lz], rotation: [0,0,0], material: 'Wood', color: [120,80,38] })
+      }
+      // 2 dining chairs
+      for (let ch = 0; ch < 2; ch++) {
+        const cx2 = x - 3 + (ch === 0 ? -3.5 : 3.5)
+        parts.push({ name: `${p}_dchair_seat_${ch}`, size: [2, 0.2, 2], position: [cx2, fy+1.5, z-2], rotation: [0,0,0], material: 'WoodPlanks', color: [130,85,42] })
+        parts.push({ name: `${p}_dchair_back_${ch}`, size: [2, 2, 0.2], position: [cx2, fy+2.5, z-2+(ch===0?-1:1)], rotation: [0,0,0], material: 'WoodPlanks', color: [125,80,40] })
+      }
+    }
   }
 
-  // Roof (top floor only)
-  const topY = y + floors * (wallH + floorH)
-  parts.push({ name: `${name}_roof_l`, size: [w/2+1, 3, d+2], position: [x-w/4, topY+1.5, z], rotation: [0,0,0], material: 'Slate', color: [75,65,55], shape: 'Wedge' })
-  parts.push({ name: `${name}_roof_r`, size: [w/2+1, 3, d+2], position: [x+w/4, topY+1.5, z], rotation: [0,180,0], material: 'Slate', color: [75,65,55], shape: 'Wedge' })
-  // Chimney
-  parts.push({ name: `${name}_chimney`, size: [2, 5, 2], position: [x+w/3, topY+4, z+d/4], rotation: [0,0,0], material: 'Brick', color: [160,100,70] })
-  parts.push({ name: `${name}_chimney_cap`, size: [2.5, 0.3, 2.5], position: [x+w/3, topY+6.5, z+d/4], rotation: [0,0,0], material: 'Concrete', color: [140,135,130] })
+  // ── Roof with overhang ──
+  const topY = y + floorH + floors * (wallH + floorH)
+  parts.push({ name: `${n}_roof_l`, size: [w/2+2, 3, d+3], position: [x-w/4, topY+1.5, z], rotation: [0,0,0], material: 'Slate', color: [75,65,55], shape: 'Wedge' })
+  parts.push({ name: `${n}_roof_r`, size: [w/2+2, 3, d+3], position: [x+w/4, topY+1.5, z], rotation: [0,180,0], material: 'Slate', color: [75,65,55], shape: 'Wedge' })
 
-  return parts
+  // Chimney
+  parts.push({ name: `${n}_chimney`, size: [2, 6, 2], position: [x+w/3, topY+5, z+d/4], rotation: [0,0,0], material: 'Brick', color: [160,100,70] })
+  parts.push({ name: `${n}_chimney_cap`, size: [2.6, 0.3, 2.6], position: [x+w/3, topY+8.2, z+d/4], rotation: [0,0,0], material: 'Concrete', color: [140,135,130] })
+
+  // Gutter
+  parts.push({ name: `${n}_gutter`, size: [w+3, 0.3, 0.3], position: [x, topY-0.2, z-d/2-1.5], rotation: [0,0,0], material: 'Metal', color: [65,65,70], shape: 'Cylinder' })
+  // Downspout
+  parts.push({ name: `${n}_downspout`, size: [topY-y, 0.25, 0.25], position: [x+w/2+0.3, y+(topY-y)/2, z-d/2-1], rotation: [0,0,0], material: 'Metal', color: [65,65,70], shape: 'Cylinder' })
+
+  return parts // ~65+ parts per floor
 }
 
 // ─── Parts → Luau Code ───────────────────────────────────────────────────────
