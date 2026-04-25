@@ -1186,6 +1186,283 @@ trail.Parent = workspace.Sword`,
       'Too many particles tanks performance — keep Rate under 100 and use LevelOfDetail',
     ],
   },
+
+  // ── World Building: Terrain Generation ──────────────────────────
+  {
+    name: 'Terrain Generation',
+    keywords: ['terrain', 'world', 'landscape', 'hills', 'mountains', 'island', 'map', 'ground', 'biome', 'perlin', 'noise', 'valley', 'cliff'],
+    snippet: `-- Smooth terrain with Perlin noise hills
+local terrain = workspace.Terrain
+local seed = tick()
+local freq = 0.02
+local amp = 40
+local mapSize = 150
+local res = 4
+for x = -mapSize, mapSize, res do
+  for z = -mapSize, mapSize, res do
+    local h = math.noise(x*freq, z*freq, seed)*amp + amp*0.6
+    local mat = h > amp*1.2 and Enum.Material.Snow
+      or h > amp*0.9 and Enum.Material.Rock
+      or h > amp*0.3 and Enum.Material.Grass
+      or h > amp*0.1 and Enum.Material.Sand
+      or Enum.Material.Water
+    terrain:FillBlock(CFrame.new(x, h/2, z), Vector3.new(res, math.max(h,1), res), mat)
+  end
+  task.wait()
+end
+-- Add water at sea level
+terrain:FillBlock(CFrame.new(0, amp*0.05, 0), Vector3.new(mapSize*2, amp*0.1, mapSize*2), Enum.Material.Water)`,
+    pitfalls: [
+      'math.noise returns -0.5 to 0.5 NOT 0 to 1 — always normalize with +0.5 or *amp+offset',
+      'Must use task.wait() in generation loops or Studio freezes',
+      'Frequency 0.01-0.04 for natural hills — higher = chaos, lower = flat',
+      'FillBlock Y position = height/2 (center of block, not top)',
+    ],
+  },
+
+  // ── World Building: Trees ──────────────────────────────────────
+  {
+    name: 'Tree Generation',
+    keywords: ['tree', 'forest', 'trees', 'pine', 'oak', 'palm', 'foliage', 'vegetation', 'nature', 'garden', 'park'],
+    snippet: `-- Stylized tree with Ball canopy (looks 10X better than box leaves)
+local function makeTree(pos, parent)
+  local m = Instance.new("Model") m.Name = "Tree"
+  -- Trunk (cylinder)
+  local trunk = Instance.new("Part") trunk.Shape = Enum.PartType.Cylinder
+  trunk.Anchored = true trunk.Size = Vector3.new(8, 1.5, 1.5)
+  trunk.CFrame = CFrame.new(pos + Vector3.new(0,4,0)) * CFrame.Angles(0,0,math.rad(90))
+  trunk.Material = Enum.Material.Wood trunk.Color = Color3.fromRGB(90,60,30) trunk.Parent = m
+  -- Canopy layers (overlapping balls for organic shape)
+  for i = 1, 4 do
+    local leaf = Instance.new("Part") leaf.Shape = Enum.PartType.Ball leaf.Anchored = true
+    local s = 5 - i*0.8 + math.random()*1
+    leaf.Size = Vector3.new(s, s*0.7, s)
+    leaf.CFrame = CFrame.new(pos + Vector3.new(math.random(-1,1), 7+i*1.2, math.random(-1,1)))
+    leaf.Material = Enum.Material.Grass
+    leaf.Color = Color3.fromRGB(40+i*12, 100+i*15, 30+i*8) leaf.Parent = m
+  end
+  m.Parent = parent or workspace return m
+end
+-- Pine tree variant: cylinder layers decreasing in size
+local function makePine(pos, parent)
+  local m = Instance.new("Model") m.Name = "PineTree"
+  local trunk = Instance.new("Part") trunk.Shape = Enum.PartType.Cylinder
+  trunk.Anchored = true trunk.Size = Vector3.new(10, 1, 1)
+  trunk.CFrame = CFrame.new(pos + Vector3.new(0,5,0)) * CFrame.Angles(0,0,math.rad(90))
+  trunk.Material = Enum.Material.Wood trunk.Color = Color3.fromRGB(80,50,25) trunk.Parent = m
+  for i = 1, 5 do
+    local r = 4 * (1 - i*0.15)
+    local cone = Instance.new("Part") cone.Shape = Enum.PartType.Cylinder cone.Anchored = true
+    cone.Size = Vector3.new(1.5, r*2, r*2)
+    cone.CFrame = CFrame.new(pos + Vector3.new(0, 4+i*1.8, 0)) * CFrame.Angles(0,0,math.rad(90))
+    cone.Material = Enum.Material.Grass cone.Color = Color3.fromRGB(25+i*5, 80+i*10, 20) cone.Parent = m
+  end
+  m.Parent = parent or workspace return m
+end`,
+    pitfalls: [
+      'Cylinder Size.X = height (not Y!) — cylinders are rotated 90 degrees',
+      'Ball Size must be equal on all 3 axes or it becomes an ellipsoid',
+      'Use Grass material for leaves — looks natural. Never use SmoothPlastic for foliage',
+      'Vary green shades per layer (darker bottom, lighter top) for depth',
+    ],
+  },
+
+  // ── World Building: Water Features ─────────────────────────────
+  {
+    name: 'Water Features',
+    keywords: ['water', 'pool', 'fountain', 'river', 'lake', 'ocean', 'waterfall', 'swimming', 'pond', 'stream'],
+    snippet: `-- Fountain with particle spray
+local function makeFountain(pos, parent)
+  local m = Instance.new("Model") m.Name = "Fountain"
+  -- Basin (cylinder)
+  local basin = Instance.new("Part") basin.Shape = Enum.PartType.Cylinder basin.Anchored = true
+  basin.Size = Vector3.new(2, 14, 14) basin.CFrame = CFrame.new(pos) * CFrame.Angles(0,0,math.rad(90))
+  basin.Material = Enum.Material.Concrete basin.Color = Color3.fromRGB(170,165,155) basin.Parent = m
+  -- Center column
+  local col = Instance.new("Part") col.Shape = Enum.PartType.Cylinder col.Anchored = true
+  col.Size = Vector3.new(5, 1.5, 1.5) col.CFrame = CFrame.new(pos+Vector3.new(0,3.5,0))*CFrame.Angles(0,0,math.rad(90))
+  col.Material = Enum.Material.Marble col.Color = Color3.fromRGB(200,195,185) col.Parent = m
+  -- Water surface (transparent blue)
+  local water = Instance.new("Part") water.Shape = Enum.PartType.Cylinder water.Anchored = true
+  water.Size = Vector3.new(0.5, 12, 12) water.CFrame = CFrame.new(pos+Vector3.new(0,0.8,0))*CFrame.Angles(0,0,math.rad(90))
+  water.Material = Enum.Material.Glass water.Color = Color3.fromRGB(80,160,220) water.Transparency = 0.4
+  water.CanCollide = false water.Parent = m
+  -- Spray particles
+  local spray = Instance.new("Part") spray.Anchored=true spray.CanCollide=false spray.Transparency=1
+  spray.Size=Vector3.new(0.5,0.5,0.5) spray.CFrame=CFrame.new(pos+Vector3.new(0,6.5,0)) spray.Parent=m
+  local pe = Instance.new("ParticleEmitter") pe.Rate=80 pe.Lifetime=NumberRange.new(1,2)
+  pe.Speed=NumberRange.new(5,10) pe.SpreadAngle=Vector2.new(15,15)
+  pe.Color=ColorSequence.new(Color3.fromRGB(180,215,255))
+  pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.3),NumberSequenceKeypoint.new(1,0.1)})
+  pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(1,0.8)})
+  pe.Acceleration=Vector3.new(0,-30,0) pe.Parent=spray
+  m.Parent = parent or workspace return m
+end`,
+    pitfalls: [
+      'Water parts should use Glass material + Transparency 0.3-0.5 + CanCollide=false',
+      'Fountains need ParticleEmitter on a separate invisible Part (not on the water surface)',
+      'Particle Acceleration should include gravity (-30 to -50 Y) for realistic water arcs',
+      'For pools: build walls separately (4 parts), not a union — unions are slower',
+    ],
+  },
+
+  // ── World Building: Roads ──────────────────────────────────────
+  {
+    name: 'Roads and Paths',
+    keywords: ['road', 'path', 'street', 'sidewalk', 'highway', 'driveway', 'crosswalk', 'bridge'],
+    snippet: `-- Road with center line and curbs
+local function makeRoad(startPos, endPos, width, parent)
+  local m = Instance.new("Model") m.Name = "Road"
+  local mid = (startPos + endPos) / 2
+  local length = (endPos - startPos).Magnitude
+  -- Road surface
+  local road = Instance.new("Part") road.Anchored = true
+  road.Size = Vector3.new(width, 0.3, length)
+  road.CFrame = CFrame.lookAt(mid, endPos)
+  road.Material = Enum.Material.Asphalt road.Color = Color3.fromRGB(50,50,50) road.Parent = m
+  -- Center line (yellow dashed)
+  for i = 0, math.floor(length/4)-1 do
+    local dash = Instance.new("Part") dash.Anchored = true
+    dash.Size = Vector3.new(0.3, 0.31, 2)
+    dash.CFrame = road.CFrame * CFrame.new(0, 0, -length/2 + 2 + i*4)
+    dash.Material = Enum.Material.Neon dash.Color = Color3.fromRGB(255,200,0) dash.Parent = m
+  end
+  -- Curbs
+  for _, side in ipairs({-1, 1}) do
+    local curb = Instance.new("Part") curb.Anchored = true
+    curb.Size = Vector3.new(0.5, 0.4, length)
+    curb.CFrame = road.CFrame * CFrame.new(side*(width/2+0.25), 0.2, 0)
+    curb.Material = Enum.Material.Concrete curb.Color = Color3.fromRGB(180,175,165) curb.Parent = m
+  end
+  m.Parent = parent or workspace return m
+end`,
+    pitfalls: [
+      'Use CFrame.lookAt for road orientation between two points — NOT manual rotation',
+      'Neon material for road lines (self-illuminating, visible at night)',
+      'Curb height should be 0.3-0.5 studs above road surface',
+      'For curved roads: generate multiple short segments along a Bezier curve',
+    ],
+  },
+
+  // ── World Building: Weather/Ambient ─────────────────────────────
+  {
+    name: 'Weather and Ambient Effects',
+    keywords: ['rain', 'snow', 'weather', 'fog', 'firefly', 'fireflies', 'ambient', 'atmosphere', 'storm', 'wind', 'night', 'day'],
+    snippet: `-- Rain system
+local function makeRain(parent)
+  local p = Instance.new("Part") p.Anchored=true p.CanCollide=false p.Transparency=1
+  p.Size=Vector3.new(200,1,200) p.Position=Vector3.new(0,100,0) p.Name="Rain" p.Parent=parent or workspace
+  local e = Instance.new("ParticleEmitter") e.Rate=400 e.Lifetime=NumberRange.new(1.5,2.5)
+  e.Speed=NumberRange.new(40,60) e.SpreadAngle=Vector2.new(3,3)
+  e.EmissionDirection=Enum.NormalId.Bottom e.Acceleration=Vector3.new(0,-50,0)
+  e.Color=ColorSequence.new(Color3.fromRGB(180,200,220))
+  e.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.05),NumberSequenceKeypoint.new(1,0.02)})
+  e.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.3),NumberSequenceKeypoint.new(1,0.7)})
+  e.Parent=p return p
+end
+-- Fireflies
+local function makeFireflies(center, radius, count, parent)
+  local m = Instance.new("Model") m.Name = "Fireflies"
+  for i = 1, count do
+    local a = math.random()*math.pi*2
+    local d = math.random()*radius
+    local p = Instance.new("Part") p.Anchored=true p.CanCollide=false p.Transparency=1
+    p.Size=Vector3.new(0.5,0.5,0.5)
+    p.Position=center+Vector3.new(math.cos(a)*d, 2+math.random()*6, math.sin(a)*d) p.Parent=m
+    local e = Instance.new("ParticleEmitter") e.Rate=2 e.Lifetime=NumberRange.new(1,3)
+    e.Speed=NumberRange.new(0.2,0.8) e.SpreadAngle=Vector2.new(180,180)
+    e.Color=ColorSequence.new(Color3.fromRGB(200,255,100))
+    e.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(0.3,0.15),NumberSequenceKeypoint.new(0.7,0.15),NumberSequenceKeypoint.new(1,0)})
+    e.LightEmission=1 e.Brightness=3 e.Parent=p
+    local l = Instance.new("PointLight") l.Color=Color3.fromRGB(200,255,100) l.Brightness=0.4 l.Range=4 l.Parent=p
+  end
+  m.Parent = parent or workspace return m
+end`,
+    pitfalls: [
+      'Rain emitter must be at Y=80-100, size 200x200, EmissionDirection=Bottom',
+      'ParticleEmitter MUST be parented to a BasePart — not Model or workspace',
+      'Firefly PointLights should have very low Brightness (0.3-0.5) and Range (3-5)',
+      'Performance: max 3 weather emitters active at once, keep Rate under 500 total',
+    ],
+  },
+
+  // ── World Building: Signs/GUI in 3D ────────────────────────────
+  {
+    name: '3D Signs and GUI',
+    keywords: ['sign', 'billboard', 'nametag', 'label', 'screen', 'monitor', 'tv', 'display', 'surface gui', 'poster'],
+    snippet: `-- SurfaceGui sign on a Part
+local function makeSign(part, text, face)
+  local sg = Instance.new("SurfaceGui") sg.Face = face or Enum.NormalId.Front
+  sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud sg.PixelsPerStud = 50
+  local bg = Instance.new("Frame") bg.Size = UDim2.new(1,0,1,0)
+  bg.BackgroundColor3 = Color3.fromRGB(20,20,25) bg.BorderSizePixel = 0 bg.Parent = sg
+  local corner = Instance.new("UICorner") corner.CornerRadius = UDim.new(0.05,0) corner.Parent = bg
+  local label = Instance.new("TextLabel") label.Size = UDim2.new(0.9,0,0.8,0)
+  label.Position = UDim2.new(0.05,0,0.1,0) label.BackgroundTransparency = 1
+  label.TextColor3 = Color3.fromRGB(255,220,60) label.Text = text label.TextScaled = true
+  label.Font = Enum.Font.GothamBold label.Parent = bg
+  sg.Parent = part return sg
+end
+-- BillboardGui floating label
+local function makeFloatingLabel(adornee, text)
+  local bb = Instance.new("BillboardGui") bb.Adornee = adornee
+  bb.Size = UDim2.new(6,0,1.5,0) bb.StudsOffset = Vector3.new(0,3,0)
+  local label = Instance.new("TextLabel") label.Size = UDim2.new(1,0,1,0)
+  label.BackgroundTransparency = 0.3 label.BackgroundColor3 = Color3.fromRGB(0,0,0)
+  label.TextColor3 = Color3.fromRGB(255,255,255) label.Text = text label.TextScaled = true
+  label.Font = Enum.Font.GothamBold label.Parent = bb
+  bb.Parent = adornee return bb
+end`,
+    pitfalls: [
+      'SurfaceGui renders ON the part surface — BillboardGui floats and faces camera',
+      'SurfaceGui.PixelsPerStud controls text sharpness — 50 is good, higher = sharper but more memory',
+      'BillboardGui.StudsOffset controls float distance above the part',
+      'AlwaysOnTop=true makes GUI render above everything — use sparingly',
+    ],
+  },
+
+  // ── World Building: Curved Surfaces ─────────────────────────────
+  {
+    name: 'Curved Surfaces and Arches',
+    keywords: ['curve', 'arch', 'dome', 'rounded', 'circular', 'spiral', 'ring', 'tunnel', 'bridge arch'],
+    snippet: `-- Create an arch from parts (approximated curve)
+local function makeArch(center, radius, thickness, width, segments, parent)
+  local m = Instance.new("Model") m.Name = "Arch"
+  for i = 0, segments-1 do
+    local a1 = math.rad((i/segments)*180)
+    local a2 = math.rad(((i+1)/segments)*180)
+    local mid = (a1+a2)/2
+    local pos = center + Vector3.new(math.cos(mid)*radius, math.sin(mid)*radius, 0)
+    local len = 2*radius*math.sin((a2-a1)/2)
+    local p = Instance.new("Part") p.Anchored = true
+    p.Size = Vector3.new(width, thickness, len)
+    p.CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, mid+math.pi/2)
+    p.Material = Enum.Material.Brick p.Color = Color3.fromRGB(170,140,110) p.Parent = m
+  end
+  m.Parent = parent or workspace return m
+end
+-- Usage: makeArch(Vector3.new(0,0,0), 8, 1, 4, 16)
+-- Dome (half-sphere from stacked cylinders)
+local function makeDome(center, radius, layers, parent)
+  local m = Instance.new("Model") m.Name = "Dome"
+  for i = 0, layers do
+    local t = i/layers
+    local y = math.sin(t*math.pi/2)*radius
+    local r = math.cos(t*math.pi/2)*radius
+    local ring = Instance.new("Part") ring.Shape = Enum.PartType.Cylinder ring.Anchored = true
+    ring.Size = Vector3.new(radius/layers, r*2, r*2)
+    ring.CFrame = CFrame.new(center+Vector3.new(0,y,0))*CFrame.Angles(0,0,math.rad(90))
+    ring.Material = Enum.Material.Marble ring.Color = Color3.fromRGB(220,215,205) ring.Parent = m
+  end
+  m.Parent = parent or workspace return m
+end`,
+    pitfalls: [
+      'More segments = smoother curve but more parts. 12-16 segments is good for arches',
+      'Dome layers should be 8-12 for smooth look without excessive parts',
+      'For spirals: add incremental Y offset per segment',
+      'Use math.cos/math.sin for circular placement — never hardcode positions',
+    ],
+  },
 ]
 
 // ── Public API ───────────────────────────────────────────────────────────────
