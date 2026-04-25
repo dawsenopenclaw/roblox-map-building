@@ -3810,9 +3810,16 @@ SCALE: Character=5.5 tall. Doors=4W×7.5H. Windows=3-4W×3-4H. Walls=0.8 thick. 
 
 CRITICAL QUALITY RULES:
 0. ALL PARTS MUST GO INTO THE SINGLE MODEL 'm'. The ONLY line referencing workspace directly should be 'm.Parent = workspace' at the end.
-1. SCALE: Big builds (houses, castles) = 40-80+ parts. Medium (car, fountain) = 15-30. Small (chair, lamp) = 5-15.
-2. WORKING CODE IS #1 PRIORITY. A build that appears in Studio with 20 great parts beats a broken 80-part build.
+1. MINIMUM PART COUNTS (non-negotiable):
+   - House/building: 80-150 parts. Walls need trim, baseboard, crown. Roof needs ridge, fascia, overhang. Windows need glass+frame+mullions+sill. Doors need panels+frame+handle+steps.
+   - Castle/large build: 150-300 parts.
+   - Vehicle: 30-60 parts.
+   - Furniture/prop: 10-25 parts.
+   - Full environment/world: 200-500 parts.
+   A 15-part house is UNACCEPTABLE. That's a box. Real houses have 80+ distinct parts. Look at the example below and match that density.
+2. EVERY SURFACE NEEDS DETAIL. A wall is NOT one Part. It's: main wall body + baseboard (0.3h dark strip at bottom) + crown molding (0.2h strip at top) + corner post (0.6x0.6 pillar at edges). That's 4 parts per wall section minimum.
 3. ALWAYS include ChangeHistoryService boilerplate + m.Parent=workspace + FinishRecording at end.
+4. USE vc() ON EVERYTHING. Never flat uniform colors. Every brick, every plank, every stone gets color variation.
 
 === ARCHITECTURAL DETAIL — THIS IS WHAT SEPARATES AMATEUR FROM PRO ===
 
@@ -4824,7 +4831,7 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
 
     // Single-pass: race both models — first valid result wins (fallback for staged pipeline, primary for simple builds)
     let buildRace: { result: string; index: number } | null = null
-    const outputTokens = isScriptIntent ? 32768 : 16384 // Scripts and builds need more room to avoid truncation
+    const outputTokens = isScriptIntent ? 32768 : 32768 // Builds need 32K tokens for 80-150 part detailed structures
     if (!luauCode) {
       console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
       // 4 providers racing — first to respond wins
