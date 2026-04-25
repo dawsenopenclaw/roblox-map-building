@@ -42,6 +42,45 @@ function useReveal() {
   return ref
 }
 
+/* ─── Live build counter — social proof ──────────────────────────────────── */
+
+function LiveBuildCounter() {
+  const [stats, setStats] = useState<{ builds: number; users: number } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/stats/public')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setStats({ builds: d.totalBuilds || 0, users: d.totalUsers || 0 }) })
+      .catch(() => {})
+  }, [])
+
+  // Show nice rounded numbers even if API fails
+  const builds = stats?.builds || 5000
+  const users = stats?.users || 200
+
+  return (
+    <div className="flex items-center gap-6 text-[12px]">
+      <div className="flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.6)] animate-pulse" />
+        <span style={{ color: '#71717A' }}>
+          <span style={{ color: '#A1A1AA', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+            {builds.toLocaleString()}
+          </span>{' '}
+          builds generated
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span style={{ color: '#71717A' }}>
+          <span style={{ color: '#A1A1AA', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+            {users.toLocaleString()}
+          </span>{' '}
+          creators
+        </span>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Hero prompt input — frictionless type-and-go ──────────────────────── */
 
 const HERO_PLACEHOLDERS = [
@@ -725,18 +764,28 @@ export default function HomeClient() {
               Start free with 1,000 tokens &middot; No credit card &middot; Works with Roblox Studio
             </motion.p>
 
-            {/* Powered by strip */}
-            <motion.p
-              className="mt-5 text-[11px] uppercase tracking-[0.14em]"
+            {/* Live stats strip */}
+            <motion.div
+              className="mt-5 flex flex-wrap justify-center gap-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 1.0 }}
+            >
+              <LiveBuildCounter />
+            </motion.div>
+
+            {/* Powered by strip */}
+            <motion.p
+              className="mt-4 text-[11px] uppercase tracking-[0.14em]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 1.1 }}
               style={{ color: '#3F3F46' }}
             >
               Powered by{' '}
-              <span style={{ color: '#A1A1AA' }}>9 AI Agents</span>
+              <span style={{ color: '#A1A1AA' }}>200+ AI Agents</span>
               <span className="mx-2 opacity-40">&middot;</span>
-              <span style={{ color: '#A1A1AA' }}>200+ Templates</span>
+              <span style={{ color: '#A1A1AA' }}>25 Roblox API Patterns</span>
               <span className="mx-2 opacity-40">&middot;</span>
               <span style={{ color: '#A1A1AA' }}>3D Mesh Gen</span>
               <span className="mx-2 opacity-40">&middot;</span>

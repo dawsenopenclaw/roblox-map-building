@@ -339,13 +339,22 @@ function BuildFeedbackCard({
   }
   const cfg = hasBuild ? tierConfig[tier] : { label: 'Response', color: '#71717A', bg: 'rgba(255,255,255,0.02)', border: 'rgba(255,255,255,0.06)', icon: '•', hint: '' }
 
-  const quickActions = !hasBuild
-    ? ['Tell me more', 'Can you show me code for this?', 'What else can you help with?']
-    : tier === 'great'
-    ? ['Add lighting and atmosphere', 'Add more detail to this build', 'What should I build next?']
-    : tier === 'good'
-    ? ['Make it more detailed', 'Fix any issues with this build', 'Enhance the materials and colors']
-    : ['Try again with more detail', 'Break into smaller steps', 'Try a simpler version']
+  // Smart quick actions based on what was generated
+  const quickActions = (() => {
+    if (!hasBuild) return ['Tell me more', 'Can you show me code for this?', 'What else can you help with?']
+
+    const code = luauCode || ''
+    const isScript = code.includes('Connect(') || code.includes('function') || code.includes(':GetService')
+    const isUI = code.includes('ScreenGui') || code.includes('TextButton') || code.includes('Frame')
+    const hasError = tier === 'low'
+    const isMap = code.includes('Instance.new("Part")') || code.includes('create_part')
+
+    if (hasError) return ['Auto-fix this', 'Show me the errors', 'Try a different approach', 'Break into smaller steps']
+    if (isScript) return ['Test it in Studio', 'Add error handling', 'Optimize performance', 'Explain this code']
+    if (isUI) return ['Add animations', 'Mobile-friendly layout', 'Connect to backend', 'Add more screens']
+    if (isMap) return ['Add scripts to this', 'More detail', 'Add lighting and atmosphere', 'Add NPCs']
+    return ['Add more detail', 'Add scripts', 'What should I build next?']
+  })()
 
   return (
     <div
@@ -2514,6 +2523,45 @@ function MessageBubbleImpl({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
           {msg.hasCode && (
             <CodePreviewBadge luauCode={msg.luauCode} previousCode={previousCode} executedInStudio={msg.executedInStudio} />
+          )}
+          {/* Build Pipeline Steps — shows what actually happened during generation */}
+          {!msg.streaming && msg.buildSteps && msg.buildSteps.length > 0 && (
+            <div
+              style={{
+                display: 'inline-flex',
+                gap: 0,
+                alignItems: 'center',
+                padding: '3px 4px',
+                borderRadius: 8,
+                background: 'rgba(212,175,55,0.04)',
+                border: '1px solid rgba(212,175,55,0.1)',
+              }}
+            >
+              {msg.buildSteps.map((s, idx) => (
+                <span
+                  key={s.step}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    padding: '2px 6px',
+                    borderRadius: 6,
+                    fontSize: 10,
+                    fontWeight: 500,
+                    color: s.status === 'done' ? '#22c55e' : s.status === 'running' ? '#D4AF37' : '#52525b',
+                    background: s.status === 'done' ? 'rgba(34,197,94,0.06)' : 'transparent',
+                  }}
+                >
+                  <span style={{ fontSize: 8 }}>
+                    {s.status === 'done' ? '●' : s.status === 'running' ? '◐' : '○'}
+                  </span>
+                  {s.label}
+                  {idx < (msg.buildSteps?.length ?? 0) - 1 && (
+                    <span style={{ color: '#27272a', margin: '0 1px', fontSize: 9 }}>›</span>
+                  )}
+                </span>
+              ))}
+            </div>
           )}
           {/* Build Feedback Card — shows on EVERY completed AI response for learning */}
           {!msg.streaming && msg.role === 'assistant' && (
