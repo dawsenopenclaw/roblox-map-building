@@ -3604,15 +3604,17 @@ print("[ForjeAI] Script system ready — press Play to test!")`
 }
 
 function isCodeQualityOk(code: string): boolean {
-  // Detect if this is a script (game logic) vs a build (Part creation)
-  const isScript = code.includes('DataStoreService') || code.includes('RemoteEvent') ||
+  // Detect if this is a PURE script (game logic) vs a build (Part creation)
+  // If code has build helpers (P/W/Cyl/Ball), it's a BUILD even if it also has interactive elements
+  const hasBuildHelpers = /\bP\s*\(/.test(code) || /\bW\s*\(/.test(code) || /\bCyl\s*\(/.test(code) || /\bBall\s*\(/.test(code) || code.includes('ForjeAI_Build')
+  const isScript = !hasBuildHelpers && (
+    code.includes('DataStoreService') || code.includes('RemoteEvent') ||
     code.includes('RemoteFunction') || code.includes('ModuleScript') ||
     code.includes('Players.PlayerAdded') || code.includes('.Source') ||
     code.includes('ServerScriptService') || code.includes('StarterPlayerScripts') ||
-    code.includes('game:GetService') || code.includes('RunService') ||
     code.includes('ScreenGui') || code.includes('TextLabel') || code.includes('TextButton') ||
-    code.includes('ProximityPrompt') || code.includes('TweenService') ||
-    code.includes('UserInputService') || code.includes('CollectionService')
+    code.includes('UserInputService') || code.includes('game:GetService("Players")')
+  )
 
   // Must have SOME Roblox API calls (basic sanity)
   if (!code.includes('Instance.new') && !code.includes('workspace') &&
@@ -4412,13 +4414,18 @@ P("HutSign", 6,1.5,0.3, -55,7.5,35.8, "Wood", 60,40,20)
 P("NPC_Body", 2,3,1, -55,3.5,38, "Fabric", 80,130,200)
 Ball("NPC_Head", 1.5, -55,5.5,38, "Fabric", 220,185,150)
 
--- ═══ BOUNDARY FENCE (perimeter — 40 posts + rails = 80 parts) ═══
+-- ═══ BOUNDARY FENCE (perimeter — 40 posts + 40 rails = 80 parts) ═══
 local fenceR = 70
 for i = 1, 40 do
   local angle = (i/40)*math.pi*2
+  local nextAngle = ((i%40)+1)/40*math.pi*2
   local fx, fz = math.cos(angle)*fenceR, math.sin(angle)*fenceR
+  local nx, nz = math.cos(nextAngle)*fenceR, math.sin(nextAngle)*fenceR
   Cyl("FPost"..i, 4,0.4, fx,2.5,fz, "Wood", vc(90,60,30,8))
-  P("FRail"..i, 0.2,0.2, math.cos(angle)*(fenceR-0.3)*11-math.cos(((i+1)/40)*math.pi*2)*(fenceR-0.3), 3,0.3, fz, "Wood", vc(85,55,28,8))
+  -- Rail spans between this post and the next (midpoint, rotated to face next post)
+  local mx, mz = (fx+nx)/2, (fz+nz)/2
+  local rLen = math.sqrt((nx-fx)^2+(nz-fz)^2)
+  P("FRail"..i, rLen,0.3,0.2, mx,3.5,mz, "Wood", vc(85,55,28,8))
 end
 
 -- ═══ AAA LIGHTING (always include) ═══
