@@ -90,7 +90,7 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
     requiresScriptedElements: false,
     requiresCinematicLighting: true,
     promptModifier: `QUALITY TIER: PRO — Production-ready, publishable quality.
-- 35-65 parts. This should look like a real Roblox game environment.
+- 40-65 parts MINIMUM. This should look like a real Roblox game environment. Count your P()/W()/Cyl()/Ball() calls — if under 40, add trim, mullions, sills, corner posts, steps, pathway, trees.
 - FULL INTERIORS: multiple rooms, each with purpose-specific furniture.
 - 5+ PointLights/SpotLights with varied warmth — kitchen lights brighter, bedroom dimmer.
 - 3+ interactive elements: doors (ProximityPrompt), clickable buttons, SurfaceGui signs with text.

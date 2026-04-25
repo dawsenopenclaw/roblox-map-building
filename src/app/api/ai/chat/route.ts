@@ -54,6 +54,7 @@ import { scoreOutput, isObviouslyBroken } from '@/lib/ai/quality-scorer'
 import { getTierPromptModifier, getTierFromSubscription, type QualityTier } from '@/lib/ai/quality-tiers'
 import { findObjectBlueprints, findScriptPatterns, formatBlueprintsForPrompt, formatScriptPatternsForPrompt } from '@/lib/ai/object-library'
 import { recordToEli } from '@/lib/eli/build-intelligence'
+import { formatGraphPrompt, recordBuildSuccess, detectComponentsInCode } from '@/lib/eli/codegraph'
 import { runStagedPipeline } from '@/lib/ai/staged-pipeline'
 import { formatAdditiveRetryPrompt } from '@/lib/ai/build-blueprint'
 import { detectRecommendations, recordRecommendation, getTopRecommendations, formatRecommendations } from '@/lib/ai/recommendation-tracker'
@@ -3700,7 +3701,10 @@ async function freeModelTwoPass(
   // The knowledge base has terrain, trees, water, roads, weather — all useful for builds
   const robloxContext = buildRobloxContext(message)
 
-  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
+  // Inject CodeGraph knowledge — tells AI exactly which components to include
+  const codeGraphContext = formatGraphPrompt(message)
+
+  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
 
 RESPONSE FORMAT (follow EXACTLY):
 1. First, write 3-5 sentences describing what you're creating. Be specific about what a player would see. End with a suggestion for what to build next.
@@ -5253,6 +5257,13 @@ ${effectiveInstruction}`
           passed: finalVerificationScore >= 60,
           retryCount: 0,
         }).catch(() => {})
+        // CodeGraph learning — record successful pattern components
+        if (finalVerificationScore >= 65 && luauCode && category) {
+          try {
+            const graphComponents = detectComponentsInCode(luauCode)
+            recordBuildSuccess(category, graphComponents, finalVerificationScore)
+          } catch { /* non-blocking */ }
+        }
       }
     }
 
