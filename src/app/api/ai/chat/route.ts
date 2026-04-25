@@ -5778,38 +5778,76 @@ SHAPE TYPES AND WHEN TO USE THEM:
 6. TrussPart — ladders, scaffolding, climbing surfaces
 7. Thin parts (0.1-0.2 thick) — trim, molding, frames, panels, signs, posters
 
-SHAPE CREATION (use these in your code):
-  -- Cylinder (column, pole, trunk)
-  local col = Instance.new("Part") col.Shape = Enum.PartType.Cylinder
-  col.Size = Vector3.new(HEIGHT, DIAMETER, DIAMETER) -- X=height for cylinders
-  col.CFrame = CFrame.new(x,y,z) * CFrame.Angles(0, 0, math.rad(90)) -- rotate upright
+SHAPE CREATION — HOW TO MAKE SHAPES LOOK POLISHED (not ugly):
 
-  -- Ball (bush, dome, sphere)
-  local ball = Instance.new("Part") ball.Shape = Enum.PartType.Ball
-  ball.Size = Vector3.new(D, D, D) -- all three must be equal
+CYLINDERS — Columns, poles, trunks, pipes, table legs, lamp posts, cups, barrels:
+  -- CRITICAL: Cylinder.Size.X = height, Y = diameter, Z = diameter
+  -- CRITICAL: Must rotate 90 degrees on Z to stand upright
+  local col = Instance.new("Part") col.Shape = Enum.PartType.Cylinder col.Anchored = true
+  col.Size = Vector3.new(8, 2, 2) -- 8 tall, 2 wide
+  col.CFrame = CFrame.new(x,y,z) * CFrame.Angles(0, 0, math.rad(90))
+  col.Material = Enum.Material.Marble col.Color = Color3.fromRGB(220,215,205) col.Parent = m
+  -- PRO TIP: Add a thin cylinder ring at top/bottom of columns for a capital/base
+  local ring = Instance.new("Part") ring.Shape = Enum.PartType.Cylinder ring.Anchored = true
+  ring.Size = Vector3.new(0.4, 2.8, 2.8) -- wider than column, very thin
+  ring.CFrame = CFrame.new(x, y + 4, z) * CFrame.Angles(0, 0, math.rad(90))
+  ring.Material = Enum.Material.Marble ring.Parent = m
 
-  -- WedgePart (roof slope, ramp)
-  local wedge = Instance.new("WedgePart")
-  wedge.Size = Vector3.new(WIDTH, HEIGHT, DEPTH) -- slope goes along Z
-  -- Rotate for opposite slope: CFrame * CFrame.Angles(0, math.rad(180), 0)
+BALLS/SPHERES — Foliage, domes, decorative orbs, bushes, lamps, fruit, boulders:
+  -- CRITICAL: All 3 size values MUST be equal for a true sphere
+  -- For ELLIPSOIDS (squished spheres): make Y smaller for flat bushes, Y bigger for tall trees
+  local bush = Instance.new("Part") bush.Shape = Enum.PartType.Ball bush.Anchored = true
+  bush.Size = Vector3.new(6, 4, 6) -- flat ellipsoid = bush shape (wider than tall)
+  bush.Material = Enum.Material.Grass bush.Color = Color3.fromRGB(60,130,45) bush.Parent = m
+  -- PRO TIP: Stack 3-5 overlapping ellipsoids with varied sizes/colors for organic tree canopy
+  -- PRO TIP: Use small spheres (Size 0.5-1) for decorative details: doorknobs, rivets, fruit on trees
+  -- PRO TIP: Large sphere (Size 15+) with Transparency 0.3 + Glass material = crystal/magic orb
 
-  -- CornerWedgePart (hip roof corner)
-  local corner = Instance.new("CornerWedgePart")
+WEDGEPARTS — Roofs, ramps, stairs, pointed tops, A-frames, awnings:
+  -- Slope direction: the sloped face runs along the Z axis (front to back)
+  local roof = Instance.new("WedgePart") roof.Anchored = true
+  roof.Size = Vector3.new(12, 4, 8) -- 12 wide, 4 tall slope, 8 deep
+  roof.CFrame = CFrame.new(x, y, z)
+  -- For OPPOSITE slope direction: rotate 180 on Y
+  roof.CFrame = CFrame.new(x, y, z) * CFrame.Angles(0, math.rad(180), 0)
+  -- PRO TIP: Extend wedge 1-2 studs past walls for realistic roof overhang
+  -- PRO TIP: Use 2 wedges facing each other = peaked A-frame roof
 
-LOW-POLY TECHNIQUES (makes builds look stylized, not blocky):
+CUSTOM SHAPES — Combine primitives for complex objects:
+  -- Archway: semicircle of thin parts (see Cyl() helper to arrange in arc)
+  -- Dome: stack cylinders with decreasing radius (8-12 layers)
+  -- Round table: cylinder top + 1 cylinder leg (or 4 thin cylinders)
+  -- Lamp: cylinder base + thin cylinder stem + sphere bulb (+ PointLight)
+  -- Barrel: cylinder body + two thin cylinder bands near top/bottom
+  -- Wheel: cylinder (thin) + small cylinder hub in center
+  -- Tree stump: short thick cylinder + thin rings around it
+  -- Rounded bench: long thin half-cylinder seat + wedge armrests
+
+MAKING SHAPES LOOK POLISHED (not ugly):
+  1. MATERIAL MATTERS: Cylinders look best with Marble, Concrete, Metal, Wood. Balls look best with Grass, Fabric, Marble. NEVER use default SmoothPlastic.
+  2. COLOR DEPTH: Use vc() on EVERY shape — flat single-color shapes look cheap.
+  3. COMBINE SHAPES: A single ball = ugly blob. 3-5 overlapping balls with varied sizes = beautiful canopy.
+  4. ADD DETAILS: Plain cylinder column = boring. Cylinder + ring at top + ring at bottom = elegant column.
+  5. SCALE PROPERLY: Balls for bushes = Size 3-6. Balls for tree canopy = Size 4-8. Balls for decorative = Size 0.5-2.
+  6. GROUND CONTACT: Balls and cylinders should slightly sink into the ground (Y = radius - 0.2) so they don't float.
+  7. SHADOW GAPS: Leave 0.05-0.1 studs between touching shapes for shadow lines in Future lighting.
+  8. ROTATION FOR LIFE: Rotate organic shapes ±5-15 degrees randomly. Perfect alignment = artificial.
+
+LOW-POLY STYLE (stylized, not blocky):
   -- Rotate parts slightly off-axis for organic feel
-  part.CFrame = CFrame.new(x,y,z) * CFrame.Angles(0, math.rad(math.random(-5,5)), 0)
-
-  -- Use Ball shapes for foliage (looks way better than box bushes)
-  for i = 1, 5 do
-    local leaf = Instance.new("Part") leaf.Shape = Enum.PartType.Ball
-    leaf.Size = Vector3.new(3+math.random()*2, 2+math.random()*2, 3+math.random()*2)
-    leaf.CFrame = CFrame.new(trunkX + math.random(-2,2), trunkTopY + math.random(-1,3), trunkZ + math.random(-2,2))
-    leaf.Material = Enum.Material.Grass leaf.Color = Color3.fromRGB(60+math.random(40), 120+math.random(40), 40+math.random(30))
+  part.CFrame = CFrame.new(x,y,z) * CFrame.Angles(0, math.rad(math.random(-8,8)), math.rad(math.random(-3,3)))
+  -- Vary sizes ±10-20% for natural imperfection
+  local baseSize = 4; local s = baseSize * (0.85 + math.random()*0.3)
+  -- Use 3-5 overlapping balls for canopy (NOT a single ball):
+  for i = 1, 4 do
+    local leaf = Instance.new("Part") leaf.Shape = Enum.PartType.Ball leaf.Anchored = true
+    local sz = 3 + math.random()*3
+    leaf.Size = Vector3.new(sz, sz*0.7, sz) -- slightly flat ellipsoid
+    leaf.CFrame = CFrame.new(trunkX + math.random(-2,2), trunkTopY + i*1.2, trunkZ + math.random(-2,2))
+      * CFrame.Angles(0, math.rad(math.random(360)), 0)
+    leaf.Material = Enum.Material.Grass
+    leaf.Color = Color3.fromRGB(40+i*12, 100+math.random(50), 30+i*8) leaf.Parent = m
   end
-
-  -- Use cylinders for rounded furniture legs, lamp poles, pillars
-  -- Use wedges for angled details: awnings, pointed roofs, decorative trim
 
 MEGA MANSION TYCOON TECHNIQUES (extreme detail):
   -- RULE: Every surface gets at least 2 layers (base + trim)

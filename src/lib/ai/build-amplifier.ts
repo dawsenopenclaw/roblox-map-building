@@ -81,10 +81,12 @@ function injectTerrain(code: string): string {
   const terrainBlock = `
 -- ═══ TERRAIN GROUND (auto-injected) ═══
 pcall(function()
+  local _sp = sp or Vector3.new(0,0,0)
+  local _gy = gy or groundY or 0
   local terrain = workspace.Terrain
-  terrain:FillBlock(CFrame.new(sp.X, gy - 2, sp.Z), Vector3.new(200, 4, 200), Enum.Material.Grass)
-  terrain:FillBlock(CFrame.new(sp.X + 40, gy - 1, sp.Z), Vector3.new(30, 2, 30), Enum.Material.LeafyGrass)
-  terrain:FillBlock(CFrame.new(sp.X - 35, gy - 1.5, sp.Z + 25), Vector3.new(20, 3, 20), Enum.Material.Ground)
+  terrain:FillBlock(CFrame.new(_sp.X, _gy - 2, _sp.Z), Vector3.new(200, 4, 200), Enum.Material.Grass)
+  terrain:FillBlock(CFrame.new(_sp.X + 40, _gy - 1, _sp.Z), Vector3.new(30, 2, 30), Enum.Material.LeafyGrass)
+  terrain:FillBlock(CFrame.new(_sp.X - 35, _gy - 1.5, _sp.Z + 25), Vector3.new(20, 3, 20), Enum.Material.Ground)
 end)
 -- ═══ END TERRAIN ═══
 `
@@ -138,7 +140,7 @@ pcall(function()
       if vol > biggestSize then biggestSize = vol; biggest = part end
     end
   end
-  if biggest and existingLights < 1 then
+  if biggest and ${existingLights} < 1 then
     local el = Instance.new("PointLight")
     el.Brightness = 0.8
     el.Range = 50
@@ -147,7 +149,7 @@ pcall(function()
   end
 end)
 -- ═══ END LIGHTS ═══
-`.replace('existingLights', String(existingLights))
+`
 
   // Insert before finalize
   const finalize = code.indexOf('m.Parent = workspace')
