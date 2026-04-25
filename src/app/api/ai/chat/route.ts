@@ -3696,8 +3696,9 @@ async function freeModelTwoPass(
     : ''
   if (specialist) console.log(`[freeModelTwoPass] Specialist: ${specialist.name}`)
 
-  // Inject relevant Roblox API reference snippets based on what the user is building
-  const robloxContext = isScriptIntent ? buildRobloxContext(message) : ''
+  // Inject relevant Roblox API reference snippets for ALL build types (not just scripts)
+  // The knowledge base has terrain, trees, water, roads, weather — all useful for builds
+  const robloxContext = buildRobloxContext(message)
 
   const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
 
@@ -4753,28 +4754,60 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       || /\b(with|and|plus|also|include).*(shop|leaderboard|currency|combat|quest|inventory|pet|npc|teleport|spawn|checkpoint|timer|team|vehicle|weapon|gui|menu|trading|crafting|skill|level|upgrade|rebirth)/i.test(message)
       || message.split(/\band\b|\bwith\b|\bplus\b/i).length >= 4
     )
-    // Full game detection: trigger full game pipeline for "make me a X game" requests
+    // Full game detection: trigger world planner + staged pipeline
     const isFullGameReq = /\b(full game|complete game|make me a .+ game|build me a .+ game|create a .+ game|entire game|whole game|game from scratch)\b/i.test(message)
     if ((isComplexBuild || isFullGameReq || intent === 'fullgame') && !luauCode) {
-      console.log(`[StagedPipeline] ${isFullGameReq ? 'FULL GAME' : 'Complex build'} detected, using staged pipeline for:`, message.slice(0, 50))
-      try {
-        const pipelineResult = await runStagedPipeline(message, enrichedCodePrompt)
-        if (pipelineResult.code && pipelineResult.score >= 40) {
-          luauCode = pipelineResult.code
-          conversationText = pipelineResult.conversationText || `Here's what I'm setting up for "${message}".`
-          model = pipelineResult.systemScripts ? 'staged-pipeline-fullgame' : 'staged-pipeline'
-          finalVerificationScore = pipelineResult.score
-          const stageLog = pipelineResult.stages.map(s => `${s.name}:${s.success ? 'OK' : 'FAIL'}`).join(', ')
-          console.log(`[StagedPipeline] Success! Score: ${pipelineResult.score}/100, stages: ${stageLog}`)
-          if (pipelineResult.systemScripts) {
-            const totalLines = pipelineResult.systemScripts.reduce((s, sc) => s + sc.lineCount, 0)
-            console.log(`[StagedPipeline] FULL GAME: ${pipelineResult.systemScripts.length} systems, ${totalLines} total lines`)
+      console.log(`[FullGame] ${isFullGameReq ? 'FULL GAME' : 'Complex build'} detected for:`, message.slice(0, 50))
+
+      // ── WORLD PLANNER: Generate the physical world (zones, buildings, terrain) ──
+      // This produces 3,000-5,000+ parts procedurally (zero AI token cost)
+      if (sessionId && isFullGameReq) {
+        try {
+          const { generateZonePlan, buildWorld } = await import('@/lib/ai/world-planner')
+          const plan = generateZonePlan(message)
+          console.log(`[WorldPlanner] Plan: ${plan.title} — ${plan.zones.length} zones, ~${plan.totalEstimatedParts} parts`)
+
+          const worldResult = await buildWorld(plan, sessionId, (p) => {
+            console.log(`[WorldPlanner] ${p.status}: zone ${p.completedZones}/${p.totalZones}, ${p.totalParts} parts`)
+          })
+
+          if (worldResult.totalParts > 0) {
+            console.log(`[WorldPlanner] World complete: ${worldResult.totalParts} parts across ${worldResult.completedZones} zones`)
+            conversationText = `I'm building your ${plan.title} with ${worldResult.completedZones} zones and ${worldResult.totalParts} parts:\n\n` +
+              worldResult.zoneResults.map(z => `- **${z.zoneId.replace(/zone_\d+_/, '').replace(/_/g, ' ')}**: ${z.partCount} parts (quality: ${z.antiUglyScore}/100)`).join('\n') +
+              `\n\nThe world is being placed in your Studio now. `
+            executedInStudio = true
+            model = 'world-planner'
           }
-        } else {
-          console.log(`[StagedPipeline] Score too low (${pipelineResult.score}), falling back to single-pass`)
+        } catch (wpErr) {
+          console.warn('[WorldPlanner] Failed, falling through to staged pipeline:', wpErr instanceof Error ? wpErr.message : wpErr)
         }
-      } catch (pipeErr) {
-        console.warn('[StagedPipeline] Failed, falling back to single-pass:', pipeErr instanceof Error ? pipeErr.message : pipeErr)
+      }
+
+      // ── STAGED PIPELINE: Generate game scripts (economy, combat, UI, etc.) ──
+      if (!luauCode) {
+        try {
+          const pipelineResult = await runStagedPipeline(message, enrichedCodePrompt)
+          if (pipelineResult.code && pipelineResult.score >= 40) {
+            luauCode = pipelineResult.code
+            if (!conversationText || conversationText.length < 20) {
+              conversationText = pipelineResult.conversationText || `Here's what I'm setting up for "${message}".`
+            } else {
+              // Append script info to world planner description
+              conversationText += `I'm also generating the game scripts (economy, combat, UI, data saving)...`
+            }
+            model = conversationText.includes('zones') ? 'world-planner+scripts' : (pipelineResult.systemScripts ? 'staged-pipeline-fullgame' : 'staged-pipeline')
+            finalVerificationScore = pipelineResult.score
+            const stageLog = pipelineResult.stages.map(s => `${s.name}:${s.success ? 'OK' : 'FAIL'}`).join(', ')
+            console.log(`[StagedPipeline] Score: ${pipelineResult.score}/100, stages: ${stageLog}`)
+            if (pipelineResult.systemScripts) {
+              const totalLines = pipelineResult.systemScripts.reduce((s, sc) => s + sc.lineCount, 0)
+              console.log(`[StagedPipeline] ${pipelineResult.systemScripts.length} systems, ${totalLines} lines`)
+            }
+          }
+        } catch (pipeErr) {
+          console.warn('[StagedPipeline] Failed:', pipeErr instanceof Error ? pipeErr.message : pipeErr)
+        }
       }
     }
 

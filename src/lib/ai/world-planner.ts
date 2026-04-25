@@ -12,13 +12,16 @@
 import 'server-only'
 import type { BuildPart } from './mega-builder'
 import {
-  generateFloor, generateTree, generateBush, generateRock,
+  generateFloor as _genFloor, generateTree, generateBush, generateRock,
   generateLampPost, generateFountain, generateMarketStall,
-  generatePath, generateShop, generateHouse, generatePointLight,
-  generateBox, generateRoof, generateWindow, generateDoor,
-  generateStairs, generateChair, generateTable, generateBed,
-  generateBookshelf, generateFireplace, partsToLuau,
+  generatePath, generateShop, generateHouse,
+  partsToLuau,
 } from './mega-builder'
+
+// Wrapper for generateFloor with simpler args: (cx, y, cz, w, d, material, color)
+function generateFloor(cx: number, y: number, cz: number, w: number, d: number, mat: string, col: [number, number, number]): BuildPart[] {
+  return [_genFloor(cx, cz, w, d, y, 1, mat, col, `floor_${Math.round(cx)}_${Math.round(cz)}`)]
+}
 import { antiUglyCheck } from './anti-ugly'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -374,16 +377,27 @@ function buildIndustrialZone(zone: ZoneDef): BuildPart[] {
   // Concrete floor
   parts.push(...generateFloor(cx, cy, cz, zone.size[0], zone.size[2], 'Concrete', [140, 140, 140]))
 
-  // Factory buildings
+  // Factory buildings (inline parts — avoids complex generator signatures)
   for (let i = 0; i < 3; i++) {
     const fx = cx - 50 + i * 50
-    parts.push(...generateBox(fx, cy, cz, 30, 15, 20, 'Concrete', [120, 120, 125]))
-    parts.push(...generateRoof(fx, cy + 15, cz, 32, 5, 22, 'Metal', [80, 80, 85]))
-    parts.push(...generateDoor(fx, cy, cz - 10, 5, 8))
-    parts.push(...generateWindow(fx - 10, cy + 8, cz - 10, 4, 3))
-    parts.push(...generateWindow(fx + 10, cy + 8, cz - 10, 4, 3))
+    const fh = 15, fw = 30, fd = 20
+    // Walls
+    parts.push({ name: `factory_${i}_floor`, size: [fw, 1, fd], position: [fx, cy+0.5, cz], rotation: [0,0,0], material: 'Concrete', color: [130,130,135] })
+    parts.push({ name: `factory_${i}_wall_b`, size: [fw, fh, 0.8], position: [fx, cy+fh/2+1, cz+fd/2], rotation: [0,0,0], material: 'Concrete', color: [120,120,125] })
+    parts.push({ name: `factory_${i}_wall_l`, size: [0.8, fh, fd], position: [fx-fw/2, cy+fh/2+1, cz], rotation: [0,0,0], material: 'Concrete', color: [118,118,123] })
+    parts.push({ name: `factory_${i}_wall_r`, size: [0.8, fh, fd], position: [fx+fw/2, cy+fh/2+1, cz], rotation: [0,0,0], material: 'Concrete', color: [122,122,127] })
+    parts.push({ name: `factory_${i}_wall_f`, size: [fw, fh, 0.8], position: [fx, cy+fh/2+1, cz-fd/2], rotation: [0,0,0], material: 'Concrete', color: [120,120,125] })
+    // Roof
+    parts.push({ name: `factory_${i}_roof_l`, size: [fw/2+1, 4, fd+1], position: [fx-fw/4, cy+fh+3, cz], rotation: [0,0,0], material: 'Metal', color: [80,80,85], shape: 'Wedge' })
+    parts.push({ name: `factory_${i}_roof_r`, size: [fw/2+1, 4, fd+1], position: [fx+fw/4, cy+fh+3, cz], rotation: [0,180,0], material: 'Metal', color: [80,80,85], shape: 'Wedge' })
+    // Door
+    parts.push({ name: `factory_${i}_door`, size: [5, 8, 0.4], position: [fx, cy+5, cz-fd/2+0.2], rotation: [0,0,0], material: 'Metal', color: [70,70,75] })
+    // Windows
+    parts.push({ name: `factory_${i}_win_l`, size: [4, 3, 0.2], position: [fx-8, cy+10, cz-fd/2+0.1], rotation: [0,0,0], material: 'Glass', color: [180,210,230], transparency: 0.3 })
+    parts.push({ name: `factory_${i}_win_r`, size: [4, 3, 0.2], position: [fx+8, cy+10, cz-fd/2+0.1], rotation: [0,0,0], material: 'Glass', color: [180,210,230], transparency: 0.3 })
     // Smokestacks
     parts.push({ name: `stack_${i}`, size: [12, 2, 2], position: [fx + 8, cy + 21, cz + 5], rotation: [0, 0, 0], material: 'Metal', color: [70, 70, 75], shape: 'Cylinder' })
+    parts.push({ name: `stack_cap_${i}`, size: [0.5, 2.5, 2.5], position: [fx + 8, cy + 27.5, cz + 5], rotation: [0, 0, 0], material: 'Metal', color: [60, 60, 65], shape: 'Cylinder' })
   }
 
   // Loading dock
@@ -405,13 +419,20 @@ function buildCastleZone(zone: ZoneDef): BuildPart[] {
   // Castle ground
   parts.push(...generateFloor(cx, cy, cz, zone.size[0], zone.size[2], 'Cobblestone', [130, 125, 115]))
 
-  // Main keep
-  parts.push(...generateBox(cx, cy, cz, 30, 20, 25, 'Brick', [140, 130, 110]))
-  parts.push(...generateRoof(cx, cy + 20, cz, 32, 6, 27, 'Slate', [70, 60, 50]))
-  parts.push(...generateDoor(cx, cy, cz - 12.5, 5, 10))
-  for (let i = -1; i <= 1; i += 2) {
-    parts.push(...generateWindow(cx + i * 8, cy + 12, cz - 12.5, 3, 4))
-  }
+  // Main keep (inline parts)
+  const kw = 30, kh = 20, kd = 25
+  parts.push({ name: 'keep_floor', size: [kw, 1, kd], position: [cx, cy+0.5, cz], rotation: [0,0,0], material: 'Cobblestone', color: [120,115,105] })
+  parts.push({ name: 'keep_wall_b', size: [kw, kh, 1], position: [cx, cy+kh/2+1, cz+kd/2], rotation: [0,0,0], material: 'Brick', color: [140,130,110] })
+  parts.push({ name: 'keep_wall_f', size: [kw, kh, 1], position: [cx, cy+kh/2+1, cz-kd/2], rotation: [0,0,0], material: 'Brick', color: [140,130,110] })
+  parts.push({ name: 'keep_wall_l', size: [1, kh, kd], position: [cx-kw/2, cy+kh/2+1, cz], rotation: [0,0,0], material: 'Brick', color: [138,128,108] })
+  parts.push({ name: 'keep_wall_r', size: [1, kh, kd], position: [cx+kw/2, cy+kh/2+1, cz], rotation: [0,0,0], material: 'Brick', color: [142,132,112] })
+  parts.push({ name: 'keep_roof_l', size: [kw/2+1, 6, kd+2], position: [cx-kw/4, cy+kh+4, cz], rotation: [0,0,0], material: 'Slate', color: [70,60,50], shape: 'Wedge' })
+  parts.push({ name: 'keep_roof_r', size: [kw/2+1, 6, kd+2], position: [cx+kw/4, cy+kh+4, cz], rotation: [0,180,0], material: 'Slate', color: [70,60,50], shape: 'Wedge' })
+  parts.push({ name: 'keep_door', size: [5, 10, 0.5], position: [cx, cy+6, cz-kd/2+0.3], rotation: [0,0,0], material: 'Wood', color: [80,50,20] })
+  parts.push({ name: 'keep_win_l', size: [3, 4, 0.2], position: [cx-8, cy+13, cz-kd/2+0.1], rotation: [0,0,0], material: 'Glass', color: [160,200,230], transparency: 0.4 })
+  parts.push({ name: 'keep_win_r', size: [3, 4, 0.2], position: [cx+8, cy+13, cz-kd/2+0.1], rotation: [0,0,0], material: 'Glass', color: [160,200,230], transparency: 0.4 })
+  parts.push({ name: 'keep_ceiling', size: [kw, 0.3, kd], position: [cx, cy+kh+1, cz], rotation: [0,0,0], material: 'Concrete', color: [200,195,185],
+    children: [{ className: 'PointLight', properties: { Brightness: 2, Range: 30, Color: [255,200,140] } }] })
 
   // Corner towers (4)
   for (const [tx, tz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
