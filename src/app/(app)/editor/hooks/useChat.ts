@@ -182,6 +182,10 @@ export interface ChatMessage {
   qualityScore?: number
   /** Number of parts in the generated build code */
   buildPartCount?: number
+  /** Build pipeline steps (like Lemonade's "Steps 0/3") */
+  buildSteps?: { step: number; total: number; label: string; status: 'done' | 'running' | 'pending' }[]
+  /** Code review grades from static analysis */
+  codeReview?: { security: string; performance: string; reliability: string; multiplayer: string; overall: string; issues: number }
 }
 
 export interface BuildPreviewOption {
@@ -310,6 +314,9 @@ interface StreamMeta {
   meshResult?: MeshResult
   qualityScore?: number
   buildPartCount?: number
+  codeReview?: { security: string; performance: string; reliability: string; multiplayer: string; overall: string; issues: number }
+  /** Build pipeline step info (like Lemonade's "Steps 0/3") */
+  buildSteps?: { step: number; total: number; label: string; status: 'done' | 'running' | 'pending' }[]
 }
 
 async function readStream(
@@ -1518,6 +1525,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
                 meshResult?: MeshResult
                 qualityScore?: number
                 buildPartCount?: number
+                codeReview?: { security: string; performance: string; reliability: string; multiplayer: string; overall: string; issues: number }
               }
               meta = {
                 suggestions: data.suggestions,
@@ -1530,6 +1538,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
                 meshResult: data.meshResult,
                 qualityScore: data.qualityScore,
                 buildPartCount: data.buildPartCount,
+                codeReview: data.codeReview,
               }
               void finish()
             }))
@@ -1627,6 +1636,8 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
               ...(meta.meshResult ? { meshResult: meta.meshResult } : {}),
               ...(meta.qualityScore ? { qualityScore: meta.qualityScore } : {}),
               ...(meta.buildPartCount ? { buildPartCount: meta.buildPartCount } : {}),
+              ...(meta.buildSteps ? { buildSteps: meta.buildSteps } : {}),
+              ...(meta.codeReview ? { codeReview: meta.codeReview } : {}),
             }
             // Plan mode: if AI returned a plan (no code), show plan approval UI
             if (aiMode === 'plan' && !meta.hasCode && finalContent.length > 50) {
@@ -1653,8 +1664,10 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
               let statusContent: string
               if (meta.executedInStudio) {
                 statusContent = 'Built in Studio ✓ — Try: "add more detail" / "change the colors" / "make it bigger"'
+              } else if (studioConnected) {
+                statusContent = 'Code generated but Studio didn\'t confirm — check Game Settings > Security > Allow HTTP Requests. Try "send to studio" to retry.'
               } else {
-                statusContent = 'Code ready — use "Send to Studio" or copy the code below.'
+                statusContent = 'Code ready — connect Studio and click "Send to Studio", or copy the code below.'
               }
               result.push({
                 id: uid(),
@@ -1970,6 +1983,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
               ...(meta.meshResult ? { meshResult: meta.meshResult } : {}),
               ...(meta.qualityScore ? { qualityScore: meta.qualityScore } : {}),
               ...(meta.buildPartCount ? { buildPartCount: meta.buildPartCount } : {}),
+              ...(meta.codeReview ? { codeReview: meta.codeReview } : {}),
             }
             // Plan mode: if AI returned a plan (no code), show plan approval UI
             if (aiMode === 'plan' && !meta.hasCode && finalContent.length > 50) {
@@ -1995,8 +2009,10 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
               let statusContent: string
               if (meta.executedInStudio) {
                 statusContent = 'Built in Studio ✓ — Try: "add more detail" / "change the colors" / "make it bigger"'
+              } else if (studioConnected) {
+                statusContent = 'Code generated but Studio didn\'t confirm — check Game Settings > Security > Allow HTTP Requests. Try "send to studio" to retry.'
               } else {
-                statusContent = 'Code ready — use "Send to Studio" or copy the code below.'
+                statusContent = 'Code ready — connect Studio and click "Send to Studio", or copy the code below.'
               }
               result.push({
                 id: uid(),

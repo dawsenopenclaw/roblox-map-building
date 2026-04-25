@@ -33,6 +33,7 @@ import { FirstBuildModal } from '@/components/editor/FirstBuildModal'
 import { PostBuildShare } from '@/components/editor/PostBuildShare'
 import { UpgradeNudge } from '@/components/editor/UpgradeNudge'
 import ConsolePanel from '@/components/editor/ConsolePanel'
+import { SystemComposer } from '@/components/editor/SystemComposer'
 
 // ─── Right Sidebar — AI Context Panel ────────────────────────────────────
 
@@ -655,6 +656,20 @@ function EditorInner() {
                     Forje can make mistakes. Verify builds in Studio.
                   </p>
                 </div>
+              </div>
+
+              {/* System Composer — visual game system picker */}
+              <div style={{ padding: '0 20px 24px', maxWidth: 680, margin: '0 auto', width: '100%' }}>
+                <SystemComposer
+                  onGenerate={(prompt) => {
+                    if (studio.isConnected && studio.sessionId) {
+                      chat.triggerStepByStepBuild(prompt, studio.sessionId)
+                    } else {
+                      chat.sendMessage(prompt)
+                    }
+                  }}
+                  loading={chat.loading}
+                />
               </div>
             </>
           ) : (

@@ -11,7 +11,7 @@
  */
 
 import 'server-only'
-import { callAI, type AIMessage } from './provider'
+import { callAI } from './provider'
 import { verifyLuauCode } from './luau-verifier'
 import { buildRobloxContext } from './roblox-knowledge'
 
@@ -134,7 +134,7 @@ Rules:
 - Don't duplicate existing scripts — extend or require them instead`
 
   try {
-    const result = await callAI(planPrompt, prompt, {
+    const result = await callAI(planPrompt, [{ role: 'user', content: prompt }], {
       jsonMode: true,
       codeMode: true,
       maxTokens: 2048,
@@ -196,7 +196,7 @@ Rules:
 - Add meaningful comments for complex logic`
 
   try {
-    const result = await callAI(genPrompt, `Generate ${scriptInfo.name}: ${scriptInfo.purpose}`, {
+    const result = await callAI(genPrompt, [{ role: 'user', content: `Generate ${scriptInfo.name}: ${scriptInfo.purpose}` }], {
       codeMode: true,
       maxTokens: 8192,
       useRAG: true,
@@ -220,12 +220,12 @@ async function verifyAndFix(
   prompt: string,
   maxRetries: number = 2,
 ): Promise<{ code: string; verified: boolean; errors: string[] }> {
-  const result = verifyLuauCode(code)
-  if (result.passed) {
+  const result = await verifyLuauCode(code)
+  if (result.valid) {
     return { code, verified: true, errors: [] }
   }
 
-  const errors = result.issues.map(i => i.message)
+  const errors = result.errors.map(i => i.message)
   if (maxRetries <= 0) {
     return { code, verified: false, errors }
   }
@@ -244,7 +244,7 @@ ${code}
 Return the COMPLETE fixed script in a \`\`\`lua block. Fix every error. Keep working code intact.`
 
   try {
-    const fixResult = await callAI(fixPrompt, `Fix ${scriptName}`, {
+    const fixResult = await callAI(fixPrompt, [{ role: 'user', content: `Fix ${scriptName}` }], {
       codeMode: true,
       maxTokens: 8192,
     })
@@ -280,7 +280,7 @@ export async function runScriptPipeline(
     const robloxContext = buildRobloxContext(prompt)
     const result = await callAI(
       `You are a Roblox Luau expert. Generate the requested script.\n${robloxContext}\nOutput ONLY a \`\`\`lua code block. Use modern Luau (task.wait, not wait). Add type annotations.`,
-      prompt,
+      [{ role: 'user', content: prompt }],
       { codeMode: true, maxTokens: 4096, useRAG: true },
     )
 
@@ -290,7 +290,7 @@ export async function runScriptPipeline(
     const code = luaMatch?.[1]?.trim()
     if (!code) return { success: false, complexity, scripts: [], error: 'No code block in response' }
 
-    const verified = verifyLuauCode(code)
+    const verified = await verifyLuauCode(code)
     return {
       success: true,
       complexity,
@@ -299,8 +299,8 @@ export async function runScriptPipeline(
         scriptType: 'Script',
         parent: 'ServerScriptService',
         code,
-        verified: verified.passed,
-        verificationErrors: verified.issues.map(i => i.message),
+        verified: verified.valid,
+        verificationErrors: verified.errors.map(i => i.message),
       }],
     }
   }

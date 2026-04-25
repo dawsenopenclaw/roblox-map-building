@@ -62,6 +62,8 @@ import { findSpecialist, applySpecialist } from '@/lib/ai/specialists/router'
 import { buildRobloxContext } from '@/lib/ai/roblox-knowledge'
 import { validateBuild } from '@/lib/ai/build-validator'
 import { logScriptError, markErrorFixed, buildFixContext } from '@/lib/ai/error-learning'
+import { reviewCode } from '@/lib/ai/code-reviewer'
+import { classifyComplexity } from '@/lib/ai/script-pipeline'
 
 // ─── Auto-log conversation to DB (fire-and-forget) ──────────────────────────
 // Persists every user→assistant exchange so admin can review beta tester chats.
@@ -405,9 +407,13 @@ function extractLuauCode(text: string | null | undefined): string | null {
     const tm = truncatedRe.exec(text)
     if (tm) {
       const code = tm[1]?.trim()
-      // Only accept if it looks like actual Luau (has Instance.new or P() or game:GetService)
-      if (code && (code.includes('Instance.new') || code.includes('P(') || code.includes('GetService'))) {
-        console.warn('[extractLuauCode] Using truncated code block (no closing fence)')
+      // Accept truncated code if it looks like Luau (more permissive than before)
+      if (code && code.length > 30 && (
+        code.includes('Instance.new') || code.includes('P(') || code.includes('GetService') ||
+        code.includes('workspace') || code.includes('game.') || code.includes('local ') ||
+        code.includes('function') || code.includes('script.')
+      )) {
+        console.warn('[extractLuauCode] Using truncated code block (no closing fence, ' + code.length + ' chars)')
         blocks.push(code)
       }
     }
@@ -1095,11 +1101,11 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
         console.log(`  [${issue.severity}${issue.autoFixed ? ' FIXED' : ''}] ${issue.type}: ${issue.message}`)
       }
 
-      // REJECT builds with too few parts — don't send garbage to Studio
+      // Only reject builds with literally zero parts — even 1 part is worth showing
+      // Old threshold was 5 which killed small builds like spawn pads, doors, buttons
       const tooFew = errors.find(i => i.type === 'too_few_parts')
-      if (tooFew && validation.parts.length < 5) {
-        console.warn('[build-validator] REJECTED — too few parts, not sending to Studio')
-        // Return false so caller knows code wasn't executed
+      if (tooFew && validation.parts.length === 0) {
+        console.warn('[build-validator] REJECTED — zero parts detected, not sending to Studio')
         return false
       }
 
@@ -1368,8 +1374,9 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
 
     if (!confirmation) {
       console.warn(`[sendCodeToStudio] No confirmation for command ${result.commandId} within 12s — plugin may not have received it`)
-      // Return 'queued' status — we queued it but can't confirm execution
-      return 'queued' as unknown as boolean
+      // Don't lie — return false so chat shows "Code ready" not "Built in Studio"
+      // The plugin may still execute it later, but we can't confirm it
+      return false
     }
 
     if (confirmation.success) {
@@ -3595,42 +3602,37 @@ function isCodeQualityOk(code: string): boolean {
   const isScript = code.includes('DataStoreService') || code.includes('RemoteEvent') ||
     code.includes('RemoteFunction') || code.includes('ModuleScript') ||
     code.includes('Players.PlayerAdded') || code.includes('.Source') ||
-    code.includes('ServerScriptService') || code.includes('StarterPlayerScripts')
-  // Must have basic Roblox API calls
-  if (!code.includes('Instance.new') && !code.includes('workspace') && !code.includes('placeAsset') && !code.includes('game:GetService')) return false
-  // Must be at least 200 chars (not a trivial/empty response)
-  if (code.length < 100) return false
-  // NOTE: BrickColor, wait(), SetPrimaryPartCFrame are auto-fixed by the verifier's
-  // autoFix() function — do NOT hard-reject here. Let the verifier clean them up.
-  // Hard-rejecting kills otherwise-good scripts over trivial fixable issues.
-  // Parent-in-constructor is discouraged for Parts (set Parent last for performance)
-  // BUT it's totally fine for UI elements (UICorner, UIStroke, Frame, etc.) and scripts.
-  // Only reject for Part/WedgePart/MeshPart — UI and script elements can use the shorthand.
-  if (!isScript && /Instance\.new\(\s*["'](?:Part|WedgePart|MeshPart|SpawnLocation)["']\s*,/.test(code)) return false
-  // Build-only checks — scripts legitimately use Players, script.Parent, LocalPlayer
-  if (!isScript) {
-    if (code.includes('game.Players.LocalPlayer')) return false
-    if (code.includes('script.Parent')) return false
-    if (code.includes('game.Players') || code.includes('LocalPlayer')) return false
+    code.includes('ServerScriptService') || code.includes('StarterPlayerScripts') ||
+    code.includes('game:GetService') || code.includes('RunService') ||
+    code.includes('ScreenGui') || code.includes('TextLabel') || code.includes('TextButton') ||
+    code.includes('ProximityPrompt') || code.includes('TweenService') ||
+    code.includes('UserInputService') || code.includes('CollectionService')
+
+  // Must have SOME Roblox API calls (basic sanity)
+  if (!code.includes('Instance.new') && !code.includes('workspace') &&
+      !code.includes('placeAsset') && !code.includes('game:GetService') &&
+      !code.includes('game.') && !code.includes('script.')) return false
+
+  // Must be at least 50 chars (not empty — lowered from 100 to allow small fixes)
+  if (code.length < 50) return false
+
+  // Scripts are ALWAYS valid — no part-count or pattern checks
+  if (isScript) return true
+
+  // For builds: only reject truly empty builds (< 3 parts)
+  // Old threshold was 12 — WAY too strict, caused "it won't build anything"
+  const partCount = (code.match(/Instance\.new\(\s*["'](?:Part|WedgePart|MeshPart|TrussPart|SpawnLocation|UnionOperation)/g) || []).length
+  const pHelperCount = (code.match(/\bP\s*\(/g) || []).length
+  const cylCount = (code.match(/\bCyl\s*\(/g) || []).length
+  const ballCount = (code.match(/\bBall\s*\(/g) || []).length
+  const wedgeCount = (code.match(/\bW\s*\(/g) || []).length
+  const totalParts = partCount + pHelperCount + cylCount + ballCount + wedgeCount
+
+  if (totalParts < 3 && !code.includes('placeAsset') && !code.includes('InsertService') && !code.includes('Model')) {
+    console.warn(`[QualityGate] Only ${totalParts} parts — needs at least 3 for a visible build`)
+    return false
   }
-  // Reject single-brick builds — must have at least 5 parts (P() helpers or Instance.new("Part"))
-  // BUT: scripts (DataStoreService, RemoteEvent, ModuleScript) don't need parts
-  const isScriptCode = code.includes('DataStoreService') || code.includes('RemoteEvent') ||
-    code.includes('RemoteFunction') || code.includes('ModuleScript') ||
-    code.includes('RunService') || code.includes('Players.PlayerAdded') ||
-    code.includes('game:GetService')
-  if (!isScriptCode) {
-    const partCount = (code.match(/Instance\.new\(\s*["'](?:Part|WedgePart|MeshPart)/g) || []).length
-    const pHelperCount = (code.match(/\bP\s*\(/g) || []).length
-    const cylCount = (code.match(/\bCyl\s*\(/g) || []).length
-    const ballCount = (code.match(/\bBall\s*\(/g) || []).length
-    const wedgeCount = (code.match(/\bW\s*\(/g) || []).length
-    const totalParts = partCount + pHelperCount + cylCount + ballCount + wedgeCount
-    if (totalParts < 12 && !code.includes('placeAsset') && !code.includes('InsertService')) {
-      console.warn(`[QualityGate] Only ${totalParts} parts — rejecting low-detail build (min 12)`)
-      return false
-    }
-  }
+
   return true
 }
 
@@ -3670,6 +3672,11 @@ async function freeModelTwoPass(
 
   // ── BUILD/SCRIPT INTENTS: Single-pass — generate description + code in ONE call ──
   const isScriptIntent = SCRIPT_INTENTS.has(intent) || SCRIPT_KEYWORDS.test(message)
+  // Classify complexity for pipeline routing
+  const scriptComplexity = isScriptIntent ? classifyComplexity(message) : 'simple'
+  if (scriptComplexity === 'complex') {
+    console.log(`[ScriptPipeline] Complex request detected: "${message.slice(0, 80)}"`)
+  }
   // Quality tier — default to 'pro' for meaningful output, accept override from frontend
   const qualityTier: QualityTier = 'pro'
   const tierModifier = isScriptIntent ? '' : '\n\n' + getTierPromptModifier(qualityTier)
@@ -3686,18 +3693,23 @@ async function freeModelTwoPass(
   // Inject relevant Roblox API reference snippets based on what the user is building
   const robloxContext = isScriptIntent ? buildRobloxContext(message) : ''
 
-  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code.
+  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
 
 RESPONSE FORMAT (follow EXACTLY):
-1. First, write 4-6 sentences describing what you're creating. Paint the experience — what a player walking through would see and feel. Mention ONE specific detail you're proud of. End with a suggestion for what to do next.
-2. Then output the Luau code inside \`\`\`lua fences.
+1. First, write 3-5 sentences describing what you're creating. Be specific about what a player would see. End with a suggestion for what to build next.
+2. Then output the COMPLETE Luau code inside \`\`\`lua fences. The code MUST be complete — include the full boilerplate (ChangeHistoryService, helpers, m.Parent = workspace, FinishRecording). NEVER output partial code or "... rest of build here ..." placeholders.
 
 NEVER say "I built" or "I've built" — say "Here's what I'm setting up" or "Generating" or "Putting together".
-Describe the MOOD, not a parts list. "Warm amber light spilling through oak-framed windows" NOT "Added PointLight and Glass".
+
+THE #1 RULE: YOUR CODE MUST ACTUALLY WORK WHEN PASTED INTO STUDIO.
+If the code errors, the user sees nothing. A working 15-part build is infinitely better than a broken 60-part build. Triple-check your coordinate math — walls must connect, parts must not overlap, everything must be at the right Y position.
 
 RULES FOR CODE:
 - Output ONLY Luau code inside the \`\`\`lua block
 - No JavaScript, no pseudocode, no Python
+- ALWAYS include the COMPLETE boilerplate at the top (CH, rid, cam, sp, groundY, helpers P/W/vc/Cyl/Ball, model creation)
+- ALWAYS include m.Parent = workspace AND FinishRecording at the bottom
+- NEVER use "..." or "-- add more parts here" — output every single part
 
 ENVIRONMENT: Roblox Studio Edit Mode plugin. No Players, no LocalPlayer, no Character, no runtime events.
 
@@ -3711,115 +3723,97 @@ FORBIDDEN (will crash):
 - Setting CFrame/Position/Size on PointLight/SpotLight/Fire/Smoke — lights inherit parent position
 - Instance.new("Part", parent) — set .Parent separately after all properties
 
-REQUIRED PATTERN (use this exact boilerplate):
+REQUIRED BOILERPLATE — copy this EXACTLY at the top of EVERY build script:
+
 local CH = game:GetService("ChangeHistoryService")
-local CS = game:GetService("CollectionService")
 local rid = CH:TryBeginRecording("ForjeAI Build")
 local cam = workspace.CurrentCamera
 local sp = cam.CFrame.Position + cam.CFrame.LookVector * 30
-local groundRay = workspace:Raycast(sp + Vector3.new(0, 50, 0), Vector3.new(0, -200, 0))
-local groundY = groundRay and groundRay.Position.Y or 0
-sp = Vector3.new(sp.X, groundY, sp.Z)
+local gy = (workspace:Raycast(sp+Vector3.new(0,50,0),Vector3.new(0,-200,0)) or {Position=Vector3.new(0,0,0)}).Position.Y
+sp = Vector3.new(sp.X, gy, sp.Z)
+local m = Instance.new("Model") m.Name = "ForjeAI_Build"
 
-local m = Instance.new("Model")
-m.Name = "ForjeAI_Build"
-
--- HELPER: creates a Part with all properties in one call
-local function P(name, cf, size, mat, col, parent)
-  local p = Instance.new("Part")
-  p.Name = name
-  p.Anchored = true
-  p.CFrame = cf
-  p.Size = size
-  p.Material = mat
-  p.Color = col
-  p.CastShadow = (size.X > 2 and size.Y > 2)
-  p.CollisionFidelity = Enum.CollisionFidelity.Box
-  p.Parent = parent or m
-  return p
+-- P(name, sizeX,sizeY,sizeZ, relX,relY,relZ, material, R,G,B [,transparency])
+-- Positions are RELATIVE: (0,0,0)=center at ground. relY=height above ground.
+local function P(n,sx,sy,sz,rx,ry,rz,mat,r,g,b,t)
+  local p=Instance.new("Part") p.Name=n p.Anchored=true
+  p.Size=Vector3.new(sx,sy,sz) p.CFrame=CFrame.new(sp.X+rx,gy+ry,sp.Z+rz)
+  p.Material=Enum.Material[mat] p.Color=Color3.fromRGB(r,g,b)
+  if t then p.Transparency=t end p.Parent=m return p
+end
+-- W() = WedgePart (roofs, ramps). Same args as P.
+local function W(n,sx,sy,sz,rx,ry,rz,mat,r,g,b)
+  local p=Instance.new("WedgePart") p.Name=n p.Anchored=true
+  p.Size=Vector3.new(sx,sy,sz) p.CFrame=CFrame.new(sp.X+rx,gy+ry,sp.Z+rz)
+  p.Material=Enum.Material[mat] p.Color=Color3.fromRGB(r,g,b) p.Parent=m return p
+end
+-- Cyl() = cylinder (poles, trunks). Args: name, height, diameter, relX,relY,relZ, mat, R,G,B
+local function Cyl(n,h,d,rx,ry,rz,mat,r,g,b)
+  local p=Instance.new("Part") p.Name=n p.Shape=Enum.PartType.Cylinder p.Anchored=true
+  p.Size=Vector3.new(h,d,d) p.CFrame=CFrame.new(sp.X+rx,gy+ry,sp.Z+rz)*CFrame.Angles(0,0,math.rad(90))
+  p.Material=Enum.Material[mat] p.Color=Color3.fromRGB(r,g,b) p.Parent=m return p
+end
+-- Ball() = sphere. Args: name, diameter, relX,relY,relZ, mat, R,G,B
+local function Ball(n,d,rx,ry,rz,mat,r,g,b)
+  local p=Instance.new("Part") p.Name=n p.Shape=Enum.PartType.Ball p.Anchored=true
+  p.Size=Vector3.new(d,d,d) p.CFrame=CFrame.new(sp.X+rx,gy+ry,sp.Z+rz)
+  p.Material=Enum.Material[mat] p.Color=Color3.fromRGB(r,g,b) p.Parent=m return p
+end
+-- vc() = color variation. Returns R,G,B with slight randomness.
+local function vc(r,g,b,v) v=v or 10 return math.clamp(r+math.random(-v,v),0,255),math.clamp(g+math.random(-v,v),0,255),math.clamp(b+math.random(-v,v),0,255) end
+-- Light() = PointLight inside a part. NEVER set CFrame on lights.
+local function Light(par,bri,rng,r,g,b)
+  local l=Instance.new("PointLight") l.Brightness=bri or 2 l.Range=rng or 25 l.Color=Color3.fromRGB(r or 255,g or 200,b or 140) l.Parent=par
 end
 
--- WEDGE helper — for roofs, ramps, angled surfaces
-local function W(name, cf, size, mat, col, parent)
-  local p = Instance.new("WedgePart")
-  p.Name = name
-  p.Anchored = true
-  p.CFrame = cf
-  p.Size = size
-  p.Material = mat
-  p.Color = col
-  p.CastShadow = true
-  p.Parent = parent or m
-  return p
-end
+-- ═══ YOUR BUILD GOES HERE ═══
+-- Example calls:
+-- P("Floor", 24,1,16, 0,0.5,0, "WoodPlanks", 140,100,60)
+-- P("Wall_Front", 24,10,0.8, 0,5.5,8, "Brick", vc(180,140,100))
+-- P("Window_Glass", 4,3,0.2, -5,5,8.1, "Glass", 180,215,240, 0.4)
+-- W("Roof_Left", 12,2,13, -6,11,0, "Slate", 75,60,50)
+-- Light(ceilingPart, 2, 30, 255,200,140)
 
--- COLOR VARIATION helper — adds natural randomness
-local function vc(base, v)
-  local h, s, val = Color3.toHSV(base)
-  return Color3.fromHSV(h, s, math.clamp(val + (math.random() - 0.5) * (v or 0.1), 0, 1))
-end
-
--- CYLINDER helper — poles, trunks, columns, pipes
-local function Cyl(name, cf, size, mat, col, parent)
-  local p = Instance.new("Part")
-  p.Name = name
-  p.Shape = Enum.PartType.Cylinder
-  p.Anchored = true
-  p.CFrame = cf * CFrame.Angles(0, 0, math.rad(90))
-  p.Size = size -- Vector3.new(height, diameter, diameter)
-  p.Material = mat
-  p.Color = col
-  p.CastShadow = true
-  p.CollisionFidelity = Enum.CollisionFidelity.Box
-  p.Parent = parent or m
-  return p
-end
-
--- SPHERE helper — foliage, decorative balls, domes
-local function Ball(name, cf, diameter, mat, col, parent)
-  local p = Instance.new("Part")
-  p.Name = name
-  p.Shape = Enum.PartType.Ball
-  p.Anchored = true
-  p.CFrame = cf
-  p.Size = Vector3.new(diameter, diameter, diameter)
-  p.Material = mat
-  p.Color = col
-  p.CastShadow = true
-  p.Parent = parent or m
-  return p
-end
-
--- BUILD using P() for boxes, W() for wedge/roof slopes, Cyl() for cylinders, Ball() for spheres
-
-m.PrimaryPart = --[[ set to the largest/base part ]]
+-- ═══ FINALIZE (REQUIRED — without this the build won't appear) ═══
 m.Parent = workspace
-CS:AddTag(m, "ForjeAI")
+game:GetService("CollectionService"):AddTag(m, "ForjeAI")
 game:GetService("Selection"):Set({m})
 if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
 
--- Lights go INSIDE a Part (not standalone):
-local light = Instance.new("PointLight")
-light.Brightness = 2  light.Range = 25  light.Color = Color3.fromRGB(255, 200, 140)
-light.Parent = somePart  -- parent to a Part, NEVER set CFrame/Position on a light
+CALL FORMAT CHEATSHEET:
+  P("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Material", R,G,B)         -- box
+  P("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Glass", 180,215,240, 0.4) -- transparent
+  W("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Material", R,G,B)         -- wedge/roof
+  Cyl("name", height, diameter, posX,posY,posZ, "Material", R,G,B)         -- cylinder
+  Ball("name", diameter, posX,posY,posZ, "Material", R,G,B)                -- sphere
+  Light(parentPart, brightness, range, R,G,B)                              -- point light
+  P("name", sx,sy,sz, px,py,pz, "Brick", vc(180,140,100))                 -- with color variation
 
-MATERIALS: Concrete(modern/foundations), Brick(buildings), Cobblestone(old stone paths), Glass(windows 0.3-0.5 transp), Granite(polished stone), Grass(foliage/leaves), Metal(poles/frames/industrial), Marble(luxury), Neon(glowing accents ONLY), Slate(roofs), Wood(trunks/natural), WoodPlanks(floors/furniture/slats)
-COLORS: MUTED realistic tones ONLY. Walls=220,215,205 Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 RoofDark=75,60,50 DoorWood=100,65,30 Glass=180,215,240 Warm light=255,200,140
-SCALE: Character=5.5 tall. Doors=4W×7.5H. Windows=3-4W×3-4H. Walls=0.5-1.0 thick. Ceiling=11 from floor. Rooms=16×12 minimum.
+COORDINATE SYSTEM (relative to spawn point, Y=0 is ground):
+  Floor:   P("Floor", 24,1,16, 0,0.5,0, ...)        -- Y=0.5 (half thickness above ground)
+  Wall:    P("Wall",  24,10,0.8, 0,5.5,8, ...)       -- Y=5.5 (half wall height + floor)
+  Ceiling: P("Ceil",  24,0.5,16, 0,10.5,0, ...)      -- Y=10.5 (wall height + floor)
+  Roof:    W("Roof",  13,3,16, -6.5,12,0, ...)       -- Y=12 (above ceiling)
+  Door:    empty space in wall (make 2 wall sections with gap between)
+  Window:  P("Glass", 4,3,0.2, -5,5,8.1, "Glass", 180,215,240, 0.4)  -- slightly in front of wall
+
+MATERIALS: Concrete(foundations) Brick(buildings) Cobblestone(paths) Glass(windows+Transparency) Granite(stone) Metal(poles/industrial) Marble(luxury) Neon(accents ONLY) Slate(roofs) Wood(trunks) WoodPlanks(floors/furniture)
+COLORS (muted realistic): Walls=220,215,205 Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Roof=75,60,50 Glass=180,215,240 WarmLight=255,200,140
+SCALE: Character=5.5 tall. Doors=4W×7.5H. Windows=3-4W×3-4H. Walls=0.8 thick. Ceiling=10.5 from ground. Rooms=16×12 min.
 
 CRITICAL QUALITY RULES:
-0. ALL PARTS MUST GO INTO THE SINGLE MODEL 'm'. NEVER parent anything directly to workspace. The ONLY line that should reference workspace is 'm.Parent = workspace' at the end. If you create sub-folders or sub-models, parent them to 'm'. The final result MUST be ONE grouped Model, not scattered parts.
-1. MINIMUM 25 parts per build. Houses need 35+. Scenes need 50+. NEVER under 20.
+0. ALL PARTS MUST GO INTO THE SINGLE MODEL 'm'. The ONLY line referencing workspace directly should be 'm.Parent = workspace' at the end.
+1. SCALE PARTS TO THE REQUEST: Big builds (houses, castles) = 25-60+ parts. Medium builds (car, fountain) = 10-25 parts. Small builds (chair, lamp, door) = 5-15 parts. Match detail to what the user asked for — don't pad or cut short.
 2. NEVER build a single cube. Decompose into real-world components. A wall is wall+trim+baseboard. A door is frame+panel+handle+threshold.
-3. Always use 2-3 color shades via vc() for natural variation. NO flat uniform colors.
+3. Always use vc() for natural color variation. NO flat uniform colors on large surfaces.
 4. Glass windows MUST have Transparency=0.3-0.5 AND a separate frame Part around them.
-5. Include trim, molding, frames, baseboards — these small parts make builds look 10x better.
-6. Add 2-4 PointLights (warm Brightness=2, Range=20-30) for atmosphere. EVERY building needs interior lights.
-7. Use WedgeParts for roofs and angled surfaces. NEVER use a flat Part as a roof.
-8. Position EVERYTHING relative to sp: CFrame.new(sp + Vector3.new(x,y,z))
-9. SCALE CORRECTLY: A building should be 30-60 studs wide, NOT 200. A baseplate under a building should be 5-10 studs larger than the building, NOT 200x200. Character is 5.5 studs tall — use that as reference.
-10. INTERIORS ARE MANDATORY for any building. A coffee shop needs: counter, shelves, chairs, tables, menu board, cash register, display case. NEVER leave buildings empty inside.
-11. Every building needs: foundation slightly larger than walls, walls with OPENINGS (not solid boxes), roof with overhang, door with frame+handle, at least 2 windows with glass+frames, interior furniture, interior lighting.
+5. Add PointLights (warm Brightness=2, Range=20-30) for atmosphere. Buildings need interior lights.
+6. Use WedgeParts for roofs and angled surfaces. NEVER use a flat Part as a roof on buildings.
+7. Position EVERYTHING relative to sp: CFrame.new(sp + Vector3.new(x,y,z))
+8. SCALE CORRECTLY: character = 5.5 studs tall. Buildings = 30-60 studs wide. Baseplates = 5-10 studs larger than the building. NEVER 200x200.
+9. INTERIORS for buildings: add counter, shelves, chairs, tables — don't leave buildings empty.
+10. WORKING CODE IS #1 PRIORITY. A build that appears in Studio with 15 great parts beats a "perfect" build with 60 parts that crashes. Generate clean, error-free Luau. Test your math — walls must connect at edges, floors must be at groundY, parts must not overlap.
+11. ALWAYS include the ChangeHistoryService boilerplate (rid/CH) so the user can Ctrl+Z the build. ALWAYS set m.Parent = workspace AND call FinishRecording at the end. Forgetting these = build appears to fail.
 
 === ADVANCED TECHNIQUES — USE THESE TO MAKE BUILDS PRO-QUALITY ===
 
@@ -3858,11 +3852,73 @@ BEAM + TRAIL EFFECTS (cheap to render, huge visual impact):
 HIGHLIGHT (hover effects, magical auras, selection indicators):
   local hl = Instance.new("Highlight") hl.FillColor=Color3.fromRGB(255,215,0) hl.FillTransparency=0.7 hl.OutlineColor=Color3.fromRGB(255,255,255) hl.OutlineTransparency=0.3 hl.Parent=targetPart
 
-NEGATIVE SPACE AND SILHOUETTE DESIGN:
-  Pro builds are NOT symmetric boxes. Add: roof overhangs (extend W() 2-3 studs past walls), balconies (small platform + railing extending from 2nd floor), porches (covered walkway with columns), bay windows (3-part angled window extension), chimneys, antennas, awnings. These break the box silhouette and catch shadows under Future lighting.
+SILHOUETTE DESIGN: Pro builds break the box. Add: roof overhangs (W() 2-3 studs past walls), balconies, porches with columns, chimneys, awnings. These catch shadows under Future lighting.
 
-ORGANIC VARIATION:
-  Not every window should be the same size. Vary dimensions by 0.5-1 stud. Offset some parts by 0.1-0.2 studs for natural imperfection. Use vc() on EVERY material, not just a few. Real buildings aren't perfectly uniform.
+ORGANIC VARIATION: Vary window sizes by 0.5 stud. Offset some parts by 0.1-0.2 studs. Use vc() on EVERY material group.
+
+=== COMPLETE WORKING EXAMPLE — A SMALL HOUSE (copy this pattern) ===
+This is a REAL working build. Study the coordinate math. Your builds should look like this:
+
+-- Floor: sits on ground, Y=0.5 (half of 1-thick slab)
+P("Floor", 20,1,14, 0,0.5,0, "WoodPlanks", 140,100,60)
+-- Walls: Y=5.5 (half of 10-tall wall + 1 floor thickness). Z=±7 = half of 14-deep floor
+P("Wall_Back", 20,10,0.8, 0,6,7, "Brick", vc(180,140,100))
+P("Wall_Left", 0.8,10,14, -10,6,0, "Brick", vc(180,140,100))
+P("Wall_Right", 0.8,10,14, 10,6,0, "Brick", vc(180,140,100))
+-- Front wall with door gap: two sections (left of door, right of door)
+P("Wall_Front_L", 7,10,0.8, -6.5,6,-7, "Brick", vc(180,140,100))
+P("Wall_Front_R", 7,10,0.8, 6.5,6,-7, "Brick", vc(180,140,100))
+P("Wall_Front_Top", 6,3,0.8, 0,9.5,-7, "Brick", vc(180,140,100))  -- above door
+-- Door frame
+P("DoorFrame_L", 0.3,7.5,0.8, -3,4.75,-7, "Wood", 100,65,30)
+P("DoorFrame_R", 0.3,7.5,0.8, 3,4.75,-7, "Wood", 100,65,30)
+P("DoorFrame_Top", 6.6,0.3,0.8, 0,8.5,-7, "Wood", 100,65,30)
+-- Door panel (slightly recessed)
+P("Door", 5.4,7,0.4, 0,4.5,-6.8, "Wood", 80,50,25)
+P("DoorKnob", 0.4,0.4,0.3, 2,4.5,-6.5, "Metal", 180,180,170)
+-- Windows (glass + frame)
+P("Window_L_Glass", 3.5,3,0.2, -6,5.5,7.1, "Glass", 180,215,240, 0.4)
+P("Window_L_Frame", 3.8,0.3,0.3, -6,7.1,7.1, "Wood", 90,60,30)
+P("Window_L_Frame_B", 3.8,0.3,0.3, -6,3.9,7.1, "Wood", 90,60,30)
+P("Window_L_Sill", 4,0.3,1, -6,3.8,7.4, "Concrete", 200,195,185)
+P("Window_R_Glass", 3.5,3,0.2, 6,5.5,7.1, "Glass", 180,215,240, 0.4)
+P("Window_R_Frame", 3.8,0.3,0.3, 6,7.1,7.1, "Wood", 90,60,30)
+P("Window_R_Sill", 4,0.3,1, 6,3.8,7.4, "Concrete", 200,195,185)
+-- Ceiling
+P("Ceiling", 20,0.5,14, 0,11,0, "Concrete", 230,228,225)
+-- Roof (wedge parts with overhang)
+W("Roof_Left", 12,3,16, -5,12.5,0, "Slate", 75,65,55)
+W("Roof_Right", 12,3,16, 5,12.5,0, "Slate", 75,65,55)  -- needs CFrame rotation for opposite slope
+-- Chimney
+P("Chimney_Base", 2,6,2, 7,14,4, "Brick", vc(160,100,70))
+P("Chimney_Cap", 2.6,0.4,2.6, 7,17.2,4, "Concrete", 140,135,130)
+-- Interior furniture
+P("Table", 4,0.3,3, -3,3.8,2, "WoodPlanks", 120,80,40)
+Cyl("Table_Leg", 3,0.5, -3,2,2, "Wood", 100,65,30)
+P("Chair_Seat", 2,0.3,2, -5,2.5,2, "WoodPlanks", 130,90,50)
+P("Chair_Back", 2,2.5,0.3, -5,3.75,3, "WoodPlanks", 130,90,50)
+-- Interior lighting (parent to ceiling)
+local ceil = m:FindFirstChild("Ceiling")
+if ceil then Light(ceil, 2, 30, 255,200,140) end
+-- Foundation (slightly larger than building)
+P("Foundation", 22,0.6,16, 0,0.1,0, "Concrete", 160,155,150)
+
+This example has 27 parts — walls, door with frame+knob, windows with glass+frames+sills, roof, chimney, table, chair, lighting, foundation. THIS is the detail level your builds should match.
+
+=== PRE-OUTPUT CHECKLIST (verify BEFORE outputting code) ===
+Before you write your code block, mentally verify:
+[ ] Does the code start with the FULL boilerplate? (CH, rid, cam, sp, gy, m, helpers)
+[ ] Does the code end with m.Parent=workspace AND FinishRecording?
+[ ] Are ALL parts parented to m (not workspace)?
+[ ] Is the floor at Y=0.5 (or thickness/2)?
+[ ] Are walls at Y = wallHeight/2 + floorThickness?
+[ ] Do walls connect at corners? (left wall X = -floorWidth/2)
+[ ] Are there door OPENINGS (gap in wall) not just a door pasted on a wall?
+[ ] Do windows have BOTH glass (transparent) AND frame parts?
+[ ] Is there at least 1 PointLight inside the building?
+[ ] Did you use vc() for color variation on repeated materials?
+[ ] Are there NO references to game.Players, LocalPlayer, or script.Parent? (Edit Mode)
+[ ] Is every material name valid? (check the MATERIALS list above)
 
 === STUDIO AWARENESS — USE THE CONTEXT ===
 You receive real-time data from the user's Roblox Studio:
@@ -4745,16 +4801,18 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
             console.log('[Verify] Using auto-fixed code')
             luauCode = verification.fixedCode
           }
-          // If score is very low (< 50), discard entirely AND learn from failure
-          if (verification.score < 50) {
-            console.warn('[Verify] Score too low, discarding code')
-            // Self-improvement: learn what went wrong
+          // If score is critically low (< 25), discard — but ONLY if truly broken
+          // Old threshold was 50 which rejected tons of valid code.
+          // Score 25-49 = mediocre but usable, let it through with a warning.
+          if (verification.score < 25) {
+            console.warn(`[Verify] Score ${verification.score} critically low, discarding`)
             void learnFromFailure(message, luauCode, verification.score, verification.errors.map(e => typeof e === 'string' ? e : String(e)), detectCategory(message)).catch(() => {})
             luauCode = null
           }
-          // If score is mediocre (50-75), attempt one re-generation with error context
-          else if (verification.score < 75 && verification.errors.length > 0) {
-            console.log(`[Verify] Score ${verification.score} is mediocre, attempting re-generation with error feedback`)
+          // If score is bad (25-50), attempt one re-generation with error context
+          // Old threshold was 75 which retried decent builds, wasting time+tokens
+          else if (verification.score < 50 && verification.errors.length > 0) {
+            console.log(`[Verify] Score ${verification.score} is low, attempting re-generation with error feedback`)
             const errorFeedback = verification.errors.map(e => `- ${e}`).join('\n')
             const retryInstruction = `ORIGINAL USER REQUEST: "${message}"
 
@@ -4809,7 +4867,8 @@ ${effectiveInstruction}`
             finalVerificationScore = Math.max(finalVerificationScore, qualityResult.total)
           }
           // If quality is terrible and we haven't retried too much, discard
-          if (qualityResult.total < 15 && qualityResult.source === 'llm') {
+          // Only discard at truly broken scores (< 10) — old threshold 15 was too aggressive
+          if (qualityResult.total < 10 && qualityResult.source === 'llm') {
             console.warn(`[QualityScore] model=${model} score=${qualityResult.total} critically low — discarding`)
             luauCode = null
           }
@@ -5476,7 +5535,7 @@ SCALE REFERENCE (memorize these):
 
 MATERIAL VARIETY:
 - Never use the same material on every surface
-- Walls: Brick, Concrete, SmoothPlastic, or WoodPlanks
+- Walls: Brick, Concrete, Granite, or WoodPlanks
 - Roof: Slate, Concrete, or WoodPlanks
 - Floor: WoodPlanks (interior), Concrete (modern), Cobblestone (medieval), Grass (outdoor)
 - Trim/detail: Wood, Metal, or contrasting wall material
@@ -5509,8 +5568,8 @@ NEVER DO THIS:
 - NEVER forget Anchored = true — parts will fall through the floor
 - NEVER make walls paper-thin (0.01) — minimum 0.5 studs thick
 - NEVER skip the Model container — loose parts in workspace are messy
-- NEVER generate less than 30 parts for a building (houses need 40+, castles need 60+)
-- NEVER use the same Color3 on every part — minimum 5 different colors per build
+- For buildings: aim for 30+ parts (houses 40+, castles 60+). For small objects (chair, lamp, door): 5-15 parts is fine. Match detail to the request size.
+- NEVER use the same Color3 on every part — minimum 3 different colors per build
 
 HELPER FUNCTION — put this at the TOP of every build script:
 local function P(name, sx,sy,sz, px,py,pz, mat, r,g,b, parent, transparency)
@@ -10532,6 +10591,8 @@ interface StreamResponseMeta {
   buildPlan?: unknown
   qualityScore?: number
   buildPartCount?: number
+  /** Code review grades (Security, Performance, Reliability, Multiplayer) */
+  codeReview?: { security: string; performance: string; reliability: string; multiplayer: string; overall: string; issues: number }
   /** Build pipeline steps (like Lemonade's "Steps 0/3") */
   buildSteps?: { step: number; total: number; label: string; status: 'done' | 'running' | 'pending' }[]
   // Conversation tracking — log every exchange for learning
@@ -10642,8 +10703,8 @@ async function recordUniversalOutcome(text: string, meta: StreamResponseMeta): P
         retryCount: 0,
       }).catch(() => {})
 
-      // Self-improvement: learn from failures
-      if (score < 50) {
+      // Self-improvement: learn from failures — threshold lowered to match new gate
+      if (score < 25) {
         void learnFromFailure(text, code, score, [], category).catch(() => {})
       }
 
@@ -11737,20 +11798,29 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         }
       }
       if (wantsStream) {
-        // Build pipeline steps for the progress indicator (matches Lemonade's "Steps 0/3")
+        // Build pipeline steps — show what actually happened in the pipeline
+        // Unlike Lemonade's static "Steps 0/3", ours show real data
         const steps: StreamResponseMeta['buildSteps'] = []
-        if (SCRIPT_INTENTS.has(intent) || twoPassResult.luauCode) {
-          const total = twoPassResult.executedInStudio ? 4 : 3
-          steps.push({ step: 1, total, label: 'Analyzing prompt', status: 'done' })
-          steps.push({ step: 2, total, label: 'Generating code', status: 'done' })
-          steps.push({ step: 3, total, label: 'Verifying quality', status: 'done' })
+        const hasCode = !!twoPassResult.luauCode
+        const isScript = SCRIPT_INTENTS.has(intent)
+        if (hasCode || isScript) {
+          const total = twoPassResult.executedInStudio ? 4 : hasCode ? 3 : 2
+          steps.push({ step: 1, total, label: `Understood: "${intent}" intent`, status: 'done' })
+          steps.push({ step: 2, total, label: hasCode ? `Generated ${twoPassResult.buildPartCount ?? '?'} parts` : 'Generating response', status: 'done' })
+          if (hasCode) {
+            const qScore = twoPassResult.qualityScore ?? 0
+            steps.push({ step: 3, total, label: qScore > 0 ? `Quality: ${qScore}/100` : 'Verified', status: 'done' })
+          }
           if (twoPassResult.executedInStudio) {
-            steps.push({ step: 4, total, label: 'Synced to Studio', status: 'done' })
+            steps.push({ step: total, total, label: 'Live in Studio', status: 'done' })
           }
         } else if (intent === 'building' || intent === 'terrain' || intent === 'lighting') {
-          steps.push({ step: 1, total: 3, label: 'Planning build', status: 'done' })
-          steps.push({ step: 2, total: 3, label: 'Generating', status: 'done' })
-          steps.push({ step: 3, total: 3, label: twoPassResult.executedInStudio ? 'Placed in Studio' : 'Ready', status: 'done' })
+          const total = twoPassResult.executedInStudio ? 3 : 2
+          steps.push({ step: 1, total, label: `${intent.charAt(0).toUpperCase() + intent.slice(1)} planned`, status: 'done' })
+          steps.push({ step: 2, total, label: `${twoPassResult.buildPartCount ?? '?'} objects generated`, status: 'done' })
+          if (twoPassResult.executedInStudio) {
+            steps.push({ step: 3, total, label: 'Live in Studio', status: 'done' })
+          }
         }
         return trackableStream(twoPassResult.conversationText, {
           suggestions: twoPassResult.suggestions,
@@ -12464,6 +12534,22 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         }
         return undefined
       })()
+      // Run code review on generated scripts (fast static analysis)
+      let codeReviewMeta: StreamResponseMeta['codeReview'] | undefined
+      if (twoPassResult.luauCode && twoPassResult.luauCode.length > 50) {
+        try {
+          const review = reviewCode(twoPassResult.luauCode)
+          codeReviewMeta = {
+            security: review.security.grade,
+            performance: review.performance.grade,
+            reliability: review.reliability.grade,
+            multiplayer: review.multiplayer.grade,
+            overall: review.overall.grade,
+            issues: review.issues.length,
+          }
+        } catch { /* non-fatal */ }
+      }
+
       if (wantsStream) {
         // Stream conversation text — code is sent to Studio via sendCodeToStudio
         // but also included in meta so frontend can show "Import to Studio" button
@@ -12477,6 +12563,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           executedInStudio: twoPassResult.executedInStudio,
           model: twoPassResult.model,
           qualityScore: twoPassResult.qualityScore,
+          codeReview: codeReviewMeta,
           ...(freeModelBuildPlan ? { buildPlan: freeModelBuildPlan } : {}),
         }) as unknown as NextResponse
       }

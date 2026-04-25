@@ -281,6 +281,7 @@ function BuildFeedbackCard({
   onSend,
   luauCode,
   prompt,
+  codeReview,
 }: {
   qualityScore: number
   partCount?: number
@@ -289,6 +290,7 @@ function BuildFeedbackCard({
   onSend?: (msg: string) => void
   luauCode?: string
   prompt?: string
+  codeReview?: { security: string; performance: string; reliability: string; multiplayer: string; overall: string; issues: number }
 }) {
   const [voted, setVoted] = useState<'up' | 'down' | null>(null)
   const [suggestionOpen, setSuggestionOpen] = useState(false)
@@ -452,6 +454,37 @@ function BuildFeedbackCard({
       }}>
         {cfg.hint}
       </p>
+
+      {/* Code review grades */}
+      {codeReview && (
+        <div style={{
+          display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8,
+        }}>
+          {[
+            { label: 'Security', grade: codeReview.security },
+            { label: 'Perf', grade: codeReview.performance },
+            { label: 'Reliability', grade: codeReview.reliability },
+            { label: 'Multiplayer', grade: codeReview.multiplayer },
+          ].map(({ label, grade }) => {
+            const gradeColor = grade.startsWith('A') ? '#22C55E' : grade.startsWith('B') ? '#D4AF37' : grade.startsWith('C') ? '#F59E0B' : '#EF4444'
+            return (
+              <span
+                key={label}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                  padding: '2px 6px', borderRadius: 4,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  fontSize: 9, fontWeight: 600,
+                }}
+              >
+                <span style={{ color: '#71717A' }}>{label}</span>
+                <span style={{ color: gradeColor }}>{grade}</span>
+              </span>
+            )
+          })}
+        </div>
+      )}
 
       {/* Quick action pills */}
       {onSend && (
@@ -2573,6 +2606,7 @@ function MessageBubbleImpl({
               onSend={onSend}
               luauCode={msg.luauCode}
               prompt={userPrompt}
+              codeReview={msg.codeReview}
             />
           )}
           {/*
