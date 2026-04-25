@@ -32,6 +32,10 @@ export interface AICallOptions {
   useRAG?: boolean
   /** Filter RAG retrieval to specific doc categories */
   ragCategories?: string[]
+  /** When true, return a ReadableStream of text chunks instead of waiting for full response */
+  stream?: boolean
+  /** Callback for each streamed chunk (only used when stream: true) */
+  onChunk?: (chunk: string) => void
 }
 
 // ── Retry helper for 429 rate limits ─────────────────────────────────────────
@@ -170,6 +174,259 @@ async function callGroq(
   }
   console.error('[ai-provider/groq] Exhausted retries on 429')
   return null
+}
+
+// ── Streaming: Gemini stream endpoint ────────────────────────────────────────
+
+async function* streamGemini(
+  systemPrompt: string,
+  messages: AIMessage[],
+  opts: AICallOptions = {},
+): AsyncGenerator<string, void, unknown> {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) return
+
+  const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
+
+  const contents = messages
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }))
+
+  const body = {
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents,
+    generationConfig: { maxOutputTokens: maxTokens, temperature },
+  }
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${key}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(120_000),
+    },
+  )
+
+  if (!res.ok || !res.body) {
+    console.error('[ai-provider/gemini-stream] HTTP', res.status)
+    return
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const json = line.slice(6).trim()
+      if (json === '[DONE]') return
+      try {
+        const parsed = JSON.parse(json)
+        const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text
+        if (text) yield text
+      } catch { /* skip malformed SSE lines */ }
+    }
+  }
+}
+
+// ── Streaming: Groq stream (OpenAI-compatible) ──────────────────────────────
+
+async function* streamGroq(
+  systemPrompt: string,
+  messages: AIMessage[],
+  opts: AICallOptions = {},
+): AsyncGenerator<string, void, unknown> {
+  const key = process.env.GROQ_API_KEY
+  if (!key) return
+
+  const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
+
+  const groqMessages = [
+    { role: 'system', content: systemPrompt },
+    ...messages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content })),
+  ]
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: groqMessages,
+      max_tokens: maxTokens,
+      temperature,
+      stream: true,
+    }),
+    signal: AbortSignal.timeout(120_000),
+  })
+
+  if (!res.ok || !res.body) {
+    console.error('[ai-provider/groq-stream] HTTP', res.status)
+    return
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const json = line.slice(6).trim()
+      if (json === '[DONE]') return
+      try {
+        const parsed = JSON.parse(json)
+        const text = parsed?.choices?.[0]?.delta?.content
+        if (text) yield text
+      } catch { /* skip malformed SSE lines */ }
+    }
+  }
+}
+
+// ── Public: callAIStream — streaming version ────────────────────────────────
+
+/**
+ * Stream AI response token-by-token. Tries Gemini streaming first, then Groq.
+ * Returns the full accumulated text after streaming completes.
+ * Use onChunk callback to process chunks in real-time.
+ */
+export async function callAIStream(
+  systemPrompt: string,
+  messages: AIMessage[],
+  opts: AICallOptions = {},
+): Promise<string> {
+  let enrichedPrompt = systemPrompt
+  const userMessage = messages.filter(m => m.role === 'user').pop()?.content ?? ''
+
+  if (opts.useRAG) {
+    const specialist = await findSpecialist(userMessage)
+    if (specialist) {
+      enrichedPrompt = applySpecialist(enrichedPrompt, specialist)
+      const specialistCategories = getSpecialistRAGCategories(specialist)
+      opts = { ...opts, ragCategories: [...new Set([...(opts.ragCategories ?? []), ...specialistCategories])] }
+    }
+    try {
+      enrichedPrompt = await buildRAGSystemPrompt(enrichedPrompt, userMessage, opts.ragCategories)
+    } catch (e) {
+      console.error('[ai-provider] RAG enrichment failed:', (e as Error).message)
+    }
+  }
+
+  // Try Gemini streaming
+  let accumulated = ''
+  try {
+    for await (const chunk of streamGemini(enrichedPrompt, messages, opts)) {
+      accumulated += chunk
+      opts.onChunk?.(chunk)
+    }
+    if (accumulated) return accumulated
+  } catch (e) {
+    console.error('[ai-provider/stream] Gemini stream failed:', (e as Error).message)
+  }
+
+  // Fallback to Groq streaming
+  accumulated = ''
+  try {
+    for await (const chunk of streamGroq(enrichedPrompt, messages, opts)) {
+      accumulated += chunk
+      opts.onChunk?.(chunk)
+    }
+    if (accumulated) return accumulated
+  } catch (e) {
+    console.error('[ai-provider/stream] Groq stream failed:', (e as Error).message)
+  }
+
+  // Final fallback: non-streaming callAI
+  return callAI(systemPrompt, messages, { ...opts, stream: false })
+}
+
+// ── Smart Model Routing ─────────────────────────────────────────────────────
+
+export type ModelTier = 'fast' | 'primary' | 'premium'
+
+interface ModelTierConfig {
+  tier: ModelTier
+  reason: string
+}
+
+/**
+ * Select the optimal model tier based on request characteristics.
+ * FAST (Groq/Flash): classification, planning, simple fixes, explanations
+ * PRIMARY (Gemini 2.0 Flash): standard generation, single-file scripts
+ * PREMIUM (OpenRouter best): multi-file systems, error recovery escalation, full game gen
+ */
+export function selectModelTier(
+  prompt: string,
+  opts: {
+    isErrorRecovery?: boolean
+    retryCount?: number
+    estimatedOutputLines?: number
+    isMultiFile?: boolean
+  } = {},
+): ModelTierConfig {
+  const lower = prompt.toLowerCase()
+
+  // Error recovery escalation: after 2 failed attempts, use premium
+  if (opts.isErrorRecovery && (opts.retryCount ?? 0) >= 2) {
+    return { tier: 'premium', reason: 'Error recovery escalation after 2 failed attempts' }
+  }
+
+  // Multi-file generation always uses primary or premium
+  if (opts.isMultiFile) {
+    return {
+      tier: (opts.estimatedOutputLines ?? 0) > 200 ? 'premium' : 'primary',
+      reason: 'Multi-file script generation',
+    }
+  }
+
+  // Classification, planning, prompt enhancement → FAST
+  const fastPatterns = [
+    /classify|categorize|identify|detect/,
+    /plan|outline|list|enumerate/,
+    /explain|describe|what is|how does/,
+    /enhance.*prompt|improve.*prompt|rewrite.*prompt/,
+    /fix.*simple|quick.*fix|typo|rename/,
+  ]
+  if (fastPatterns.some(p => p.test(lower))) {
+    return { tier: 'fast', reason: 'Classification/planning/explanation task' }
+  }
+
+  // Full game or complex system → PREMIUM
+  const premiumPatterns = [
+    /full game|complete game|entire game/,
+    /inventory.*shop|shop.*inventory/,
+    /combat.*system|system.*combat/,
+    /multiplayer.*game|game.*multiplayer/,
+  ]
+  if (premiumPatterns.some(p => p.test(lower))) {
+    return { tier: 'premium', reason: 'Complex multi-system generation' }
+  }
+
+  // Large estimated output → PRIMARY or PREMIUM
+  if ((opts.estimatedOutputLines ?? 0) > 300) {
+    return { tier: 'premium', reason: 'Large output expected' }
+  }
+
+  // Default: PRIMARY
+  return { tier: 'primary', reason: 'Standard script generation' }
 }
 
 // ── Public: callAI — Gemini primary, Groq fallback ───────────────────────────
