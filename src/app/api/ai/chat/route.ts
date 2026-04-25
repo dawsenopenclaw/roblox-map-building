@@ -3808,17 +3808,155 @@ SCALE: Character=5.5 tall. Doors=4W×7.5H. Windows=3-4W×3-4H. Walls=0.8 thick. 
 
 CRITICAL QUALITY RULES:
 0. ALL PARTS MUST GO INTO THE SINGLE MODEL 'm'. The ONLY line referencing workspace directly should be 'm.Parent = workspace' at the end.
-1. SCALE PARTS TO THE REQUEST: Big builds (houses, castles) = 25-60+ parts. Medium builds (car, fountain) = 10-25 parts. Small builds (chair, lamp, door) = 5-15 parts. Match detail to what the user asked for — don't pad or cut short.
-2. NEVER build a single cube. Decompose into real-world components. A wall is wall+trim+baseboard. A door is frame+panel+handle+threshold.
-3. Always use vc() for natural color variation. NO flat uniform colors on large surfaces.
-4. Glass windows MUST have Transparency=0.3-0.5 AND a separate frame Part around them.
-5. Add PointLights (warm Brightness=2, Range=20-30) for atmosphere. Buildings need interior lights.
-6. Use WedgeParts for roofs and angled surfaces. NEVER use a flat Part as a roof on buildings.
-7. Position EVERYTHING relative to sp: CFrame.new(sp + Vector3.new(x,y,z))
-8. SCALE CORRECTLY: character = 5.5 studs tall. Buildings = 30-60 studs wide. Baseplates = 5-10 studs larger than the building. NEVER 200x200.
-9. INTERIORS for buildings: add counter, shelves, chairs, tables — don't leave buildings empty.
-10. WORKING CODE IS #1 PRIORITY. A build that appears in Studio with 15 great parts beats a "perfect" build with 60 parts that crashes. Generate clean, error-free Luau. Test your math — walls must connect at edges, floors must be at groundY, parts must not overlap.
-11. ALWAYS include the ChangeHistoryService boilerplate (rid/CH) so the user can Ctrl+Z the build. ALWAYS set m.Parent = workspace AND call FinishRecording at the end. Forgetting these = build appears to fail.
+1. SCALE: Big builds (houses, castles) = 40-80+ parts. Medium (car, fountain) = 15-30. Small (chair, lamp) = 5-15.
+2. WORKING CODE IS #1 PRIORITY. A build that appears in Studio with 20 great parts beats a broken 80-part build.
+3. ALWAYS include ChangeHistoryService boilerplate + m.Parent=workspace + FinishRecording at end.
+
+=== ARCHITECTURAL DETAIL — THIS IS WHAT SEPARATES AMATEUR FROM PRO ===
+
+WALLS — never a single flat slab:
+- Main wall body + baseboard trim (0.3h strip at bottom, slightly darker)
+- Corner posts (vertical 0.6x0.6 pillars at wall edges, slightly protruding 0.1)
+- Wall crown/cap (0.2h strip at top, contrasting color)
+- Horizontal siding lines: use 2-3 thin strips (0.15h) across wall face for texture
+- Wainscoting: lower 1/3 of interior walls in darker wood
+- For stone/brick: use vc() with higher variation (v=15) for natural look
+
+ROOFS — never a single wedge:
+- GABLED: Two opposing WedgeParts with ridge beam (thin Part along peak)
+- HIP: Four WedgeParts meeting at center peak (each side slopes)
+- MANSARD: Steep lower slope + shallow upper slope (2 wedges per side)
+- FLAT: Parapet walls around edges (0.8h lip) + slight center depression
+- DETAILS: Roof overhang 1.5-2 studs past walls. Fascia board under overhang edge.
+  Gutters (thin cylinder along roof edge). Dormers (small gabled window bump-outs).
+  Ridge cap (narrow Part along roof peak). Chimney with cap + pot.
+
+DOORS — never just a rectangle:
+- Door panel with 2-4 recessed panels (thin parts offset 0.15 from door face)
+- Frame: header + two jambs + threshold (sill at bottom)
+- Handle/knob on one side + hinge marks on other (small cylinders)
+- Overhang/awning above door (small roof or canopy extending 2-3 studs)
+- Step/porch: 1-2 step-down parts in front of door
+- For double doors: two panels with center seam
+
+WINDOWS — never just glass in a hole:
+- Glass pane (Transparency 0.35) + frame (4 pieces: top, bottom, left, right)
+- Mullions: cross-bars dividing glass into 4-6 panes (thin 0.1 strips)
+- Window sill: extends 0.5 past wall face, 0.3 thick
+- Shutters: two thin panels flanking window (optional, adds charm)
+- Flower box: small trough below window with colored "flower" balls (optional)
+- Header: decorative lintel above window (slightly wider than frame)
+
+INTERIORS — if user wants interior, make it furnished. If not specified, make the building solid/closed but detailed OUTSIDE:
+- Kitchen: counter (L-shape), stove (dark box + cylinders), sink, fridge (tall box)
+- Living room: couch (L-shaped cushions), coffee table, rug (thin flat part), TV/fireplace
+- Bedroom: bed frame + mattress + pillow, nightstand, lamp, wardrobe
+- Bathroom: toilet, sink pedestal, mirror (glass pane on wall), bathtub
+- Office: desk, chair, computer monitor (thin glass pane), bookshelf
+- ALWAYS add a ceiling light (PointLight parented to ceiling part)
+
+EXTERIOR ENVIRONMENT — buildings don't float in void:
+- Walkway/path leading to door (Cobblestone, 4-6 wide)
+- Fence or hedge around property (short cylinders for posts + thin parts for rails)
+- Garden/flowers: small colored Balls near building base
+- Mailbox, trash can, lamp post (Cyl + Ball + PointLight)
+- Driveway for modern houses
+- Porch with columns + railing for residential
+
+=== INTERACTIVE OBJECTS — MAKE THINGS COME ALIVE ===
+
+CLICKABLE DOORS (open/close):
+  local door = P("Door", 5,7,0.4, 0,4.5,-7, "Wood", 80,50,25)
+  local prompt = Instance.new("ProximityPrompt")
+  prompt.ActionText = "Open" prompt.HoldDuration = 0 prompt.MaxActivationDistance = 8
+  prompt.Parent = door
+  local open = false
+  prompt.Triggered:Connect(function()
+    open = not open
+    if open then door.CFrame = door.CFrame * CFrame.Angles(0, math.rad(90), 0)
+    else door.CFrame = door.CFrame * CFrame.Angles(0, math.rad(-90), 0) end
+    prompt.ActionText = open and "Close" or "Open"
+  end)
+
+TOGGLING LIGHTS (on/off with click):
+  local switch = P("LightSwitch", 0.4,0.6,0.1, 3,4,-6.9, "Metal", 200,200,200)
+  local switchPrompt = Instance.new("ProximityPrompt")
+  switchPrompt.ActionText = "Toggle Light" switchPrompt.Parent = switch
+  local lightsOn = true
+  switchPrompt.Triggered:Connect(function()
+    lightsOn = not lightsOn
+    for _, obj in m:GetDescendants() do
+      if obj:IsA("PointLight") or obj:IsA("SpotLight") then obj.Enabled = lightsOn end
+    end
+  end)
+
+COLLECTIBLE/PICKUP ITEMS:
+  local coin = Ball("Coin", 1.5, 5,2,5, "Neon", 255,215,0)
+  coin.Touched:Connect(function(hit)
+    if hit.Parent:FindFirstChild("Humanoid") and coin.Parent then coin:Destroy() end
+  end)
+
+=== VFX THAT MAKE ENVIRONMENTS FEEL ALIVE ===
+
+FLICKERING TORCHES/CAMPFIRES:
+  local fire = Instance.new("Fire") fire.Size=5 fire.Heat=8 fire.Color=Color3.fromRGB(255,120,30) fire.SecondaryColor=Color3.fromRGB(255,60,0) fire.Parent=torchPart
+  local smoke = Instance.new("Smoke") smoke.Size=3 smoke.Opacity=0.3 smoke.Color=Color3.fromRGB(60,60,60) smoke.Parent=torchPart
+  local flicker = Instance.new("PointLight") flicker.Brightness=2 flicker.Range=20 flicker.Color=Color3.fromRGB(255,160,60) flicker.Parent=torchPart
+  task.spawn(function() while torchPart.Parent do flicker.Brightness=1.5+math.random()*1 task.wait(0.1+math.random()*0.1) end end)
+
+FLOWING WATER / WATERFALL:
+  local waterPart = P("Water", 20,0.5,20, 0,0.3,30, "Glass", 60,140,200, 0.4)
+  local emitter = Instance.new("ParticleEmitter") emitter.Rate=20 emitter.Lifetime=NumberRange.new(3,5)
+  emitter.Speed=NumberRange.new(1,3) emitter.Size=NumberSequence.new(0.5,0) emitter.Transparency=NumberSequence.new(0.3,1)
+  emitter.Color=ColorSequence.new(Color3.fromRGB(100,180,255)) emitter.Parent=waterPart
+
+AMBIENT DUST/POLLEN (makes ANY scene feel alive):
+  local dustEmitter = Instance.new("ParticleEmitter")
+  dustEmitter.Rate=5 dustEmitter.Lifetime=NumberRange.new(8,15)
+  dustEmitter.Speed=NumberRange.new(0.3,1) dustEmitter.SpreadAngle=Vector2.new(180,180)
+  dustEmitter.Size=NumberSequence.new(0.1,0.3)
+  dustEmitter.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.7),NumberSequenceKeypoint.new(0.5,0.4),NumberSequenceKeypoint.new(1,1)})
+  dustEmitter.Color=ColorSequence.new(Color3.fromRGB(255,240,200))
+  dustEmitter.LightEmission=0.3 dustEmitter.Parent=m.PrimaryPart or m:FindFirstChildWhichIsA("BasePart")
+
+LEAVES FALLING FROM TREES:
+  local leaves = Instance.new("ParticleEmitter")
+  leaves.Rate=2 leaves.Lifetime=NumberRange.new(5,8) leaves.Speed=NumberRange.new(0.5,2)
+  leaves.SpreadAngle=Vector2.new(30,30) leaves.RotSpeed=NumberRange.new(-60,60)
+  leaves.Size=NumberSequence.new(0.3,0.5) leaves.Color=ColorSequence.new(Color3.fromRGB(80,140,40),Color3.fromRGB(180,160,30))
+  leaves.Acceleration=Vector3.new(1,-2,0.5) leaves.Parent=treeCanopyPart
+
+WIND EFFECT ON FLAGS/BANNERS:
+  -- Use a Part with Beam connecting two attachments, animated with CFrame
+
+GLOWING WINDOWS AT NIGHT (makes buildings feel inhabited):
+  -- Set window glass Color to warm yellow (255,220,150), Transparency=0.2
+  -- Add SpotLight inside pointing outward through window: Range=30, Angle=45, Brightness=1
+
+=== UI/GUI GENERATION — CREATE REAL GAME INTERFACES ===
+
+When user asks for UI/GUI/HUD/menu/shop/inventory, generate a COMPLETE LocalScript with ScreenGui:
+- Use UICorner (CornerRadius 8-12px) on ALL frames
+- Use UIGradient for premium backgrounds
+- Use UIStroke for borders (Thickness 1-2, Color subtle)
+- Use UIListLayout/UIGridLayout for auto-arranging
+- Buttons: Hover effect (darken on MouseEnter), click feedback (scale to 0.95)
+- Animations: TweenService for open/close (slide in from edge or scale from 0)
+- Close button: X in top-right corner of every panel
+- Currency display: icon + amount in top bar
+- Sound effects: click sounds on buttons (optional)
+
+=== WORLD BUILDING — COMPLETE ENVIRONMENTS ===
+
+When user asks for a "world", "map", "environment", or "scene":
+- Terrain: grass ground, hills, water features, paths
+- Multiple buildings with consistent style
+- Street lamps with PointLights along paths
+- Trees: trunk (Cyl brown) + canopy (Ball green with variation) + leaf particles
+- Ambient sounds: birds, wind, water (if near water)
+- Skybox/Atmosphere/Lighting tuned to mood
+- NPCs or placeholder figures at points of interest
+- Signs with TextLabels on SurfaceGui
 
 === ADVANCED TECHNIQUES — USE THESE TO MAKE BUILDS PRO-QUALITY ===
 
