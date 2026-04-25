@@ -3013,8 +3013,12 @@ local function pollSync()
       end
 
       -- Auto-reconnect flag from server
+      -- Only reconnect if we haven't tried recently (10s cooldown) to prevent hammering
       if data.reconnect == true then
-        attemptReAuth()
+        if _reconnectAttempts < MAX_RECONNECT then
+          _backoffInterval = math.min(_backoffInterval * 2, MAX_INTERVAL)
+          attemptReAuth()
+        end
         return
       end
 

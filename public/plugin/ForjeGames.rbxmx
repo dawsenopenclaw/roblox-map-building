@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-  <!-- ForjeGames Studio Plugin v1.0.0 -->
-  <!-- Built by build-plugin.js on 2026-04-25T20:58:52.972Z -->
+  <!-- ForjeGames Studio Plugin v4.8.0 -->
+  <!-- Built by build-plugin.js on 2026-04-25T21:45:46.034Z -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -4647,8 +4647,12 @@ local function pollSync()
       end
 
       -- Auto-reconnect flag from server
+      -- Only reconnect if we haven't tried recently (10s cooldown) to prevent hammering
       if data.reconnect == true then
-        attemptReAuth()
+        if _reconnectAttempts < MAX_RECONNECT then
+          _backoffInterval = math.min(_backoffInterval * 2, MAX_INTERVAL)
+          attemptReAuth()
+        end
         return
       end
 
