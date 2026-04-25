@@ -1383,6 +1383,79 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
   }
 }
 
+// ─── Console Error Recovery ─────────────────────────────────────────────────
+// After deploying code to Studio, check console logs for runtime errors.
+// If errors found, auto-send error + original code back to AI for a fix.
+// Retry up to 3 times. Matches Ropilot's self-healing test loop.
+
+async function checkConsoleForErrors(sessionId: string): Promise<string[]> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://forjegames.com'}/api/studio/console?sessionId=${sessionId}&limit=20`)
+    if (!res.ok) return []
+    const data = await res.json() as { logs: Array<{ message: string; type: string; timestamp: number }> }
+    if (!data.logs) return []
+    // Look for errors in the last 10 seconds
+    const recentCutoff = Math.floor(Date.now() / 1000) - 10
+    return data.logs
+      .filter(l => (l.type === 'MessageError' || l.type === 'Error') && l.timestamp >= recentCutoff)
+      .map(l => l.message)
+  } catch { return [] }
+}
+
+async function attemptErrorRecovery(
+  sessionId: string,
+  originalCode: string,
+  errors: string[],
+  codePrompt: string,
+  attempt: number = 1,
+): Promise<{ fixed: boolean; fixedCode: string | null }> {
+  if (attempt > 3 || errors.length === 0) return { fixed: false, fixedCode: null }
+
+  console.log(`[ErrorRecovery] Attempt ${attempt}/3 — ${errors.length} errors detected`)
+
+  const fixPrompt = `The following Roblox Luau code was deployed to Studio but threw runtime errors.
+Fix ALL errors and return the COMPLETE corrected code in a \`\`\`lua block.
+
+ERRORS FROM CONSOLE:
+${errors.map(e => `- ${e}`).join('\n')}
+
+ORIGINAL CODE:
+\`\`\`lua
+${originalCode.slice(0, 6000)}
+\`\`\`
+
+Fix every error. Keep all working code intact. Output the full corrected script.`
+
+  try {
+    // Use Groq (fastest) for quick error recovery
+    const fixResult = await callGroq(codePrompt, fixPrompt, [], 16384)
+    if (!fixResult) return { fixed: false, fixedCode: null }
+
+    const luaMatch = fixResult.match(/```lua\s*([\s\S]*?)```/)
+    const fixedCode = luaMatch?.[1]?.trim()
+
+    if (fixedCode && fixedCode.length > originalCode.length * 0.5) {
+      // Deploy the fix
+      const deployed = await sendCodeToStudio(sessionId, fixedCode)
+      if (deployed) {
+        // Wait 3 seconds for errors to appear
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        const newErrors = await checkConsoleForErrors(sessionId)
+        if (newErrors.length === 0) {
+          console.log(`[ErrorRecovery] Fix successful on attempt ${attempt}`)
+          return { fixed: true, fixedCode }
+        }
+        // Still errors — try again
+        return attemptErrorRecovery(sessionId, fixedCode, newErrors, codePrompt, attempt + 1)
+      }
+    }
+  } catch (err) {
+    console.warn('[ErrorRecovery] Fix attempt failed:', err instanceof Error ? err.message : err)
+  }
+
+  return { fixed: false, fixedCode: null }
+}
+
 // ─── Free model two-pass system ──────────────────────────────────────────────
 // When paid APIs (Anthropic) fail, use Gemini/Groq with a smarter approach:
 // Pass 1: Short conversational response (personality + game design)

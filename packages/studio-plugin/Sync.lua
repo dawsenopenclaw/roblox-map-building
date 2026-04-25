@@ -44,13 +44,13 @@ local Sync = {}
 -- direct-download vs Creator Store builds without hardcoding the string in
 -- two places. Store builds suffix this with "-store" at build time; the
 -- loadstring auto-enable logic in Plugin.lua:init() checks for that suffix.
-Sync.PLUGIN_VERSION = "4.7.0"
+Sync.PLUGIN_VERSION = "4.8.0"
 
 -- ============================================================
 -- Config
 -- ============================================================
 local BASE_URL           = "https://forjegames.com"
-local PLUGIN_VERSION     = "4.7.0"
+local PLUGIN_VERSION     = "4.8.0"
 local MIN_INTERVAL       = 5    -- seconds (was 2 — burned through Upstash free tier)
 local MAX_INTERVAL       = 30   -- seconds (backoff ceiling)
 local HEARTBEAT_INTERVAL = 30   -- seconds between keepalive POSTs
@@ -1679,6 +1679,173 @@ local function handleGetScripts(data)
   end
 end
 
+-- Handle: read_script (get source of a single script by path)
+local function handleReadScript(data)
+  local requestId = data._requestId
+  local scriptPath = data.path -- e.g. "ServerScriptService.GameManager"
+
+  if not scriptPath then
+    if requestId then pushBridgeResult("read_script_result", requestId, { error = "path required" }) end
+    return
+  end
+
+  -- Navigate path like "ServerScriptService.GameManager.SubModule"
+  local parts = string.split(scriptPath, ".")
+  local current = game
+  for _, part in ipairs(parts) do
+    local child = nil
+    pcall(function()
+      if current == game then
+        child = game:GetService(part)
+      else
+        child = current:FindFirstChild(part)
+      end
+    end)
+    if not child then
+      if requestId then pushBridgeResult("read_script_result", requestId, { error = "Not found: " .. part }) end
+      return
+    end
+    current = child
+  end
+
+  if not current:IsA("LuaSourceContainer") then
+    if requestId then pushBridgeResult("read_script_result", requestId, { error = "Not a script: " .. scriptPath }) end
+    return
+  end
+
+  local src = ""
+  pcall(function() src = current.Source end)
+  if requestId then
+    pushBridgeResult("read_script_result", requestId, {
+      path = scriptPath,
+      className = current.ClassName,
+      source = src,
+      lineCount = #string.split(src, "\n"),
+    })
+  end
+end
+
+-- Handle: modify_script (replace source of an existing script)
+local function handleModifyScript(data)
+  local requestId = data._requestId
+  local scriptPath = data.path
+  local newSource = data.source or data.newSource
+
+  if not scriptPath or not newSource then
+    if requestId then pushBridgeResult("modify_script_result", requestId, { error = "path and source required" }) end
+    return
+  end
+
+  local parts = string.split(scriptPath, ".")
+  local current = game
+  for _, part in ipairs(parts) do
+    local child = nil
+    pcall(function()
+      if current == game then
+        child = game:GetService(part)
+      else
+        child = current:FindFirstChild(part)
+      end
+    end)
+    if not child then
+      if requestId then pushBridgeResult("modify_script_result", requestId, { error = "Not found: " .. part }) end
+      return
+    end
+    current = child
+  end
+
+  if not current:IsA("LuaSourceContainer") then
+    if requestId then pushBridgeResult("modify_script_result", requestId, { error = "Not a script" }) end
+    return
+  end
+
+  -- Record undo waypoint
+  local rid = nil
+  pcall(function()
+    rid = ChangeHistoryService:TryBeginRecording("ForjeAI Modify Script")
+  end)
+
+  local ok, err = pcall(function()
+    current.Source = newSource
+  end)
+
+  if rid then
+    pcall(function()
+      ChangeHistoryService:FinishRecording(rid, Enum.FinishRecordingOperation.Commit)
+    end)
+  end
+
+  if ok then
+    notifyMessage("Modified: " .. scriptPath, "info")
+    if requestId then
+      pushBridgeResult("modify_script_result", requestId, {
+        path = scriptPath,
+        success = true,
+        lineCount = #string.split(newSource, "\n"),
+      })
+    end
+  else
+    if requestId then pushBridgeResult("modify_script_result", requestId, { error = tostring(err) }) end
+  end
+end
+
+-- Handle: batch_create (create multiple scripts/instances in one command)
+local function handleBatchCreate(data)
+  local requestId = data._requestId
+  local items = data.items
+  if not items or type(items) ~= "table" then
+    if requestId then pushBridgeResult("batch_create_result", requestId, { error = "items array required" }) end
+    return
+  end
+
+  local rid = nil
+  pcall(function()
+    rid = ChangeHistoryService:TryBeginRecording("ForjeAI Batch Create")
+  end)
+
+  local results = {}
+  for _, item in ipairs(items) do
+    local ok, err = pcall(function()
+      local className = item.type or item.className or "Script"
+      local parentPath = item.parent or "ServerScriptService"
+      local name = item.name or "ForjeScript"
+      local source = item.source or ""
+
+      -- Resolve parent
+      local parent = nil
+      pcall(function() parent = game:GetService(parentPath) end)
+      if not parent then parent = game:GetService("ServerScriptService") end
+
+      -- Remove existing with same name
+      local existing = parent:FindFirstChild(name)
+      if existing then existing:Destroy() end
+
+      local inst = Instance.new(className)
+      inst.Name = name
+      if inst:IsA("LuaSourceContainer") then
+        inst.Source = source
+      end
+      inst.Parent = parent
+      table.insert(results, { name = name, parent = parentPath, success = true })
+    end)
+
+    if not ok then
+      table.insert(results, { name = item.name or "?", error = tostring(err) })
+    end
+  end
+
+  if rid then
+    pcall(function()
+      ChangeHistoryService:FinishRecording(rid, Enum.FinishRecordingOperation.Commit)
+    end)
+  end
+
+  notifyMessage("Batch created " .. #results .. " items", "info")
+  if requestId then
+    pushBridgeResult("batch_create_result", requestId, { results = results, count = #results })
+  end
+end
+
 -- ============================================================
 -- Playtest / screenshot handlers
 --
@@ -2161,6 +2328,15 @@ local function applyChanges(changes)
 
       elseif changeType == "get_scripts" and data then
         handleGetScripts(data)
+
+      elseif changeType == "read_script" and data then
+        handleReadScript(data)
+
+      elseif changeType == "modify_script" and data then
+        handleModifyScript(data)
+
+      elseif changeType == "batch_create" and data then
+        handleBatchCreate(data)
 
       elseif changeType == "start_playtest" and data then
         handleStartPlaytest(data)

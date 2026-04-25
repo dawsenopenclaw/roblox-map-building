@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
   <!-- ForjeGames Studio Plugin v1.0.0 -->
-  <!-- Built by build-plugin.js on 2026-04-24T05:57:14.553Z -->
+  <!-- Built by build-plugin.js on 2026-04-25T01:36:49.308Z -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -97,6 +97,7 @@ local UI           = nil
 local Sync         = nil
 local AssetManager = nil
 local History      = nil
+local AutoUpdater  = nil
 
 local pluginRoot = script
 if pluginRoot then
@@ -105,12 +106,14 @@ if pluginRoot then
   local syncModule    = pluginRoot:FindFirstChild("Sync")
   local assetModule   = pluginRoot:FindFirstChild("AssetManager")
   local historyModule = pluginRoot:FindFirstChild("History")
+  local autoUpdModule = pluginRoot:FindFirstChild("AutoUpdater")
 
   if authModule    then Auth         = safeRequire(authModule)    end
   if uiModule      then UI           = safeRequire(uiModule)      end
   if syncModule    then Sync         = safeRequire(syncModule)     end
   if assetModule   then AssetManager = safeRequire(assetModule)   end
   if historyModule then History      = safeRequire(historyModule) end
+  if autoUpdModule then AutoUpdater  = safeRequire(autoUpdModule) end
 end
 
 -- ============================================================
@@ -566,6 +569,50 @@ local function init()
   -- If already authenticated on startup, reconnect
   if state.authenticated then
     onAuthenticated(state.authToken, state.sessionId)
+  end
+
+  -- ── Auto-updater: check for plugin updates on startup ────
+  if AutoUpdater then
+    local pluginVersion = "4.8.0"
+    pcall(function()
+      if Sync and Sync.PLUGIN_VERSION then
+        pluginVersion = Sync.PLUGIN_VERSION
+      end
+    end)
+
+    AutoUpdater.init({
+      pluginRef      = plugin,
+      currentVersion = pluginVersion,
+
+      onUpdateStatus = function(status, info)
+        info = info or {}
+
+        if status == "available" then
+          -- Show the update banner in the plugin UI
+          if uiRefs and uiRefs.showUpdateBanner then
+            uiRefs.showUpdateBanner({
+              latestVersion = info.latestVersion,
+              downloadUrl   = info.downloadUrl,
+              changelog     = info.changelog,
+              forceUpdate   = info.forceUpdate,
+            })
+          end
+
+          -- If forced, lock the UI
+          if info.forceUpdate then
+            applyStatusDisplay("disconnected")
+            if uiRefs and uiRefs.setForceUpdateLock then
+              uiRefs.setForceUpdateLock(true)
+            end
+          end
+
+        elseif status == "error" then
+          warn("[ForjeGames] Update check error: " .. tostring(info.message))
+
+        -- "checking" and "up_to_date" are silent
+        end
+      end,
+    })
   end
 end
 
@@ -1035,7 +1082,7 @@ function UI.build(widget, state, COLORS, pluginRef)
 
   local versionLabel = Instance.new("TextLabel")
   versionLabel.Name                  = "Version"
-  versionLabel.Text                  = "v4.7.0"
+  versionLabel.Text                  = "v4.8.0"
   versionLabel.Font                  = Enum.Font.Gotham
   versionLabel.TextSize              = 11
   versionLabel.TextColor3            = C.textDim
@@ -1628,13 +1675,13 @@ local Sync = {}
 -- direct-download vs Creator Store builds without hardcoding the string in
 -- two places. Store builds suffix this with "-store" at build time; the
 -- loadstring auto-enable logic in Plugin.lua:init() checks for that suffix.
-Sync.PLUGIN_VERSION = "4.7.0"
+Sync.PLUGIN_VERSION = "4.8.0"
 
 -- ============================================================
 -- Config
 -- ============================================================
 local BASE_URL           = "https://forjegames.com"
-local PLUGIN_VERSION     = "4.7.0"
+local PLUGIN_VERSION     = "4.8.0"
 local MIN_INTERVAL       = 5    -- seconds (was 2 — burned through Upstash free tier)
 local MAX_INTERVAL       = 30   -- seconds (backoff ceiling)
 local HEARTBEAT_INTERVAL = 30   -- seconds between keepalive POSTs
@@ -3263,6 +3310,173 @@ local function handleGetScripts(data)
   end
 end
 
+-- Handle: read_script (get source of a single script by path)
+local function handleReadScript(data)
+  local requestId = data._requestId
+  local scriptPath = data.path -- e.g. "ServerScriptService.GameManager"
+
+  if not scriptPath then
+    if requestId then pushBridgeResult("read_script_result", requestId, { error = "path required" }) end
+    return
+  end
+
+  -- Navigate path like "ServerScriptService.GameManager.SubModule"
+  local parts = string.split(scriptPath, ".")
+  local current = game
+  for _, part in ipairs(parts) do
+    local child = nil
+    pcall(function()
+      if current == game then
+        child = game:GetService(part)
+      else
+        child = current:FindFirstChild(part)
+      end
+    end)
+    if not child then
+      if requestId then pushBridgeResult("read_script_result", requestId, { error = "Not found: " .. part }) end
+      return
+    end
+    current = child
+  end
+
+  if not current:IsA("LuaSourceContainer") then
+    if requestId then pushBridgeResult("read_script_result", requestId, { error = "Not a script: " .. scriptPath }) end
+    return
+  end
+
+  local src = ""
+  pcall(function() src = current.Source end)
+  if requestId then
+    pushBridgeResult("read_script_result", requestId, {
+      path = scriptPath,
+      className = current.ClassName,
+      source = src,
+      lineCount = #string.split(src, "\n"),
+    })
+  end
+end
+
+-- Handle: modify_script (replace source of an existing script)
+local function handleModifyScript(data)
+  local requestId = data._requestId
+  local scriptPath = data.path
+  local newSource = data.source or data.newSource
+
+  if not scriptPath or not newSource then
+    if requestId then pushBridgeResult("modify_script_result", requestId, { error = "path and source required" }) end
+    return
+  end
+
+  local parts = string.split(scriptPath, ".")
+  local current = game
+  for _, part in ipairs(parts) do
+    local child = nil
+    pcall(function()
+      if current == game then
+        child = game:GetService(part)
+      else
+        child = current:FindFirstChild(part)
+      end
+    end)
+    if not child then
+      if requestId then pushBridgeResult("modify_script_result", requestId, { error = "Not found: " .. part }) end
+      return
+    end
+    current = child
+  end
+
+  if not current:IsA("LuaSourceContainer") then
+    if requestId then pushBridgeResult("modify_script_result", requestId, { error = "Not a script" }) end
+    return
+  end
+
+  -- Record undo waypoint
+  local rid = nil
+  pcall(function()
+    rid = ChangeHistoryService:TryBeginRecording("ForjeAI Modify Script")
+  end)
+
+  local ok, err = pcall(function()
+    current.Source = newSource
+  end)
+
+  if rid then
+    pcall(function()
+      ChangeHistoryService:FinishRecording(rid, Enum.FinishRecordingOperation.Commit)
+    end)
+  end
+
+  if ok then
+    notifyMessage("Modified: " .. scriptPath, "info")
+    if requestId then
+      pushBridgeResult("modify_script_result", requestId, {
+        path = scriptPath,
+        success = true,
+        lineCount = #string.split(newSource, "\n"),
+      })
+    end
+  else
+    if requestId then pushBridgeResult("modify_script_result", requestId, { error = tostring(err) }) end
+  end
+end
+
+-- Handle: batch_create (create multiple scripts/instances in one command)
+local function handleBatchCreate(data)
+  local requestId = data._requestId
+  local items = data.items
+  if not items or type(items) ~= "table" then
+    if requestId then pushBridgeResult("batch_create_result", requestId, { error = "items array required" }) end
+    return
+  end
+
+  local rid = nil
+  pcall(function()
+    rid = ChangeHistoryService:TryBeginRecording("ForjeAI Batch Create")
+  end)
+
+  local results = {}
+  for _, item in ipairs(items) do
+    local ok, err = pcall(function()
+      local className = item.type or item.className or "Script"
+      local parentPath = item.parent or "ServerScriptService"
+      local name = item.name or "ForjeScript"
+      local source = item.source or ""
+
+      -- Resolve parent
+      local parent = nil
+      pcall(function() parent = game:GetService(parentPath) end)
+      if not parent then parent = game:GetService("ServerScriptService") end
+
+      -- Remove existing with same name
+      local existing = parent:FindFirstChild(name)
+      if existing then existing:Destroy() end
+
+      local inst = Instance.new(className)
+      inst.Name = name
+      if inst:IsA("LuaSourceContainer") then
+        inst.Source = source
+      end
+      inst.Parent = parent
+      table.insert(results, { name = name, parent = parentPath, success = true })
+    end)
+
+    if not ok then
+      table.insert(results, { name = item.name or "?", error = tostring(err) })
+    end
+  end
+
+  if rid then
+    pcall(function()
+      ChangeHistoryService:FinishRecording(rid, Enum.FinishRecordingOperation.Commit)
+    end)
+  end
+
+  notifyMessage("Batch created " .. #results .. " items", "info")
+  if requestId then
+    pushBridgeResult("batch_create_result", requestId, { results = results, count = #results })
+  end
+end
+
 -- ============================================================
 -- Playtest / screenshot handlers
 --
@@ -3745,6 +3959,15 @@ local function applyChanges(changes)
 
       elseif changeType == "get_scripts" and data then
         handleGetScripts(data)
+
+      elseif changeType == "read_script" and data then
+        handleReadScript(data)
+
+      elseif changeType == "modify_script" and data then
+        handleModifyScript(data)
+
+      elseif changeType == "batch_create" and data then
+        handleBatchCreate(data)
 
       elseif changeType == "start_playtest" and data then
         handleStartPlaytest(data)
@@ -5069,6 +5292,240 @@ function History.cleanup()
 end
 
 return History
+]]></ProtectedString>
+        <bool name="Disabled">false</bool>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="RBX0007">
+      <Properties>
+        <string name="Name">AutoUpdater</string>
+        <ProtectedString name="Source"><![CDATA[--[[
+  ForjeGames Studio Plugin — AutoUpdater.lua
+  Checks for plugin updates and notifies the user.
+
+  IMPORTANT: Roblox Studio plugins run in a sandboxed Lua environment.
+  io, os, writefile, and filesystem access are NOT available.
+  The plugin CANNOT write files to disk.
+
+  Instead, this module:
+  1. Checks /api/studio/version for the latest plugin version
+  2. Compares against the current PLUGIN_VERSION
+  3. If an update is available, notifies the user via the plugin UI
+  4. The actual file replacement happens via:
+     - The website's one-click installer (showDirectoryPicker API)
+     - OR the user re-downloading from forjegames.com/download
+
+  The website remembers the user's Plugins folder (IndexedDB) so future
+  updates can be applied with a single click from the browser.
+--]]
+
+local HttpService = game:GetService("HttpService")
+
+local AutoUpdater = {}
+
+-- ============================================================
+-- Config
+-- ============================================================
+local BASE_URL = "https://forjegames.com"
+local CHECK_INTERVAL = 300  -- seconds between update checks (5 min)
+
+-- ============================================================
+-- Internal state
+-- ============================================================
+local _pluginRef       = nil
+local _currentVersion  = "0.0.0"
+local _latestVersion   = nil
+local _downloadUrl     = nil
+local _changelog       = nil
+local _forceUpdate     = false
+local _updateReady     = false
+local _onUpdateStatus  = nil  -- callback: fn(status, info)
+local _lastCheck       = 0
+
+-- ============================================================
+-- Semver comparison: returns true if a < b
+-- ============================================================
+local function semverLt(a, b)
+  local function parse(v)
+    local parts = {}
+    for s in tostring(v):gmatch("(%d+)") do
+      table.insert(parts, tonumber(s) or 0)
+    end
+    while #parts < 3 do table.insert(parts, 0) end
+    return parts
+  end
+
+  local pa, pb = parse(a), parse(b)
+  for i = 1, 3 do
+    if pa[i] ~= pb[i] then return pa[i] < pb[i] end
+  end
+  return false
+end
+
+-- ============================================================
+-- Resolve base URL (supports dev override)
+-- ============================================================
+local function resolveBaseUrl()
+  local devUrl = nil
+  pcall(function()
+    if _pluginRef then
+      devUrl = _pluginRef:GetSetting("ForjeGames_DevUrl")
+    end
+  end)
+  if devUrl and type(devUrl) == "string" and #devUrl > 0 then
+    return devUrl
+  end
+  return BASE_URL
+end
+
+-- ============================================================
+-- Check for updates via /api/studio/version
+-- ============================================================
+function AutoUpdater.checkForUpdate()
+  local url = resolveBaseUrl() .. "/api/studio/version?pluginVer=" .. _currentVersion
+
+  local ok, result = pcall(function()
+    return HttpService:RequestAsync({
+      Url     = url,
+      Method  = "GET",
+      Headers = { ["Content-Type"] = "application/json" },
+    })
+  end)
+
+  if not ok or not result then
+    return false, "Network error checking for updates"
+  end
+
+  if result.StatusCode ~= 200 then
+    return false, "Server returned " .. tostring(result.StatusCode)
+  end
+
+  local parseOk, data = pcall(function()
+    return HttpService:JSONDecode(result.Body)
+  end)
+
+  if not parseOk or not data then
+    return false, "Failed to parse version response"
+  end
+
+  _latestVersion = data.version
+  _downloadUrl   = data.downloadUrl
+  _changelog     = data.changelog or ""
+  _forceUpdate   = data.forceUpdate == true
+
+  if semverLt(_currentVersion, _latestVersion) then
+    _updateReady = true
+    return true, {
+      currentVersion = _currentVersion,
+      latestVersion  = _latestVersion,
+      downloadUrl    = _downloadUrl,
+      changelog      = _changelog,
+      forceUpdate    = _forceUpdate,
+    }
+  end
+
+  _updateReady = false
+  return false, "Already up to date"
+end
+
+-- ============================================================
+-- Initialize the auto-updater
+-- opts:
+--   pluginRef        Plugin object
+--   currentVersion   string (e.g. "4.8.0")
+--   onUpdateStatus   fn(status, info)
+--     status: "checking"|"available"|"up_to_date"|"error"
+-- ============================================================
+function AutoUpdater.init(opts)
+  _pluginRef       = opts.pluginRef
+  _currentVersion  = opts.currentVersion or "0.0.0"
+  _onUpdateStatus  = opts.onUpdateStatus
+
+  -- Check for updates after plugin fully initializes
+  task.spawn(function()
+    task.wait(3)
+
+    if _onUpdateStatus then
+      _onUpdateStatus("checking", { currentVersion = _currentVersion })
+    end
+
+    local hasUpdate, info = AutoUpdater.checkForUpdate()
+
+    if hasUpdate then
+      if _onUpdateStatus then
+        _onUpdateStatus("available", info)
+      end
+
+      -- Print to Output so devs always see it
+      print("[ForjeGames] Update available: v" .. tostring(info.latestVersion))
+      print("[ForjeGames] Download: " .. tostring(info.downloadUrl or "forjegames.com/download"))
+      if info.changelog and #info.changelog > 0 then
+        print("[ForjeGames] What's new: " .. info.changelog)
+      end
+      if info.forceUpdate then
+        warn("[ForjeGames] This update is REQUIRED. Please update to continue using ForjeGames.")
+      end
+    else
+      if _onUpdateStatus then
+        _onUpdateStatus("up_to_date", { currentVersion = _currentVersion })
+      end
+    end
+
+    _lastCheck = tick()
+
+    -- Periodic re-check loop
+    while true do
+      task.wait(CHECK_INTERVAL)
+      if not _updateReady then
+        local newUpdate, newInfo = AutoUpdater.checkForUpdate()
+        if newUpdate then
+          if _onUpdateStatus then
+            _onUpdateStatus("available", newInfo)
+          end
+          print("[ForjeGames] Update available: v" .. tostring(newInfo.latestVersion))
+        end
+        _lastCheck = tick()
+      end
+    end
+  end)
+end
+
+-- ============================================================
+-- Public: get current state
+-- ============================================================
+function AutoUpdater.getState()
+  return {
+    currentVersion = _currentVersion,
+    latestVersion  = _latestVersion,
+    updateReady    = _updateReady,
+    forceUpdate    = _forceUpdate,
+    lastCheck      = _lastCheck,
+  }
+end
+
+-- ============================================================
+-- Public: trigger manual update check
+-- ============================================================
+function AutoUpdater.triggerCheck()
+  task.spawn(function()
+    if _onUpdateStatus then
+      _onUpdateStatus("checking", { currentVersion = _currentVersion })
+    end
+
+    local hasUpdate, info = AutoUpdater.checkForUpdate()
+    if hasUpdate then
+      if _onUpdateStatus then
+        _onUpdateStatus("available", info)
+      end
+    else
+      if _onUpdateStatus then
+        _onUpdateStatus("up_to_date", { currentVersion = _currentVersion })
+      end
+    end
+  end)
+end
+
+return AutoUpdater
 ]]></ProtectedString>
         <bool name="Disabled">false</bool>
       </Properties>
