@@ -4822,6 +4822,48 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     let model = 'gemini-2.5-flash'
     let finalVerificationScore = 0
 
+    // ── GAME DEVELOPMENT PLANNER: ask questions before building full games ──
+    // When user says "build me a tycoon game", don't immediately build —
+    // ask questions first, then create a plan, THEN build on approval.
+    const isFullGameReqEarly = /\b(full game|complete game|make me a .+ game|build me a .+ game|create a .+ game|entire game|whole game)\b/i.test(message)
+    if (isFullGameReqEarly && !message.includes('[APPROVED_PLAN]') && !(/\bjust build\b|\bskip\b|\bgo ahead\b/i.test(message))) {
+      try {
+        const { getQuestionsForPrompt, formatQuestionsAsResponse, wantsToSkipPlanning, generateDesignDoc, formatDesignDocForUser, isPlanningResponse } = await import('@/lib/ai/game-dev-planner')
+
+        // Check if user is answering planning questions
+        if (isPlanningResponse(message, history)) {
+          // User answered questions — generate the design doc
+          const { genre, answeredFromPrompt } = getQuestionsForPrompt(message)
+          const allAnswers = { ...answeredFromPrompt }
+          // Extract answers from current message
+          const answers = message.split(/[,.\n]/).map(s => s.trim()).filter(Boolean)
+          for (const a of answers) {
+            if (/factory|restaurant|theme|mining|farm/i.test(a)) allAnswers.subtype = a
+            if (/coin|gem|buck|cash/i.test(a)) allAnswers.currency = a
+            if (/yes|rebirth|prestige/i.test(a)) allAnswers.rebirth = 'yes'
+            if (/no rebirth/i.test(a)) allAnswers.rebirth = 'no'
+            if (/pet/i.test(a)) allAnswers.pets = 'yes'
+          }
+          const doc = generateDesignDoc(genre, allAnswers, message)
+          conversationText = formatDesignDocForUser(doc)
+          model = 'game-dev-planner'
+          return { conversationText, luauCode: null, executedInStudio: false, suggestions: ['Build it!', 'Change the zones', 'Add more systems'], model }
+        }
+
+        if (!wantsToSkipPlanning(message)) {
+          // First contact — ask questions
+          const { genre, questions, answeredFromPrompt } = getQuestionsForPrompt(message)
+          if (questions.length > 0) {
+            conversationText = formatQuestionsAsResponse(genre, questions, answeredFromPrompt)
+            model = 'game-dev-planner'
+            return { conversationText, luauCode: null, executedInStudio: false, suggestions: ['Just build it with defaults', 'Tell me more about what you want'], model }
+          }
+        }
+      } catch (planErr) {
+        console.warn('[GameDevPlanner] Failed, falling through to direct build:', planErr instanceof Error ? planErr.message : planErr)
+      }
+    }
+
     // ── STAGED PIPELINE: enforced multi-step decomposition for complex requests ──
     const isComplexBuild = !isScriptIntent && (
       /\b(game|map|city|village|town|world|scene|island|station|course|track|tycoon|simulator|obby|rpg|arena|kingdom|castle|mansion|hospital|school|restaurant|factory|farm|theme.?park|complete|full|entire|whole)\b/i.test(message)
