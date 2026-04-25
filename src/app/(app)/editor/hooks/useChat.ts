@@ -206,43 +206,43 @@ export const MODELS: ModelOption[] = [
     color: '#D4AF37',
     badge: 'DEFAULT',
     free: true,
-    description: 'Smart routing — picks the best available model',
+    description: 'Smart routing — picks the best AI for your request',
   },
   {
     id: 'claude-sonnet-4',
-    label: 'Claude Sonnet 4',
-    provider: 'Anthropic',
+    label: 'Forje Pro',
+    provider: 'Forje',
     color: '#CC785C',
     badge: 'PRO',
     premium: true,
-    description: 'Best quality — complex builds & reasoning',
+    description: 'Best quality — complex builds and reasoning',
   },
   {
     id: 'gpt-4o',
-    label: 'GPT-4o',
-    provider: 'OpenAI',
+    label: 'Forje Precision',
+    provider: 'Forje',
     color: '#10A37F',
     badge: 'PRO',
     premium: true,
-    description: 'Fast & capable — great for code generation',
+    description: 'Fast and capable — great for code generation',
   },
   {
     id: 'gemini-flash',
-    label: 'Gemini Flash',
-    provider: 'Google',
+    label: 'Forje Flash',
+    provider: 'Forje',
     color: '#4285F4',
     badge: 'FREE',
     free: true,
-    description: 'Free tier — good for simple builds',
+    description: 'Quick builds — good for most requests',
   },
   {
     id: 'groq-llama',
-    label: 'Groq Llama',
-    provider: 'Groq',
+    label: 'Forje Turbo',
+    provider: 'Forje',
     color: '#F55036',
     badge: 'FREE',
     free: true,
-    description: 'Free tier — ultra-fast responses',
+    description: 'Ultra-fast responses',
   },
 ]
 
@@ -1203,7 +1203,7 @@ export function useChat(options: UseChatOptions = {}) {
 
             // If Nano Banana failed, fall back to FAL
             if (aiMode === 'image' && !specialRes.ok && apiUrl === '/api/ai/image-nano') {
-              console.log('[useChat] Nano Banana failed, falling back to FAL')
+              // Fallback to secondary image provider
               const falRes = await fetch('/api/ai/image', {
                 method: 'POST',
                 headers,

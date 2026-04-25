@@ -3659,7 +3659,8 @@ async function freeModelTwoPass(
   buildPartCount?: number
 } | null> {
   const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace'].includes(intent)
-  const modelNames = ['gemini-2.5-flash', 'llama-3.3-70b', 'openrouter/gemini-2.5-flash']
+  // Opaque model names — don't leak provider details to the client
+  const modelNames = ['forje-flash', 'forje-turbo', 'forje-pro']
 
   // Non-build intents: conversation only (no code generation)
   if (!isBuildIntent) {

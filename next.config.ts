@@ -55,7 +55,8 @@ const cspDirectives = [
   // Images: self + Clerk avatars + Roblox CDN + S3/R2 + Meshy thumbnails
   "img-src 'self' data: blob: https://img.clerk.com https://images.clerk.dev https://*.rbxcdn.com https://thumbnails.roblox.com https://www.roblox.com https://*.amazonaws.com https://*.r2.dev https://assets.meshy.ai https://randomuser.me",
   // Connections: self + API calls to AI providers, payments, auth, analytics + dev HMR
-  `connect-src 'self' https://clerk.forjegames.com https://*.clerk.accounts.dev https://clerk-telemetry.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.groq.com https://*.fal.run https://api.meshy.ai https://api.stripe.com https://*.upstash.io https://*.sentry.io https://*.ingest.sentry.io https://thumbnails.roblox.com https://users.roblox.com wss://*.clerk.accounts.dev https://app.posthog.com https://us.i.posthog.com https://eu.i.posthog.com${isDev ? ' ws://localhost:3000 ws://localhost:3001' : ''}`,
+  // AI provider URLs removed from CSP — all AI calls go through our /api/* routes (server-side only)
+  `connect-src 'self' https://clerk.forjegames.com https://*.clerk.accounts.dev https://clerk-telemetry.com https://*.fal.run https://api.stripe.com https://*.upstash.io https://*.sentry.io https://*.ingest.sentry.io https://thumbnails.roblox.com https://users.roblox.com wss://*.clerk.accounts.dev https://app.posthog.com https://us.i.posthog.com https://eu.i.posthog.com${isDev ? ' ws://localhost:3000 ws://localhost:3001' : ''}`,
   // Frames: Stripe only (for Stripe Elements / payment UI)
   "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
   // Workers: none
@@ -73,6 +74,8 @@ const cspDirectives = [
 ].join('; ')
 
 const nextConfig: NextConfig = {
+  // Don't leak "Next.js" in response headers
+  poweredByHeader: false,
   async redirects() {
     return []
   },
