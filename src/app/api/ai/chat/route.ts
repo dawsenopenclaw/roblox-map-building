@@ -5003,6 +5003,16 @@ ${effectiveInstruction}`
       try {
         executedInStudio = await sendCodeToStudio(sessionId, luauCode)
 
+        // Build diagnostic: if code was generated but Studio didn't execute it, tell user why
+        if (!executedInStudio && luauCode) {
+          const session = await getSession(sessionId)
+          if (!session) {
+            conversationText += '\n\n**Studio not connected.** Open the ForjeGames plugin in Studio and enter your connection code from the editor.'
+          } else {
+            conversationText += '\n\n**Code was generated but Studio didn\'t confirm execution.** Check:\n- Is Studio open with the ForjeGames plugin active?\n- Go to Game Settings > Security > Allow HTTP Requests (must be ON)\n- Check the Output panel (View > Output) for error messages\n- Try clicking "Send to Studio" to retry'
+          }
+        }
+
         // Self-healing: check for runtime errors after deployment and auto-fix
         if (executedInStudio) {
           // Wait 3 seconds for any runtime errors to surface in Studio console
