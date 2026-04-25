@@ -89,10 +89,30 @@ function IconSignOut() {
 
 // ─── Nav items ───────────────────────────────────────────────────────────────
 
+function IconMic() {
+  return (
+    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" />
+    </svg>
+  )
+}
+function IconImage() {
+  return (
+    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={1.75} />
+      <circle cx="8.5" cy="8.5" r="1.5" strokeWidth={1.75} />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M21 15l-5-5L5 21" />
+    </svg>
+  )
+}
+
 const NAV_MAIN = [
   { href: '/dashboard',    label: 'Dashboard',    Icon: IconDashboard },
   { href: '/editor',       label: 'Editor',       Icon: IconEditor },
   { href: '/projects',     label: 'Projects',     Icon: IconProjects },
+  { href: '/voice',        label: 'Voice Build',  Icon: IconMic },
+  { href: '/image-to-map', label: 'Image to Map', Icon: IconImage },
   // Marketplace hidden — re-releasing later
   // { href: '/marketplace',  label: 'Marketplace',  Icon: IconMarketplace },
 ]

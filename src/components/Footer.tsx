@@ -14,6 +14,7 @@ const PRODUCT_LINKS = [
 const RESOURCES_LINKS = [
   { href: '/docs', label: 'Docs' },
   { href: '/docs/getting-started', label: 'Getting Started' },
+  { href: '/prompt-guide', label: 'Prompt Guide' },
   { href: '/blog', label: 'Blog' },
   { href: '/help', label: 'Help Center' },
   { href: '/changelog', label: 'Changelog' },

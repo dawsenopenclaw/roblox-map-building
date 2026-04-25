@@ -23,7 +23,6 @@ export default function SignUpClient() {
         routing="path"
         path="/sign-up"
         signInUrl="/sign-in"
-        forceRedirectUrl={redirectUrl}
         fallbackRedirectUrl={redirectUrl ?? '/onboarding/age-gate'}
       />
     </div>

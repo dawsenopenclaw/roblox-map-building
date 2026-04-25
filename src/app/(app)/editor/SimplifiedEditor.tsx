@@ -90,6 +90,17 @@ function RightSidebar({
         </svg>
       </button>
 
+      {/* Mobile backdrop — closes sidebar on tap */}
+      {open && isMobile && (
+        <div
+          onClick={onToggle}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 49,
+            background: 'rgba(0,0,0,0.5)',
+          }}
+        />
+      )}
+
       {/* Sidebar panel */}
       {open && (
         <div
