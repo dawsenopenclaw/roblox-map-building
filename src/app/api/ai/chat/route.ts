@@ -56,6 +56,12 @@ import { findObjectBlueprints, findScriptPatterns, formatBlueprintsForPrompt, fo
 import { recordToEli } from '@/lib/eli/build-intelligence'
 import { formatGraphPrompt, recordBuildSuccess, detectComponentsInCode } from '@/lib/eli/codegraph'
 import { runStagedPipeline } from '@/lib/ai/staged-pipeline'
+import {
+  shopGui, inventoryGui, healthBarGui, hudGui, settingsGui,
+  questLogGui, leaderboardGui, dialogGui, notificationGui,
+  loadingScreenGui, tradeGui, petInventoryGui, rebirthGui,
+  dailyRewardGui, miniMapGui,
+} from '@/lib/ai/gui-templates'
 import { formatAdditiveRetryPrompt } from '@/lib/ai/build-blueprint'
 import { detectRecommendations, recordRecommendation, getTopRecommendations, formatRecommendations } from '@/lib/ai/recommendation-tracker'
 import { buildRAGSystemPrompt } from '@/lib/ai/rag'
@@ -3059,7 +3065,7 @@ async function callGemini(
   systemPrompt: string,
   userMessage: string,
   history: Array<{ role: string; content: string }>,
-  maxTokens: number = 1024,
+  maxTokens: number = 8192,
 ): Promise<string | null> {
   // Try up to 3 different keys from the rotation pool
   for (let keyAttempt = 0; keyAttempt < 3; keyAttempt++) {
@@ -3125,7 +3131,7 @@ async function callGroq(
   systemPrompt: string,
   userMessage: string,
   history: Array<{ role: string; content: string }>,
-  maxTokens: number = 1024,
+  maxTokens: number = 8192,
 ): Promise<string | null> {
   const groqKey = getNextKey('GROQ') || process.env.GROQ_API_KEY
   if (!groqKey) return null
@@ -3189,7 +3195,7 @@ async function callOpenRouterChat(
   systemPrompt: string,
   userMessage: string,
   history: Array<{ role: string; content: string }>,
-  maxTokens: number = 1024,
+  maxTokens: number = 8192,
   model: string = 'google/gemini-2.5-flash-preview',
 ): Promise<string | null> {
   const key = process.env.OPENROUTER_API_KEY
@@ -3267,7 +3273,7 @@ async function callOpenAI(
   systemPrompt: string,
   userMessage: string,
   history: Array<{ role: string; content: string }>,
-  maxTokens: number = 2048,
+  maxTokens: number = 8192,
   model: OpenAIModelId = 'gpt-4o',
 ): Promise<{ text: string; tokensUsed: number } | null> {
   const openaiKey = process.env.OPENAI_API_KEY
@@ -4763,19 +4769,43 @@ USE THIS DATA:
         if (/\b(animat|emote|dance|wave|idle anim|walk anim)\b/.test(lower))
           return animationSystem({ animationName: 'Custom', animId: 'rbxassetid://0', speed: 1, looping: false, priority: 'Action' })
 
-        // ── UI/GUI templates (inline — generate complete ScreenGui systems) ──
+        // ── UI/GUI templates (15 premium templates from gui-templates.ts) ──
         if (/\b(shop|store|buy|purchase|item shop|shop ui|shop gui|shop menu|shop screen|shop system)\b/.test(lower))
-          return SHOP_UI_TEMPLATE
+          return shopGui()
+        if (/\b(inventory|backpack|items|slots|equip|bag|storage)\b/.test(lower))
+          return inventoryGui()
+        if (/\b(health ?bar|hp bar|stamina bar)\b/.test(lower))
+          return healthBarGui()
+        if (/\b(hud|heads?.?up|game ui|player ui|stats display|coin display)\b/.test(lower))
+          return hudGui()
         if (/\b(settings|options|config|preferences|settings ui|settings menu|settings screen)\b/.test(lower))
-          return SETTINGS_UI_TEMPLATE
-        if (/\b(hud|health ?bar|stamina|mana|energy|status|heads?.?up|game ui|player ui)\b/.test(lower))
-          return HUD_UI_TEMPLATE
+          return settingsGui()
+        if (/\b(quest|mission|objective|task log|quest log)\b/.test(lower))
+          return questLogGui()
+        if (/\b(leaderboard|ranking|top players|scoreboard)\b/.test(lower))
+          return leaderboardGui()
+        if (/\b(dialog|dialogue|npc.*talk|conversation|talk.*npc)\b/.test(lower))
+          return dialogGui()
+        if (/\b(notification|toast|alert|popup message)\b/.test(lower))
+          return notificationGui()
+        if (/\b(loading|splash|loading screen|intro screen)\b/.test(lower))
+          return loadingScreenGui()
+        if (/\b(trade|trading|exchange|swap items)\b/.test(lower))
+          return tradeGui()
+        if (/\b(pet|egg|hatch|pet inventory|pet collection)\b/.test(lower))
+          return petInventoryGui()
+        if (/\b(rebirth|prestige|reset progress|ascend)\b/.test(lower))
+          return rebirthGui()
+        if (/\b(daily|reward|login bonus|daily reward|streak)\b/.test(lower))
+          return dailyRewardGui()
+        if (/\b(minimap|mini map|radar|map overlay)\b/.test(lower))
+          return miniMapGui()
         if (/\b(character|customiz|avatar|outfit|appearance|wardrobe|skin)\b/.test(lower))
           return CHARACTER_CUSTOMIZATION_TEMPLATE
         if (/\b(select|selector|choose|pick|car select|vehicle select|class select|team select)\b/.test(lower))
           return SELECTION_UI_TEMPLATE
         if (/\b(gui|ui|screen|menu|interface|panel|popup|modal)\b/.test(lower))
-          return SHOP_UI_TEMPLATE // Default UI reference for generic GUI requests
+          return shopGui() // Default UI reference for generic GUI requests
 
       } catch { /* template params mismatch — skip */ }
       return null
@@ -5970,7 +6000,7 @@ async function callAnthropicChat(
   systemPrompt: string,
   userMessage: string,
   history: Array<{ role: string; content: string }>,
-  maxTokens: number = 4096,
+  maxTokens: number = 8192,
 ): Promise<string | null> {
   const client = getAnthropicClient()
   if (!client) return null
@@ -12909,7 +12939,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       message,
     )
 
-    const groqResult = await callGroq(sysPromptGroq, message, historyForGroq, 4096)
+    const groqResult = await callGroq(sysPromptGroq, message, historyForGroq, 16384)
     if (groqResult) {
       const luau = extractLuauCode(groqResult)
       let executedInStudio = false
@@ -13826,7 +13856,7 @@ Use P() helper. Position relative to sp (camera). 20-40 parts. Muted colors.
 Real proportions. 2-3 PointLights. Decompose into real components.
 Set m.PrimaryPart to the base part. No explanation.`,
       [],
-      8192,
+      16384,
     )
     if (lastChanceCode) {
       let luau = extractLuauCode(lastChanceCode)

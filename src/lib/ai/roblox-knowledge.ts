@@ -1531,6 +1531,100 @@ end`,
       'Roblox games use 3-5 distinct bright colors per zone, not gradual shading',
     ],
   },
+  {
+    name: 'ScreenGui Best Practices',
+    keywords: ['gui', 'ui', 'screen', 'menu', 'shop', 'inventory', 'hud', 'interface', 'panel'],
+    snippet: `-- ScreenGui setup (LocalScript in StarterGui)
+local sg = Instance.new("ScreenGui")
+sg.Name = "MyGui"
+sg.ResetOnSpawn = false  -- CRITICAL: keeps GUI after respawn
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+sg.Parent = player:WaitForChild("PlayerGui")
+
+-- Dark theme frame with polish
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0.5, 0, 0.6, 0)
+frame.Position = UDim2.new(0.25, 0, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(15, 18, 30)
+frame.Parent = sg
+-- ALWAYS add: UICorner, UIStroke, UIPadding
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+local stroke = Instance.new("UIStroke", frame) stroke.Color = Color3.fromRGB(50, 50, 70) stroke.Thickness = 1
+-- Use UDim2 SCALE (not offset) for responsive sizing`,
+    pitfalls: [
+      'Forgetting ResetOnSpawn=false — GUI disappears on death',
+      'Using UDim2.fromOffset for layout — breaks on different screen sizes',
+      'Not adding UICorner — looks like a dev placeholder, not a real game',
+      'Parenting to StarterGui instead of PlayerGui in LocalScript context',
+    ],
+  },
+  {
+    name: 'TweenService UI Animations',
+    keywords: ['tween', 'animate', 'animation', 'slide', 'fade', 'transition', 'open', 'close', 'hover'],
+    snippet: `-- UI animation patterns (LocalScript)
+local TweenService = game:GetService("TweenService")
+
+-- Open animation: scale up from center
+frame.Size = UDim2.new(0, 0, 0, 0)
+frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+  Size = UDim2.new(0.5, 0, 0.6, 0),
+  Position = UDim2.new(0.25, 0, 0.2, 0)
+}):Play()
+
+-- Close animation: scale down + destroy
+TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+  Size = UDim2.new(0, 0, 0, 0)
+}):Play()
+task.wait(0.25) screenGui:Destroy()
+
+-- Button hover effect
+btn.MouseEnter:Connect(function()
+  TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = hoverColor}):Play()
+end)
+btn.MouseLeave:Connect(function()
+  TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = normalColor}):Play()
+end)`,
+    pitfalls: [
+      'Using task.wait without tweening — creates jarring instant transitions',
+      'Not using Back easing for open/close — feels flat',
+      'Animating Size without also animating Position — frame slides off-center',
+      'Forgetting to destroy GUI after close animation completes',
+    ],
+  },
+  {
+    name: 'ScrollingFrame Setup',
+    keywords: ['scroll', 'scrolling', 'list', 'grid', 'long content', 'scrollbar', 'canvas'],
+    snippet: `-- ScrollingFrame with auto-sizing canvas
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, 0, 1, -50) -- leave room for header
+scroll.Position = UDim2.new(0, 0, 0, 48)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 4
+scroll.ScrollBarImageColor3 = Color3.fromRGB(160, 130, 40)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y  -- auto-expand vertically
+scroll.Parent = parentFrame
+
+-- For list layout (vertical stack)
+local list = Instance.new("UIListLayout")
+list.Padding = UDim.new(0, 8)
+list.SortOrder = Enum.SortOrder.LayoutOrder
+list.Parent = scroll
+
+-- For grid layout (item cards)
+local grid = Instance.new("UIGridLayout")
+grid.CellSize = UDim2.new(0.25, -6, 0, 100)  -- 4 columns
+grid.CellPadding = UDim2.new(0, 6, 0, 6)
+grid.SortOrder = Enum.SortOrder.LayoutOrder
+grid.Parent = scroll`,
+    pitfalls: [
+      'Setting CanvasSize manually instead of using AutomaticCanvasSize',
+      'Forgetting SortOrder on layout — children appear in creation order which may be random',
+      'Using UIGridLayout CellSize with pixels instead of scale — breaks on resize',
+      'Not setting ScrollBarImageColor3 — default white scrollbar looks out of place in dark themes',
+    ],
+  },
 ]
 
 // ── Public API ───────────────────────────────────────────────────────────────
