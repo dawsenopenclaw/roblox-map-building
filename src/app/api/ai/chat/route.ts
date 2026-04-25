@@ -10801,8 +10801,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const rl = await aiRateLimit(userId)
         if (!rl.allowed) {
           return NextResponse.json(
-            { error: 'Too many requests. Please wait before sending another message.' },
-            { status: 429, headers: rateLimitHeaders(rl) },
+            {
+              error: 'You\'ve hit your request limit. Upgrade your plan for more generations, or wait a bit and try again.',
+              code: 'RATE_LIMITED',
+              upgradeUrl: '/pricing',
+              retryAfterSeconds: Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000)),
+            },
+            { status: 429, headers: { ...rateLimitHeaders(rl), 'Retry-After': String(Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000))) } },
           )
         }
       } catch {
@@ -10814,7 +10819,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const guard = await checkSpendingGuard(userId)
         if (!guard.allowed) {
           return NextResponse.json(
-            { error: guard.reason || 'Generation limit reached. Please try again later.' },
+            {
+              error: guard.reason || 'You\'ve used all your tokens. Purchase more tokens to keep building.',
+              code: 'SPENDING_LIMIT',
+              upgradeUrl: '/tokens',
+              tokensUrl: '/tokens',
+            },
             { status: 429 },
           )
         }

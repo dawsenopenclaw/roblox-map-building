@@ -1870,6 +1870,31 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
           return
         }
 
+        if (chatRes.status === 429) {
+          // Rate limited or spending cap — show actionable upgrade message
+          let errorMsg = 'You\'ve hit your limit. Try again in a minute.'
+          let upgradeUrl = '/pricing'
+          try {
+            const errBody = await chatRes.clone().json() as { error?: string; code?: string; upgradeUrl?: string; tokensUrl?: string; retryAfterSeconds?: number }
+            if (errBody.error) errorMsg = errBody.error
+            if (errBody.tokensUrl) upgradeUrl = errBody.tokensUrl
+            else if (errBody.upgradeUrl) upgradeUrl = errBody.upgradeUrl
+          } catch { /* not JSON */ }
+          setMessagesSync((prev) => [
+            ...prev.filter((m) => m.id !== statusMsgId),
+            {
+              id: uid(),
+              role: 'assistant' as const,
+              content: `${errorMsg}\n\n[Get more tokens](${upgradeUrl})`,
+              timestamp: new Date(),
+              model: selectedModel,
+            },
+          ])
+          setLoading(false)
+          setStreaming(false)
+          return
+        }
+
         if (!chatRes.ok) throw new Error(`API error ${chatRes.status}`)
 
         // ── Streaming response path ───────────────────────────────────────────
@@ -2293,8 +2318,10 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
           friendlyError = 'Request timed out — the AI is under heavy load. Try again or try a simpler prompt.'
         } else if (errMsg.includes('401') || errMsg.includes('403') || errMsg.toLowerCase().includes('unauthorized') || errMsg.toLowerCase().includes('forbidden')) {
           friendlyError = 'Please sign in to continue.'
+        } else if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate') || errMsg.toLowerCase().includes('too many')) {
+          friendlyError = 'Too many requests — wait a moment and try again. [Upgrade for more →](/pricing)'
         } else if (errMsg.includes('402') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('token limit') || errMsg.toLowerCase().includes('insufficient_tokens')) {
-          friendlyError = 'Token limit reached — upgrade your plan to continue.'
+          friendlyError = 'Token limit reached. [Get more tokens →](/tokens)'
         } else if (errMsg.includes('API error 5') || errMsg.includes('500') || errMsg.includes('502') || errMsg.includes('503') || errMsg.includes('504')) {
           friendlyError = 'Server error — try again in a moment.'
         } else if (errMsg.toLowerCase().includes('fetch') || errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('load')) {

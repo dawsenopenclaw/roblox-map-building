@@ -1329,8 +1329,8 @@ function MarkdownText({ text }: { text: string }) {
 function formatInline(text: string): React.ReactNode {
   // Split on inline patterns and rebuild with styled spans
   const parts: React.ReactNode[] = []
-  // Process: `code`, **bold**, *italic*
-  const re = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g
+  // Process: [link](url), `code`, **bold**, *italic*
+  const re = /(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g
   let last = 0
   let key = 0
   let m: RegExpExecArray | null
@@ -1338,7 +1338,24 @@ function formatInline(text: string): React.ReactNode {
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index))
     const match = m[0]
-    if (match.startsWith('`')) {
+    if (match.startsWith('[')) {
+      // Markdown link: [text](url)
+      const linkMatch = match.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+      if (linkMatch) {
+        parts.push(
+          <a key={key++} href={linkMatch[2]} style={{
+            color: '#D4AF37',
+            textDecoration: 'underline',
+            textUnderlineOffset: 3,
+            fontWeight: 600,
+          }}>
+            {linkMatch[1]}
+          </a>
+        )
+      } else {
+        parts.push(match)
+      }
+    } else if (match.startsWith('`')) {
       parts.push(
         <code key={key++} style={{
           background: 'rgba(212,175,55,0.1)',
