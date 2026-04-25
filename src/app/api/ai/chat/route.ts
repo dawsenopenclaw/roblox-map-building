@@ -4691,6 +4691,38 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
           .trim()
       }
 
+      // AUTO-RETRY: if build/script intent but AI returned text without code, retry once
+      // with a stricter prompt that demands only code output
+      if (!luauCode && (intent === 'build' || isScriptIntent)) {
+        console.warn('[SinglePass] No code block found in response — retrying with strict code-only prompt')
+        const strictRetry = await raceNonNull(
+          callGroq(
+            isScriptIntent
+              ? `You are a Roblox Luau script generator. Output ONLY a \`\`\`lua code block. No text before or after. No bullet points. No descriptions. JUST CODE.`
+              : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. No text before or after. No bullet points. No descriptions. JUST CODE. Use Instance.new("Part") for objects. Set Anchored=true, Material, Color3, Size, Position on every part. Include ChangeHistoryService boilerplate. Minimum 30 parts.`,
+            effectiveInstruction, history.slice(-2), 16384,
+          ),
+          callGemini(
+            isScriptIntent
+              ? `You are a Roblox Luau script generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE.`
+              : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE. Use Instance.new("Part"). Include ChangeHistoryService boilerplate. Minimum 30 parts.`,
+            effectiveInstruction, history.slice(-2), 16384,
+          ),
+        )
+        if (strictRetry) {
+          const retryCode = extractLuauCode(strictRetry.result)
+          if (retryCode) {
+            luauCode = retryCode
+            model = modelNames[strictRetry.index] + ' (retry)'
+            console.log('[SinglePass] Strict retry produced code:', retryCode.length, 'chars')
+            // Use the original conversation text from the first attempt
+            if (!conversationText || conversationText.length < 20) {
+              conversationText = `Here's what I'm building for "${message}". Check Studio!`
+            }
+          }
+        }
+      }
+
       // Extract conversation text — everything BEFORE the first ```lua block
       const codeBlockStart = fullResponse.indexOf('```lua')
       if (codeBlockStart > 0) {
