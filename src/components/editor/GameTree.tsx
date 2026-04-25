@@ -31,6 +31,7 @@ interface ApiGameState {
 interface GameTreeProps {
   onSelect?: (node: GameTreeNode) => void
   className?: string
+  sessionId?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -280,7 +281,7 @@ function TreeNode({
 // ---------------------------------------------------------------------------
 // Main GameTree component
 // ---------------------------------------------------------------------------
-export function GameTree({ onSelect, className = '' }: GameTreeProps) {
+export function GameTree({ onSelect, className = '', sessionId }: GameTreeProps) {
   const [tree, setTree]           = useState<GameTreeNode[]>(DEMO_TREE)
   const [selectedId, setSelected] = useState<string | null>(null)
   const [isLive, setIsLive]       = useState(false)
@@ -292,7 +293,8 @@ export function GameTree({ onSelect, className = '' }: GameTreeProps) {
   useEffect(() => {
     async function fetchState() {
       try {
-        const res = await fetch('/api/studio/state', { credentials: 'include' })
+        const url = sessionId ? `/api/studio/state?sessionId=${sessionId}` : '/api/studio/state'
+        const res = await fetch(url, { credentials: 'include' })
         if (!res.ok) return
         const data = (await res.json()) as ApiGameState
         if (data.connected) {

@@ -13,10 +13,65 @@ export interface CodePreviewMetadata {
 
 export interface CodePreviewProps {
   code: string
+  /** Previous version of the code — when provided, renders a diff view */
+  previousCode?: string
   title?: string
   onExecute?: (code: string) => void
   onCopy?: () => void
   metadata?: CodePreviewMetadata
+}
+
+// ─── Diff Engine ──────────────────────────────────────────────────────────────
+
+type DiffLineType = 'added' | 'removed' | 'unchanged'
+interface DiffLine {
+  type: DiffLineType
+  content: string
+  oldLineNum?: number
+  newLineNum?: number
+}
+
+function computeLineDiff(oldCode: string, newCode: string): DiffLine[] {
+  const oldLines = oldCode.split('\n')
+  const newLines = newCode.split('\n')
+  const result: DiffLine[] = []
+
+  // Simple LCS-based diff (Myers would be better but this works for our sizes)
+  const lcs = buildLCSTable(oldLines, newLines)
+  let i = oldLines.length
+  let j = newLines.length
+  const reversed: DiffLine[] = []
+
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      reversed.push({ type: 'unchanged', content: oldLines[i - 1]!, oldLineNum: i, newLineNum: j })
+      i--; j--
+    } else if (j > 0 && (i === 0 || (lcs[i]?.[j - 1] ?? 0) >= (lcs[i - 1]?.[j] ?? 0))) {
+      reversed.push({ type: 'added', content: newLines[j - 1]!, newLineNum: j })
+      j--
+    } else if (i > 0) {
+      reversed.push({ type: 'removed', content: oldLines[i - 1]!, oldLineNum: i })
+      i--
+    }
+  }
+
+  for (let k = reversed.length - 1; k >= 0; k--) result.push(reversed[k]!)
+  return result
+}
+
+function buildLCSTable(a: string[], b: string[]): number[][] {
+  const m = a.length, n = b.length
+  // For very large diffs, skip LCS and just show all as changed
+  if (m > 500 || n > 500) return []
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i]![j] = a[i - 1] === b[j - 1]
+        ? (dp[i - 1]?.[j - 1] ?? 0) + 1
+        : Math.max(dp[i - 1]?.[j] ?? 0, dp[i]?.[j - 1] ?? 0)
+    }
+  }
+  return dp
 }
 
 // ─── Script Tab Detection ──────────────────────────────────────────────────────
@@ -194,10 +249,11 @@ const PERF_COLORS: Record<string, { bg: string; text: string }> = {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function CodePreview({ code, title, onExecute, onCopy, metadata }: CodePreviewProps) {
+export function CodePreview({ code, previousCode, title, onExecute, onCopy, metadata }: CodePreviewProps) {
   const tabs = parseCodeBlocks(code)
   const [activeTab, setActiveTab] = useState(0)
   const [showLineNums, setShowLineNums] = useState(true)
+  const [showDiff, setShowDiff] = useState(!!previousCode)
   const [copied, setCopied] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
@@ -443,6 +499,18 @@ export function CodePreview({ code, title, onExecute, onCopy, metadata }: CodePr
           .lua
         </button>
 
+        {/* Diff toggle — only when previousCode is provided */}
+        {previousCode && (
+          <button
+            style={{ ...btnBase, color: showDiff ? '#4ADE80' : '#6B7280', borderColor: showDiff ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.1)' }}
+            onClick={() => setShowDiff((v) => !v)}
+            title="Toggle diff view"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 4h3M4 8h5M4 12h4" stroke="#F87171" strokeWidth="1.5" strokeLinecap="round"/><path d="M9 4h3M9 8h3M9 12h3" stroke="#4ADE80" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            Diff
+          </button>
+        )}
+
         {/* Line numbers toggle */}
         <button
           style={{ ...btnBase, color: showLineNums ? '#D4AF37' : '#6B7280', borderColor: showLineNums ? 'rgba(212,175,55,0.35)' : 'rgba(255,255,255,0.1)' }}
@@ -505,7 +573,37 @@ export function CodePreview({ code, title, onExecute, onCopy, metadata }: CodePr
             </button>
           </div>
         </div>
+      ) : showDiff && previousCode ? (
+        /* ── Diff View ── */
+        <div style={codeAreaStyle}>
+          {computeLineDiff(previousCode, currentCode).map((diffLine, idx) => {
+            const bgColor = diffLine.type === 'added'
+              ? 'rgba(74,222,128,0.1)'
+              : diffLine.type === 'removed'
+                ? 'rgba(248,113,113,0.1)'
+                : 'transparent'
+            const prefix = diffLine.type === 'added' ? '+' : diffLine.type === 'removed' ? '-' : ' '
+            const prefixColor = diffLine.type === 'added' ? '#4ADE80' : diffLine.type === 'removed' ? '#F87171' : '#4B5563'
+
+            return (
+              <div key={idx} style={{ display: 'flex', minHeight: '1.5em', background: bgColor, borderLeft: diffLine.type !== 'unchanged' ? `3px solid ${prefixColor}` : '3px solid transparent', paddingLeft: '4px' }}>
+                {showLineNums && (
+                  <span style={{ minWidth: '2rem', paddingRight: '0.5rem', textAlign: 'right', color: '#4B5563', userSelect: 'none', flexShrink: 0, fontSize: '11px' }}>
+                    {diffLine.type === 'removed' ? diffLine.oldLineNum : diffLine.type === 'added' ? diffLine.newLineNum : diffLine.newLineNum}
+                  </span>
+                )}
+                <span style={{ color: prefixColor, minWidth: '1rem', userSelect: 'none', flexShrink: 0 }}>{prefix}</span>
+                <span style={{ flex: 1, whiteSpace: 'pre', textDecoration: diffLine.type === 'removed' ? 'line-through' : 'none', opacity: diffLine.type === 'removed' ? 0.7 : 1 }}>
+                  {tokenizeLuau(diffLine.content).map((tok, tidx) => (
+                    <span key={tidx} style={{ color: TOKEN_COLORS[tok.type] }}>{tok.value}</span>
+                  ))}
+                </span>
+              </div>
+            )
+          })}
+        </div>
       ) : (
+        /* ── Normal View ── */
         <div style={codeAreaStyle}>
           {lines.map((line, idx) => (
             <HighlightedLine

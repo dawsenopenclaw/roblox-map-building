@@ -190,7 +190,7 @@ function UI.build(widget, state, COLORS, pluginRef)
 
   local versionLabel = Instance.new("TextLabel")
   versionLabel.Name                  = "Version"
-  versionLabel.Text                  = "v4.7.0"
+  versionLabel.Text                  = "v4.8.0"
   versionLabel.Font                  = Enum.Font.Gotham
   versionLabel.TextSize              = 11
   versionLabel.TextColor3            = C.textDim

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import {
   Download,
@@ -15,30 +15,17 @@ import {
   Undo2,
   RefreshCw,
   CheckCircle2,
-  Terminal,
+  Loader2,
 } from 'lucide-react'
 
 // --- Types -------------------------------------------------------------------
 
 type OS = 'windows' | 'mac'
-
-// --- One-liner commands ------------------------------------------------------
-
-const PS_COMMAND =
-  `powershell -NoProfile -ExecutionPolicy Bypass -Command "` +
-  `[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;` +
-  `$p=\\\"$env:LOCALAPPDATA\\\\Roblox\\\\Plugins\\\";` +
-  `if(!(Test-Path $p)){New-Item -ItemType Directory -Path $p|Out-Null};` +
-  `Invoke-WebRequest -Uri 'https://forjegames.com/api/studio/plugin' -OutFile \\\"$p\\\\ForjeGames.rbxmx\\\" -UseBasicParsing;` +
-  `Write-Host 'Done! Restart Roblox Studio.'"`
-
-const CURL_COMMAND =
-  `curl -sL -o ~/Library/Application\\ Support/Roblox/Plugins/ForjeGames.rbxmx ` +
-  `https://forjegames.com/api/studio/plugin && echo "Done! Restart Roblox Studio."`
+type InstallStatus = 'idle' | 'downloading' | 'saving' | 'done' | 'error' | 'fallback'
 
 // --- Progress steps ----------------------------------------------------------
 
-const PROGRESS_STEPS = ['Download', 'Copy', 'Restart Studio', 'Connect'] as const
+const PROGRESS_STEPS = ['Download', 'Install', 'Restart Studio', 'Connect'] as const
 
 // --- OS detection ------------------------------------------------------------
 
@@ -51,16 +38,16 @@ function detectOS(): OS {
 
 // --- Data --------------------------------------------------------------------
 
-const OS_PATHS: Record<OS, { label: string; path: string; filePath: string; tip: string }> = {
+const OS_PATHS: Record<OS, { label: string; folder: string; filePath: string; tip: string }> = {
   windows: {
     label: 'Windows',
-    path: '%LOCALAPPDATA%\\Roblox\\Plugins\\ForjeGames.rbxmx',
+    folder: '%LOCALAPPDATA%\\Roblox\\Plugins',
     filePath: '%LOCALAPPDATA%\\Roblox\\Plugins\\ForjeGames.rbxmx',
     tip: "Paste this path into File Explorer's address bar to open the folder directly.",
   },
   mac: {
     label: 'Mac',
-    path: '~/Library/Application Support/Roblox/Plugins/ForjeGames.rbxmx',
+    folder: '~/Library/Application Support/Roblox/Plugins',
     filePath: '~/Library/Application Support/Roblox/Plugins/ForjeGames.rbxmx',
     tip: 'In Finder press Cmd + Shift + G and paste the path to jump there.',
   },
@@ -136,31 +123,180 @@ const FAQ = [
     a: 'Make sure the file is named exactly ForjeGames.rbxmx and is inside the Plugins folder directly — not in a sub-folder. Also confirm Studio was fully closed (check Task Manager / Activity Monitor) before reopening.',
   },
   {
-    q: 'Do I need to restart Studio after every update?',
-    a: 'Only when the plugin file itself changes. The plugin checks for updates on each Studio launch and shows a notification inside the ForjeGames panel.',
+    q: 'Do I need to reinstall after every update?',
+    a: 'No. The plugin checks for updates automatically and notifies you when a new version is available. Just come back to this page and click Install Plugin — if you\'ve installed before, we remember your Plugins folder and update it instantly. No navigation needed.',
   },
   {
     q: 'Is my data safe? What does the plugin send?',
     a: 'The plugin only sends data you explicitly trigger — AI prompts, place metadata, and commands you approve. It never reads credentials or sends data in the background.',
   },
   {
-    q: 'I ran the command but got a permission error.',
-    a: "On Windows, right-click PowerShell and choose 'Run as Administrator', then run the command again. On macOS, prefix the curl command with sudo if needed.",
+    q: 'The "Install Plugin" button didn\'t let me pick a folder.',
+    a: 'Some browsers (Firefox, Safari) don\'t support the save-to-folder feature. The file downloads to your Downloads folder instead — just move ForjeGames.rbxmx to the Plugins folder shown in Step 1.',
   },
 ]
+
+// --- IndexedDB helpers for persisting directory handle ----------------------
+
+const IDB_NAME = 'forjegames'
+const IDB_STORE = 'handles'
+const IDB_KEY = 'pluginsDir'
+
+function openIDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1)
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(IDB_STORE)
+    }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function saveDirHandle(handle: FileSystemDirectoryHandle): Promise<void> {
+  try {
+    const db = await openIDB()
+    const tx = db.transaction(IDB_STORE, 'readwrite')
+    tx.objectStore(IDB_STORE).put(handle, IDB_KEY)
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    db.close()
+  } catch { /* IndexedDB not available — no big deal */ }
+}
+
+async function loadDirHandle(): Promise<FileSystemDirectoryHandle | null> {
+  try {
+    const db = await openIDB()
+    const tx = db.transaction(IDB_STORE, 'readonly')
+    const req = tx.objectStore(IDB_STORE).get(IDB_KEY)
+    const result = await new Promise<FileSystemDirectoryHandle | null>((res, rej) => {
+      req.onsuccess = () => res(req.result ?? null)
+      req.onerror = () => rej(req.error)
+    })
+    db.close()
+    return result
+  } catch {
+    return null
+  }
+}
+
+// --- File System Access API type helpers ------------------------------------
+
+interface FSAWindow {
+  showDirectoryPicker?: (opts?: { id?: string; mode?: string; startIn?: string }) => Promise<FileSystemDirectoryHandle>
+}
 
 // --- Main component ----------------------------------------------------------
 
 export default function DownloadClient() {
   const [activeOS, setActiveOS] = useState<OS>('windows')
   const [activeStep, setActiveStep] = useState(0)
+  const [installStatus, setInstallStatus] = useState<InstallStatus>('idle')
+  const [installError, setInstallError] = useState<string | null>(null)
+  const [hasSavedDir, setHasSavedDir] = useState(false)
 
   useEffect(() => {
     setActiveOS(detectOS())
+    // Check if we already have a saved Plugins folder handle
+    loadDirHandle().then((h) => {
+      if (h) setHasSavedDir(true)
+    })
   }, [])
 
   const osInfo = OS_PATHS[activeOS]
-  const command = activeOS === 'windows' ? PS_COMMAND : CURL_COMMAND
+  const supportsDirectoryPicker = typeof window !== 'undefined' && 'showDirectoryPicker' in window
+
+  // One-click install: downloads plugin and writes directly to the Plugins folder
+  const handleOneClickInstall = useCallback(async () => {
+    setInstallStatus('downloading')
+    setInstallError(null)
+    setActiveStep(0)
+
+    try {
+      // Step 1: Download the plugin file
+      const res = await fetch('/api/studio/plugin')
+      if (!res.ok) throw new Error('Download failed')
+      const blob = await res.blob()
+
+      setActiveStep(1)
+      setInstallStatus('saving')
+
+      // Step 2: Try to use a previously saved directory handle (zero-click re-install)
+      const savedHandle = await loadDirHandle()
+      if (savedHandle) {
+        try {
+          // Verify we still have permission
+          const perm = await savedHandle.requestPermission({ mode: 'readwrite' } as unknown as FileSystemHandlePermissionDescriptor)
+          if (perm === 'granted') {
+            const fileHandle = await savedHandle.getFileHandle('ForjeGames.rbxmx', { create: true })
+            const writable = await fileHandle.createWritable()
+            await writable.write(blob)
+            await writable.close()
+
+            setInstallStatus('done')
+            setActiveStep(2)
+            return
+          }
+          // Permission not granted — need to re-pick
+          setHasSavedDir(false)
+        } catch {
+          // Permission revoked or handle stale — fall through to picker
+          setHasSavedDir(false)
+        }
+      }
+
+      // Step 3: Ask user to pick their Plugins folder (first time only)
+      if (supportsDirectoryPicker) {
+        try {
+          const win = window as unknown as FSAWindow
+          const dirHandle = await win.showDirectoryPicker!({
+            id: 'roblox-plugins',
+            mode: 'readwrite',
+          })
+
+          // Write the plugin file directly into the picked folder
+          const fileHandle = await dirHandle.getFileHandle('ForjeGames.rbxmx', { create: true })
+          const writable = await fileHandle.createWritable()
+          await writable.write(blob)
+          await writable.close()
+
+          // Save the directory handle for future zero-click installs
+          await saveDirHandle(dirHandle)
+          setHasSavedDir(true)
+
+          setInstallStatus('done')
+          setActiveStep(2)
+          return
+        } catch (e) {
+          // User cancelled the picker
+          if (e instanceof DOMException && e.name === 'AbortError') {
+            setInstallStatus('idle')
+            setActiveStep(0)
+            return
+          }
+          // Permission denied or other error — fall through to regular download
+        }
+      }
+
+      // Fallback: trigger a regular browser download
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'ForjeGames.rbxmx'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      setInstallStatus('fallback')
+      setActiveStep(1)
+    } catch (err) {
+      setInstallStatus('error')
+      setInstallError(err instanceof Error ? err.message : 'Download failed')
+    }
+  }, [supportsDirectoryPicker])
 
   return (
     <div
@@ -186,32 +322,85 @@ export default function DownloadClient() {
         </h1>
 
         <p className="mb-8 text-lg leading-relaxed" style={{ color: '#A0AABF' }}>
-          Connect Roblox Studio to ForjeGames AI
+          Connect Roblox Studio to ForjeGames AI — one click to install
         </p>
 
-        <a
-          href="/api/studio/plugin"
-          download="ForjeGames.rbxmx"
-          className="inline-flex items-center gap-2.5 rounded-xl px-8 py-4 text-base font-bold transition-colors"
-          style={{ background: '#D4AF37', color: '#000' }}
+        <button
+          onClick={handleOneClickInstall}
+          disabled={installStatus === 'downloading' || installStatus === 'saving'}
+          className="inline-flex items-center gap-2.5 rounded-xl px-8 py-4 text-base font-bold transition-all disabled:opacity-70"
+          style={{ background: installStatus === 'done' ? '#10b981' : '#D4AF37', color: '#000' }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#E6A519'
+            if (installStatus !== 'done' && installStatus !== 'downloading' && installStatus !== 'saving')
+              e.currentTarget.style.background = '#E6A519'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#D4AF37'
+            if (installStatus === 'done') e.currentTarget.style.background = '#10b981'
+            else if (installStatus !== 'downloading' && installStatus !== 'saving')
+              e.currentTarget.style.background = '#D4AF37'
           }}
         >
-          <Download size={20} />
-          Download Plugin
-        </a>
+          {installStatus === 'downloading' && (
+            <>
+              <Loader2 size={20} className="animate-spin" />
+              Downloading...
+            </>
+          )}
+          {installStatus === 'saving' && (
+            <>
+              <Loader2 size={20} className="animate-spin" />
+              {hasSavedDir ? 'Installing...' : 'Select your Plugins folder...'}
+            </>
+          )}
+          {installStatus === 'done' && (
+            <>
+              <Check size={20} />
+              Installed — Restart Studio
+            </>
+          )}
+          {installStatus === 'error' && (
+            <>
+              <Download size={20} />
+              Try Again
+            </>
+          )}
+          {(installStatus === 'idle' || installStatus === 'fallback') && (
+            <>
+              <Download size={20} />
+              Install Plugin
+            </>
+          )}
+        </button>
+
+        {installStatus === 'done' && (
+          <p className="mt-3 text-sm font-medium" style={{ color: '#10b981' }}>
+            Plugin saved. Close and reopen Roblox Studio to activate it.
+          </p>
+        )}
+
+        {installStatus === 'fallback' && (
+          <p className="mt-3 text-sm" style={{ color: '#f59e0b' }}>
+            Downloaded! Move <strong>ForjeGames.rbxmx</strong> from your Downloads to the Plugins folder below.
+          </p>
+        )}
+
+        {installStatus === 'error' && installError && (
+          <p className="mt-3 text-sm" style={{ color: '#ef4444' }}>
+            {installError}
+          </p>
+        )}
 
         <div className="mt-4 flex items-center justify-center gap-4">
           <span className="text-sm" style={{ color: '#8B95B0' }}>
-            114 KB &bull; .rbxmx
+            ~200 KB &bull; .rbxmx
           </span>
           <span className="h-4 w-px" style={{ background: '#1A2550' }} aria-hidden />
           <span className="text-sm" style={{ color: '#8B95B0' }}>
             Works with Roblox Studio 2024+
+          </span>
+          <span className="h-4 w-px" style={{ background: '#1A2550' }} aria-hidden />
+          <span className="text-sm" style={{ color: '#8B95B0' }}>
+            Auto-updates
           </span>
         </div>
       </div>
@@ -266,65 +455,102 @@ export default function DownloadClient() {
         </div>
       </div>
 
-      {/* Install steps */}
+      {/* How it works */}
       <div className="w-full max-w-2xl">
         <h2
           className="mb-8 text-center text-xs font-semibold uppercase tracking-widest"
           style={{ color: '#D4AF37' }}
         >
-          3-Step Install Guide
+          How it works
         </h2>
 
         <div className="flex flex-col gap-4">
-          {/* Step 1 */}
+          {/* Step 1 — Install */}
           <div
             className="flex gap-5 rounded-2xl px-6 py-6"
-            style={{ background: '#0F1535', border: '1px solid #1A2550' }}
+            style={{
+              background: installStatus === 'done' ? 'rgba(16,185,129,0.05)' : '#0F1535',
+              border: `1px solid ${installStatus === 'done' ? 'rgba(16,185,129,0.3)' : '#1A2550'}`,
+            }}
           >
             <div
               className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-              style={{ background: '#D4AF37', color: '#000' }}
+              style={{
+                background: installStatus === 'done' ? '#10b981' : '#D4AF37',
+                color: '#000',
+              }}
             >
-              1
+              {installStatus === 'done' ? <Check size={13} /> : '1'}
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-2">
-                <Download size={16} className="shrink-0" style={{ color: '#D4AF37' }} />
-                <p className="text-sm font-semibold text-white">Download the .rbxm file</p>
+                <Download size={16} className="shrink-0" style={{ color: installStatus === 'done' ? '#10b981' : '#D4AF37' }} />
+                <p className="text-sm font-semibold text-white">
+                  {installStatus === 'done' ? 'Plugin installed' : 'Click "Install Plugin" above'}
+                </p>
               </div>
-              <p className="mb-4 text-sm leading-relaxed" style={{ color: '#8B95B0' }}>
-                Click the Download Plugin button above to save{' '}
-                <code
-                  className="rounded px-1.5 py-0.5 text-xs"
-                  style={{ background: 'rgba(212,175,55,0.1)', color: '#D4AF37' }}
-                >
-                  ForjeGames.rbxmx
-                </code>{' '}
-                to your computer.
+              <p className="text-sm leading-relaxed" style={{ color: '#8B95B0' }}>
+                {installStatus === 'done' ? (
+                  'Plugin file saved directly to your Plugins folder. No copying needed.'
+                ) : installStatus === 'fallback' ? (
+                  <>
+                    Move the downloaded <code className="rounded px-1 py-0.5 text-xs" style={{ background: 'rgba(212,175,55,0.1)', color: '#D4AF37' }}>ForjeGames.rbxmx</code> to your Plugins folder:
+                  </>
+                ) : hasSavedDir ? (
+                  <>
+                    Click <strong className="text-white">Install Plugin</strong> above — we&apos;ll place the file directly in your Plugins folder. No navigation needed.
+                  </>
+                ) : (
+                  <>
+                    Click the button above. Your browser will ask you to select your Roblox <strong className="text-white">Plugins</strong> folder. Navigate to the path below and select it — we&apos;ll remember it for future updates.
+                  </>
+                )}
               </p>
-              <a
-                href="/api/studio/plugin"
-                download="ForjeGames.rbxmx"
-                className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors"
-                style={{
-                  background: 'rgba(212,175,55,0.1)',
-                  border: '1px solid rgba(212,175,55,0.3)',
-                  color: '#D4AF37',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(212,175,55,0.18)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(212,175,55,0.1)'
-                }}
-              >
-                <Download size={14} />
-                ForjeGames.rbxmx — 114 KB
-              </a>
+
+              {(installStatus !== 'done') && (
+                <div className="mt-4">
+                  <div className="mb-3 flex gap-2">
+                    {(['windows', 'mac'] as OS[]).map((os) => (
+                      <button
+                        key={os}
+                        onClick={() => setActiveOS(os)}
+                        className="rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors"
+                        style={{
+                          background: activeOS === os ? 'rgba(212,175,55,0.12)' : 'transparent',
+                          border: `1px solid ${activeOS === os ? '#D4AF37' : '#1A2550'}`,
+                          color: activeOS === os ? '#D4AF37' : '#8B95B0',
+                        }}
+                      >
+                        {OS_PATHS[os].label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div
+                    className="flex items-center gap-3 rounded-lg px-4 py-3"
+                    style={{ background: '#080B1A', border: '1px solid #1A2550' }}
+                  >
+                    <Folder size={14} className="shrink-0" style={{ color: '#D4AF37' }} />
+                    <code
+                      className="min-w-0 flex-1 truncate font-mono text-xs"
+                      style={{ color: '#D4AF37' }}
+                    >
+                      {installStatus === 'fallback' ? osInfo.filePath : osInfo.folder}
+                    </code>
+                    <CopyButton text={installStatus === 'fallback' ? osInfo.filePath : osInfo.folder} />
+                  </div>
+                  <p
+                    className="mt-2 text-xs leading-relaxed"
+                    style={{ color: '#8B95B0', fontStyle: 'italic' }}
+                  >
+                    {osInfo.tip}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Step 2 */}
+          {/* Step 2 — Restart Studio */}
           <div
             className="flex gap-5 rounded-2xl px-6 py-6"
             style={{ background: '#0F1535', border: '1px solid #1A2550' }}
@@ -337,86 +563,17 @@ export default function DownloadClient() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-2">
-                <Folder size={16} className="shrink-0" style={{ color: '#D4AF37' }} />
-                <p className="text-sm font-semibold text-white">Place in Plugins folder</p>
+                <RefreshCw size={16} className="shrink-0" style={{ color: '#D4AF37' }} />
+                <p className="text-sm font-semibold text-white">Restart Roblox Studio</p>
               </div>
-              <p className="mb-4 text-sm leading-relaxed" style={{ color: '#8B95B0' }}>
-                Move the downloaded file to the Roblox Plugins folder, then{' '}
-                <strong className="font-medium text-white">
-                  fully close and reopen Roblox Studio
-                </strong>
-                .
+              <p className="text-sm leading-relaxed" style={{ color: '#8B95B0' }}>
+                <strong className="font-medium text-white">Fully close</strong> Roblox Studio and reopen it.
+                The plugin loads on startup — you&apos;ll see <strong style={{ color: '#D4AF37' }}>ForjeGames</strong> in the Plugins toolbar.
               </p>
-
-              <div className="mb-3 flex gap-2">
-                {(['windows', 'mac'] as OS[]).map((os) => (
-                  <button
-                    key={os}
-                    onClick={() => setActiveOS(os)}
-                    className="rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors"
-                    style={{
-                      background: activeOS === os ? 'rgba(212,175,55,0.12)' : 'transparent',
-                      border: `1px solid ${activeOS === os ? '#D4AF37' : '#1A2550'}`,
-                      color: activeOS === os ? '#D4AF37' : '#8B95B0',
-                    }}
-                  >
-                    {OS_PATHS[os].label}
-                  </button>
-                ))}
-              </div>
-
-              <div
-                className="flex items-center gap-3 rounded-lg px-4 py-3"
-                style={{ background: '#080B1A', border: '1px solid #1A2550' }}
-              >
-                <code
-                  className="min-w-0 flex-1 truncate font-mono text-xs"
-                  style={{ color: '#D4AF37' }}
-                >
-                  {osInfo.filePath}
-                </code>
-                <CopyButton text={osInfo.filePath} />
-              </div>
-              <p
-                className="mt-2 text-xs leading-relaxed"
-                style={{ color: '#8B95B0', fontStyle: 'italic' }}
-              >
-                {osInfo.tip}
-              </p>
-
-              {/* One-liner shortcut */}
-              <div className="mt-5">
-                <div className="mb-2 flex items-center gap-2">
-                  <Terminal size={14} style={{ color: '#D4AF37' }} />
-                  <p className="text-xs font-semibold text-white">
-                    Or run this one command to do it automatically:
-                  </p>
-                </div>
-                <div
-                  className="rounded-xl p-4"
-                  style={{ background: '#080B1A', border: '1px solid #1A2550' }}
-                >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-xs" style={{ color: '#555' }}>
-                      {activeOS === 'windows' ? 'PowerShell' : 'Terminal'}
-                    </span>
-                    <CopyButton text={command} />
-                  </div>
-                  <code
-                    className="block break-all font-mono text-xs leading-relaxed"
-                    style={{ color: '#D4AF37' }}
-                  >
-                    {command}
-                  </code>
-                </div>
-                <p className="mt-2 text-xs" style={{ color: '#8B95B0', fontStyle: 'italic' }}>
-                  Downloads and places the file automatically — no folder navigation needed.
-                </p>
-              </div>
             </div>
           </div>
 
-          {/* Step 3 */}
+          {/* Step 3 — Connect */}
           <div
             className="flex gap-5 rounded-2xl px-6 py-6"
             style={{ background: '#0F1535', border: '1px solid #1A2550' }}
@@ -433,10 +590,8 @@ export default function DownloadClient() {
                 <p className="text-sm font-semibold text-white">Connect from Studio</p>
               </div>
               <p className="text-sm leading-relaxed" style={{ color: '#8B95B0' }}>
-                Open Roblox Studio and click{' '}
-                <strong style={{ color: '#D4AF37' }}>ForjeGames</strong> in the Plugins toolbar.
-                Enter your{' '}
-                <strong className="font-medium text-white">6-character code</strong> from{' '}
+                Click <strong style={{ color: '#D4AF37' }}>ForjeGames</strong> in the Plugins toolbar,
+                enter your <strong className="font-medium text-white">6-character code</strong> from{' '}
                 <Link
                   href="/editor"
                   className="underline underline-offset-2 transition-colors"
@@ -444,85 +599,10 @@ export default function DownloadClient() {
                 >
                   forjegames.com/editor
                 </Link>{' '}
-                to link the session.
+                and you&apos;re connected. Future updates install automatically.
               </p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div
-        className="my-14 w-full max-w-2xl"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
-      />
-
-      {/* One-click installer */}
-      <div className="w-full max-w-2xl">
-        <h2
-          className="mb-2 text-center text-xs font-semibold uppercase tracking-widest"
-          style={{ color: '#D4AF37' }}
-        >
-          Or install with one command
-        </h2>
-        <p className="mb-6 text-center text-sm" style={{ color: '#8B95B0' }}>
-          Download and place the plugin automatically — no manual folder navigation.
-        </p>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <a
-            href="/api/studio/installer?os=win"
-            download="install-forjegames.bat"
-            className="flex items-center gap-3 rounded-xl px-5 py-4 transition-colors"
-            style={{ background: '#0F1535', border: '1px solid #1A2550' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#D4AF37'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#1A2550'
-            }}
-          >
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-              style={{ background: 'rgba(212,175,55,0.1)' }}
-            >
-              <Monitor size={18} style={{ color: '#D4AF37' }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-white">Windows Installer</p>
-              <p className="mt-0.5 text-xs" style={{ color: '#8B95B0' }}>
-                install-forjegames.bat
-              </p>
-            </div>
-            <Download size={16} className="ml-auto shrink-0" style={{ color: '#8B95B0' }} />
-          </a>
-
-          <a
-            href="/api/studio/installer?os=mac"
-            download="install-forjegames.sh"
-            className="flex items-center gap-3 rounded-xl px-5 py-4 transition-colors"
-            style={{ background: '#0F1535', border: '1px solid #1A2550' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#D4AF37'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#1A2550'
-            }}
-          >
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-              style={{ background: 'rgba(212,175,55,0.1)' }}
-            >
-              <Monitor size={18} style={{ color: '#D4AF37' }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-white">Mac Installer</p>
-              <p className="mt-0.5 text-xs" style={{ color: '#8B95B0' }}>
-                install-forjegames.sh
-              </p>
-            </div>
-            <Download size={16} className="ml-auto shrink-0" style={{ color: '#8B95B0' }} />
-          </a>
         </div>
       </div>
 
@@ -658,7 +738,7 @@ export default function DownloadClient() {
               </p>
             </div>
             <Link
-              href="/install"
+              href="/editor"
               className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition-colors"
               style={{
                 background: 'rgba(212,175,55,0.1)',
@@ -666,7 +746,7 @@ export default function DownloadClient() {
                 color: '#D4AF37',
               }}
             >
-              Try the guided installer
+              Open the editor
               <ArrowRight size={12} />
             </Link>
           </div>

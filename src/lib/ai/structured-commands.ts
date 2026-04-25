@@ -83,6 +83,27 @@ export interface ExecuteScriptCommand {
   runContext?: 'server' | 'workspace'
 }
 
+export interface ModifyScriptCommand {
+  type: 'modify_script'
+  path: string
+  source: string
+  waypoint?: string
+}
+
+export interface ReadScriptCommand {
+  type: 'read_script'
+  path: string
+}
+
+export interface GetGameTreeCommand {
+  type: 'get_game_tree'
+}
+
+export interface SearchScriptsCommand {
+  type: 'search_scripts'
+  query: string
+}
+
 export interface DeleteInstanceCommand {
   type: 'delete_instance'
   path: string
@@ -179,6 +200,10 @@ export type StructuredCommand =
   | CreateProximityPromptCommand
   | CreateWeldCommand
   | CreateDecalCommand
+  | ModifyScriptCommand
+  | ReadScriptCommand
+  | GetGameTreeCommand
+  | SearchScriptsCommand
 
 // ─── Translation result ───────────────────────────────────────────────────────
 

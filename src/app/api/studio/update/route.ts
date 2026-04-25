@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { updateSessionState, getSessionByToken, createSession } from '@/lib/studio-session'
 import { studioUpdateSchema, parseBody } from '@/lib/validations'
+import { getRedis } from '@/lib/redis'
 
 interface PluginChange {
   type: string
@@ -119,6 +120,32 @@ export async function POST(req: NextRequest) {
   if (body.event === 'output_log' && Array.isArray(body.outputLog)) {
     statePayload.outputLog = body.outputLog
     statePayload.outputLogAt = Date.now()
+
+    // Also store in Redis for the ConsolePanel UI to poll via /api/studio/console
+    const VALID_LOG_TYPES = new Set(['Output', 'Warning', 'Error', 'Info', 'MessageOutput', 'MessageWarning', 'MessageError', 'MessageInfo', 'unknown'])
+    try {
+      const redis = getRedis()
+      if (redis && body.sessionId) {
+        const key = `fj:studio:console:${body.sessionId}`
+        const entries = (body.outputLog as Array<{ message?: string; type?: string; timestamp?: number }>)
+        // Only take last 50 entries to avoid processing huge payloads
+        const batch = entries.length > 50 ? entries.slice(-50) : entries
+        const pipeline = redis.pipeline()
+        for (const entry of batch) {
+          const rawType = String(entry.type ?? 'unknown')
+          pipeline.rpush(key, JSON.stringify({
+            message: String(entry.message ?? '').slice(0, 500),
+            type: VALID_LOG_TYPES.has(rawType) ? rawType : 'unknown',
+            timestamp: typeof entry.timestamp === 'number' ? entry.timestamp : Math.floor(Date.now() / 1000),
+          }))
+        }
+        pipeline.ltrim(key, -100, -1)
+        pipeline.expire(key, 600)
+        pipeline.exec().catch((e) => {
+          console.warn('[studio/update] Redis console pipeline error:', e instanceof Error ? e.message : e)
+        })
+      }
+    } catch { /* Redis unavailable — non-critical */ }
   }
 
   // Store camera + nearby parts + selection + ground from heartbeat for AI context

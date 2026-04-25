@@ -1031,7 +1031,10 @@ local function executeStructuredCommands(commands, commandId)
         -- instead.
         local allowExec = false
         pcall(function()
-          allowExec = plugin and plugin:GetSetting("ForjeGames_AllowLoadstring") == true
+          if plugin then
+              local val = plugin:GetSetting("ForjeGames_AllowLoadstring")
+              allowExec = (val == true or val == "true")
+            end
         end)
         if not allowExec then
           warn("[ForjeGames] execute_script requires ForjeGames_AllowLoadstring (dev only). "
@@ -1266,13 +1269,30 @@ end
 -- we parse it into simple structured commands here.
 -- ============================================================
 local function handleExecuteLuau(data, commandId)
-  if not data then return end
-
-  -- Prefer structured commands if provided alongside code
-  if data.commands and type(data.commands) == "table" then
-    executeStructuredCommands(data.commands, commandId)
-    playCompletionSound()
+  if not data then
+    warn("[ForjeGames] handleExecuteLuau called with nil data")
     return
+  end
+
+  print("[ForjeGames] === BUILD RECEIVED ===")
+  print("[ForjeGames]   commands: " .. tostring(data.commands and #data.commands or 0))
+  print("[ForjeGames]   raw code: " .. tostring(data.code and #data.code or 0) .. " chars")
+  print("[ForjeGames]   hasComplexFallback: " .. tostring(data.hasComplexFallback))
+  print("[ForjeGames]   commandId: " .. tostring(commandId))
+
+  -- Run structured commands if provided
+  if data.commands and type(data.commands) == "table" and #data.commands > 0 then
+    print("[ForjeGames] Running " .. #data.commands .. " structured commands")
+    executeStructuredCommands(data.commands, commandId)
+    -- If there's ALSO raw code AND complex fallback is flagged,
+    -- run the raw code too — it contains the parts the translator couldn't handle
+    -- (for loops, functions, pcall wrappers — which is most of our builds)
+    if not data.hasComplexFallback or not data.code then
+      playCompletionSound()
+      return
+    end
+    -- Fall through to raw code execution below
+    print("[ForjeGames] Running raw code fallback for untranslatable constructs")
   end
 
   -- If the server sent a structured field (legacy format), use it
@@ -1383,10 +1403,16 @@ local function handleExecuteLuau(data, commandId)
       end
     end
 
-    if #commands > 0 then
+    print("[ForjeGames] Parsed raw code: " .. #commands .. " simple commands, complex=" .. tostring(hasComplexCode))
+    if #commands > 0 and not hasComplexCode then
+      -- Simple code: only Instance.new patterns, no loops/functions
+      print("[ForjeGames] Running " .. #commands .. " simple parsed commands")
       executeStructuredCommands(commands, commandId)
       playCompletionSound()
     elseif hasComplexCode then
+      -- Complex code: has for loops, functions, pcall, etc.
+      -- ALWAYS use loadstring — structured commands can't handle loops.
+      print("[ForjeGames] Complex code detected — using loadstring/Script.Source path")
       -- FALLBACK: loadstring behind a dev-only setting toggle.
       -- This is OFF by default and must be explicitly enabled in
       -- plugin settings. The Creator Store edition ships with this
@@ -1394,20 +1420,48 @@ local function handleExecuteLuau(data, commandId)
       -- enable it.
       local allowLoadstring = false
       pcall(function()
-        allowLoadstring = plugin and plugin:GetSetting("ForjeGames_AllowLoadstring") == true
+        if plugin then
+            local val = plugin:GetSetting("ForjeGames_AllowLoadstring")
+            allowLoadstring = (val == true or val == "true")
+          end
       end)
 
       if allowLoadstring then
-        warn("[ForjeGames] DEV MODE: Executing code via loadstring (not Creator Store safe)")
-        local loadOk, loadErr = pcall(function()
-          local fn, compileErr = loadstring(code)
-          if fn then
-            fn()
+        print("[ForjeGames] Executing AI code (" .. #code .. " chars)")
+        -- Try loadstring first (fastest, runs inline)
+        local loadOk, loadErr
+        if loadstring then
+          loadOk, loadErr = pcall(function()
+            local fn, compileErr = loadstring(code)
+            if fn then
+              fn()
+            else
+              error("Compile: " .. tostring(compileErr))
+            end
+          end)
+        end
+        -- Fallback: if loadstring isn't available or failed to compile,
+        -- inject a temp Script with .Source (works in ALL Studio versions)
+        if not loadOk then
+          print("[ForjeGames] loadstring " .. (loadstring and "failed" or "unavailable") .. ", using Script.Source fallback")
+          local tempOk, tempErr = pcall(function()
+            local s = Instance.new("Script")
+            s.Name = "ForjeAI_Exec_" .. tostring(math.floor(tick()))
+            s:SetAttribute("fj_generated", true)
+            s:SetAttribute("fj_temp_exec", true)
+            s.Source = code .. "\ntask.defer(function() script:Destroy() end)"
+            s.Parent = game:GetService("ServerScriptService")
+          end)
+          if tempOk then
+            loadOk = true
+            loadErr = nil
+            -- Wait briefly for execution
+            task.wait(0.5)
           else
-            warn("[ForjeGames] loadstring compile error: " .. tostring(compileErr))
-            error(compileErr)
+            loadOk = false
+            loadErr = tempErr
           end
-        end)
+        end
         if loadOk then
           playCompletionSound()
           if commandId then

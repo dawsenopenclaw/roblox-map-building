@@ -85,6 +85,7 @@ const LUA_FILES = [
   { file: 'Sync.lua',         className: 'ModuleScript', name: 'Sync'         },
   { file: 'AssetManager.lua', className: 'ModuleScript', name: 'AssetManager' },
   { file: 'History.lua',      className: 'ModuleScript', name: 'History'      },
+  { file: 'AutoUpdater.lua',  className: 'ModuleScript', name: 'AutoUpdater'  },
 ]
 
 // ---------------------------------------------------------------------------

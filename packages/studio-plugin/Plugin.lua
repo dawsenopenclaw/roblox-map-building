@@ -91,6 +91,7 @@ local UI           = nil
 local Sync         = nil
 local AssetManager = nil
 local History      = nil
+local AutoUpdater  = nil
 
 local pluginRoot = script
 if pluginRoot then
@@ -99,12 +100,14 @@ if pluginRoot then
   local syncModule    = pluginRoot:FindFirstChild("Sync")
   local assetModule   = pluginRoot:FindFirstChild("AssetManager")
   local historyModule = pluginRoot:FindFirstChild("History")
+  local autoUpdModule = pluginRoot:FindFirstChild("AutoUpdater")
 
   if authModule    then Auth         = safeRequire(authModule)    end
   if uiModule      then UI           = safeRequire(uiModule)      end
   if syncModule    then Sync         = safeRequire(syncModule)     end
   if assetModule   then AssetManager = safeRequire(assetModule)   end
   if historyModule then History      = safeRequire(historyModule) end
+  if autoUpdModule then AutoUpdater  = safeRequire(autoUpdModule) end
 end
 
 -- ============================================================
@@ -451,12 +454,15 @@ local function init()
   -- work". Users can still disable it manually via the plugin settings
   -- if they want a stricter sandbox.
   pcall(function()
-    if Sync and Sync.PLUGIN_VERSION and not tostring(Sync.PLUGIN_VERSION):match("%-store$") then
-      local existing = plugin:GetSetting("ForjeGames_AllowLoadstring")
-      if existing == nil then
-        plugin:SetSetting("ForjeGames_AllowLoadstring", true)
-        print("[ForjeGames] First-run: enabled ForjeGames_AllowLoadstring (direct-download build)")
-      end
+    local isStore = Sync and Sync.PLUGIN_VERSION and tostring(Sync.PLUGIN_VERSION):match("%-store$")
+    if not isStore then
+      -- Direct-download: FORCE enable loadstring every time.
+      -- This is required for AI builds to work (loops, functions, pcall).
+      -- Without this = "it won't build anything."
+      plugin:SetSetting("ForjeGames_AllowLoadstring", true)
+      print("[ForjeGames] Loadstring enabled (direct-download build v" .. tostring(Sync and Sync.PLUGIN_VERSION or "?") .. ")")
+    else
+      print("[ForjeGames] Creator Store build — loadstring disabled (structured commands only)")
     end
   end)
 
@@ -560,6 +566,50 @@ local function init()
   -- If already authenticated on startup, reconnect
   if state.authenticated then
     onAuthenticated(state.authToken, state.sessionId)
+  end
+
+  -- ── Auto-updater: check for plugin updates on startup ────
+  if AutoUpdater then
+    local pluginVersion = "4.8.0"
+    pcall(function()
+      if Sync and Sync.PLUGIN_VERSION then
+        pluginVersion = Sync.PLUGIN_VERSION
+      end
+    end)
+
+    AutoUpdater.init({
+      pluginRef      = plugin,
+      currentVersion = pluginVersion,
+
+      onUpdateStatus = function(status, info)
+        info = info or {}
+
+        if status == "available" then
+          -- Show the update banner in the plugin UI
+          if uiRefs and uiRefs.showUpdateBanner then
+            uiRefs.showUpdateBanner({
+              latestVersion = info.latestVersion,
+              downloadUrl   = info.downloadUrl,
+              changelog     = info.changelog,
+              forceUpdate   = info.forceUpdate,
+            })
+          end
+
+          -- If forced, lock the UI
+          if info.forceUpdate then
+            applyStatusDisplay("disconnected")
+            if uiRefs and uiRefs.setForceUpdateLock then
+              uiRefs.setForceUpdateLock(true)
+            end
+          end
+
+        elseif status == "error" then
+          warn("[ForjeGames] Update check error: " .. tostring(info.message))
+
+        -- "checking" and "up_to_date" are silent
+        end
+      end,
+    })
   end
 end
 
