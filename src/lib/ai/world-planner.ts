@@ -31,6 +31,8 @@ export type ZoneType =
   | 'nature' | 'industrial' | 'castle' | 'beach'
   | 'obby_stage' | 'simulator_zone'
 
+export type WorldStyle = 'vibrant' | 'fantasy' | 'scifi' | 'winter' | 'candy' | 'nature' | 'neon' | 'medieval'
+
 export interface ZoneDef {
   id: string
   type: ZoneType
@@ -38,6 +40,61 @@ export interface ZoneDef {
   position: [number, number, number]
   size: [number, number, number]
   estimatedParts: number
+  style?: WorldStyle
+}
+
+// Themed color palettes matching top Roblox games (Pet Sim, Adopt Me, etc.)
+export const STYLE_PALETTES: Record<WorldStyle, {
+  ground: [number, number, number]
+  accent1: [number, number, number]
+  accent2: [number, number, number]
+  building: [number, number, number]
+  roof: [number, number, number]
+  trim: [number, number, number]
+  tree_trunk: [number, number, number]
+  tree_leaf: [number, number, number]
+  glow: [number, number, number]
+}> = {
+  vibrant: {
+    ground: [100, 200, 80], accent1: [255, 130, 80], accent2: [80, 180, 255],
+    building: [255, 220, 140], roof: [255, 100, 100], trim: [255, 255, 255],
+    tree_trunk: [140, 90, 50], tree_leaf: [60, 200, 80], glow: [255, 220, 100],
+  },
+  fantasy: {
+    ground: [120, 180, 100], accent1: [200, 130, 255], accent2: [130, 220, 255],
+    building: [220, 200, 240], roof: [180, 100, 220], trim: [255, 215, 0],
+    tree_trunk: [100, 70, 40], tree_leaf: [180, 100, 220], glow: [200, 150, 255],
+  },
+  scifi: {
+    ground: [40, 50, 70], accent1: [0, 200, 255], accent2: [255, 50, 200],
+    building: [60, 70, 90], roof: [30, 40, 60], trim: [0, 255, 200],
+    tree_trunk: [50, 60, 80], tree_leaf: [0, 200, 150], glow: [0, 220, 255],
+  },
+  winter: {
+    ground: [230, 240, 255], accent1: [100, 180, 255], accent2: [255, 100, 100],
+    building: [220, 230, 240], roof: [200, 210, 220], trim: [255, 215, 0],
+    tree_trunk: [100, 70, 40], tree_leaf: [30, 120, 50], glow: [255, 240, 200],
+  },
+  candy: {
+    ground: [255, 200, 220], accent1: [255, 130, 180], accent2: [130, 220, 255],
+    building: [255, 180, 220], roof: [200, 130, 255], trim: [255, 255, 200],
+    tree_trunk: [200, 130, 80], tree_leaf: [255, 150, 200], glow: [255, 200, 255],
+  },
+  nature: {
+    ground: [80, 140, 60], accent1: [200, 170, 100], accent2: [100, 180, 220],
+    building: [180, 160, 120], roof: [120, 80, 50], trim: [200, 190, 170],
+    tree_trunk: [90, 60, 30], tree_leaf: [50, 130, 40], glow: [255, 220, 150],
+  },
+  neon: {
+    ground: [25, 25, 35], accent1: [255, 0, 200], accent2: [0, 255, 200],
+    building: [35, 35, 50], roof: [20, 20, 30], trim: [255, 255, 255],
+    tree_trunk: [40, 40, 55], tree_leaf: [0, 255, 150], glow: [255, 0, 255],
+  },
+  medieval: {
+    ground: [110, 130, 80], accent1: [180, 140, 80], accent2: [120, 80, 50],
+    building: [160, 140, 110], roof: [80, 65, 50], trim: [200, 180, 140],
+    tree_trunk: [80, 55, 25], tree_leaf: [40, 110, 35], glow: [255, 180, 80],
+  },
 }
 
 export interface ZonePlan {

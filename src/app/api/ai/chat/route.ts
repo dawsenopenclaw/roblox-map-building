@@ -3805,7 +3805,13 @@ COORDINATE SYSTEM (relative to spawn point, Y=0 is ground):
   Window:  P("Glass", 4,3,0.2, -5,5,8.1, "Glass", 180,215,240, 0.4)  -- slightly in front of wall
 
 MATERIALS: Concrete(foundations) Brick(buildings) Cobblestone(paths) Glass(windows+Transparency) Granite(stone) Metal(poles/industrial) Marble(luxury) Neon(accents ONLY) Slate(roofs) Wood(trunks) WoodPlanks(floors/furniture)
-COLORS (muted realistic): Walls=220,215,205 Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Roof=75,60,50 Glass=180,215,240 WarmLight=255,200,140
+COLOR PALETTES (pick based on game style):
+  VIBRANT (Pet Sim/Adopt Me style): Ground=100,200,80 Buildings=255,220,140 Roofs=255,100,100 Trees=60,200,80 Accent=255,130,80
+  FANTASY: Buildings=220,200,240 Roofs=180,100,220 Trees=180,100,220 Accent=200,130,255
+  CANDY: Ground=255,200,220 Buildings=255,180,220 Roofs=200,130,255 Glow=255,200,255
+  NEON: Ground=25,25,35 Buildings=35,35,50 Trim=0,255,200 Glow=255,0,200
+  REALISTIC: Walls=220,215,205 Brick=180,150,100 Concrete=160,160,160 Wood=100,65,30
+  DEFAULT: VIBRANT for tycoons/sims, FANTASY for RPGs, REALISTIC for showcases, CANDY for kid games
 SCALE: Character=5.5 tall. Doors=4W×7.5H. Windows=3-4W×3-4H. Walls=0.8 thick. Ceiling=10.5 from ground. Rooms=16×12 min.
 
 CRITICAL QUALITY RULES:
@@ -4002,54 +4008,102 @@ SILHOUETTE DESIGN: Pro builds break the box. Add: roof overhangs (W() 2-3 studs 
 
 ORGANIC VARIATION: Vary window sizes by 0.5 stud. Offset some parts by 0.1-0.2 studs. Use vc() on EVERY material group.
 
-=== COMPLETE WORKING EXAMPLE — A SMALL HOUSE (copy this pattern) ===
-This is a REAL working build. Study the coordinate math. Your builds should look like this:
+=== COMPLETE WORKING EXAMPLE — A DETAILED HOUSE (copy this pattern EXACTLY) ===
+This is the MINIMUM quality bar. Study every part. If your build has fewer parts than this, ADD MORE DETAIL.
 
--- Floor: sits on ground, Y=0.5 (half of 1-thick slab)
-P("Floor", 20,1,14, 0,0.5,0, "WoodPlanks", 140,100,60)
--- Walls: Y=5.5 (half of 10-tall wall + 1 floor thickness). Z=±7 = half of 14-deep floor
-P("Wall_Back", 20,10,0.8, 0,6,7, "Brick", vc(180,140,100))
-P("Wall_Left", 0.8,10,14, -10,6,0, "Brick", vc(180,140,100))
-P("Wall_Right", 0.8,10,14, 10,6,0, "Brick", vc(180,140,100))
--- Front wall with door gap: two sections (left of door, right of door)
-P("Wall_Front_L", 7,10,0.8, -6.5,6,-7, "Brick", vc(180,140,100))
-P("Wall_Front_R", 7,10,0.8, 6.5,6,-7, "Brick", vc(180,140,100))
-P("Wall_Front_Top", 6,3,0.8, 0,9.5,-7, "Brick", vc(180,140,100))  -- above door
--- Door frame
-P("DoorFrame_L", 0.3,7.5,0.8, -3,4.75,-7, "Wood", 100,65,30)
-P("DoorFrame_R", 0.3,7.5,0.8, 3,4.75,-7, "Wood", 100,65,30)
-P("DoorFrame_Top", 6.6,0.3,0.8, 0,8.5,-7, "Wood", 100,65,30)
--- Door panel (slightly recessed)
-P("Door", 5.4,7,0.4, 0,4.5,-6.8, "Wood", 80,50,25)
-P("DoorKnob", 0.4,0.4,0.3, 2,4.5,-6.5, "Metal", 180,180,170)
--- Windows (glass + frame)
-P("Window_L_Glass", 3.5,3,0.2, -6,5.5,7.1, "Glass", 180,215,240, 0.4)
-P("Window_L_Frame", 3.8,0.3,0.3, -6,7.1,7.1, "Wood", 90,60,30)
-P("Window_L_Frame_B", 3.8,0.3,0.3, -6,3.9,7.1, "Wood", 90,60,30)
-P("Window_L_Sill", 4,0.3,1, -6,3.8,7.4, "Concrete", 200,195,185)
-P("Window_R_Glass", 3.5,3,0.2, 6,5.5,7.1, "Glass", 180,215,240, 0.4)
-P("Window_R_Frame", 3.8,0.3,0.3, 6,7.1,7.1, "Wood", 90,60,30)
-P("Window_R_Sill", 4,0.3,1, 6,3.8,7.4, "Concrete", 200,195,185)
--- Ceiling
-P("Ceiling", 20,0.5,14, 0,11,0, "Concrete", 230,228,225)
--- Roof (wedge parts with overhang)
-W("Roof_Left", 12,3,16, -5,12.5,0, "Slate", 75,65,55)
-W("Roof_Right", 12,3,16, 5,12.5,0, "Slate", 75,65,55)  -- needs CFrame rotation for opposite slope
--- Chimney
-P("Chimney_Base", 2,6,2, 7,14,4, "Brick", vc(160,100,70))
-P("Chimney_Cap", 2.6,0.4,2.6, 7,17.2,4, "Concrete", 140,135,130)
--- Interior furniture
+-- ═══ FOUNDATION & FLOOR ═══
+P("Foundation", 24,0.6,18, 0,0.3,0, "Concrete", 155,150,145)
+P("Floor", 22,0.8,16, 0,1,0, "WoodPlanks", 140,100,60)
+P("Baseboard_Back", 22,0.3,0.3, 0,1.55,7.8, "Wood", 85,55,25)
+P("Baseboard_Left", 0.3,0.3,16, -10.8,1.55,0, "Wood", 85,55,25)
+P("Baseboard_Right", 0.3,0.3,16, 10.8,1.55,0, "Wood", 85,55,25)
+
+-- ═══ WALLS (with corner posts + crown trim) ═══
+P("Wall_Back", 22,10,0.8, 0,6.4,8, "Brick", vc(180,140,100))
+P("Wall_Left", 0.8,10,16, -11,6.4,0, "Brick", vc(180,140,100))
+P("Wall_Right", 0.8,10,16, 11,6.4,0, "Brick", vc(180,140,100))
+P("Wall_Front_L", 7,10,0.8, -7.5,6.4,-8, "Brick", vc(180,140,100))
+P("Wall_Front_R", 7,10,0.8, 7.5,6.4,-8, "Brick", vc(180,140,100))
+P("Wall_Front_Top", 8,2.5,0.8, 0,10.15,-8, "Brick", vc(180,140,100))
+-- Corner posts (vertical pillars at building edges)
+P("Corner_FL", 0.6,10,0.6, -11.1,6.4,-8.1, "Concrete", 200,195,185)
+P("Corner_FR", 0.6,10,0.6, 11.1,6.4,-8.1, "Concrete", 200,195,185)
+P("Corner_BL", 0.6,10,0.6, -11.1,6.4,8.1, "Concrete", 200,195,185)
+P("Corner_BR", 0.6,10,0.6, 11.1,6.4,8.1, "Concrete", 200,195,185)
+-- Wall crown trim (decorative strip along top)
+P("Crown_Front", 23,0.25,0.4, 0,11.5,-8.2, "Concrete", 210,205,195)
+P("Crown_Back", 23,0.25,0.4, 0,11.5,8.2, "Concrete", 210,205,195)
+P("Crown_Left", 0.4,0.25,17, -11.2,11.5,0, "Concrete", 210,205,195)
+P("Crown_Right", 0.4,0.25,17, 11.2,11.5,0, "Concrete", 210,205,195)
+
+-- ═══ DOOR (panel + frame + knob + overhang + step) ═══
+P("DoorFrame_L", 0.3,8,0.9, -4,5.4,-8, "Wood", 100,65,30)
+P("DoorFrame_R", 0.3,8,0.9, 4,5.4,-8, "Wood", 100,65,30)
+P("DoorFrame_Top", 8.6,0.4,0.9, 0,9.6,-8, "Wood", 100,65,30)
+P("Door", 7.4,7.5,0.4, 0,5.15,-7.7, "Wood", 80,50,25)
+P("DoorPanel_Upper", 3,2.5,0.15, 0,7.5,-7.5, "Wood", 75,45,20)
+P("DoorPanel_Lower", 3,2.5,0.15, 0,4,-7.5, "Wood", 75,45,20)
+Cyl("DoorKnob", 0.3,0.5, 2.5,5,-7.3, "Metal", 180,180,170)
+-- Door overhang
+P("DoorAwning", 10,0.3,3, 0,9.9,-9.5, "Slate", 75,65,55)
+P("AwningBracket_L", 0.3,1.5,2, -4.5,9,-9, "Wood", 100,65,30)
+P("AwningBracket_R", 0.3,1.5,2, 4.5,9,-9, "Wood", 100,65,30)
+-- Front step
+P("Step1", 10,0.4,2, 0,0.8,-9.5, "Cobblestone", vc(160,155,150))
+P("Step2", 9,0.4,1.5, 0,0.4,-10.5, "Cobblestone", vc(155,150,145))
+
+-- ═══ WINDOWS (glass + 4-piece frame + sill + mullion) ═══
+-- Back left window
+P("WinBL_Glass", 3.5,3,0.2, -5,6,8.2, "Glass", 180,215,240, 0.35)
+P("WinBL_Top", 3.8,0.3,0.3, -5,7.6,8.2, "Wood", 90,60,30)
+P("WinBL_Bot", 3.8,0.3,0.3, -5,4.4,8.2, "Wood", 90,60,30)
+P("WinBL_Left", 0.3,3,0.3, -6.8,6,8.2, "Wood", 90,60,30)
+P("WinBL_Right", 0.3,3,0.3, -3.2,6,8.2, "Wood", 90,60,30)
+P("WinBL_Mullion", 0.15,3,0.15, -5,6,8.25, "Wood", 90,60,30)
+P("WinBL_Sill", 4.2,0.3,1, -5,4.2,8.6, "Concrete", 200,195,185)
+-- Back right window
+P("WinBR_Glass", 3.5,3,0.2, 5,6,8.2, "Glass", 180,215,240, 0.35)
+P("WinBR_Top", 3.8,0.3,0.3, 5,7.6,8.2, "Wood", 90,60,30)
+P("WinBR_Bot", 3.8,0.3,0.3, 5,4.4,8.2, "Wood", 90,60,30)
+P("WinBR_Mullion", 0.15,3,0.15, 5,6,8.25, "Wood", 90,60,30)
+P("WinBR_Sill", 4.2,0.3,1, 5,4.2,8.6, "Concrete", 200,195,185)
+
+-- ═══ CEILING & ROOF ═══
+P("Ceiling", 22,0.5,16, 0,11.65,0, "Concrete", 230,228,225)
+W("Roof_L", 13,3.5,18, -5.5,13.4,0, "Slate", vc(75,65,55))
+W("Roof_R", 13,3.5,18, 5.5,13.4,0, "Slate", vc(75,65,55))
+P("RoofRidge", 0.6,0.4,19, 0,15.2,0, "Wood", 90,60,30)
+P("RoofFascia_L", 0.3,0.5,19, -12,11.8,0, "Wood", 100,65,30)
+P("RoofFascia_R", 0.3,0.5,19, 12,11.8,0, "Wood", 100,65,30)
+
+-- ═══ CHIMNEY ═══
+P("Chimney", 2.2,7,2.2, 8,15,5, "Brick", vc(160,100,70))
+P("ChimneyCap", 2.8,0.4,2.8, 8,18.7,5, "Concrete", 140,135,130)
+P("ChimneyPot", 1,1.2,1, 8,19.3,5, "Metal", 60,60,65)
+
+-- ═══ INTERIOR ═══
 P("Table", 4,0.3,3, -3,3.8,2, "WoodPlanks", 120,80,40)
-Cyl("Table_Leg", 3,0.5, -3,2,2, "Wood", 100,65,30)
-P("Chair_Seat", 2,0.3,2, -5,2.5,2, "WoodPlanks", 130,90,50)
-P("Chair_Back", 2,2.5,0.3, -5,3.75,3, "WoodPlanks", 130,90,50)
--- Interior lighting (parent to ceiling)
+Cyl("TableLeg", 2.5,0.5, -3,2.15,2, "Wood", 100,65,30)
+P("Chair_Seat", 2,0.3,2, -5.5,2.5,2, "WoodPlanks", 130,90,50)
+P("Chair_Back", 2,2.5,0.3, -5.5,3.75,3, "WoodPlanks", 130,90,50)
+-- Bookshelf
+P("Bookshelf", 3,5,0.8, 8,3.9,7.2, "Wood", 100,65,30)
+P("Books1", 2.5,1,0.6, 8,6,7.2, "Fabric", vc(140,50,50,20))
+P("Books2", 2.5,1,0.6, 8,4.8,7.2, "Fabric", vc(50,80,140,20))
+-- Ceiling light
 local ceil = m:FindFirstChild("Ceiling")
 if ceil then Light(ceil, 2, 30, 255,200,140) end
--- Foundation (slightly larger than building)
-P("Foundation", 22,0.6,16, 0,0.1,0, "Concrete", 160,155,150)
 
-This example has 27 parts — walls, door with frame+knob, windows with glass+frames+sills, roof, chimney, table, chair, lighting, foundation. THIS is the detail level your builds should match.
+-- ═══ EXTERIOR ENVIRONMENT ═══
+P("Pathway", 4,0.15,8, 0,0.2,-14, "Cobblestone", vc(160,155,150))
+Cyl("Tree_Trunk", 5,1.2, 15,3.5,5, "Wood", 95,65,35)
+Ball("Tree_Canopy", 6, 15,7,5, "Grass", vc(65,120,45,15))
+Cyl("LampPost", 7,0.4, -14,4,0, "Metal", 55,55,60)
+Ball("LampGlobe", 1.2, -14,7.8,0, "Glass", 255,240,200, 0.3)
+local lamp = m:FindFirstChild("LampGlobe")
+if lamp then Light(lamp, 1.5, 25, 255,220,160) end
+
+This example has 48 parts — foundation, floor with baseboards, walls with corner posts and crown trim, door with recessed panels + knob + overhang + steps, windows with 4-piece frames + mullions + sills, ceiling, roof with ridge beam + fascia, chimney with cap + pot, furniture + bookshelf, pathway, tree, and lamp post. THIS is the MINIMUM detail level. Match or EXCEED this.
 
 === PRE-OUTPUT CHECKLIST (verify BEFORE outputting code) ===
 Before you write your code block, mentally verify:

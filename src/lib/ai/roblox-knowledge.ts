@@ -1463,6 +1463,74 @@ end`,
       'Use math.cos/math.sin for circular placement — never hardcode positions',
     ],
   },
+
+  // ── Pro Game Visual Techniques (from top Roblox games) ──────────────
+  {
+    name: 'Pro Game Visuals',
+    keywords: ['game', 'tycoon', 'simulator', 'sim', 'pet', 'adopt', 'obby', 'world', 'map', 'professional', 'vibrant', 'colorful', 'stylized'],
+    snippet: `-- TOP ROBLOX GAME VISUAL TECHNIQUES (Pet Simulator, Adopt Me, etc.)
+
+-- 1. VIBRANT SATURATED COLORS (not muted/realistic)
+-- Games like Pet Sim use bright, happy colors:
+local PALETTE = {
+  ground = Color3.fromRGB(100, 200, 80),  -- bright green
+  accent = Color3.fromRGB(255, 130, 80),  -- warm orange
+  sky    = Color3.fromRGB(80, 180, 255),  -- bright blue
+  glow   = Color3.fromRGB(255, 220, 100), -- gold
+}
+
+-- 2. STYLIZED LOW-POLY TREES (Ball shapes, NOT realistic)
+-- Multiple overlapping balls with bright greens
+for i = 1, 4 do
+  local s = 5 - i * 0.7
+  local leaf = Instance.new("Part") leaf.Shape = Enum.PartType.Ball
+  leaf.Size = Vector3.new(s, s*0.8, s) leaf.Anchored = true
+  leaf.Material = Enum.Material.Grass
+  leaf.Color = Color3.fromRGB(40+i*20, 160+i*15, 40+i*10)
+  leaf.CFrame = CFrame.new(x, y + 6 + i*1.5, z) * CFrame.Angles(0, math.rad(i*60), 0)
+  leaf.Parent = model
+end
+
+-- 3. NEON GLOW ACCENTS (portals, collectibles, paths)
+local glow = Instance.new("Part") glow.Material = Enum.Material.Neon
+glow.Color = Color3.fromRGB(255, 200, 100)
+-- Add PointLight for actual glow effect:
+local light = Instance.new("PointLight") light.Brightness = 3 light.Range = 15
+light.Color = glow.Color light.Parent = glow
+
+-- 4. THEMED GROUND (terrain + colored parts)
+-- Top games use terrain for base + colored parts for paths
+terrain:FillBlock(CFrame.new(0, -1, 0), Vector3.new(200, 2, 200), Enum.Material.Grass)
+-- Pink path (candy world):
+P("path", 6, 0.3, 40, 0, 0.15, 0, "Concrete", 255, 180, 220)
+
+-- 5. FLOATING PARTICLES + SPARKLES
+local sparkle = Instance.new("ParticleEmitter")
+sparkle.Rate = 5 sparkle.Lifetime = NumberRange.new(2, 4)
+sparkle.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,0), NumberSequenceKeypoint.new(0.5,0.3), NumberSequenceKeypoint.new(1,0)})
+sparkle.Color = ColorSequence.new(Color3.fromRGB(255, 255, 200))
+sparkle.LightEmission = 1 sparkle.Brightness = 2
+
+-- 6. LARGE 3D TEXT SIGNS (use BillboardGui or thick Parts)
+-- "SHOP" signs use thick Neon parts arranged as letters
+-- Or use SurfaceGui on a Part for clean text
+
+-- 7. TELEPORT PORTALS (glowing rings)
+for i = 0, 23 do
+  local angle = (i/24) * math.pi * 2
+  local px = math.cos(angle) * 5
+  local py = math.sin(angle) * 5
+  P("portal_segment_"..i, 1, 0.8, 0.8, px, py + 5, 0, "Neon", 100, 200, 255)
+end`,
+    pitfalls: [
+      'Top games use VIBRANT colors, not muted realistic — Color3.fromRGB(255,130,80) not Color3.fromRGB(160,140,120)',
+      'Trees should be Ball shapes with bright greens, not flat box foliage',
+      'Every collectible/interactive object needs Neon material + PointLight for glow',
+      'Ground should use terrain for base, colored Parts for paths/zones — not all Parts',
+      'Use ParticleEmitter sparkles on important objects (shops, portals, rewards)',
+      'Roblox games use 3-5 distinct bright colors per zone, not gradual shading',
+    ],
+  },
 ]
 
 // ── Public API ───────────────────────────────────────────────────────────────
