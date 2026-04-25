@@ -8,6 +8,7 @@ const PRODUCT_LINKS = [
   { href: '/pricing', label: 'Pricing' },
   { href: '/templates', label: 'Templates' },
   { href: '/download', label: 'Studio Plugin' },
+  { href: '/install', label: 'Quick Install' },
   { href: '/whats-new', label: "What's New" },
 ]
 

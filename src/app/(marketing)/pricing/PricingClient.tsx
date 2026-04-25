@@ -81,7 +81,7 @@ const TIERS = [
     features: [
       '15,000 tokens / month',
       '50 builds per day',
-      'All Starter features',
+      'All base features',
       'UI builder',
       'Game system templates',
       'Script generation',
@@ -322,8 +322,8 @@ function ErrorToast({ message, onDismiss }: { message: string; onDismiss: () => 
 const TESTIMONIALS = [
   { name: 'RblxKing42', text: "Built my first tycoon in under a minute. Took me 3 weeks to do manually last time.", tier: 'Creator' },
   { name: 'ObbyQueen_', text: "The AI actually understands what I mean. I said 'rainbow obby with checkpoints' and it just worked.", tier: 'Studio' },
-  { name: 'DevJordan2013', text: "I was about to quit making games because scripting was too hard. This changed everything.", tier: 'Starter' },
-  { name: 'xStarBuilder', text: "My friend showed me this and I signed up the same day. The free tier is enough to build something real.", tier: 'Free' },
+  { name: 'DevJordan2013', text: "I was about to quit making games because scripting was too hard. This changed everything.", tier: 'Builder' },
+  { name: 'xStarBuilder', text: "My friend showed me this and I signed up the same day. Built something real on day one.", tier: 'Builder' },
   { name: 'NovaScripts', text: "Used Ropilot before, had to bring my own API keys and it still broke half the time. This just works.", tier: 'Creator' },
   { name: 'CastleCraft_YT', text: "Made a full medieval RPG map for my YouTube video. 200+ parts. Chat told me what to change and fixed it live.", tier: 'Studio' },
 ]

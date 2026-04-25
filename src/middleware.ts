@@ -68,6 +68,7 @@ const isPublicRoute = createRouteMatcher([
   '/download(.*)',
   '/showcase(.*)',
   '/about',
+  '/affiliates(.*)',
   '/blog(.*)',
   '/changelog',
   '/whats-new(.*)',
