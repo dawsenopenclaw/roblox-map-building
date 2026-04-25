@@ -26,6 +26,7 @@ import { antiUglyCheck } from './anti-ugly'
 export type ZoneType =
   | 'spawn_hub' | 'shop_district' | 'battle_arena' | 'housing'
   | 'nature' | 'industrial' | 'castle' | 'beach'
+  | 'obby_stage' | 'simulator_zone'
 
 export interface ZoneDef {
   id: string
@@ -89,19 +90,21 @@ const ZONE_TEMPLATES: Record<string, { zones: Array<{ type: ZoneType; name: stri
   simulator: {
     zones: [
       { type: 'spawn_hub', name: 'Hub World', size: [120, 50, 120], parts: 600 },
-      { type: 'nature', name: 'Collection Zone 1', size: [150, 50, 150], parts: 500 },
-      { type: 'shop_district', name: 'Pet Shop', size: [100, 40, 80], parts: 500 },
-      { type: 'battle_arena', name: 'Boss Arena', size: [100, 50, 100], parts: 400 },
-      { type: 'nature', name: 'Collection Zone 2', size: [150, 50, 150], parts: 500 },
+      { type: 'simulator_zone', name: 'Collection Zone', size: [200, 50, 200], parts: 800 },
+      { type: 'shop_district', name: 'Pet & Item Shop', size: [120, 40, 80], parts: 600 },
+      { type: 'simulator_zone', name: 'Advanced Zone', size: [200, 60, 200], parts: 800 },
+      { type: 'battle_arena', name: 'Boss Arena', size: [100, 50, 100], parts: 500 },
+      { type: 'nature', name: 'Secret Zone', size: [120, 50, 120], parts: 500 },
     ],
   },
   obby: {
     zones: [
       { type: 'spawn_hub', name: 'Checkpoint Lobby', size: [80, 40, 80], parts: 400 },
-      { type: 'battle_arena', name: 'Easy Stage', size: [60, 80, 200], parts: 500 },
-      { type: 'battle_arena', name: 'Medium Stage', size: [60, 100, 200], parts: 600 },
-      { type: 'battle_arena', name: 'Hard Stage', size: [60, 120, 200], parts: 700 },
-      { type: 'castle', name: 'Final Boss', size: [100, 80, 100], parts: 500 },
+      { type: 'obby_stage', name: 'Easy Stage', size: [40, 80, 250], parts: 600 },
+      { type: 'obby_stage', name: 'Medium Stage', size: [40, 100, 250], parts: 700 },
+      { type: 'obby_stage', name: 'Hard Stage', size: [40, 120, 250], parts: 800 },
+      { type: 'obby_stage', name: 'Extreme Stage', size: [40, 150, 250], parts: 900 },
+      { type: 'castle', name: 'Victory Castle', size: [100, 80, 100], parts: 600 },
     ],
   },
   default: {
@@ -477,6 +480,149 @@ function buildBeachZone(zone: ZoneDef): BuildPart[] {
   return parts
 }
 
+function buildObbyStage(zone: ZoneDef): BuildPart[] {
+  const [cx, cy, cz] = zone.position
+  const parts: BuildPart[] = []
+  const stageLen = zone.size[2]
+  const maxHeight = zone.size[1]
+
+  // Kill brick (lava floor)
+  parts.push({ name: 'lava_floor', size: [zone.size[0] + 20, 1, stageLen], position: [cx, cy - 5, cz], rotation: [0, 0, 0],
+    material: 'Neon', color: [255, 60, 20], transparency: 0.2 })
+
+  // Start platform
+  parts.push({ name: 'start_platform', size: [12, 2, 12], position: [cx, cy + 1, cz - stageLen / 2 + 6], rotation: [0, 0, 0], material: 'Grass', color: [60, 180, 60] })
+  parts.push({ name: 'start_sign', size: [6, 2, 0.3], position: [cx, cy + 5, cz - stageLen / 2 + 2], rotation: [0, 0, 0], material: 'Wood', color: [130, 90, 45] })
+
+  // End platform
+  parts.push({ name: 'end_platform', size: [12, 2, 12], position: [cx, cy + 1, cz + stageLen / 2 - 6], rotation: [0, 0, 0], material: 'Grass', color: [60, 180, 60] })
+
+  // Generate obstacle platforms
+  const platformCount = Math.floor(stageLen / 12)
+  for (let i = 0; i < platformCount; i++) {
+    const pz = cz - stageLen / 2 + 15 + i * (stageLen - 30) / platformCount
+    const py = cy + 1 + (i / platformCount) * maxHeight * 0.5
+    const px = cx + (Math.random() - 0.5) * 15
+
+    const obstacleType = Math.floor(Math.random() * 5)
+
+    if (obstacleType === 0) {
+      // Standard platform
+      const size = 3 + Math.random() * 4
+      parts.push({ name: `platform_${i}`, size: [size, 1, size], position: [px, py, pz], rotation: [0, Math.random() * 30, 0], material: 'Concrete', color: [180, 175, 165] })
+    } else if (obstacleType === 1) {
+      // Thin beam (balance challenge)
+      parts.push({ name: `beam_${i}`, size: [1, 1, 12], position: [px, py, pz], rotation: [0, Math.random() * 20, 0], material: 'Metal', color: [70, 70, 75] })
+    } else if (obstacleType === 2) {
+      // Stepping stones (3 small platforms)
+      for (let s = 0; s < 3; s++) {
+        parts.push({ name: `stone_${i}_${s}`, size: [2.5, 0.8, 2.5], position: [px + (s - 1) * 4, py + s * 1.5, pz + s * 3], rotation: [0, 0, 0], material: 'Cobblestone', color: [140, 135, 125] })
+      }
+    } else if (obstacleType === 3) {
+      // Wall jump (two walls facing each other)
+      parts.push({ name: `walljump_l_${i}`, size: [1, 8, 3], position: [px - 3, py + 4, pz], rotation: [0, 0, 0], material: 'Brick', color: [160, 120, 80] })
+      parts.push({ name: `walljump_r_${i}`, size: [1, 8, 3], position: [px + 3, py + 4, pz], rotation: [0, 0, 0], material: 'Brick', color: [160, 120, 80] })
+      parts.push({ name: `walljump_top_${i}`, size: [8, 1, 4], position: [px, py + 8.5, pz], rotation: [0, 0, 0], material: 'Concrete', color: [170, 165, 155] })
+    } else {
+      // Cylinder column (jump on top)
+      parts.push({ name: `column_${i}`, size: [6, 2.5, 2.5], position: [px, py + 3, pz], rotation: [0, 0, 0], material: 'Marble', color: [210, 205, 195], shape: 'Cylinder' })
+      parts.push({ name: `column_top_${i}`, size: [3, 0.5, 3], position: [px, py + 6.3, pz], rotation: [0, 0, 0], material: 'Concrete', color: [180, 175, 165] })
+    }
+  }
+
+  // Decorative pillars along sides
+  for (let i = 0; i < 6; i++) {
+    const pz2 = cz - stageLen / 2 + 20 + i * (stageLen - 40) / 5
+    for (const side of [-1, 1]) {
+      parts.push({ name: `pillar_${i}_${side}`, size: [15, 1.5, 1.5], position: [cx + side * (zone.size[0] / 2 + 3), cy + 7, pz2], rotation: [0, 0, 0], material: 'Concrete', color: [150, 145, 135], shape: 'Cylinder' })
+      parts.push({
+        name: `pillar_light_${i}_${side}`, size: [0.8, 0.8, 0.8], position: [cx + side * (zone.size[0] / 2 + 3), cy + 15, pz2],
+        rotation: [0, 0, 0], material: 'Neon', color: [100, 200, 255], shape: 'Ball',
+        children: [{ className: 'PointLight', properties: { Brightness: 1, Range: 20, Color: [100, 200, 255] } }],
+      })
+    }
+  }
+
+  // Checkpoint flags every 5 platforms
+  for (let i = 0; i < platformCount; i += 5) {
+    const flagZ = cz - stageLen / 2 + 15 + i * (stageLen - 30) / platformCount
+    parts.push({ name: `checkpoint_pole_${i}`, size: [5, 0.3, 0.3], position: [cx - 8, cy + 2.5 + (i / platformCount) * maxHeight * 0.5, flagZ], rotation: [0, 0, 0], material: 'Metal', color: [200, 200, 200], shape: 'Cylinder' })
+    parts.push({ name: `checkpoint_flag_${i}`, size: [2, 1.5, 0.1], position: [cx - 7, cy + 5 + (i / platformCount) * maxHeight * 0.5, flagZ], rotation: [0, 0, 0], material: 'Neon', color: [255, 255, 0] })
+  }
+
+  return parts
+}
+
+function buildSimulatorZone(zone: ZoneDef): BuildPart[] {
+  const [cx, cy, cz] = zone.position
+  const parts: BuildPart[] = []
+
+  // Ground with grid pattern
+  parts.push(...generateFloor(cx, cy, cz, zone.size[0], zone.size[2], 'Grass', [70, 130, 55]))
+
+  // Collectible spawn areas (glowing orbs on pedestals)
+  const orbCount = 15
+  for (let i = 0; i < orbCount; i++) {
+    const ox = cx + (Math.random() - 0.5) * (zone.size[0] - 20)
+    const oz = cz + (Math.random() - 0.5) * (zone.size[2] - 20)
+    const colors: [number, number, number][] = [[255, 215, 0], [100, 200, 255], [255, 100, 200], [100, 255, 100], [200, 100, 255]]
+    const col = colors[i % colors.length]
+    // Pedestal
+    parts.push({ name: `pedestal_${i}`, size: [1.5, 1, 1.5], position: [ox, cy + 0.5, oz], rotation: [0, 0, 0], material: 'Marble', color: [220, 215, 205], shape: 'Cylinder' })
+    // Glowing orb
+    parts.push({
+      name: `orb_${i}`, size: [1.5, 1.5, 1.5], position: [ox, cy + 2, oz], rotation: [0, 0, 0],
+      material: 'Neon', color: col, shape: 'Ball',
+      children: [{ className: 'PointLight', properties: { Brightness: 1, Range: 10, Color: col } }],
+    })
+  }
+
+  // Upgrade stations (tall pillars with rings)
+  for (let i = 0; i < 4; i++) {
+    const angle = (i / 4) * Math.PI * 2
+    const ux = cx + Math.cos(angle) * 30
+    const uz = cz + Math.sin(angle) * 30
+    parts.push({ name: `upgrade_base_${i}`, size: [6, 0.5, 6], position: [ux, cy + 0.25, uz], rotation: [0, 0, 0], material: 'Granite', color: [80, 80, 85] })
+    parts.push({ name: `upgrade_pillar_${i}`, size: [8, 2, 2], position: [ux, cy + 4, uz], rotation: [0, 0, 0], material: 'Marble', color: [230, 225, 215], shape: 'Cylinder' })
+    parts.push({ name: `upgrade_ring_${i}`, size: [0.5, 4, 4], position: [ux, cy + 6, uz], rotation: [0, 0, 0], material: 'Neon', color: [212, 175, 55], shape: 'Cylinder' })
+    parts.push({
+      name: `upgrade_glow_${i}`, size: [1, 1, 1], position: [ux, cy + 8.5, uz], rotation: [0, 0, 0],
+      material: 'Neon', color: [255, 220, 100], shape: 'Ball',
+      children: [{ className: 'PointLight', properties: { Brightness: 2, Range: 15, Color: [255, 220, 100] } }],
+    })
+  }
+
+  // Sell area (golden platform)
+  parts.push({ name: 'sell_platform', size: [10, 0.5, 10], position: [cx, cy + 0.25, cz], rotation: [0, 45, 0], material: 'Neon', color: [212, 175, 55] })
+  parts.push({ name: 'sell_pillar', size: [4, 1.5, 1.5], position: [cx, cy + 2, cz], rotation: [0, 0, 0], material: 'Marble', color: [240, 235, 225], shape: 'Cylinder' })
+  parts.push({ name: 'sell_sign', size: [5, 2, 0.3], position: [cx, cy + 5, cz - 3], rotation: [0, 0, 0], material: 'Wood', color: [130, 90, 45] })
+
+  // Trees along edges
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2
+    const r = Math.min(zone.size[0], zone.size[2]) / 2 - 5
+    parts.push(...generateTree(cx + Math.cos(angle) * r, cy, cz + Math.sin(angle) * r, 0.7 + Math.random() * 0.4))
+  }
+
+  // Rocks for variety
+  for (let i = 0; i < 8; i++) {
+    parts.push(...generateRock(
+      cx + (Math.random() - 0.5) * zone.size[0] * 0.7,
+      cy,
+      cz + (Math.random() - 0.5) * zone.size[2] * 0.7,
+      0.8 + Math.random() * 1.2,
+    ))
+  }
+
+  // Lamp posts
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2
+    parts.push(...generateLampPost(cx + Math.cos(angle) * 40, cy, cz + Math.sin(angle) * 40))
+  }
+
+  return parts
+}
+
 const ZONE_BUILDERS: Record<ZoneType, (zone: ZoneDef) => BuildPart[]> = {
   spawn_hub: buildSpawnHub,
   shop_district: buildShopDistrict,
@@ -486,6 +632,8 @@ const ZONE_BUILDERS: Record<ZoneType, (zone: ZoneDef) => BuildPart[]> = {
   industrial: buildIndustrialZone,
   castle: buildCastleZone,
   beach: buildBeachZone,
+  obby_stage: buildObbyStage,
+  simulator_zone: buildSimulatorZone,
 }
 
 // ─── World Builder Orchestrator ─────────────────────────────────────────────
