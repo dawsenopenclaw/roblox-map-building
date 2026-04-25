@@ -334,7 +334,7 @@ export async function callEli(
   const { maxTokens = 6144, temperature = 0.7, jsonMode = false } = opts
 
   // Try Gemini first (higher token limits)
-  const geminiKey = process.env.GEMINI_API_KEY
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
   if (geminiKey) {
     const contents = messages
       .filter((m) => m.role !== 'system')
@@ -381,7 +381,7 @@ export async function callEli(
   }
 
   // Fallback to Groq
-  const groqKey = process.env.GROQ_API_KEY
+  const groqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_MAIN
   if (groqKey) {
     const groqMessages = [
       { role: 'system' as const, content: systemPrompt },

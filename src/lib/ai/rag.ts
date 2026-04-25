@@ -72,7 +72,7 @@ export async function embedText(text: string): Promise<number[]> {
  * Uses text-embedding-004 with 768 dimensions to match BGE vectors in the DB.
  */
 async function embedViaGemini(text: string): Promise<number[]> {
-  const key = process.env.GEMINI_API_KEY
+  const key = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
   if (!key) throw new Error('[rag] No GEMINI_API_KEY for embedding')
 
   const res = await fetch(

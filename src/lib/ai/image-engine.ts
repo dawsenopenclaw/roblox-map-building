@@ -161,7 +161,7 @@ async function generateWithGPT(prompt: string, style: ImageStyle, size: string):
 
 // ─── Nano Banana (Gemini 2.5 Flash Image) ────────────────────────────────────
 async function generateWithNano(prompt: string, style: ImageStyle): Promise<ImageResult | null> {
-  const key = process.env.GEMINI_API_KEY
+  const key = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
   if (!key) return null
 
   const stylePrompt = STYLE_PROMPTS[style] || ''

@@ -108,7 +108,7 @@ async function claudeGenerate(system: string, user: string, maxTokens = 2000): P
  * Returns raw text from the model.
  */
 async function aiGenerate(system: string, user: string, maxTokens = 2000): Promise<string> {
-  if (process.env.GEMINI_API_KEY) {
+  if (process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN) {
     try {
       return await geminiGenerate(system, user, maxTokens)
     } catch (err) {
@@ -318,7 +318,7 @@ function enhanceMeshyPrompt(raw: string): string {
 // ── Prompt enrichment ─────────────────────────────────────────────────────────
 
 async function enrichPrompt(description: string): Promise<string> {
-  if (!process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) return description
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN && !process.env.ANTHROPIC_API_KEY) return description
   try {
     const text = await aiGenerate(
       `You are a Roblox 3D asset prompt engineer. Given a short description, return ONLY a single enriched prompt string (no JSON, no quotes) that is specific, game-ready, low-poly focused, Roblox-appropriate, and 1-2 sentences.`,
@@ -985,7 +985,7 @@ export async function getBiomeMeta(description: string): Promise<BiomeMeta> {
     }
   }
 
-  if (!process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) return keywordFallback()
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN && !process.env.ANTHROPIC_API_KEY) return keywordFallback()
 
   try {
     const raw = await aiGenerate(

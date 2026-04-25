@@ -52,7 +52,7 @@ async function callGemini(
   messages: AIMessage[],
   opts: AICallOptions = {},
 ): Promise<string | null> {
-  const key = process.env.GEMINI_API_KEY
+  const key = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
   if (!key) return null
 
   const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7, jsonMode = false } = opts
@@ -120,7 +120,7 @@ async function callGroq(
   messages: AIMessage[],
   opts: AICallOptions = {},
 ): Promise<string | null> {
-  const key = process.env.GROQ_API_KEY
+  const key = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_MAIN
   if (!key) return null
 
   const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
@@ -183,7 +183,7 @@ async function* streamGemini(
   messages: AIMessage[],
   opts: AICallOptions = {},
 ): AsyncGenerator<string, void, unknown> {
-  const key = process.env.GEMINI_API_KEY
+  const key = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
   if (!key) return
 
   const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
@@ -248,7 +248,7 @@ async function* streamGroq(
   messages: AIMessage[],
   opts: AICallOptions = {},
 ): AsyncGenerator<string, void, unknown> {
-  const key = process.env.GROQ_API_KEY
+  const key = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_MAIN
   if (!key) return
 
   const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7 } = opts

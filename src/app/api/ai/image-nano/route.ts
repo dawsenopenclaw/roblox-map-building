@@ -28,7 +28,7 @@ import { spendTokens } from '@/lib/tokens-server'
 
 export const maxDuration = 60
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY
+const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
 const IMAGE_CREDIT_COST = 3 // Cheaper than FAL since we use our own Gemini key
 
 // Style prompt prefixes

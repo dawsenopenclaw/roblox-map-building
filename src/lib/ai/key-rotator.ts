@@ -34,7 +34,7 @@ function initPool(provider: string): KeyState[] {
   if (keyPools[provider]) return keyPools[provider]
 
   const multiKey = process.env[`${provider}_API_KEYS`] || ''
-  const singleKey = process.env[`${provider}_API_KEY`] || ''
+  const singleKey = process.env[`${provider}_API_KEY`] || process.env[`${provider}_API_KEY_MAIN`] || ''
 
   const rawKeys = multiKey
     ? multiKey.split(',').map(k => k.trim()).filter(Boolean)

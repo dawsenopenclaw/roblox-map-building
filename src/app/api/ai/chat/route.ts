@@ -9315,7 +9315,7 @@ async function brainClassifyIntent(
   history: Array<{ role: string; content: string }>,
 ): Promise<'conversation' | 'build' | 'script' | 'plan'> {
   try {
-    const geminiKey = process.env.GEMINI_API_KEY
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
     if (!geminiKey) return 'conversation' // safe fallback
 
     // Include last 3 turns for context

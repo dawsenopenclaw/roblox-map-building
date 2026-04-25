@@ -151,7 +151,7 @@ export async function checkSiteHealth() {
   // AI Provider (Gemini)
   const aiStart = Date.now()
   try {
-    const key = process.env.GEMINI_API_KEY
+    const key = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
     if (key) {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`,
