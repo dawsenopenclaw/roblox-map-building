@@ -48,7 +48,7 @@ function LiveBuildCounter() {
   const [stats, setStats] = useState<{ builds: number; users: number } | null>(null)
 
   useEffect(() => {
-    fetch('/api/admin/stats/public')
+    fetch('/api/stats')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setStats({ builds: d.totalBuilds || 0, users: d.totalUsers || 0 }) })
       .catch(() => {})
