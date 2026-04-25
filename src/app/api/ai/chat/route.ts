@@ -36,6 +36,8 @@ import {
   leaderboardProgression, dayNightCycle, spawnSystem,
   tradingSystem, particleEffectSystem, weatherSystem,
   animationSystem, tycoonDropper,
+  rpgGame, horrorGame, towerDefenseGame, battleRoyaleGame,
+  racingGame, survivalGame,
 } from '@/lib/ai/luau-templates'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/lib/ai/game-knowledge'
@@ -3824,6 +3826,30 @@ USE THIS DATA:
         return { type: 'simulator', templateCode: code }
       }
 
+      if (/\b(rpg|role\s*play|quest|adventure|dungeon|dragon|knight|mage|warrior|fantasy)\b/.test(lower)) {
+        return { type: 'rpg' as 'tycoon', templateCode: rpgGame({ maxLevel: 50, startingHP: 100, startingGold: 50 }) }
+      }
+
+      if (/\b(horror|scary|monster|jumpscare|haunted|creepy|dark|spooky|fnaf|doors|backrooms)\b/.test(lower)) {
+        return { type: 'horror' as 'tycoon', templateCode: horrorGame({ roomCount: 6, monsterSpeed: 18 }) }
+      }
+
+      if (/\b(tower\s*defense|td|defend.*base|waves?.*enemies?)\b/.test(lower)) {
+        return { type: 'td' as 'tycoon', templateCode: towerDefenseGame({ waveCount: 15, startingGold: 500 }) }
+      }
+
+      if (/\b(battle\s*royale|br|fortnite|last.*standing|hunger\s*games?)\b/.test(lower)) {
+        return { type: 'battle_royale' as 'tycoon', templateCode: battleRoyaleGame({ mapSize: 500, maxPlayers: 16 }) }
+      }
+
+      if (/\b(racing|race|kart|drift|speed|track|lap)\b/.test(lower)) {
+        return { type: 'racing' as 'tycoon', templateCode: racingGame({ lapCount: 3, maxSpeed: 120 }) }
+      }
+
+      if (/\b(survival|survive|hunger|thirst|craft|gather|resource|wilderness|stranded)\b/.test(lower)) {
+        return { type: 'survival' as 'tycoon', templateCode: survivalGame({ mapSize: 400, dayLength: 600 }) }
+      }
+
       return { type: null, templateCode: null }
     }
 
@@ -3842,6 +3868,18 @@ USE THIS DATA:
           return obbyGame({ checkpointCount: 8, difficulty: 'medium', includeTimer: true })
         if (/\b(simulator|sim|collect|grind|clicking sim|mining sim|pet sim)\b/.test(lower))
           return simulatorGame({ collectibleName: 'Gems', backpackSize: 100, sellMultiplier: 1, rebirthCost: 10000 })
+        if (/\b(rpg|role\s*play|quest|adventure|dungeon|dragon|knight|mage|warrior|fantasy)\b/.test(lower))
+          return rpgGame({ maxLevel: 50, startingHP: 100, startingGold: 50, questCount: 5 })
+        if (/\b(horror|scary|monster|jumpscare|haunted|creepy|dark|spooky|fnaf|doors|backrooms)\b/.test(lower))
+          return horrorGame({ roomCount: 6, monsterSpeed: 18, flashlightBattery: 100 })
+        if (/\b(tower\s*defense|td|defend.*base|waves?.*enemies?|enemies?.*waves?)\b/.test(lower))
+          return towerDefenseGame({ waveCount: 15, startingGold: 500 })
+        if (/\b(battle\s*royale|br|fortnite|last.*standing|survival.*arena|hunger\s*games?)\b/.test(lower))
+          return battleRoyaleGame({ mapSize: 500, maxPlayers: 16, stormPhases: 5 })
+        if (/\b(racing|race|kart|drift|speed|track|lap|formula|nascar)\b/.test(lower))
+          return racingGame({ lapCount: 3, maxSpeed: 120 })
+        if (/\b(survival|survive|hunger|thirst|craft|gather|resource|wilderness|stranded)\b/.test(lower))
+          return survivalGame({ mapSize: 400, dayLength: 600, startingHealth: 100 })
 
         // ── Game mechanics ──
         if (/\b(economy|currency|coins|cash|shop system|buy system|purchase|money system)\b/.test(lower))
@@ -4416,16 +4454,23 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       || /\b(with|and|plus|also|include).*(shop|leaderboard|currency|combat|quest|inventory|pet|npc|teleport|spawn|checkpoint|timer|team|vehicle|weapon|gui|menu|trading|crafting|skill|level|upgrade|rebirth)/i.test(message)
       || message.split(/\band\b|\bwith\b|\bplus\b/i).length >= 4
     )
-    if (isComplexBuild && !luauCode) {
-      console.log('[StagedPipeline] Complex build detected, using staged pipeline for:', message.slice(0, 50))
+    // Full game detection: trigger full game pipeline for "make me a X game" requests
+    const isFullGameReq = /\b(full game|complete game|make me a .+ game|build me a .+ game|create a .+ game|entire game|whole game|game from scratch)\b/i.test(message)
+    if ((isComplexBuild || isFullGameReq || intent === 'fullgame') && !luauCode) {
+      console.log(`[StagedPipeline] ${isFullGameReq ? 'FULL GAME' : 'Complex build'} detected, using staged pipeline for:`, message.slice(0, 50))
       try {
         const pipelineResult = await runStagedPipeline(message, enrichedCodePrompt)
-        if (pipelineResult.code && pipelineResult.score >= 50) {
+        if (pipelineResult.code && pipelineResult.score >= 40) {
           luauCode = pipelineResult.code
           conversationText = pipelineResult.conversationText || `Here's what I'm setting up for "${message}".`
-          model = 'staged-pipeline'
+          model = pipelineResult.systemScripts ? 'staged-pipeline-fullgame' : 'staged-pipeline'
           finalVerificationScore = pipelineResult.score
-          console.log(`[StagedPipeline] Success! Score: ${pipelineResult.score}/100, stages: ${pipelineResult.stages.map(s => `${s.name}:${s.success ? 'OK' : 'FAIL'}`).join(', ')}`)
+          const stageLog = pipelineResult.stages.map(s => `${s.name}:${s.success ? 'OK' : 'FAIL'}`).join(', ')
+          console.log(`[StagedPipeline] Success! Score: ${pipelineResult.score}/100, stages: ${stageLog}`)
+          if (pipelineResult.systemScripts) {
+            const totalLines = pipelineResult.systemScripts.reduce((s, sc) => s + sc.lineCount, 0)
+            console.log(`[StagedPipeline] FULL GAME: ${pipelineResult.systemScripts.length} systems, ${totalLines} total lines`)
+          }
         } else {
           console.log(`[StagedPipeline] Score too low (${pipelineResult.score}), falling back to single-pass`)
         }
@@ -11407,7 +11452,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
               ...history.map((h: HistoryMessage) => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
               { role: 'user', parts: [{ text: message }] },
             ],
-            generationConfig: { maxOutputTokens: 1024 },
+            generationConfig: { maxOutputTokens: 8192 },
           }),
         },
       )
@@ -11454,7 +11499,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         },
         body: JSON.stringify({
           model: 'gpt-4o',
-          max_tokens: 1024,
+          max_tokens: 8192,
           messages: [
             { role: 'system', content: await buildRAGSystemPrompt(await getSpecializedPrompt(message) + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')), message) },
             ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),
@@ -11716,12 +11761,14 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
 
       const maxTokens =
         intent === 'chat' || intent === 'conversation'
-          ? 1024
+          ? 2048
           : intent === 'fullgame'
-            ? 16384
+            ? 32768
             : intent === 'building' || intent === 'terrain'
-              ? 8192
-              : 4096
+              ? 16384
+              : intent === 'script' || intent === 'multiscript' || intent === 'gamesystem'
+                ? 32768
+                : 8192
 
       const oaiHistory = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
 
@@ -11886,12 +11933,14 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       // Chat/conversation intents get shorter responses; code-heavy builds get max tokens
       const maxTokens =
         intent === 'chat' || intent === 'conversation'
-          ? 1024
+          ? 2048
           : intent === 'fullgame'
-            ? 16384
+            ? 32768
             : intent === 'building' || intent === 'terrain'
-              ? 8192
-              : 4096
+              ? 16384
+              : intent === 'script' || intent === 'multiscript' || intent === 'gamesystem'
+                ? 32768
+                : 8192
 
       const claudeMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
         ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),

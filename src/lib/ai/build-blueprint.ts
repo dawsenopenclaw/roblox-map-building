@@ -107,9 +107,32 @@ export async function estimateComplexity(
   const difficulty = classifyDifficulty(prompt)
   const category = detectCategory(prompt)
 
-  let targetParts = difficulty === 'simple' ? 15 : difficulty === 'medium' ? 35 : 60
-  let targetLights = difficulty === 'simple' ? 0 : difficulty === 'medium' ? 2 : 5
-  let targetInteractive = difficulty === 'simple' ? 0 : difficulty === 'medium' ? 1 : 3
+  // Base targets — scale aggressively for complex builds
+  const lower = prompt.toLowerCase()
+  const isMassive = /\b(town|village|city|castle|kingdom|fortress|mansion|estate|campus|district|complex|arena|stadium|cathedral|temple|palace|neighborhood)\b/.test(lower)
+  const isLarge = /\b(house|building|shop|restaurant|cafe|school|hospital|factory|warehouse|church|station|hotel|apartment|barn|hangar|bridge|park)\b/.test(lower)
+
+  let targetParts = difficulty === 'simple' ? 20 : difficulty === 'medium' ? 50 : 120
+  let targetLights = difficulty === 'simple' ? 1 : difficulty === 'medium' ? 4 : 10
+  let targetInteractive = difficulty === 'simple' ? 0 : difficulty === 'medium' ? 2 : 5
+
+  // Scale up for massive builds
+  if (isMassive) {
+    targetParts = Math.max(targetParts, 200)
+    targetLights = Math.max(targetLights, 15)
+    targetInteractive = Math.max(targetInteractive, 8)
+  } else if (isLarge) {
+    targetParts = Math.max(targetParts, 80)
+    targetLights = Math.max(targetLights, 6)
+    targetInteractive = Math.max(targetInteractive, 3)
+  }
+
+  // Multi-object scenes get even more
+  const objectCount = (lower.match(/\band\b/g) || []).length + 1
+  if (objectCount >= 3) {
+    targetParts = Math.max(targetParts, targetParts * objectCount * 0.6)
+    targetLights = Math.max(targetLights, targetLights * Math.ceil(objectCount * 0.5))
+  }
 
   // Override with aggregate data if available
   try {
@@ -201,7 +224,7 @@ List ALL parts individually.`
 
   try {
     const raw = await callAI(BLUEPRINT_PROMPT, [{ role: 'user', content: userMsg }], {
-      maxTokens: 4096,
+      maxTokens: 8192,
       codeMode: false,
     })
 
@@ -280,7 +303,7 @@ export function formatBlueprintAsCodePrompt(blueprint: Blueprint, originalPrompt
     '```json',
     JSON.stringify({
       name: blueprint.name,
-      parts: blueprint.parts.slice(0, 80),
+      parts: blueprint.parts.slice(0, 200), // Allow up to 200 parts in blueprint prompt
       interactiveElements: blueprint.interactiveElements,
       lightingSources: blueprint.lightingSources,
       ambientEffects: blueprint.ambientEffects,

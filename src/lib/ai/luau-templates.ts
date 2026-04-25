@@ -5086,6 +5086,10 @@ print("[Animation] ${animationName} system ready — speed: ${speed}, looping: $
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Re-export new game templates
+export { rpgGame, horrorGame, towerDefenseGame, battleRoyaleGame, racingGame, survivalGame } from './luau-templates-games'
+export type { RPGGameParams, HorrorGameParams, TowerDefenseParams, BattleRoyaleParams, RacingGameParams, SurvivalGameParams } from './luau-templates-games'
+
 // Template registry — maps task template names to generator functions
 // ─────────────────────────────────────────────────────────────────────────────
 
