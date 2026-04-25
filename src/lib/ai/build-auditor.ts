@@ -243,9 +243,9 @@ const CATEGORY_REQUIREMENTS: Record<string, CategoryRequirements> = {
     recommendedFeatures: ['furniture', 'light fixture', 'sign', 'path or sidewalk'],
   },
   house: {
-    minParts: 40, minYLevels: 3, minMaterials: 4, minColors: 5, minLights: 2,
+    minParts: 60, minYLevels: 4, minMaterials: 4, minColors: 6, minLights: 2,
     requiredFeatures: ['wall', 'door', 'window', 'roof', 'floor', 'foundation', 'baseboard or trim'],
-    recommendedFeatures: ['furniture', 'light', 'kitchen or bedroom', 'porch or garden'],
+    recommendedFeatures: ['furniture', 'light', 'kitchen or bedroom', 'porch or garden', 'pathway', 'tree or bush'],
   },
   nature: {
     minParts: 25, minYLevels: 3, minMaterials: 3, minColors: 4, minLights: 0,
@@ -289,14 +289,14 @@ const CATEGORY_REQUIREMENTS: Record<string, CategoryRequirements> = {
   },
   // Map/scene/hub builds — significantly higher requirements
   map: {
-    minParts: 80, minYLevels: 4, minMaterials: 5, minColors: 8, minLights: 4,
-    requiredFeatures: ['path or road', 'light or lamp', 'tree or bush'],
-    recommendedFeatures: ['fountain or statue', 'bench or seat', 'sign', 'flower or planter', 'building or shop'],
+    minParts: 150, minYLevels: 5, minMaterials: 6, minColors: 10, minLights: 6,
+    requiredFeatures: ['path or road', 'light or lamp', 'tree or bush', 'building or shop'],
+    recommendedFeatures: ['fountain or statue', 'bench or seat', 'sign', 'flower or planter', 'fence or boundary', 'terrain'],
   },
   hub: {
-    minParts: 70, minYLevels: 4, minMaterials: 5, minColors: 7, minLights: 4,
-    requiredFeatures: ['path or road', 'light or lamp'],
-    recommendedFeatures: ['fountain or statue', 'bench', 'sign', 'arch or gate', 'tree or bush'],
+    minParts: 120, minYLevels: 4, minMaterials: 5, minColors: 8, minLights: 5,
+    requiredFeatures: ['path or road', 'light or lamp', 'tree or bush'],
+    recommendedFeatures: ['fountain or statue', 'bench', 'sign', 'arch or gate', 'fence or boundary'],
   },
   // Missing game genre categories
   horror: {

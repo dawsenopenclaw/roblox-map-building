@@ -3832,13 +3832,26 @@ SCALE (pro-builder standard):
 
 CRITICAL QUALITY RULES (VIOLATION = BROKEN BUILD):
 0. ALL PARTS MUST GO INTO THE SINGLE MODEL 'm'. The ONLY line referencing workspace directly should be 'm.Parent = workspace' at the end.
-1. HARD MINIMUM PART COUNTS — builds below these are REJECTED:
-   House/Building: 40 minimum (target 45-55). Castle: 55+ parts. Vehicle: 20+ parts. Prop/Furniture: 8+ parts.
-   A 15-part house is an ugly box. 40+ parts with trim, frames, sills, posts, and environment makes it REAL.
-   Count your P()/W()/Cyl()/Ball() calls before outputting. If under minimum, ADD: baseboards, corner posts, crown trim, window mullions, door panels, steps, pathway, trees, lamp posts.
-2. ADD TRIM TO EVERYTHING: Walls get baseboard + crown trim + corner posts. Windows get 4-piece frames + mullion + sill. Doors get recessed panels + handle + overhang. Roofs get ridge beam + fascia boards. Buildings get foundation + front steps + pathway.
-3. ALWAYS include ChangeHistoryService boilerplate + m.Parent=workspace + FinishRecording at end.
-4. USE vc() for color variation on repeated materials.
+1. PART COUNT TARGETS — builds below minimums are REJECTED:
+   Prop/Furniture: 10+ parts. Vehicle: 25+ parts.
+   House/Building: 80-150 parts minimum. Target 150-300 for a detailed house.
+   Castle/Large structure: 150-400 parts.
+   Game Map/Hub: 200-500+ parts. Use FOR LOOPS for mass-placed elements.
+   A 40-part house is still a box. 150+ parts with trim, furniture, landscaping makes it REAL.
+   Real Roblox games: Jailbreak=20K parts, MadCity=25K, MeepCity=14K. Our builds must look professional.
+2. USE FOR LOOPS TO MASS-PRODUCE: Street lamps, tiles, trees, benches, flowers, fence posts, rim stones — NEVER write 8 identical lamp posts individually. Use a positions table + for loop. This is how pro builders hit 500+ parts efficiently. Example:
+   local lampPositions = {{20,20},{-20,20},{20,-20},{-20,-20},{40,0},{-40,0},{0,40},{0,-40}}
+   for i, pos in ipairs(lampPositions) do
+     Cyl("Lamp"..i.."_Pole", 9,0.5, pos[1],5,pos[2], "Metal", 55,55,60)
+     P("Lamp"..i.."_Head", 2,0.5,2, pos[1],10,pos[2], "Metal", 75,73,68)
+     local bulb = Ball("Lamp"..i.."_Bulb", 1, pos[1],9.5,pos[2], "Neon", 255,240,180)
+     Light(bulb, 2, 28, 255,235,160)
+   end
+   -- 8 lamps × 3 parts + 8 lights = 32 parts from 6 lines of code!
+3. ADD TRIM TO EVERYTHING: Walls get baseboard + crown trim + corner posts. Windows get 4-piece frames + mullion + sill. Doors get recessed panels + handle + overhang. Roofs get ridge beam + fascia boards. Buildings get foundation + front steps + pathway.
+4. ALWAYS include ChangeHistoryService boilerplate + m.Parent=workspace + FinishRecording at end.
+5. USE vc() for color variation on repeated materials.
+6. USE LOOPS FOR: floor tile grids (alternating colors), fence posts around perimeters, trees along paths, flower clusters, rim/border stones, street furniture. One loop = 20-80 parts from 5-10 lines.
 
 === ARCHITECTURAL DETAIL — THIS IS WHAT SEPARATES AMATEUR FROM PRO ===
 
@@ -4023,115 +4036,184 @@ MAP COMPOSITION RULES:
 9. SIGNAGE: SurfaceGui signs on Parts at key locations (zone names, directions, rules).
 10. AMBIENT: ParticleEmitter for dust motes or pollen attached to a central part. Subtle, Rate=3-5.
 
-MAP PART TARGETS:
-  Small lobby/hub: 80-120 parts
-  Medium game map: 120-200 parts
-  Large world: 200-400+ parts
-  NEVER under 80 parts for a map/scene request.
+MAP PART TARGETS (real Roblox games: Jailbreak=20K, MeepCity=14K):
+  Small lobby/hub: 150-300 parts
+  Medium game map: 300-600 parts
+  Large world: 500-2000+ parts
+  NEVER under 150 parts for a map/scene request.
+  USE FOR LOOPS for repeated elements (lamps, tiles, trees, benches, flowers, fences).
+  One loop creating 12 lamps = 36 parts from 6 lines of code. This is how pros build.
 
-=== COMPLETE MAP EXAMPLE — GAME HUB PLAZA (copy this pattern for maps) ===
+=== COMPLETE MAP EXAMPLE — GAME HUB (300+ parts using loops — copy this pattern) ===
 
--- ═══ TERRAIN & GROUND ═══
+-- ═══ TERRAIN ═══
 local terrain = workspace.Terrain
-terrain:FillBlock(CFrame.new(sp.X, gy-2, sp.Z), Vector3.new(200,4,200), Enum.Material.Grass)
-terrain:FillBall(Vector3.new(sp.X+60, gy+3, sp.Z+40), 12, Enum.Material.Grass) -- gentle hill
-terrain:FillBlock(CFrame.new(sp.X+70, gy-1, sp.Z-30), Vector3.new(30,2,30), Enum.Material.Water) -- pond
-terrain:FillBlock(CFrame.new(sp.X+70, gy-0.5, sp.Z-15), Vector3.new(35,1,4), Enum.Material.Sand) -- shore
+terrain:FillBlock(CFrame.new(sp.X, gy-2, sp.Z), Vector3.new(300,4,300), Enum.Material.Grass)
+terrain:FillBall(Vector3.new(sp.X+80, gy+4, sp.Z+50), 18, Enum.Material.Grass)
+terrain:FillBall(Vector3.new(sp.X-60, gy+3, sp.Z-40), 12, Enum.Material.Grass)
+terrain:FillBlock(CFrame.new(sp.X+90, gy-1, sp.Z-40), Vector3.new(40,2,40), Enum.Material.Water)
+terrain:FillBlock(CFrame.new(sp.X+90, gy-0.5, sp.Z-20), Vector3.new(45,1,5), Enum.Material.Sand)
 
--- ═══ CENTRAL PLAZA (layered circular foundation) ═══
-Cyl("PlazaShadow", 0.2,52, 0,0.1,0, "Concrete", 70,65,60)
-Cyl("PlazaBase", 1.5,48, 0,0.75,0, "Cobblestone", 160,155,150)
-Cyl("PlazaTop", 0.8,40, 0,1.9,0, "Concrete", 190,185,178)
--- Plaza border trim (gold neon ring)
-Cyl("PlazaRim", 0.3,49, 0,1.65,0, "Neon", 255,200,40)
+-- ═══ CENTRAL PLAZA (layered, 5 parts) ═══
+Cyl("PlazaShadow", 0.2,62, 0,0.1,0, "Concrete", 70,65,60)
+Cyl("PlazaBase", 2,56, 0,1,0, "Cobblestone", 155,150,145)
+Cyl("PlazaMiddle", 1,48, 0,2.2,0, "Concrete", 175,170,162)
+Cyl("PlazaTop", 0.6,42, 0,2.8,0, "Concrete", 192,187,180)
+Cyl("PlazaRim", 0.3,57, 0,2.15,0, "Neon", 255,200,40)
 
--- ═══ FOUNTAIN (center of plaza) ═══
-Cyl("FountainBasin", 1.5,14, 0,1.5,0, "Concrete", 180,175,165)
-Cyl("FountainInner", 1.6,11, 0,1.6,0, "Concrete", 195,190,182)
-Cyl("FountainWater", 0.3,10.5, 0,2.1,0, "Glass", 100,180,220)  -- transparency handled by Glass
-Cyl("FountainPillar", 4,1.5, 0,4,0, "Concrete", 200,195,185)
-Ball("FountainTop", 2, 0,6.5,0, "Concrete", 210,205,195)
-
--- ═══ WELCOME ARCH ═══
-P("ArchLeft", 3,18,3, -10,10,-50, "Brick", vc(85,70,55))
-P("ArchRight", 3,18,3, 10,10,-50, "Brick", vc(85,70,55))
-P("ArchBeam", 24,3,3, 0,20,-50, "Brick", vc(85,70,55))
-P("ArchSign", 20,4,0.5, 0,20,-48.5, "Concrete", 30,25,40)
-P("ArchGlow", 22,0.4,0.4, 0,18,-50, "Neon", 255,200,40)
-
--- ═══ PATHS (4 directions from hub) ═══
--- North path (alternating tile colors)
-P("PathN1", 8,0.4,8, 0,0.3,28, "Cobblestone", 145,135,125)
-P("PathN2", 8,0.4,8, 0,0.3,36, "Cobblestone", 160,150,140)
-P("PathN3", 8,0.4,8, 0,0.3,44, "Cobblestone", 145,135,125)
-P("PathN4", 8,0.4,8, 0,0.3,52, "Cobblestone", 160,150,140)
--- East path
-P("PathE1", 8,0.4,8, 28,0.3,0, "Cobblestone", 145,135,125)
-P("PathE2", 8,0.4,8, 36,0.3,0, "Cobblestone", 160,150,140)
-P("PathE3", 8,0.4,8, 44,0.3,0, "Cobblestone", 145,135,125)
-P("PathE4", 8,0.4,8, 52,0.3,0, "Cobblestone", 160,150,140)
-
--- ═══ STREET LAMPS (8 around plaza) ═══
-Cyl("Lamp1_Pole", 9,0.5, 22,5,22, "Metal", 55,55,60)
-P("Lamp1_Head", 2,0.5,2, 22,10,22, "Metal", 75,73,68)
-Ball("Lamp1_Bulb", 1, 22,9.5,22, "Neon", 255,240,180)
-Cyl("Lamp2_Pole", 9,0.5, -22,5,22, "Metal", 55,55,60)
-P("Lamp2_Head", 2,0.5,2, -22,10,22, "Metal", 75,73,68)
-Ball("Lamp2_Bulb", 1, -22,9.5,22, "Neon", 255,240,180)
-Cyl("Lamp3_Pole", 9,0.5, 22,5,-22, "Metal", 55,55,60)
-Ball("Lamp3_Bulb", 1, 22,9.5,-22, "Neon", 255,240,180)
-Cyl("Lamp4_Pole", 9,0.5, -22,5,-22, "Metal", 55,55,60)
-Ball("Lamp4_Bulb", 1, -22,9.5,-22, "Neon", 255,240,180)
--- PointLights on lamp bulbs
-for _, bname in ipairs({"Lamp1_Bulb","Lamp2_Bulb","Lamp3_Bulb","Lamp4_Bulb"}) do
-  local b = m:FindFirstChild(bname) if b then Light(b, 2, 28, 255,235,160) end
+-- ═══ PLAZA RIM STONES (16 decorative stones around edge — loop!) ═══
+for i = 1, 16 do
+  local angle = (i/16) * math.pi * 2
+  local sz = i%2==0 and 3 or 2.5
+  Ball("RimStone"..i, sz, math.cos(angle)*27,2.5,math.sin(angle)*27, "Cobblestone", vc(160,145,125,15))
 end
 
--- ═══ BENCHES (4 around fountain) ═══
-P("Bench1_Seat", 6,0.4,1.5, 10,1.2,8, "Wood", 120,85,50)
-P("Bench1_Back", 6,1.2,0.3, 10,1.8,8.6, "Wood", 115,80,48)
-P("Bench2_Seat", 6,0.4,1.5, -10,1.2,-8, "Wood", 120,85,50)
-P("Bench2_Back", 6,1.2,0.3, -10,1.8,-8.6, "Wood", 115,80,48)
+-- ═══ FOUNTAIN (detailed, 8 parts) ═══
+Cyl("FtnBasin", 2,16, 0,2,0, "Concrete", 180,175,165)
+Cyl("FtnInner", 2.2,12, 0,2.1,0, "Concrete", 195,190,182)
+Cyl("FtnWater", 0.3,11.5, 0,2.8,0, "Glass", 100,180,220)
+Cyl("FtnPillar", 5,1.8, 0,5.5,0, "Marble", 210,208,200)
+Ball("FtnTop", 2.5, 0,8.5,0, "Marble", 220,218,210)
+Cyl("FtnBowl", 0.6,4, 0,7.5,0, "Marble", 215,212,205)
+Cyl("FtnBase", 0.8,3, 0,2.4,0, "Granite", 140,135,130)
+P("FtnGlow", 0.2,0.2,0.2, 0,9,0, "Neon", 100,200,255)
 
--- ═══ TREES (scattered around) ═══
-Cyl("Tree1_Trunk", 6,1.2, 30,4,15, "Wood", vc(90,60,30))
-Ball("Tree1_Canopy", 7, 30,8,15, "Grass", vc(60,115,40,15))
-Cyl("Tree2_Trunk", 5,1, -25,3.5,30, "Wood", vc(95,65,35))
-Ball("Tree2_Canopy", 6, -25,7,30, "Grass", vc(55,120,45,15))
-Cyl("Tree3_Trunk", 7,1.4, -35,4.5,-20, "Wood", vc(85,58,28))
-Ball("Tree3_Canopy", 8, -35,9,-20, "Grass", vc(65,125,42,15))
--- Bushes
-Ball("Bush1", 2.5, 18,1.8,25, "Grass", vc(50,100,35,10))
-Ball("Bush2", 2, -15,1.5,20, "Grass", vc(55,110,40,10))
-Ball("Bush3", 3, 35,2,-10, "Grass", vc(48,105,38,10))
+-- ═══ WELCOME ARCH (7 parts) ═══
+P("ArchPillarL", 3,20,3, -12,11,-55, "Brick", vc(85,70,55))
+P("ArchPillarR", 3,20,3, 12,11,-55, "Brick", vc(85,70,55))
+P("ArchCapL", 4,1,4, -12,21.5,-55, "Concrete", 170,165,155)
+P("ArchCapR", 4,1,4, 12,21.5,-55, "Concrete", 170,165,155)
+P("ArchBeam", 28,3,3, 0,22.5,-55, "Brick", vc(85,70,55))
+P("ArchSign", 24,5,0.5, 0,22,-53, "Concrete", 25,20,35)
+P("ArchGlow", 28,0.4,0.4, 0,20.5,-55, "Neon", 255,200,40)
 
--- ═══ FLOWER BEDS (along paths) ═══
-Ball("Flower1", 0.8, 5,1.5,26, "Fabric", 255,100,130)
-Ball("Flower2", 0.8, 6,1.5,27, "Fabric", 255,200,50)
-Ball("Flower3", 0.8, 4,1.5,27, "Fabric", 200,100,255)
-Ball("Flower4", 0.8, -5,1.5,28, "Fabric", 255,140,60)
-Ball("Flower5", 0.8, -6,1.5,26, "Fabric", 255,80,100)
+-- ═══ PATHS (4 directions, alternating tiles via loop — 48 tiles = 48 parts) ═══
+local pathDirs = {{0,1,"N"},{0,-1,"S"},{1,0,"E"},{-1,0,"W"}}
+local tileColors = {{145,135,125},{162,152,142}}
+for _, dir in ipairs(pathDirs) do
+  for seg = 0, 11 do
+    local ci = tileColors[(seg%2)+1]
+    local ox = dir[1]*(30+seg*8)
+    local oz = dir[2]*(30+seg*8)
+    P("Path"..dir[3]..seg, 8,0.4,8, ox,0.3,oz, "Cobblestone", ci[1],ci[2],ci[3])
+  end
+end
+-- Path edge trim (gold strips along paths)
+for _, dir in ipairs(pathDirs) do
+  if dir[1]==0 then -- N/S paths
+    P("PathTrim"..dir[3].."L", 0.4,0.5,100, -4.2,0.35,dir[2]*80, "Neon", 255,200,40)
+    P("PathTrim"..dir[3].."R", 0.4,0.5,100, 4.2,0.35,dir[2]*80, "Neon", 255,200,40)
+  else -- E/W paths
+    P("PathTrim"..dir[3].."L", 100,0.5,0.4, dir[1]*80,0.35,-4.2, "Neon", 255,200,40)
+    P("PathTrim"..dir[3].."R", 100,0.5,0.4, dir[1]*80,0.35,4.2, "Neon", 255,200,40)
+  end
+end
 
--- ═══ SMALL BUILDING (shop/booth at one side) ═══
-P("Shop_Floor", 12,0.5,10, 50,0.8,0, "WoodPlanks", 140,100,60)
-P("Shop_WallBack", 12,8,0.6, 50,5,5, "Brick", vc(180,140,100))
-P("Shop_WallL", 0.6,8,10, 44,5,0, "Brick", vc(180,140,100))
-P("Shop_WallR", 0.6,8,10, 56,5,0, "Brick", vc(180,140,100))
-P("Shop_Counter", 10,3,1.5, 50,2.5,-4, "WoodPlanks", 130,90,50)
-W("Shop_Roof", 13,3,12, 50,10.5,0, "Slate", vc(75,65,55))
-P("Shop_Sign", 8,2,0.3, 50,9,-5.2, "Wood", 60,40,20)
+-- ═══ STREET LAMPS (12 lamps × 3 parts + lights = 36 parts + 12 lights) ═══
+local lampSpots = {{25,25},{-25,25},{25,-25},{-25,-25},{45,0},{-45,0},{0,45},{0,-45},{50,30},{-50,30},{50,-30},{-50,-30}}
+for i, lp in ipairs(lampSpots) do
+  Cyl("Lamp"..i.."P", 10,0.5, lp[1],6,lp[2], "Metal", 55,55,60)
+  P("Lamp"..i.."H", 2.2,0.6,2.2, lp[1],11.3,lp[2], "Metal", 72,70,65)
+  local b = Ball("Lamp"..i.."B", 1.2, lp[1],10.5,lp[2], "Neon", 255,240,180)
+  Light(b, 2, 30, 255,235,160)
+end
 
--- ═══ AAA LIGHTING (always include for maps) ═══
+-- ═══ BENCHES (6 benches × 4 parts = 24 parts) ═══
+local benchSpots = {{12,10,0},{-12,-10,0},{15,0,90},{-15,0,90},{8,-12,45},{-8,12,45}}
+for i, bs in ipairs(benchSpots) do
+  local cf = CFrame.new(sp.X+bs[1],gy+1.2,sp.Z+bs[2])*CFrame.Angles(0,math.rad(bs[3]),0)
+  local seat = Instance.new("Part") seat.Name="Bench"..i.."S" seat.Size=Vector3.new(6,0.4,1.5) seat.CFrame=cf seat.Anchored=true seat.Material=Enum.Material.Wood seat.Color=Color3.fromRGB(vc(120,85,50)) seat.Parent=m
+  local back = Instance.new("Part") back.Name="Bench"..i.."B" back.Size=Vector3.new(6,1.2,0.3) back.CFrame=cf*CFrame.new(0,0.6,-0.6) back.Anchored=true back.Material=Enum.Material.Wood back.Color=Color3.fromRGB(vc(115,80,48)) back.Parent=m
+  local legL = Instance.new("Part") legL.Name="Bench"..i.."L1" legL.Size=Vector3.new(0.3,1,1.5) legL.CFrame=cf*CFrame.new(-2.5,-0.6,0) legL.Anchored=true legL.Material=Enum.Material.Metal legL.Color=Color3.fromRGB(60,60,65) legL.Parent=m
+  local legR = Instance.new("Part") legR.Name="Bench"..i.."L2" legR.Size=Vector3.new(0.3,1,1.5) legR.CFrame=cf*CFrame.new(2.5,-0.6,0) legR.Anchored=true legR.Material=Enum.Material.Metal legR.Color=Color3.fromRGB(60,60,65) legR.Parent=m
+end
+
+-- ═══ TREES (10 trees × 3 parts = 30 parts — trunk + canopy + sub-canopy) ═══
+local treeSpots = {{35,18},{-30,35},{-40,-22},{28,-35},{55,10},{-55,15},{60,-20},{-45,45},{40,45},{-35,-45}}
+for i, tp in ipairs(treeSpots) do
+  local h = 5+math.random()*3
+  Cyl("Tree"..i.."T", h, 1+math.random()*0.4, tp[1],h/2+1,tp[2], "Wood", vc(90,62,32,8))
+  Ball("Tree"..i.."C", 5+math.random()*3, tp[1],h+2,tp[2], "Grass", vc(58,118,42,15))
+  Ball("Tree"..i.."S", 3+math.random()*2, tp[1]+1.5,h+0.5,tp[2]+1, "Grass", vc(50,105,38,12))
+end
+
+-- ═══ BUSHES (15 bushes = 15 parts) ═══
+for i = 1, 15 do
+  local angle = (i/15)*math.pi*2 + math.random()*0.3
+  local r = 20+math.random()*25
+  Ball("Bush"..i, 1.8+math.random()*1.5, math.cos(angle)*r,1.5,math.sin(angle)*r, "Grass", vc(48,100,35,12))
+end
+
+-- ═══ FLOWER BEDS (24 flowers in clusters = 24 parts) ═══
+local flowerColors = {{255,100,130},{255,200,50},{200,100,255},{255,140,60},{255,80,100},{100,200,255}}
+for i = 1, 24 do
+  local angle = (i/24)*math.pi*2
+  local r = 22+math.random()*4
+  local fc = flowerColors[(i%6)+1]
+  Ball("Flower"..i, 0.6+math.random()*0.4, math.cos(angle)*r,1.3,math.sin(angle)*r, "Fabric", fc[1],fc[2],fc[3])
+end
+
+-- ═══ SHOP BUILDING (20 parts — detailed with interior) ═══
+P("ShopFound", 16,0.5,14, 60,0.5,0, "Concrete", 155,150,145)
+P("ShopFloor", 14,0.4,12, 60,1,0, "WoodPlanks", 140,100,60)
+P("ShopWallBk", 14,9,0.7, 60,5.7,6, "Brick", vc(180,140,100))
+P("ShopWallL", 0.7,9,12, 53,5.7,0, "Brick", vc(180,140,100))
+P("ShopWallR", 0.7,9,12, 67,5.7,0, "Brick", vc(180,140,100))
+P("ShopWallFrL", 4,9,0.7, 55,5.7,-6, "Brick", vc(180,140,100))
+P("ShopWallFrR", 4,9,0.7, 65,5.7,-6, "Brick", vc(180,140,100))
+P("ShopWallFrTop", 6,2,0.7, 60,9.2,-6, "Brick", vc(180,140,100))
+P("ShopDoor", 5,7,0.3, 60,4.7,-5.8, "Wood", 80,50,25)
+P("ShopWinGlass", 3,3,0.2, 55,5.5,6.2, "Glass", 180,215,240, 0.35)
+P("ShopWinSill", 3.5,0.3,0.8, 55,3.9,6.5, "Concrete", 200,195,185)
+P("ShopCounter", 12,3,1.5, 60,2.7,-3, "WoodPlanks", 130,90,50)
+P("ShopShelf1", 3,5,0.6, 54,4,5.3, "Wood", 100,65,30)
+P("ShopShelf2", 3,5,0.6, 66,4,5.3, "Wood", 100,65,30)
+W("ShopRoofL", 8,3,14, 56,12,0, "Slate", vc(75,65,55))
+W("ShopRoofR", 8,3,14, 64,12,0, "Slate", vc(75,65,55), 180)
+P("ShopRidge", 0.4,0.3,15, 60,13.5,0, "Wood", 90,60,30)
+P("ShopSign", 10,2.5,0.3, 60,10,-6.5, "Wood", 55,35,18)
+P("ShopAwning", 12,0.3,3, 60,9.5,-7.5, "Fabric", 180,40,40)
+local shopCeil = P("ShopCeiling", 14,0.3,12, 60,10.3,0, "Concrete", 225,222,218)
+Light(shopCeil, 2, 20, 255,200,140)
+
+-- ═══ SECOND BUILDING — NPC HUT (15 parts) ═══
+P("HutFound", 10,0.4,10, -55,0.4,40, "Cobblestone", vc(150,145,140))
+P("HutFloor", 8,0.3,8, -55,0.8,40, "WoodPlanks", 130,90,55)
+Cyl("HutPillar1", 8,0.8, -59,4.8,44, "Wood", vc(95,65,35))
+Cyl("HutPillar2", 8,0.8, -51,4.8,44, "Wood", vc(95,65,35))
+Cyl("HutPillar3", 8,0.8, -59,4.8,36, "Wood", vc(95,65,35))
+Cyl("HutPillar4", 8,0.8, -51,4.8,36, "Wood", vc(95,65,35))
+P("HutRoof", 12,0.5,12, -55,9,40, "Slate", vc(75,65,55))
+P("HutRoofPeak", 0.4,2,12, -55,10.2,40, "Wood", 90,60,30)
+P("HutCounter", 7,2.5,1, -55,2.3,36.5, "WoodPlanks", 120,80,45)
+P("HutSign", 6,1.5,0.3, -55,7.5,35.8, "Wood", 60,40,20)
+-- NPC body
+P("NPC_Body", 2,3,1, -55,3.5,38, "Fabric", 80,130,200)
+Ball("NPC_Head", 1.5, -55,5.5,38, "Fabric", 220,185,150)
+
+-- ═══ BOUNDARY FENCE (perimeter — 40 posts + rails = 80 parts) ═══
+local fenceR = 70
+for i = 1, 40 do
+  local angle = (i/40)*math.pi*2
+  local fx, fz = math.cos(angle)*fenceR, math.sin(angle)*fenceR
+  Cyl("FPost"..i, 4,0.4, fx,2.5,fz, "Wood", vc(90,60,30,8))
+  P("FRail"..i, 0.2,0.2, math.cos(angle)*(fenceR-0.3)*11-math.cos(((i+1)/40)*math.pi*2)*(fenceR-0.3), 3,0.3, fz, "Wood", vc(85,55,28,8))
+end
+
+-- ═══ AAA LIGHTING (always include) ═══
 local L = game:GetService("Lighting")
 L.Technology = Enum.Technology.Future
 L.EnvironmentDiffuseScale = 1
 L.EnvironmentSpecularScale = 1
 L.GlobalShadows = true
+L.Brightness = 2
+L.ClockTime = 14.5
 local atm = Instance.new("Atmosphere") atm.Density=0.3 atm.Offset=0.25 atm.Color=Color3.fromRGB(200,210,230) atm.Decay=Color3.fromRGB(120,140,180) atm.Glare=0.5 atm.Haze=1.5 atm.Parent=L
 local bloom = Instance.new("BloomEffect") bloom.Intensity=0.4 bloom.Size=24 bloom.Threshold=0.95 bloom.Parent=L
 local cc = Instance.new("ColorCorrectionEffect") cc.Brightness=0.05 cc.Contrast=0.15 cc.Saturation=-0.1 cc.TintColor=Color3.fromRGB(255,248,240) cc.Parent=L
+local sr = Instance.new("SunRaysEffect") sr.Intensity=0.08 sr.Spread=0.3 sr.Parent=L
 
-This map example has 80+ parts: layered plaza, fountain, welcome arch, 4 paths with alternating tiles, 4 lamp posts with lights, benches, 3 trees with canopies, bushes, flower beds, a small shop building, and AAA lighting. THIS is the minimum for a game map. Scale UP from here.
+This map example produces 300+ parts: layered plaza with 16 rim stones, 8-part fountain, welcome arch, 48 path tiles with gold trim, 12 lamp posts with lights, 6 benches with legs, 10 trees with sub-canopies, 15 bushes, 24 flowers, detailed shop (20 parts), NPC hut (15 parts), 40-post boundary fence, and full AAA lighting. USE FOR LOOPS like this to achieve high part counts efficiently.
 
 === ADVANCED TECHNIQUES — USE THESE TO MAKE BUILDS PRO-QUALITY ===
 
