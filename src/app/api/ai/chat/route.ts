@@ -3904,84 +3904,134 @@ WINDOWS — never just glass in a hole:
 - BAY WINDOW: 3 angled glass panels forming a bump-out from the wall (5+ parts)
 - LOOP for identical windows: for i=1,4 do ... end generates 4 windows × 6 parts = 24 parts
 
-=== INTERIOR ROOMS — EVERY ROOM IS FULLY FURNISHED ===
-Buildings with interiors need 20-40 parts PER ROOM. A 4-room house = 80-160 interior parts.
+=== #1 PRIORITY: EXTERIOR-FIRST BUILDING (most games DON'T need interiors) ===
 
-KITCHEN (25+ parts):
-- L-shaped counter: 2 horizontal Parts (WoodPlanks top) + 4 cabinet doors (vertical, slightly recessed)
-- Countertop: 0.15-thick slab on top of cabinets, extends 0.3 past face
-- Stove: dark Metal box (2×1.5×2) + 4 small Cyl burners on top + oven door (recessed panel)
-- Fridge: tall box (2×6×2, Metal, light gray) + handle (thin vertical Cyl) + freezer line (thin dark strip)
-- Sink: shallow box in counter gap + Cyl faucet (bent pipe shape: vertical + horizontal Cyl)
-- Hanging cabinets: 2-3 boxes on wall above counter, darker wood
-- Backsplash: thin tiles (0.15 thick) between counter and hanging cabinets, Marble or Glass
-- Light: PointLight (warm, Brightness=2, Range=15) parented to ceiling part
+CRITICAL INSIGHT: In real Roblox games, buildings are FACADES. Players don't go inside.
+They walk to an INTERACTION ZONE (glowing circle/pad in front) which opens a UI/GUI.
+The building just needs to look INCREDIBLE from the OUTSIDE. Spend 90% of parts on exterior.
 
-LIVING ROOM (20+ parts):
-- Couch: seat base (6×1.5×3) + back (6×2×0.5) + 2 armrests (0.5×1.5×3) — Fabric material
-- Coffee table: top (3×0.3×2, WoodPlanks) + 4 legs (Cyl 0.3 diam, 1.2 tall)
-- Rug: thin flat Part (8×0.1×6) under table, Fabric, contrasting warm color
-- TV/Fireplace: TV = thin Glass pane (5×3×0.15) on stand (2 legs + base) OR Fireplace = brick frame (8×6×2) + fire opening (recessed dark area) + mantel (shelf on top)
-- Bookshelf: tall box (3×6×0.8, Wood) + 3-4 thin colored "book row" parts inside
-- Plant: pot (Cyl 1×1.5, Concrete) + green Ball canopy (1.5 diam)
-- Floor lamp: thin Cyl pole + Ball shade + PointLight (dim, warm)
-- Wall art: thin Part (2×1.5×0.1) on wall, varied color — represents a painting
+DEFAULT BEHAVIOR: Unless user EXPLICITLY says "with interior" or "furnished inside":
+- Build SOLID exterior shells — no interior space needed
+- Add an INTERACTION ZONE in front of each building (see below)
+- All windows get warm interior glow (SpotLight pointing outward, warm yellow)
+  This makes buildings look ALIVE and inhabited without actually building interiors
+- Focus on: facade detail, roofline variation, landscaping, signage, lighting
 
-BEDROOM (20+ parts):
-- Bed: frame (5×1×7, Wood) + mattress (4.5×1.2×6.5, Fabric white) + pillow (2×0.6×1.5, Fabric)
-  + headboard (5×3×0.5, WoodPlanks) + blanket (4.5×0.3×4, Fabric, colored)
-- Nightstand: box (1.5×2×1.5, Wood) + lamp (Cyl 0.3×1.5 + Ball 0.8 shade + PointLight)
-- Wardrobe: tall box (4×7×1.5, WoodPlanks) + 2 door lines (thin dark strips) + handles (2 small Cyl)
-- Dresser: box (3×3×1.5, WoodPlanks) + mirror on top (Glass pane 2.5×2×0.1)
-- Rug: small Fabric part under/beside bed
+=== INTERACTION ZONES — HOW PLAYERS USE BUILDINGS ===
 
-BATHROOM (18+ parts):
-- Toilet: base (1.5×1.5×2, Marble white) + tank (1.5×2×0.6, behind) + seat rim (oval, 0.2h)
-- Sink: pedestal (Cyl 0.6×3, Marble) + basin (1.5×0.3×1.2, on top) + faucet (Cyl) + mirror (Glass pane on wall, 2×2.5)
-- Bathtub: long box (5×2×2.5, Marble) + water inside (Glass, 0.4 transparency, slightly below rim)
-- Towel rack: thin Cyl bar on wall + draped "towel" (thin Part hanging)
-- Tile floor: loop for alternating white/gray tiles (8-12 parts via for loop)
-- Light: bright PointLight (Brightness=3, white)
+Every building gets a CIRCULAR INTERACTION PAD in front of its entrance:
 
-OFFICE/STUDY (15+ parts):
-- Desk: L-shape or straight (5×2.5×2.5, WoodPlanks) + drawers (recessed panels on side)
-- Chair: seat (2×0.3×2) + back (2×2.5×0.3) + 5-star base (Cyl center + 5 small Cyl legs) — all Metal
-- Monitor: thin Glass pane (3×2×0.1) + stand (thin Cyl) + base (small Part)
-- Keyboard: thin dark Part (2×0.1×0.8) on desk
-- Bookshelf: Wood box + colored book rows
-- Desk lamp: angled Cyl arm + small Ball shade + SpotLight
+INTERACTION ZONE PATTERN (copy for every building):
+  -- Glowing circle pad in front of door
+  local padPos = {doorX, 0.15, doorZ - 6} -- 6 studs in front of door
+  Cyl("Zone_Shop", 0.15, 6, padPos[1],padPos[2],padPos[3], "Neon", 255,200,40)  -- gold glow ring
+  Cyl("Zone_Shop_Inner", 0.2, 5, padPos[1],padPos[2]+0.01,padPos[3], "Concrete", 40,35,50) -- dark center
+  -- Icon/label above the pad
+  local signPart = P("Zone_Shop_Sign", 4,2,0.3, padPos[1],4,padPos[3], "Concrete", 30,25,40)
+  -- Add SurfaceGui with building name
+  local sg = Instance.new("SurfaceGui") sg.Face=Enum.NormalId.Front sg.Parent=signPart
+  local lbl = Instance.new("TextLabel") lbl.Size=UDim2.new(1,0,1,0) lbl.BackgroundTransparency=1
+  lbl.TextColor3=Color3.fromRGB(255,230,80) lbl.TextScaled=true lbl.Font=Enum.Font.GothamBold
+  lbl.Text="SHOP" lbl.Parent=sg
+  -- ProximityPrompt on the pad (triggers UI in real game)
+  local pp = Instance.new("ProximityPrompt")
+  pp.ActionText="Open Shop" pp.HoldDuration=0 pp.MaxActivationDistance=10
+  pp.Parent=m:FindFirstChild("Zone_Shop")
 
-=== EXTERIOR — FULL PROPERTY, NOT JUST A BUILDING ===
-The building sits on a PROPERTY with extensive exterior detail. 30-60 exterior parts.
+BUILDING TYPE → INTERACTION MAPPING:
+  Shop/Store → "Open Shop" pad → shop UI with buy buttons
+  Bank/Vault → "Open Bank" pad → currency/savings UI
+  Hospital/Clinic → "Heal" pad → health restore or medical UI
+  Gym/Dojo → "Train" pad → stat upgrade UI
+  Quest Board → "View Quests" pad → quest selection UI
+  Garage/Workshop → "Customize" pad → vehicle/tool customizer
+  House/Home → "Enter Home" pad → home decoration UI
+  School/Library → "Study" pad → skill tree / knowledge UI
+  Portal/Gate → "Teleport" pad → zone selection UI
+  NPC Stand → "Talk" pad → dialogue / shop UI
 
-YARD & LANDSCAPING:
-- Lawn: terrain Grass or large flat green Part as base
-- Fence: USE LOOP — for i=1,fenceCount do Cyl("FPost"..i, 3,0.4, ...) end + horizontal rail Parts
+ZONE PAD VARIATIONS BY THEME:
+  DEFAULT: Gold Neon circle (255,200,40) — works everywhere
+  MEDIEVAL: Cobblestone circle with torch flames on posts beside it
+  SCI-FI: Neon blue/cyan circle (0,200,255) with glow pulse
+  HORROR: Dim red circle (150,30,30) barely visible
+  NATURE: Grass circle with flower ring around edge
+  TYCOON: Gold + dollar sign icon above pad
+
+=== FACADE-FIRST BUILDING TECHNIQUES ===
+Buildings that look INSANE from outside without needing interiors:
+
+DEPTH & LAYERS (the secret to great facades):
+- NEVER flat walls. Always add depth: window frames protrude 0.3+, door frames recess 0.5+
+- Pilasters: vertical columns every 8-12 studs along wall face (0.4 protrusion) — adds rhythm
+- Cornices: horizontal ledge at each floor line (0.5 protrusion, 0.4 height) — breaks up wall
+- Quoins: alternating stone blocks at building corners (stack of small offset Parts)
+- String course: thin horizontal band between floors (0.2h, different material/color)
+- Plinth: wider/darker base of building (lower 2 studs, extends 0.3 past wall)
+
+WINDOW GLOW (makes buildings feel alive WITHOUT interiors):
+  -- Behind each window, add SpotLight pointing outward
+  local win = P("Window1_Glass", 3.5,3,0.2, -5,6,wallZ, "Glass", 255,220,150, 0.2)
+  local sl = Instance.new("SpotLight") sl.Face=Enum.NormalId.Back sl.Range=15 sl.Brightness=1
+  sl.Angle=45 sl.Color=Color3.fromRGB(255,210,150) sl.Parent=win
+  -- This creates warm light spilling OUT of windows — looks like someone is home
+
+ROOFLINE VARIATION (buildings should have interesting silhouettes):
+- Mix roof heights: main roof at one level, wing at another, tower section higher
+- Dormers: small gabled bump-outs on roof (W+W+P front face) — use loop for 2-3
+- Cupola/tower: small elevated structure on roof peak (adds height interest)
+- Parapet details on flat roofs: decorative crenellation or shaped top edge
+- Chimney at different position per building (visual variety in rows)
+
+AWNINGS & CANOPIES:
+- Shop awnings: angled fabric Part (3×0.15×4, Fabric, colored) + 2 support brackets
+  Use loop with different colors per shop: for i, color in ipairs(awningColors) do ... end
+- Entrance canopy: flat Part + 2 support Cyl columns — covers interaction zone pad
+- Balcony awning: smaller fabric over second-floor balcony
+
+SIGNAGE (every building needs identification):
+- Hanging sign: bracket (L-shaped Parts on wall) + sign Part + SurfaceGui with text
+- Facade sign: Part flush with wall above door + SurfaceGui
+- Neon sign: thin Part + Neon material for glow effect
+- A-frame sidewalk sign: 2 angled Parts meeting at top, sign on face
+- Use SurfaceGui with TextLabel for ALL readable text
+
+EXTERIOR PROPS per building type:
+  Shop: awning + hanging sign + window displays (small Parts behind glass) + A-frame sign
+  Restaurant: outdoor tables (4 via loop) + umbrellas (Cyl pole + Cyl top) + menu board
+  Bank: pillars flanking entrance + vault symbol (thick door) + security camera (small box+Cyl)
+  Hospital: red cross sign + ambulance prop (vehicle) + wheelchair ramp
+  Blacksmith: anvil prop + hanging swords/shields on wall + smoke from chimney (Smoke VFX)
+  Tavern: hanging sign (with mug icon look) + barrel props outside + warm window glow
+  Market: open-front stalls + hanging lanterns + crate/barrel props + product displays
+
+=== FULL PROPERTY & LANDSCAPING ===
+Every building sits on a PROPERTY. Exterior detail is where you spend most parts.
+
+YARD & LANDSCAPING (use loops for all repeated elements):
+- Fence: for i=1,fenceCount do Cyl("FPost"..i, 3,0.4, ...) end + horizontal rail Parts
 - Hedge row: loop of green Balls (diameter 2-3) in a line, touching each other
 - Garden beds: Cobblestone border (thin frame) + soil (dark brown Part) + flower Balls inside
 - Tree(s): Cyl trunk + 2-3 Ball canopies at different sizes/positions for realistic shape
 - Bushes: scattered green Balls of varying sizes near building base and corners
+- Rock features: Ball/Part clusters in natural Granite/Slate for texture
 
 DRIVEWAY & VEHICLES:
-- Driveway: Concrete or Cobblestone flat Part (12W×0.15H×20D) from road to garage
-- Car prop: body (5×2×10, Metal) + wheels (4 Cyl, dark) + windshield (Glass, angled) + headlights (2 small Neon)
-  A car = 8-12 parts minimum
+- Driveway: Concrete or Cobblestone flat Part (12W×0.15H×20D) from road to building
+- Car prop: body (5×2×10, Metal) + wheels (4 Cyl, dark) + windshield (Glass, angled) + headlights (2 Neon)
 
-PORCH & DECK:
+PORCH & ENTRY:
 - Raised platform (extends 8-12 studs from front wall, 0.5 above ground)
 - Railing: top rail + bottom rail + vertical balusters via loop (every 2 studs)
-- Columns: Cyl or square Parts at corners + middle, supporting roof overhang
-- Porch furniture: 2 chairs + small table (rocking chair = seat + back + 2 curved legs)
+- Columns: Cyl or square Parts at corners, supporting roof overhang
+- Steps: 3-5 progressively narrower Parts leading up to porch level
 
 OUTDOOR FURNITURE & PROPS:
-- Mailbox: post (Cyl) + box (small Part) + flag (thin red Part)
-- Trash cans: Cyl with lid (thin Cyl on top)
 - Lamp post: pole (Cyl 8h) + head (Part) + globe (Ball) + PointLight
-- BBQ grill: box on legs + lid (half-cylinder look)
-- Swing set: A-frame (4 angled Cyl legs + crossbar) + 2 seats (Part + chain Cyl)
-- Trampoline: Cyl base + flat Cyl top (Fabric material, dark)
-- Pool: sunken Glass water Part + Concrete rim (4 Parts forming rectangle) + ladder (2 Cyl + step Parts)
-- Deck chairs: 2 angled Parts (seat + back) + Cyl legs
+- Bench: seat + back + 2 legs (4 parts, loop for multiple benches)
+- Mailbox, trash can, planter, barrel, crate — small detail that fills space
+- Pool: sunken Glass water Part + Concrete rim + ladder
+- Playground: swing set (A-frame + seats), slide (angled Part + sides)
 
 === STREETS, ROADS & NEIGHBORHOODS ===
 When building towns, districts, or areas with roads:
@@ -3991,39 +4041,75 @@ ROAD: P("Road", 12,0.2,100, ..., "Concrete", 50,50,55) + center line (yellow, 0.
   Curb: 0.3H strip between road and sidewalk.
   Crosswalks: 5 white stripes via loop.
 
-STREET with buildings: Generate N buildings along the street via loop, each offset by buildingWidth+gap:
-  local buildings = {
-    {w=22,d=16,floors=2,style="brick"}, {w=16,d=14,floors=1,style="wood"},
-    {w=20,d=18,floors=2,style="modern"}, {w=18,d=12,floors=1,style="cottage"}
+STREET with buildings: Generate N buildings along the street via loop, each offset by width+gap.
+  Each building = FACADE SHELL + interaction zone + signage + awning + landscaping.
+  Use a table of building configs:
+  local builds = {
+    {name="Bakery",w=16,h=12,color={180,140,100},sign="BAKERY",awning={200,60,60}},
+    {name="Smithy",w=14,h=10,color={100,90,80},sign="BLACKSMITH",awning={80,70,60}},
+    {name="Potion",w=12,h=11,color={80,50,120},sign="POTIONS",awning={120,50,180}},
+    {name="Inn",w=18,h=14,color={140,110,80},sign="THE INN",awning={60,100,60}},
   }
-  local xOffset = -60
-  for i, b in ipairs(buildings) do
-    -- Generate full building at xOffset with b.w, b.d, b.floors, b.style
-    xOffset = xOffset + b.w + 8 -- 8 stud gap between buildings
+  local xOff = -50
+  for i, b in ipairs(builds) do
+    -- Foundation + 4 walls + roof + door + windows + signage + awning + interaction zone
+    -- Each building: 20-40 parts. 4 buildings = 80-160 parts from 1 loop.
+    P(b.name.."_Found", b.w+2,0.5,14, xOff,0.3,0, "Concrete", 155,150,145)
+    P(b.name.."_Floor", b.w,0.4,12, xOff,0.8,0, "WoodPlanks", 140,100,60)
+    P(b.name.."_WallBk", b.w,b.h,0.7, xOff,b.h/2+1,6, "Brick", vc(b.color[1],b.color[2],b.color[3]))
+    P(b.name.."_WallL", 0.7,b.h,12, xOff-b.w/2,b.h/2+1,0, "Brick", vc(b.color[1],b.color[2],b.color[3]))
+    P(b.name.."_WallR", 0.7,b.h,12, xOff+b.w/2,b.h/2+1,0, "Brick", vc(b.color[1],b.color[2],b.color[3]))
+    P(b.name.."_WallFrL", b.w/2-3,b.h,0.7, xOff-b.w/4-1.5,b.h/2+1,-6, "Brick", vc(b.color[1],b.color[2],b.color[3]))
+    P(b.name.."_WallFrR", b.w/2-3,b.h,0.7, xOff+b.w/4+1.5,b.h/2+1,-6, "Brick", vc(b.color[1],b.color[2],b.color[3]))
+    P(b.name.."_Door", 5,8,0.3, xOff,5,-5.7, "Wood", 80,50,25)
+    P(b.name.."_Win", 3,3,0.2, xOff+b.w/4,6,-6.1, "Glass", 255,220,150, 0.2)
+    P(b.name.."_Awning", b.w*0.7,0.2,3, xOff,b.h+0.5,-7.5, "Fabric", b.awning[1],b.awning[2],b.awning[3])
+    P(b.name.."_Sign", b.w*0.5,2,0.3, xOff,b.h-1,-6.3, "Wood", 55,35,18)
+    W(b.name.."_RoofL", b.w/2+1,3,14, xOff-b.w/4,b.h+2.5,0, "Slate", vc(75,65,55))
+    W(b.name.."_RoofR", b.w/2+1,3,14, xOff+b.w/4,b.h+2.5,0, "Slate", vc(75,65,55), 180)
+    -- Interaction zone
+    Cyl(b.name.."_Zone", 0.15,6, xOff,0.15,-10, "Neon", 255,200,40)
+    xOff = xOff + b.w + 6
   end
 
-INTERSECTION: 4-way road crossing. Stop signs (Cyl post + octagon Part, red). Traffic lights (3 stacked Balls in frame).
-PARKING LOT: grid of painted lines (thin white Parts) + car props in some spots.
+INTERSECTION: 4-way road crossing. Stop signs (Cyl post + octagon Part, red). Traffic lights (3 stacked Balls).
 
 === WORLD-SCALE GENERATION (1000-10000+ parts) ===
 For full game worlds, maps, and towns:
 
-ZONE SYSTEM: Divide the world into themed zones radiating from a central hub.
-  Each zone = 80-200 studs wide, distinct materials/colors/props.
+ZONE SYSTEM: Divide world into themed zones radiating from central hub.
+  Each zone = 100-300 studs wide, distinct materials/colors/props.
   Zones connected by paths with transitional areas.
+  Each zone has 3-8 buildings (facade shells + interaction zones).
 
-PROCEDURAL BUILDING ROWS: Don't hand-place every building. Use tables + loops:
-  local shopTypes = {
-    {name="Bakery", color={180,140,100}, signText="BAKERY"},
-    {name="Weapon", color={100,100,110}, signText="WEAPONS"},
-    {name="Potion", color={80,50,120}, signText="POTIONS"},
-  }
-  for i, shop in ipairs(shopTypes) do
-    local ox = -40 + (i-1)*30
-    P(shop.name.."Floor", 16,0.5,12, ox,1,0, "WoodPlanks", 140,100,60)
-    P(shop.name.."WallBack", 16,10,0.7, ox,6,6, "Brick", vc(shop.color[1],shop.color[2],shop.color[3]))
-    -- ... full building per shop, 15-25 parts each
-  end
+BUILDING GENERATION: Use tables + loops. Never hand-place buildings individually.
+  Define building configs (name, size, colors, sign text, awning color, building function).
+  Loop through configs, each iteration generates a complete facade + interaction zone.
+  4 buildings × 15 parts each = 60 parts from one loop.
+  A town with 12 buildings = ~180 building parts + paths + lamps + trees + terrain = 400+ parts total.
+
+TERRAIN ZONES:
+  terrain:FillBlock(CFrame.new(sp.X, gy-2, sp.Z), Vector3.new(500,4,500), Enum.Material.Grass) -- base
+  terrain:FillBlock(CFrame.new(sp.X+200, gy-1, sp.Z), Vector3.new(100,3,100), Enum.Material.Sand) -- desert
+  terrain:FillBall(Vector3.new(sp.X-100, gy+15, sp.Z+100), 40, Enum.Material.Rock) -- mountain
+  terrain:FillBlock(CFrame.new(sp.X, gy-1.5, sp.Z-150), Vector3.new(80,3,80), Enum.Material.Water) -- lake
+
+PART COUNT BY REQUEST:
+  "build a house" → 80-300 parts (detailed exterior + yard)
+  "build a shop" → 40-80 parts (facade + sign + awning + interaction zone)
+  "build a game map" → 500-3000 parts (hub + zones + buildings + paths + props)
+  "build a full world" → 2000-10000 parts (multiple zones, building rows, terrain, streets)
+  "build a town" → 1000-5000 parts (streets + building rows + props + terrain)
+
+=== INTERIOR ROOMS (only when user EXPLICITLY asks for "interior" or "furnished") ===
+Interiors are OPTIONAL. Only build them when the user says "with interior", "furnished",
+"I want to go inside", "detailed interior", etc. Otherwise, exterior-only + interaction zones.
+
+KITCHEN (25+ parts): L-counter + cabinets + stove (box + 4 Cyl burners) + fridge (tall box + handle) + sink (basin + Cyl faucet) + hanging cabinets + backsplash + PointLight
+LIVING ROOM (20+ parts): Couch (seat+back+2 armrests) + coffee table (top+4 Cyl legs) + rug + TV/fireplace + bookshelf + plant + floor lamp + wall art
+BEDROOM (20+ parts): Bed (frame+mattress+pillow+headboard+blanket) + nightstand+lamp + wardrobe + dresser+mirror + rug
+BATHROOM (18+ parts): Toilet (base+tank) + sink (pedestal+basin+faucet+mirror) + bathtub+water + towel rack + tile floor via loop
+OFFICE (15+ parts): Desk + chair + monitor+stand + keyboard + bookshelf + desk lamp
 
 TERRAIN ZONES: Use different terrain materials for different areas.
   terrain:FillBlock(CFrame.new(sp.X, gy-2, sp.Z), Vector3.new(500,4,500), Enum.Material.Grass) -- base
