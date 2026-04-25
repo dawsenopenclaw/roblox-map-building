@@ -4855,11 +4855,36 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     let model = 'gemini-2.5-flash'
     let finalVerificationScore = 0
 
-    // ── GAME DEVELOPMENT PLANNER: ask questions before building full games ──
-    // When user says "build me a tycoon game", don't immediately build —
-    // ask questions first, then create a plan, THEN build on approval.
+    // ── SMART PLANNING: ask clarifying questions for vague/first-time prompts ──
+    // Makes the AI feel personal — understands what users want before building.
+    // Full games get deep question trees. Simple builds get 1-2 quick questions.
+    // Users can say "just build it" or "surprise me" to skip.
+    const isFirstMessage = history.length === 0
     const isFullGameReqEarly = /\b(full game|complete game|make me a .+ game|build me a .+ game|create a .+ game|entire game|whole game)\b/i.test(message)
-    if (isFullGameReqEarly && !message.includes('[APPROVED_PLAN]') && !(/\bjust build\b|\bskip\b|\bgo ahead\b/i.test(message))) {
+    const skipPlanning = /\bjust build\b|\bskip\b|\bgo ahead\b|\bsurprise me\b|\bdo it\b/i.test(message) || message.includes('[APPROVED_PLAN]')
+
+    // Track what people ask for (learning what's popular → improves defaults)
+    if (isBuildIntent) {
+      void learnFromPromptPopularity().catch(() => {})
+    }
+
+    // For first-time vague prompts, ask clarifying questions
+    if (isFirstMessage && isBuildIntent && !skipPlanning && !isFullGameReqEarly) {
+      try {
+        const { needsClarification, formatClarificationResponse } = await import('@/lib/ai/game-dev-planner')
+        const clarify = needsClarification(message)
+        if (clarify.needed && clarify.questions.length > 0) {
+          const response = formatClarificationResponse(clarify.detectedType, clarify.questions, message)
+          console.log(`[SmartPlanning] Asking ${clarify.questions.length} clarification questions for "${message.slice(0, 40)}"`)
+          return { conversationText: response, luauCode: null, executedInStudio: false, suggestions: ['Surprise me!', 'Just build it'], model: 'smart-planner' }
+        }
+      } catch (clarifyErr) {
+        console.warn('[SmartPlanning] Failed:', clarifyErr instanceof Error ? clarifyErr.message : clarifyErr)
+      }
+    }
+
+    // For full game requests, use deep question trees
+    if (isFullGameReqEarly && !skipPlanning) {
       try {
         const { getQuestionsForPrompt, formatQuestionsAsResponse, wantsToSkipPlanning, generateDesignDoc, formatDesignDocForUser, isPlanningResponse } = await import('@/lib/ai/game-dev-planner')
 

@@ -373,3 +373,107 @@ export function isPlanningResponse(message: string, conversationHistory: Array<{
 export function wantsToSkipPlanning(message: string): boolean {
   return /\b(just build|build it|skip|go ahead|start building|make it|do it|execute|yes build)\b/i.test(message)
 }
+
+// ─── Global Planning for ANY Build (not just full games) ────────────────
+
+export interface BuildClarification {
+  needed: boolean
+  questions: string[]
+  detectedType: string
+  detectedDetails: Record<string, string>
+}
+
+/**
+ * Analyze ANY build prompt and determine if we need more info.
+ * Returns clarifying questions for vague prompts,
+ * or { needed: false } for clear/specific prompts.
+ */
+export function needsClarification(prompt: string): BuildClarification {
+  const lower = prompt.toLowerCase()
+  const words = prompt.split(/\s+/).length
+
+  // Short/vague prompts ALWAYS need clarification
+  if (words < 4) {
+    return detectAndClarify(lower, prompt)
+  }
+
+  // Specific detailed prompts (10+ words with specifics) → build directly
+  if (words >= 10 && /\b(with|including|that has|featuring|red|blue|big|small|tall|modern|medieval|futuristic)\b/i.test(prompt)) {
+    return { needed: false, questions: [], detectedType: 'specific', detectedDetails: {} }
+  }
+
+  // Medium prompts — check if they have enough detail
+  return detectAndClarify(lower, prompt)
+}
+
+function detectAndClarify(lower: string, prompt: string): BuildClarification {
+  const details: Record<string, string> = {}
+  const questions: string[] = []
+  let type = 'build'
+
+  // Detect build type
+  if (/house|home|cabin|cottage|apartment|mansion/i.test(lower)) {
+    type = 'house'
+    if (!/\b(modern|medieval|futuristic|victorian|cozy|luxury|small|big|large|tiny)\b/i.test(lower))
+      questions.push('What style? (modern, medieval, cozy cottage, luxury mansion, futuristic)')
+    if (!/\b(\d+).*(floor|story|stories|level)/i.test(lower))
+      questions.push('How many floors? (1, 2, or 3)')
+    if (!/\b(bedroom|room|bath|kitchen|garage)\b/i.test(lower))
+      questions.push('Any specific rooms? (bedroom, kitchen, garage, pool, garden)')
+  } else if (/castle|fortress|palace|keep/i.test(lower)) {
+    type = 'castle'
+    if (!/\b(dark|light|ruin|grand|small|huge|fantasy)\b/i.test(lower))
+      questions.push('What vibe? (grand royal palace, dark evil fortress, ruined ancient, fantasy magical)')
+    questions.push('Include a throne room? Dungeon? Towers? Courtyard?')
+  } else if (/shop|store|market|mall/i.test(lower)) {
+    type = 'shop'
+    if (!/\b(food|weapon|pet|general|clothing|magic|potion)\b/i.test(lower))
+      questions.push('What kind of shop? (food, weapons, pets, clothing, potions, general store)')
+  } else if (/city|town|village/i.test(lower)) {
+    type = 'city'
+    questions.push('How big? (small village 5 buildings, medium town 15, large city 30+)')
+    questions.push('What era? (modern, medieval, futuristic, fantasy)')
+  } else if (/map|world|terrain|landscape|island/i.test(lower)) {
+    type = 'world'
+    questions.push('What biome? (forest, desert, snow, tropical island, volcanic, mixed)')
+    questions.push('Include buildings or just nature?')
+  } else if (/car|vehicle|ship|boat|plane|helicopter/i.test(lower)) {
+    type = 'vehicle'
+    if (!/\b(sports|race|truck|tank|spaceship|pirate)\b/i.test(lower))
+      questions.push('What kind? (sports car, race car, truck, tank, spaceship, pirate ship)')
+    questions.push('Drivable with VehicleSeat or just a static model?')
+  } else if (/tree|forest|garden|park/i.test(lower)) {
+    type = 'nature'
+    // Nature is usually clear enough
+    return { needed: false, questions: [], detectedType: type, detectedDetails: details }
+  } else if (/game|tycoon|simulator|obby|rpg/i.test(lower)) {
+    type = 'game'
+    // Full games go through the game-dev-planner question trees
+    return { needed: true, questions: ['This sounds like a full game! Let me ask you some questions to plan it properly.'], detectedType: type, detectedDetails: details }
+  }
+
+  // If we have 2+ questions, clarification is needed
+  if (questions.length >= 2) {
+    return { needed: true, questions, detectedType: type, detectedDetails: details }
+  }
+
+  return { needed: false, questions: [], detectedType: type, detectedDetails: details }
+}
+
+/**
+ * Format clarification questions as a friendly conversational response.
+ */
+export function formatClarificationResponse(type: string, questions: string[], prompt: string): string {
+  const typeNames: Record<string, string> = {
+    house: 'a house', castle: 'a castle', shop: 'a shop', city: 'a city/town',
+    world: 'a world', vehicle: 'a vehicle', game: 'a full game',
+  }
+  const typeName = typeNames[type] || 'something'
+
+  let response = `Alright, I'm going to build you ${typeName}! Just a couple quick questions so I nail it:\n\n`
+  for (let i = 0; i < questions.length; i++) {
+    response += `**${i + 1}.** ${questions[i]}\n`
+  }
+  response += `\nOr just say **"surprise me"** and I'll go with what I think looks best!`
+  return response
+}
