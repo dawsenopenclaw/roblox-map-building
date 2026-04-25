@@ -47,7 +47,7 @@ export function selectBestModel(
 
   // Free tier: always use direct Gemini (no OpenRouter cost)
   if (userTier === 'free') {
-    return { provider: 'gemini', model: 'gemini-2.0-flash' }
+    return { provider: 'gemini', model: 'gemini-2.5-flash' }
   }
 
   // Script/UI intents: Claude Sonnet has lowest error rate for code
@@ -68,11 +68,11 @@ export function selectBestModel(
 
   // Medium builds: direct Gemini (free, fast)
   if (effectiveComplexity === 'medium') {
-    return { provider: 'gemini', model: 'gemini-2.0-flash' }
+    return { provider: 'gemini', model: 'gemini-2.5-flash' }
   }
 
   // Simple / conversation: direct Gemini (free tier)
-  return { provider: 'gemini', model: 'gemini-2.0-flash' }
+  return { provider: 'gemini', model: 'gemini-2.5-flash' }
 }
 
 /**

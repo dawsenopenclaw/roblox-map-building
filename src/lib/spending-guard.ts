@@ -160,10 +160,10 @@ export function isPaidModelsEnabled(): boolean {
 }
 
 /** Per-user daily cost cap in USD. Default $30/day. */
-const USER_DAILY_COST_CAP = Number(process.env.USER_DAILY_COST_CAP ?? '30')
+const USER_DAILY_COST_CAP = Number(process.env.USER_DAILY_COST_CAP ?? '5')
 
 /** Global daily cost cap in USD. Default $200/day. */
-const GLOBAL_DAILY_COST_CAP = Number(process.env.GLOBAL_DAILY_COST_CAP ?? '200')
+const GLOBAL_DAILY_COST_CAP = Number(process.env.GLOBAL_DAILY_COST_CAP ?? '50')
 
 /**
  * Track and check cost for a request.
@@ -246,7 +246,7 @@ export function estimateRequestCost(modelId: string, inputTokens: number, output
   // Cost per million tokens (approximate)
   const costs: Record<string, [number, number]> = {
     // [inputPer1M, outputPer1M]
-    'google/gemini-2.0-flash-exp:free': [0, 0],
+    'google/gemini-2.5-flash-exp:free': [0, 0],
     'meta-llama/llama-3.3-70b-instruct': [0, 0],
     'google/gemini-2.5-flash-preview': [0.15, 0.60],
     'deepseek/deepseek-chat-v3-0324': [0.14, 0.28],

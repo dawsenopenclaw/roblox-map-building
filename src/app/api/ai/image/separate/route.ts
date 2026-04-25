@@ -32,7 +32,7 @@ const bodySchema = z
 // ── Gemini Vision for bounding-box detection ─────────────────────────────────
 
 const GEMINI_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 const SEPARATION_PROMPT = `You are analyzing a composite image that contains multiple game assets, sprites, or objects arranged on a single canvas.
 

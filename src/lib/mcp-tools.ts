@@ -33,7 +33,7 @@ function falKey(): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta'
-const GEMINI_MODEL = 'gemini-2.0-flash'
+const GEMINI_MODEL = 'gemini-2.5-flash'
 const ANTHROPIC_BASE = 'https://api.anthropic.com/v1'
 const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022'
 

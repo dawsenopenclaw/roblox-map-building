@@ -3067,7 +3067,7 @@ async function callGemini(
 
     try {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3659,7 +3659,7 @@ async function freeModelTwoPass(
   buildPartCount?: number
 } | null> {
   const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace'].includes(intent)
-  const modelNames = ['gemini-2.0-flash', 'llama-3.3-70b', 'openrouter/gemini-2.5-flash']
+  const modelNames = ['gemini-2.5-flash', 'llama-3.3-70b', 'openrouter/gemini-2.5-flash']
 
   // Non-build intents: conversation only (no code generation)
   if (!isBuildIntent) {
@@ -4605,7 +4605,7 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
 
     // Declare variables used by both staged and single-pass paths
     let conversationText = ''
-    let model = 'gemini-2.0-flash'
+    let model = 'gemini-2.5-flash'
     let finalVerificationScore = 0
 
     // ── STAGED PIPELINE: enforced multi-step decomposition for complex requests ──
@@ -5027,11 +5027,35 @@ ${effectiveInstruction}`
         console.warn('[LightRetry] Failed:', lightErr instanceof Error ? lightErr.message : lightErr)
       }
 
-      // No code generated — be HONEST with the user. No fake fallback templates.
+      // Nuclear fallback: try OpenRouter multi-model race
+      // This fires when ALL direct providers (Gemini, Groq, Anthropic) are down
+      if (!luauCode && process.env.OPENROUTER_API_KEY) {
+        console.warn('[SinglePass] All direct models failed — trying OpenRouter multi-model race')
+        try {
+          const { raceOpenRouterModels, selectModelChain, estimateBuildComplexity } = await import('@/lib/ai/openrouter')
+          const complexity = estimateBuildComplexity(message)
+          const chain = selectModelChain(intent, complexity, isScriptIntent, 'free')
+          const orResult = await raceOpenRouterModels(chain, lightPrompt, lightInstruction, history.slice(-4), 16384)
+          if (orResult) {
+            const orCode = extractLuauCode(orResult.result)
+            if (orCode && orCode.length > 50) {
+              luauCode = orCode
+              model = orResult.model.split('/').pop() || orResult.model
+              const codeStart = orResult.result.indexOf('```lua')
+              conversationText = codeStart > 20 ? orResult.result.slice(0, codeStart).trim() : `Here's "${message}" — let me know what to change!`
+              console.log(`[OpenRouterFallback] Success with ${orResult.model} (${luauCode.length} chars)`)
+            }
+          }
+        } catch (orErr) {
+          console.warn('[OpenRouterFallback] Failed:', orErr instanceof Error ? orErr.message : orErr)
+        }
+      }
+
+      // No code generated — be HONEST with the user
       if (!luauCode) {
-        console.warn('[SinglePass] All AI models failed to generate code for:', message.slice(0, 50))
+        console.warn('[SinglePass] ALL models failed to generate code for:', message.slice(0, 50))
         model = 'failed'
-        conversationText = `I wasn't able to generate "${message}" right now — the AI models are under heavy load. Here's what you can do:\n\n1. **Try again** — click the retry button or re-send your message\n2. **Simplify your prompt** — break it into smaller pieces (e.g., "build the walls first" then "add the roof")\n3. **Try a different mode** — switch between Build, Script, or Plan mode\n\nI'm learning from every attempt to get better. Sorry about this!`
+        conversationText = `I wasn't able to generate "${message}" right now — all AI models are exhausted or rate-limited. Here's what you can do:\n\n1. **Wait 1-2 minutes and try again** — rate limits reset quickly\n2. **Simplify your prompt** — try "build a house" instead of a complex request\n3. **Try Script mode** — switch to Script mode in the mode selector\n\nThis usually fixes itself within a few minutes. Sorry about the wait!`
       }
     }
 
@@ -9024,7 +9048,7 @@ async function brainClassifyIntent(
       : message
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

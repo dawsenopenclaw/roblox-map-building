@@ -1,7 +1,7 @@
 /**
  * POST /api/ai/analyze-image
  *
- * Sends an uploaded image to Gemini Vision (gemini-2.0-flash) for structured
+ * Sends an uploaded image to Gemini Vision (gemini-2.5-flash) for structured
  * analysis, then returns a JSON payload describing the Roblox-relevant
  * characteristics found in the image.
  *
@@ -85,7 +85,7 @@ interface ImageAnalysisResult {
 // ---------------------------------------------------------------------------
 
 const GEMINI_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 const ANALYSIS_PROMPT = `You are a Roblox game developer analyzing a reference image to replicate its visual style in Roblox Studio.
 
