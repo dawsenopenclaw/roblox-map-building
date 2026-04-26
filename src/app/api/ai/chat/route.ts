@@ -5173,10 +5173,36 @@ This is a GAME SYSTEM request — prioritize SCRIPTS over PARTS. The user wants 
     const interiorOverride = wantsInterior
       ? `\n\nIMPORTANT — USER WANTS INTERIOR: Ignore the "exterior-first" default. This build MUST have:\n- Hollow interior with rooms (use thin 0.8-thick walls, NOT solid shells)\n- Furniture appropriate to each room type (bed, table, chairs, etc.)\n- Interior PointLights in every room\n- Doors between rooms with ProximityPrompt\n- Windows with Glass + frames from INSIDE view too\nSpend 50% of parts on exterior, 50% on interior. Target 150-300+ parts for a furnished building.\n`
       : ''
-    const buildInstruction = `Build: ${message}${continuationContext}${fullgameOverride}${blueprintContext}${tierModifier}${interiorOverride}
+    // ── MODIFY INTENT: edit existing builds, don't rebuild ──
+    const isModifyIntent = intent === 'modify'
+    const modifyOverride = isModifyIntent ? `
+CRITICAL — THIS IS A MODIFY/EDIT REQUEST, NOT A NEW BUILD.
+The user wants to CHANGE something that ALREADY EXISTS in their Studio workspace.
 
-First write 4-6 sentences describing what you're creating (the mood, one cool detail, what to do next).
-Then output the Luau code in a \`\`\`lua block. Use the REQUIRED PATTERN with these helpers:
+DO NOT create a new Model or new build from scratch.
+DO NOT use the P()/W()/Cyl()/Ball() helpers or ChangeHistoryService recording.
+
+Instead, generate a script that:
+1. FINDS the existing object: local target = workspace:FindFirstChild("ForjeAI_Build", true) or game.Selection:Get()[1]
+2. MODIFIES it in place using :GetDescendants() to iterate parts
+3. Changes ONLY what the user asked for (color, size, position, material, etc.)
+
+COMMON MODIFY PATTERNS:
+  "make it bigger/smaller" → scale all parts: for _,p in target:GetDescendants() do if p:IsA("BasePart") then p.Size = p.Size * 1.5 end end
+  "change color to red" → for _,p in target:GetDescendants() do if p:IsA("BasePart") then p.Color = Color3.fromRGB(200,40,40) end end
+  "make it taller" → for _,p in target:GetDescendants() do if p:IsA("BasePart") then p.Position = p.Position + Vector3.new(0,5,0) p.Size = p.Size + Vector3.new(0,5,0) end end
+  "change material to wood" → for _,p in target:GetDescendants() do if p:IsA("BasePart") and p.Material ~= Enum.Material.Glass then p.Material = Enum.Material.Wood end end
+  "rotate it" → target:PivotTo(target:GetPivot() * CFrame.Angles(0, math.rad(90), 0))
+  "move it left/right" → target:PivotTo(target:GetPivot() + Vector3.new(-10, 0, 0))
+  "add lights" → add PointLights to existing parts (don't recreate the build)
+  "add a door/window" → find the wall, create just the new part relative to it
+
+Wrap in ChangeHistoryService but do NOT create a new Model.
+` : ''
+    const buildInstruction = `${isModifyIntent ? 'Modify' : 'Build'}: ${message}${continuationContext}${fullgameOverride}${blueprintContext}${tierModifier}${interiorOverride}${modifyOverride}
+
+First write 4-6 sentences describing what you're ${isModifyIntent ? 'changing' : 'creating'} (the mood, one cool detail, what to do next).
+Then output the Luau code in a \`\`\`lua block.${isModifyIntent ? ' Use workspace:FindFirstChild to find and modify existing objects.' : ' Use the REQUIRED PATTERN with these helpers:'}
 - P(name, CFrame, Size, Material, Color) — boxes (walls, floors, beams, frames, trim)
 - W(name, CFrame, Size, Material, Color) — wedges (roofs, ramps, angled surfaces) — USE FOR ALL ROOFS
 - Cyl(name, CFrame, Size, Material, Color) — cylinders (poles, trunks, columns, pipes)
