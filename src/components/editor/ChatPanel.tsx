@@ -2788,7 +2788,7 @@ function MessageBubbleImpl({
             </button>
           )}
           {msg.hasCode && !msg.streaming && (
-            <ShareBuildButton prompt={userPrompt} />
+            <ShareBuildButton prompt={userPrompt} luauCode={msg.luauCode} />
           )}
           {msg.tokensUsed !== undefined && (
             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)' }}>
@@ -3100,33 +3100,36 @@ function MeshResultCard({
 
 // ─── Share Build Button ──────────────────────────────────────────────────────
 
-function ShareBuildButton({ prompt }: { prompt?: string }) {
+function ShareBuildButton({ prompt, luauCode }: { prompt?: string; luauCode?: string }) {
   const [shared, setShared] = useState(false)
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    const description = prompt
-      ? prompt.slice(0, 60) + (prompt.length > 60 ? '...' : '')
-      : 'Roblox game'
-    const text = `I just forjed a ${description} with @ForjeGames! Try it free: forjegames.com`
+    // Build a shareable URL with base64-encoded first 200 chars of code
+    const codeSnippet = (luauCode || '').slice(0, 200)
+    const encoded = typeof btoa === 'function' ? btoa(unescape(encodeURIComponent(codeSnippet))) : ''
+    const params = new URLSearchParams()
+    if (encoded) params.set('code', encoded)
+    if (prompt) params.set('desc', prompt.slice(0, 120))
+    const url = `https://forjegames.com/shared?${params.toString()}`
     try {
-      await navigator.clipboard.writeText(text)
+      await navigator.clipboard.writeText(url)
     } catch {
       const el = document.createElement('textarea')
-      el.value = text
+      el.value = url
       document.body.appendChild(el)
       el.select()
       document.execCommand('copy')
       document.body.removeChild(el)
     }
     setShared(true)
-    setTimeout(() => setShared(false), 3000)
+    setTimeout(() => setShared(false), 2000)
   }
 
   return (
     <button
       onClick={handleShare}
-      title="Copy shareable text to clipboard"
+      title="Copy share link to clipboard"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -3162,7 +3165,7 @@ function ShareBuildButton({ prompt }: { prompt?: string }) {
           <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
             <path d="M1.5 4.5l2.5 2.5 3.5-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          Copied! Share on X/Discord
+          Link copied!
         </>
       ) : (
         <>
@@ -4908,7 +4911,7 @@ export function ChatPanel({
       <div
         style={{
           flexShrink: 0,
-          padding: isMobile ? '10px 12px 16px' : '12px 20px 20px',
+          padding: isMobile ? '10px 12px calc(16px + env(safe-area-inset-bottom, 0px))' : '12px 20px 20px',
           maxWidth: 720,
           margin: '0 auto',
           width: '100%',
@@ -4928,7 +4931,8 @@ export function ChatPanel({
                 key={i}
                 onClick={() => onSend(s)}
                 style={{
-                  padding: '7px 16px',
+                  padding: isMobile ? '10px 16px' : '7px 16px',
+                  minHeight: isMobile ? 44 : 'auto',
                   borderRadius: 20,
                   background: 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(212,175,55,0.03) 100%)',
                   border: '1px solid rgba(212,175,55,0.12)',

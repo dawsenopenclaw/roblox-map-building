@@ -188,20 +188,80 @@ function FirstBuildStep({
   displayName,
   onFinish,
   loading,
+  error,
+  onRetry,
 }: {
   suggestedPrompt: string
   displayName: string
   onFinish: (prompt: string) => void
   loading: boolean
+  error: boolean
+  onRetry: () => void
 }) {
   const [prompt, setPrompt] = useState(suggestedPrompt)
   const [customMode, setCustomMode] = useState(false)
+  const [slowWarning, setSlowWarning] = useState(false)
 
   // Keep the prompt in sync if the user navigates back to step 4 and
   // picks a different genre, then returns here.
   useEffect(() => {
     if (!customMode) setPrompt(suggestedPrompt)
   }, [suggestedPrompt, customMode])
+
+  // Show slow warning after 15 seconds of loading
+  useEffect(() => {
+    if (!loading) { setSlowWarning(false); return }
+    const timer = setTimeout(() => setSlowWarning(true), 15000)
+    return () => clearTimeout(timer)
+  }, [loading])
+
+  // Loading state — full-screen overlay within the card
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8">
+        {/* Pulsing gold spinner */}
+        <div className="w-12 h-12 rounded-full border-2 border-[#D4AF37]/30 border-t-[#D4AF37] animate-spin mb-6" />
+        <h2 className="text-lg font-bold text-white mb-2">
+          Generating your first build...
+        </h2>
+        <p className="text-gray-400 text-sm text-center mb-4">
+          The AI is creating your game. This usually takes a few seconds.
+        </p>
+        {slowWarning && (
+          <p className="text-yellow-400/80 text-xs text-center animate-pulse">
+            This is taking longer than usual...
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8">
+        <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+          <span className="text-red-400 text-xl">!</span>
+        </div>
+        <h2 className="text-lg font-bold text-white mb-2">Something went wrong</h2>
+        <p className="text-gray-400 text-sm text-center mb-6">
+          We couldn&apos;t start your build, but you can try again or jump straight to the editor.
+        </p>
+        <button
+          onClick={onRetry}
+          className="w-full bg-[#D4AF37] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors mb-3"
+        >
+          Try again
+        </button>
+        <a
+          href="/editor"
+          className="w-full text-center text-gray-400 text-sm py-2 hover:text-white transition-colors block"
+        >
+          Skip to editor
+        </a>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -263,7 +323,7 @@ function FirstBuildStep({
         className="w-full bg-[#D4AF37] text-black font-bold py-4 rounded-lg hover:bg-[#E6A519] transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
         style={{ boxShadow: '0 0 24px rgba(212,175,55,0.3)' }}
       >
-        {loading ? 'Starting…' : 'Start building →'}
+        Start building →
       </button>
 
       {/* Escape hatch — go to editor without a prompt queued */}
@@ -292,6 +352,8 @@ export default function OnboardingWizardPage() {
   const [suggestedPrompt, setSuggestedPrompt] = useState(PRIMARY_GAME_TYPES[0].prompt)
   const [pickedGameTypeId, setPickedGameTypeId] = useState<string | null>(null)
   const [finishing, setFinishing] = useState(false)
+  const [finishError, setFinishError] = useState(false)
+  const [lastPrompt, setLastPrompt] = useState('')
 
   useEffect(() => {
     track('onboarding_step_started', { step: 'wizard', stepIndex: wizardStep })
@@ -318,8 +380,10 @@ export default function OnboardingWizardPage() {
 
   async function handleFinish(prompt: string) {
     setFinishing(true)
+    setFinishError(false)
+    setLastPrompt(prompt)
     try {
-      await fetch('/api/onboarding/wizard-complete', {
+      const res = await fetch('/api/onboarding/wizard-complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -329,6 +393,8 @@ export default function OnboardingWizardPage() {
           firstPrompt: prompt,
         }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
       track('onboarding_step_completed', { step: 'first_build', stepIndex: 5 })
       track('onboarding_completed', { firstPrompt: prompt, gameTypeId: pickedGameTypeId })
 
@@ -348,9 +414,7 @@ export default function OnboardingWizardPage() {
       } catch {
         // Non-fatal — referral redemption failure should never block onboarding.
       }
-    } catch {
-      // Non-fatal — proceed to editor regardless so the user is never stuck.
-    } finally {
+
       // Use a HARD navigation (window.location.href) instead of router.push
       // so Clerk reissues the JWT with the latest publicMetadata claims and
       // the middleware re-evaluates against fresh claims. router.push() only
@@ -362,6 +426,9 @@ export default function OnboardingWizardPage() {
         ? `/editor?prompt=${encodeURIComponent(prompt)}`
         : '/editor'
       window.location.href = target
+    } catch {
+      setFinishing(false)
+      setFinishError(true)
     }
   }
 
@@ -392,6 +459,8 @@ export default function OnboardingWizardPage() {
               displayName={displayName}
               onFinish={handleFinish}
               loading={finishing}
+              error={finishError}
+              onRetry={() => handleFinish(lastPrompt || suggestedPrompt)}
             />
           )}
         </div>

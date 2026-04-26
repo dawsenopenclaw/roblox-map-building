@@ -67,7 +67,7 @@ function RightSidebar({
           left: isMobile && open ? 0 : 'auto',
           top: '50%',
           transform: 'translateY(-50%)',
-          width: 20,
+          width: isMobile ? 44 : 20,
           height: 48,
           borderRadius: open ? '6px 0 0 6px' : '0 6px 6px 0',
           background: 'rgba(15,18,30,0.9)',
@@ -419,8 +419,9 @@ function EditorInner() {
     <div
       style={{
         width: '100%',
-        height: '100vh',
+        height: isMobile ? '100dvh' : '100vh',
         overflow: 'hidden',
+        overflowX: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
@@ -542,9 +543,10 @@ function EditorInner() {
         minHeight: 0,
         position: 'relative',
         zIndex: 1,
+        overflowX: 'hidden',
       }}>
-        {/* Chat / Welcome area */}
-        <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
+        {/* Chat / Welcome area — full-width on mobile (<768px) */}
+        <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, width: isMobile ? '100%' : 'auto' }}>
           {!hasMessages ? (
             <>
               <WelcomeHero
@@ -559,7 +561,7 @@ function EditorInner() {
                 }}
               />
               {/* Floating input bar on welcome screen — cyberglass */}
-              <div style={{ padding: '0 20px 24px', background: 'transparent', position: 'relative', zIndex: 2 }}>
+              <div style={{ padding: isMobile ? '0 12px 16px' : '0 20px 24px', background: 'transparent', position: 'relative', zIndex: 2 }}>
                 <div style={{ maxWidth: 680, margin: '0 auto' }}>
                   <div
                     style={{
@@ -600,7 +602,7 @@ function EditorInner() {
                     {/* Attach */}
                     <label
                       style={{
-                        width: 36, height: 36, borderRadius: 10,
+                        width: isMobile ? 44 : 36, height: isMobile ? 44 : 36, borderRadius: 10,
                         border: 'none', background: 'rgba(255,255,255,0.04)',
                         color: '#52525B', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -648,7 +650,7 @@ function EditorInner() {
                       onClick={() => { if (chat.input.trim()) chat.sendMessage(chat.input) }}
                       disabled={chat.loading || !chat.input.trim()}
                       style={{
-                        width: 36, height: 36, borderRadius: 10,
+                        width: isMobile ? 44 : 36, height: isMobile ? 44 : 36, borderRadius: 10,
                         border: 'none',
                         background: chat.input.trim() ? '#D4AF37' : 'rgba(255,255,255,0.04)',
                         color: chat.input.trim() ? '#09090b' : '#3F3F46',
