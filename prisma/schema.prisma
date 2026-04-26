@@ -1430,3 +1430,16 @@ model LfgPost {
   @@index([userId])
   @@index([expiresAt])
 }
+
+// Community feed — public posting channel for finding people, sharing builds, chatting
+model FeedPost {
+  id        String   @id @default(cuid())
+  userId    String
+  content   String   // the message (max 500 chars)
+  channel   String   @default("general") // general, looking-for-team, showcase, help
+  likes     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([channel, createdAt])
+  @@index([userId])
+}
