@@ -106,11 +106,14 @@ local function makeCloseBtn(parent, callback)
   btn.MouseLeave:Connect(function()
     TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = CARD_HOVER, TextColor3 = TEXT_MUTED, BackgroundTransparency = 0.3}):Play()
   end)
-  btn.MouseButton1Click:Connect(callback)
+  btn.MouseButton1Click:Connect(function()
+    playSound(SFX.close, 0.3)
+    callback()
+  end)
   return btn
 end
 
--- ═══ Button with bounce press + hover glow ═══
+-- ═══ Button with bounce press + hover glow + SOUNDS ═══
 local function makeButton(parent, text, color, size, position)
   local btn = Instance.new("TextButton")
   btn.Size = size or UDim2.new(0.8, 0, 0, 36)
@@ -144,8 +147,9 @@ local function makeButton(parent, text, color, size, position)
       end
     end)
   end
-  -- Hover: subtle glow
+  -- Hover: subtle glow + sound
   btn.MouseEnter:Connect(function()
+    playSound(SFX.hover, 0.12)
     TweenService:Create(scale, TWEEN_FAST, {Scale = 1.04}):Play()
     TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = color == GOLD and GOLD_BRIGHT or Color3.new(
       math.min((color or GOLD).R * 1.2, 1), math.min((color or GOLD).G * 1.2, 1), math.min((color or GOLD).B * 1.2, 1)
@@ -155,9 +159,10 @@ local function makeButton(parent, text, color, size, position)
     TweenService:Create(scale, TWEEN_FAST, {Scale = 1}):Play()
     TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = color or GOLD}):Play()
   end)
-  -- Press: squish bounce
+  -- Press: squish bounce + click sound
   btn.MouseButton1Down:Connect(function()
     TweenService:Create(scale, TweenInfo.new(0.08), {Scale = 0.92}):Play()
+    playSound(SFX.click, 0.4)
   end)
   btn.MouseButton1Up:Connect(function()
     TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
@@ -191,8 +196,9 @@ local function typewrite(label, text, charDelay)
   end
 end
 
--- ═══ Panel open/close animations ═══
+-- ═══ Panel open/close animations + sounds ═══
 local function animateOpen(frame, targetSize, targetPos)
+  playSound(SFX.open, 0.3)
   frame.Size = UDim2.new(0, 0, 0, 0)
   frame.Position = UDim2.new(0.5, 0, 0.5, 0)
   frame.BackgroundTransparency = 0.5
@@ -201,6 +207,7 @@ local function animateOpen(frame, targetSize, targetPos)
   }):Play()
 end
 local function animateClose(frame, callback)
+  playSound(SFX.close, 0.3)
   TweenService:Create(frame, TWEEN_CLOSE, {
     Size = UDim2.new(0, 0, 0, 0),
     Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -210,12 +217,199 @@ local function animateClose(frame, callback)
   if callback then callback() end
 end
 
+-- ═══ SOUND SYSTEM (the #1 missing thing in amateur UIs) ═══
+-- Sound IDs: community-sourced best UI sounds
+local SFX = {
+  click = "rbxassetid://6927468309",       -- crisp button click
+  hover = "rbxassetid://6324801967",        -- soft hover tick
+  open = "rbxassetid://6895079853",         -- panel whoosh open
+  close = "rbxassetid://6895079891",        -- panel whoosh close
+  purchase = "rbxassetid://19073176",       -- coin cha-ching
+  error = "rbxassetid://6895079965",        -- low error buzz
+  notify = "rbxassetid://5852470908",       -- bubble pop notification
+  reward = "rbxassetid://5853855838",       -- reward jingle
+}
+local SoundService = game:GetService("SoundService")
+local function playSound(id, volume)
+  local s = Instance.new("Sound")
+  s.SoundId = id
+  s.Volume = volume or 0.5
+  s.PlayOnRemove = false
+  s.Parent = SoundService
+  s:Play()
+  task.delay(2, function() s:Destroy() end)
+end
+
+-- ═══ KEYBIND TOGGLE SYSTEM ═══
+local UserInputService = game:GetService("UserInputService")
+local function bindToggle(gui, keyCode, openCallback, closeCallback)
+  local isOpen = gui.Visible ~= false
+  UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == keyCode then
+      isOpen = not isOpen
+      if isOpen then
+        gui.Visible = true
+        if openCallback then openCallback() end
+        playSound(SFX.open, 0.3)
+      else
+        if closeCallback then closeCallback() end
+        playSound(SFX.close, 0.3)
+      end
+    end
+  end)
+end
+
+-- ═══ VIEWPORT 3D PREVIEW (spinning item in shop/inventory cards) ═══
+local RunService = game:GetService("RunService")
+local function makeViewport(parent, modelOrPart, size, position)
+  local vf = Instance.new("ViewportFrame")
+  vf.Size = size or UDim2.new(1, -8, 0.6, 0)
+  vf.Position = position or UDim2.new(0, 4, 0, 4)
+  vf.BackgroundTransparency = 1
+  vf.Parent = parent
+  addCorner(vf, 6)
+
+  local cam = Instance.new("Camera")
+  cam.FieldOfView = 50
+  vf.CurrentCamera = cam
+  cam.Parent = vf
+
+  if modelOrPart then
+    local clone = modelOrPart:Clone()
+    clone.Parent = vf
+    -- Auto-rotate
+    local t = 0
+    RunService.PostSimulation:Connect(function(delta)
+      if not vf.Parent then return end
+      t = t + delta
+      cam.CFrame = CFrame.Angles(0, math.rad(t * 40), 0) * CFrame.new(0, 0, 8)
+    end)
+  end
+  return vf
+end
+
+-- ═══ TAB SYSTEM (category switching with slide animation) ═══
+local function makeTabs(parent, tabNames, contentFrame, callback)
+  local tabBar = Instance.new("Frame")
+  tabBar.Size = UDim2.new(1, 0, 0, 32)
+  tabBar.Position = UDim2.new(0, 0, 0, 42)
+  tabBar.BackgroundTransparency = 1
+  tabBar.Parent = parent
+
+  local layout = Instance.new("UIListLayout")
+  layout.FillDirection = Enum.FillDirection.Horizontal
+  layout.Padding = UDim.new(0, 4)
+  layout.Parent = tabBar
+
+  local activeTab = 1
+  local tabButtons = {}
+  for i, name in ipairs(tabNames) do
+    local tab = Instance.new("TextButton")
+    tab.Size = UDim2.new(1/#tabNames, -4, 1, 0)
+    tab.BackgroundColor3 = i == 1 and GOLD or CARD
+    tab.Text = name
+    tab.TextColor3 = i == 1 and BG_DEEP or TEXT_MUTED
+    tab.Font = Enum.Font.GothamBold
+    tab.TextSize = 13
+    tab.AutoButtonColor = false
+    tab.LayoutOrder = i
+    tab.Parent = tabBar
+    addCorner(tab, 6)
+    tabButtons[i] = tab
+
+    tab.MouseButton1Click:Connect(function()
+      if activeTab == i then return end
+      playSound(SFX.click, 0.3)
+      -- Deactivate old tab
+      TweenService:Create(tabButtons[activeTab], TWEEN_FAST, {BackgroundColor3 = CARD, TextColor3 = TEXT_MUTED}):Play()
+      -- Activate new tab
+      activeTab = i
+      TweenService:Create(tab, TWEEN_FAST, {BackgroundColor3 = GOLD, TextColor3 = BG_DEEP}):Play()
+      -- Slide content
+      if contentFrame then
+        TweenService:Create(contentFrame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(-0.1, 0, contentFrame.Position.Y.Scale, 0)}):Play()
+        task.wait(0.15)
+        if callback then callback(i, name) end
+        contentFrame.Position = UDim2.new(1.1, 0, contentFrame.Position.Y.Scale, 0)
+        TweenService:Create(contentFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, contentFrame.Position.Y.Scale, 0)}):Play()
+      else
+        if callback then callback(i, name) end
+      end
+    end)
+  end
+  return tabBar, tabButtons
+end
+
+-- ═══ EMPTY STATE (when no items/content to show) ═══
+local function makeEmptyState(parent, message, ctaText, ctaCallback)
+  local frame = Instance.new("Frame")
+  frame.Size = UDim2.new(1, 0, 1, 0)
+  frame.BackgroundTransparency = 1
+  frame.Parent = parent
+
+  local icon = Instance.new("TextLabel")
+  icon.Size = UDim2.new(0, 60, 0, 60)
+  icon.Position = UDim2.new(0.5, -30, 0.3, -30)
+  icon.BackgroundTransparency = 1
+  icon.Text = "?"
+  icon.TextColor3 = TEXT_MUTED
+  icon.TextTransparency = 0.5
+  icon.Font = Enum.Font.GothamBold
+  icon.TextSize = 40
+  icon.Parent = frame
+
+  local msg = Instance.new("TextLabel")
+  msg.Size = UDim2.new(0.8, 0, 0, 20)
+  msg.Position = UDim2.new(0.1, 0, 0.3, 40)
+  msg.BackgroundTransparency = 1
+  msg.Text = message or "Nothing here yet"
+  msg.TextColor3 = TEXT_MUTED
+  msg.Font = Enum.Font.GothamMedium
+  msg.TextSize = 15
+  msg.Parent = frame
+
+  if ctaText and ctaCallback then
+    local btn = makeButton(frame, ctaText, GOLD, UDim2.new(0.4, 0, 0, 32), UDim2.new(0.3, 0, 0.3, 70))
+    btn.MouseButton1Click:Connect(ctaCallback)
+  end
+  return frame
+end
+
+-- ═══ NOTIFICATION BADGE (red dot with count) ═══
+local function addBadge(parent, count)
+  local badge = Instance.new("Frame")
+  badge.Size = UDim2.new(0, 18, 0, 18)
+  badge.Position = UDim2.new(1, -6, 0, -6)
+  badge.BackgroundColor3 = RED
+  badge.ZIndex = 10
+  badge.Parent = parent
+  addCorner(badge, 9)
+
+  local num = Instance.new("TextLabel")
+  num.Size = UDim2.new(1, 0, 1, 0)
+  num.BackgroundTransparency = 1
+  num.Text = tostring(count or 0)
+  num.TextColor3 = TEXT
+  num.Font = Enum.Font.GothamBold
+  num.TextSize = 10
+  num.ZIndex = 11
+  num.Parent = badge
+
+  -- Pulse animation to grab attention
+  local pulse = Instance.new("UIScale") pulse.Parent = badge
+  TweenService:Create(pulse, TWEEN_PULSE, {Scale = 1.15}):Play()
+
+  return badge, num
+end
+
 -- Legacy aliases
 local TEXT_PRIMARY = TEXT
 local function hoverBtn(btn, normalColor, hoverColor)
   btn.AutoButtonColor = false
   btn.MouseEnter:Connect(function()
     TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = hoverColor or CARD_HOVER}):Play()
+    playSound(SFX.hover, 0.15)
   end)
   btn.MouseLeave:Connect(function()
     TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = normalColor or CARD}):Play()
