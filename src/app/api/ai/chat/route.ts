@@ -57,6 +57,7 @@ import { recordToEli } from '@/lib/eli/build-intelligence'
 import { formatGraphPrompt, recordBuildSuccess, detectComponentsInCode } from '@/lib/eli/codegraph'
 import { buildFocusedPrompt } from '@/lib/ai/focused-prompt'
 import { shouldUseAsset, findMatchingAssets } from '@/lib/ai/asset-library'
+import { getRelevantBuildingKnowledge } from '@/lib/ai/devforum-knowledge'
 import { runStagedPipeline } from '@/lib/ai/staged-pipeline'
 import {
   shopGui, inventoryGui, healthBarGui, hudGui, settingsGui,
@@ -3922,7 +3923,10 @@ end`)
   // This is the #1 quality lever: show the AI EXACTLY what to build for THIS request
   const focusedContext = buildFocusedPrompt(message)
 
-  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + focusedContext + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
+  // Inject DevForum building knowledge — matched to this specific request
+  const devforumKnowledge = getRelevantBuildingKnowledge(message)
+
+  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + focusedContext + devforumKnowledge + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
 
 RESPONSE FORMAT (follow EXACTLY):
 1. First, write 3-5 sentences describing what you're creating. Be specific about what a player would see. End with a suggestion for what to build next.
