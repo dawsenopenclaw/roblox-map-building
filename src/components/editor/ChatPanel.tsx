@@ -27,6 +27,7 @@ import { EnhanceToggle } from './EnhanceToggle'
 import { PlaytestIndicator } from './PlaytestIndicator'
 import { ManualBuildPanel } from './ManualBuildPanel'
 import { useIsMobile } from '@/hooks/useMediaQuery'
+import { findFix } from '@/lib/ai/error-fix-map'
 
 // ─── Empty-state rotating headline (matches marketing site) ───────────────────
 // Cycled by EmptyState every 2.4s. Intentionally a different word set than the
@@ -1923,6 +1924,17 @@ function MessageBubbleImpl({
   }
 
   if (isBuildError) {
+    // Look up the error in the fix map for actionable diagnostics
+    const fixResult = msg.buildError ? findFix(msg.buildError) : null
+    const categoryColors: Record<string, string> = {
+      syntax: '#F59E0B',
+      api: '#8B5CF6',
+      runtime: '#EF4444',
+      permission: '#F97316',
+      type: '#06B6D4',
+    }
+    const categoryColor = fixResult ? (categoryColors[fixResult.entry.category] ?? '#EF4444') : '#EF4444'
+
     return (
       <div style={{ display: 'flex', justifyContent: 'flex-start', margin: '8px 0' }}>
         <div
@@ -1931,13 +1943,80 @@ function MessageBubbleImpl({
             border: '1px solid rgba(239,68,68,0.28)',
             borderRadius: 14,
             padding: '16px 20px',
-            maxWidth: 460,
+            maxWidth: 480,
             fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
           }}
         >
           <p style={{ color: '#f87171', fontWeight: 700, fontSize: 14, margin: '0 0 8px 0' }}>
             Build failed after 3 attempts
           </p>
+
+          {/* Error-fix-map diagnosis — shown when we recognize the error */}
+          {fixResult && (
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: `1px solid ${categoryColor}33`,
+                borderRadius: 10,
+                padding: '12px 14px',
+                margin: '0 0 12px 0',
+              }}
+            >
+              {/* Category badge */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: categoryColor,
+                  background: `${categoryColor}18`,
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}>
+                  {fixResult.entry.category} error
+                </span>
+              </div>
+
+              {/* What went wrong */}
+              <p style={{
+                color: 'rgba(255,255,255,0.7)',
+                fontSize: 12,
+                lineHeight: 1.5,
+                margin: '0 0 8px 0',
+                fontWeight: 600,
+              }}>
+                {fixResult.entry.description}
+              </p>
+
+              {/* How to fix it */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 6,
+                padding: '8px 10px',
+                borderRadius: 8,
+                background: 'rgba(34,197,94,0.06)',
+                border: '1px solid rgba(34,197,94,0.12)',
+              }}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#22C55E" strokeWidth="1.5" style={{ flexShrink: 0, marginTop: 1 }}>
+                  <path d="M6 8.5L7.5 10L10 6.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="8" cy="8" r="6.5" />
+                </svg>
+                <p style={{
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: 11,
+                  lineHeight: 1.5,
+                  margin: 0,
+                }}>
+                  <span style={{ fontWeight: 600, color: '#22C55E' }}>Fix: </span>
+                  {fixResult.entry.fix}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Raw error (collapsed if fix map matched, always shown otherwise) */}
           {msg.buildError && (
             <pre
               style={{
@@ -1950,17 +2029,51 @@ function MessageBubbleImpl({
                 background: 'rgba(0,0,0,0.3)',
                 borderRadius: 8,
                 padding: '8px 10px',
-                maxHeight: 110,
+                maxHeight: fixResult ? 60 : 110,
                 overflowY: 'auto',
               }}
             >
               {msg.buildError.slice(0, 600)}
             </pre>
           )}
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, margin: '0 0 14px 0' }}>
-            Try describing what you want differently, or start fresh.
-          </p>
+
+          {/* Help text — contextual based on whether we found a fix */}
+          {!fixResult && (
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, margin: '0 0 14px 0' }}>
+              Try describing what you want differently, or start fresh.
+            </p>
+          )}
+
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {/* Auto-fix button — shown when the fix map has an auto-fix function */}
+            {fixResult?.entry.autoFixFn && (
+              <button
+                onClick={() => {
+                  if (onSend) {
+                    onSend(`Auto-fix this error: ${fixResult.entry.fix}`)
+                  }
+                }}
+                style={{
+                  background: 'rgba(34,197,94,0.14)',
+                  color: '#22C55E',
+                  border: '1px solid rgba(34,197,94,0.32)',
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" strokeLinejoin="round" />
+                </svg>
+                Try auto-fix
+              </button>
+            )}
             <button
               onClick={onRetry}
               style={{

@@ -436,6 +436,16 @@ export function useChat(options: UseChatOptions = {}) {
   const [loading, setLoading] = useState(false)
   const [streaming, setStreaming] = useState(false)
 
+  // ── Step-by-step build progress (exposed to editor for BuildProgressDashboard) ──
+  const [stepBuildProgress, setStepBuildProgress] = useState<{
+    active: boolean
+    status: 'running' | 'complete' | 'failed'
+    currentStep: number
+    totalSteps: number
+    currentTitle: string
+    steps: Array<{ index: number; title: string; status: 'done' | 'running' | 'failed' | 'queued' }>
+  } | null>(null)
+
   // Global abort controller for stopping generation
   const activeAbortRef = useRef<AbortController | null>(null)
   useEffect(() => {
@@ -702,6 +712,16 @@ export function useChat(options: UseChatOptions = {}) {
         },
       ])
 
+      // Initialize step build progress for the BuildProgressDashboard
+      setStepBuildProgress({
+        active: true,
+        status: 'running',
+        currentStep: 0,
+        totalSteps: 5,
+        currentTitle: 'Initializing build...',
+        steps: [],
+      })
+
       try {
         const res = await fetch('/api/ai/build-game', {
           method: 'POST',
@@ -717,6 +737,7 @@ export function useChat(options: UseChatOptions = {}) {
                 : m,
             ),
           )
+          setStepBuildProgress((prev) => prev ? { ...prev, active: false, status: 'failed' } : null)
           return
         }
 
@@ -748,6 +769,20 @@ export function useChat(options: UseChatOptions = {}) {
                       : m,
                   ),
                 )
+                // Update dashboard to final state
+                setStepBuildProgress((prev) => {
+                  if (!prev) return null
+                  const finalSteps = prev.steps.map((s) => ({
+                    ...s,
+                    status: s.status === 'running' ? (event.success ? 'done' as const : 'failed' as const) : s.status,
+                  }))
+                  return {
+                    ...prev,
+                    active: false,
+                    status: event.success ? 'complete' : 'failed',
+                    steps: finalSteps,
+                  }
+                })
               } else if (event.index && event.title) {
                 const icon = event.status === 'done' ? '✅' : event.status === 'failed' ? '❌' : '⏳'
                 setMessagesSync((prev) =>
@@ -757,6 +792,33 @@ export function useChat(options: UseChatOptions = {}) {
                       : m,
                   ),
                 )
+                // Update dashboard progress
+                setStepBuildProgress((prev) => {
+                  if (!prev) return null
+                  const total = event.total || prev.totalSteps
+                  const stepIdx = event.index as number
+                  const stepStatus = event.status as string
+                  // Build a step list from what we've seen
+                  const updatedSteps = [...prev.steps]
+                  const existing = updatedSteps.findIndex((s) => s.index === stepIdx)
+                  const stepEntry = {
+                    index: stepIdx,
+                    title: event.title as string,
+                    status: (stepStatus === 'done' ? 'done' : stepStatus === 'failed' ? 'failed' : 'running') as 'done' | 'running' | 'failed' | 'queued',
+                  }
+                  if (existing >= 0) {
+                    updatedSteps[existing] = stepEntry
+                  } else {
+                    updatedSteps.push(stepEntry)
+                  }
+                  return {
+                    ...prev,
+                    currentStep: stepIdx,
+                    totalSteps: total,
+                    currentTitle: event.title as string,
+                    steps: updatedSteps,
+                  }
+                })
               }
             } catch {
               /* malformed SSE line — skip */
@@ -771,6 +833,7 @@ export function useChat(options: UseChatOptions = {}) {
               : m,
           ),
         )
+        setStepBuildProgress((prev) => prev ? { ...prev, active: false, status: 'failed' } : null)
       }
 
       setLoading(false)
@@ -2687,6 +2750,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
     setImageOptions,
     // Step-by-step game builder
     triggerStepByStepBuild,
+    stepBuildProgress,
     // Pre-build preview mode
     previewMode,
     setPreviewMode,

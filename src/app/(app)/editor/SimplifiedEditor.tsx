@@ -811,19 +811,29 @@ function EditorInner() {
         </div>
       )}
 
-      {/* Build progress dashboard */}
-      {activeBuildId && (
-        <BuildProgressDashboard
-          buildId={activeBuildId}
-          onComplete={(summary) => {
-            setActiveBuildId(null)
-            toast(summary ?? 'Build complete', 'success')
-          }}
-          onCancel={() => {
-            setActiveBuildId(null)
-            toast('Build cancelled', 'warning')
-          }}
-        />
+      {/* Build progress dashboard — shows for orchestrated builds (activeBuildId) or SSE step builds */}
+      {(activeBuildId || (chat.stepBuildProgress?.active)) && (
+        <div style={{
+          position: 'fixed',
+          bottom: 80,
+          right: 20,
+          width: isMobile ? 'calc(100% - 40px)' : 360,
+          zIndex: 50,
+          filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.4))',
+        }}>
+          <BuildProgressDashboard
+            buildId={activeBuildId ?? undefined}
+            directStatus={chat.stepBuildProgress}
+            onComplete={(summary) => {
+              setActiveBuildId(null)
+              toast(summary ?? 'Build complete', 'success')
+            }}
+            onCancel={() => {
+              setActiveBuildId(null)
+              toast('Build cancelled', 'warning')
+            }}
+          />
+        </div>
       )}
 
       {/* Left drawer */}

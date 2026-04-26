@@ -29,8 +29,20 @@ interface BuildStatus {
   error?: string
 }
 
+export interface StepBuildStatus {
+  active: boolean
+  status: 'running' | 'complete' | 'failed'
+  currentStep: number
+  totalSteps: number
+  currentTitle: string
+  steps: Array<{ index: number; title: string; status: 'done' | 'running' | 'failed' | 'queued' }>
+}
+
 export interface BuildProgressProps {
-  buildId: string
+  /** Build ID for polling /api/ai/build/status — used for orchestrated builds */
+  buildId?: string
+  /** Direct status feed from SSE step-by-step builds — bypasses polling when provided */
+  directStatus?: StepBuildStatus | null
   onComplete?: (summary?: string) => void
   onCancel?: () => void
 }
@@ -303,14 +315,64 @@ function CompleteCard({ summary, onDismiss }: { summary?: string; onDismiss: () 
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
-export function BuildProgressDashboard({ buildId, onComplete, onCancel }: BuildProgressProps) {
+export function BuildProgressDashboard({ buildId, directStatus, onComplete, onCancel }: BuildProgressProps) {
   const { isMobile } = useResponsiveStandalone()
   const [status, setStatus] = useState<BuildStatus | null>(null)
   const [visible, setVisible] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const completedRef = useRef(false)
 
+  // ── Direct status mode (SSE-driven step builds) ─────────────────────────
+  // When directStatus is provided, we translate it into BuildStatus format
+  // instead of polling the API. This enables the dashboard to work with the
+  // SSE-based /api/ai/build-game flow.
+  useEffect(() => {
+    if (!directStatus) return
+    const tasks: BuildTask[] = directStatus.steps.map((s) => ({
+      id: `step-${s.index}`,
+      type: 'build' as const,
+      name: s.title,
+      status: s.status === 'queued' ? 'queued' : s.status === 'running' ? 'running' : s.status === 'done' ? 'done' : 'failed',
+      progress: s.status === 'done' ? 100 : s.status === 'running' ? 50 : 0,
+    }))
+    // Add queued placeholders for steps we haven't seen yet
+    for (let i = tasks.length + 1; i <= directStatus.totalSteps; i++) {
+      tasks.push({
+        id: `step-${i}`,
+        type: 'build',
+        name: `Step ${i}`,
+        status: 'queued',
+        progress: 0,
+      })
+    }
+    const doneCount = tasks.filter((t) => t.status === 'done').length
+    const estRemaining = Math.max(0, (directStatus.totalSteps - doneCount) * 30)
+    setStatus({
+      buildId: 'step-build',
+      status: directStatus.status === 'running' ? 'running' : directStatus.status === 'complete' ? 'complete' : 'failed',
+      wave: 1,
+      totalWaves: 1,
+      tasks,
+      estimatedSecondsRemaining: estRemaining,
+      summary: directStatus.status === 'complete' ? 'Build complete! Check your Studio viewport.' : undefined,
+      error: directStatus.status === 'failed' ? 'Build encountered errors.' : undefined,
+    })
+    setVisible(true)
+
+    if (!completedRef.current && (directStatus.status === 'complete' || directStatus.status === 'failed')) {
+      completedRef.current = true
+      if (directStatus.status === 'complete') {
+        announceToScreenReader('Build complete! Your game is ready.')
+        onComplete?.('Build complete! Check your Studio viewport.')
+      } else {
+        announceToScreenReader('Build failed. Please try again.')
+      }
+    }
+  }, [directStatus, onComplete])
+
+  // ── Polling mode (orchestrated /api/ai/build/execute builds) ────────────
   const poll = useCallback(async () => {
+    if (!buildId) return
     try {
       const res = await fetch(`/api/ai/build/status?buildId=${encodeURIComponent(buildId)}`)
       if (!res.ok) return
@@ -333,13 +395,14 @@ export function BuildProgressDashboard({ buildId, onComplete, onCancel }: BuildP
   }, [buildId, onComplete])
 
   useEffect(() => {
+    if (directStatus || !buildId) return // Skip polling when using direct status
     setVisible(true)
     void poll()
     intervalRef.current = setInterval(() => { void poll() }, 2000)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [poll])
+  }, [poll, directStatus, buildId])
 
   const handleCancel = async () => {
     if (intervalRef.current) clearInterval(intervalRef.current)
