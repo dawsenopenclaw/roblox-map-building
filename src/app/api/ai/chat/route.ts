@@ -1091,10 +1091,22 @@ if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end`
 // connecting, so the first request from a freshly-connected plugin is the
 // correct "first queue" point — not a speculative ephemeral session from a
 // chat handler that has no evidence a plugin exists.
-async function sendCodeToStudio(sessionId: string | null, code: string): Promise<boolean> {
+async function sendCodeToStudio(sessionId: string | null, code: string, teamId?: string | null, userId?: string | null): Promise<boolean> {
   if (!sessionId || !code) {
     console.log('[sendCodeToStudio] Skipped: sessionId=' + (sessionId ?? 'null') + ' codeLen=' + (code?.length ?? 0))
     return false
+  }
+
+  // Team shared session: if user is in a team with a shared Studio, send to host's session
+  if (teamId && userId) {
+    try {
+      const { getTeamSessionId } = await import('@/lib/shared-session')
+      const sharedSessionId = await getTeamSessionId(teamId, userId)
+      if (sharedSessionId) {
+        console.log(`[sendCodeToStudio] Team shared session: redirecting from ${sessionId} to host's ${sharedSessionId}`)
+        sessionId = sharedSessionId
+      }
+    } catch { /* non-fatal — use original session */ }
   }
 
   // ── Build Validator — catch bad materials/placement before Studio ──
