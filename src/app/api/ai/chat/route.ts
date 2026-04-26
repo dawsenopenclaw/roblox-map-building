@@ -1294,6 +1294,50 @@ async function sendCodeToStudio(sessionId: string | null, code: string, teamId?:
       console.log(`[ShapeFixer] Fixed ${shapeFixes} part shapes (trunk→Cylinder, canopy→Ball, etc.)`)
     }
 
+    // ── POSITION FIXER: ensure parts are properly connected ─────────────
+    // Detect tree structures and fix canopy positions relative to trunk
+    let positionFixes = 0
+    const partsByName: Record<string, { pos: { x: number; y: number; z: number }; size: { x: number; y: number; z: number }; shape?: string }> = {}
+    for (const cmd of commands) {
+      if (cmd.type !== 'create_part') continue
+      const c = cmd as { name?: string; position?: { x: number; y: number; z: number }; size?: { x: number; y: number; z: number }; shape?: string }
+      if (c.name && c.position && c.size) {
+        partsByName[c.name.toLowerCase()] = { pos: c.position, size: c.size, shape: c.shape }
+      }
+    }
+
+    // Find trunk and fix canopy positions
+    const trunkParts = Object.entries(partsByName).filter(([n]) => /trunk|stem/i.test(n))
+    if (trunkParts.length > 0) {
+      const trunk = trunkParts[0][1]
+      const trunkTopY = trunk.pos.y + trunk.size.x / 2 // Cylinder: size.x = height
+      for (const cmd of commands) {
+        if (cmd.type !== 'create_part') continue
+        const c = cmd as { name?: string; position?: { x: number; y: number; z: number }; size?: { x: number; y: number; z: number }; shape?: string }
+        if (!c.name || !c.position || !c.size) continue
+        const n = c.name.toLowerCase()
+        if (/canopy|leaves|leaf|foliage|crown|treetop/i.test(n)) {
+          const canopyRadius = (c.shape === 'Ball' ? c.size.x : c.size.y) / 2
+          const idealY = trunkTopY + canopyRadius - 1 // overlap trunk top by 1 stud
+          // If canopy is more than 5 studs away from ideal, fix it
+          if (Math.abs(c.position.y - idealY) > 5) {
+            c.position.y = idealY + (Math.random() * 2 - 1) // slight randomness
+            positionFixes++
+          }
+          // If canopy is more than 5 studs away from trunk horizontally, pull it closer
+          const hDist = Math.sqrt((c.position.x - trunk.pos.x) ** 2 + (c.position.z - trunk.pos.z) ** 2)
+          if (hDist > 5) {
+            c.position.x = trunk.pos.x + (c.position.x - trunk.pos.x) * 3 / hDist
+            c.position.z = trunk.pos.z + (c.position.z - trunk.pos.z) * 3 / hDist
+            positionFixes++
+          }
+        }
+      }
+    }
+    if (positionFixes > 0) {
+      console.log(`[PositionFixer] Fixed ${positionFixes} part positions (canopy→trunk alignment)`)
+    }
+
     if (warnings.length > 0) {
       console.log('[sendCodeToStudio] Translation warnings:', warnings)
     }
@@ -3978,13 +4022,37 @@ CALL FORMAT CHEATSHEET:
   Light(parentPart, brightness, range, R,G,B)                              -- point light
   P("name", sx,sy,sz, px,py,pz, "Brick", vc(180,140,100))                 -- with color variation
 
-COORDINATE SYSTEM (relative to spawn point, Y=0 is ground):
-  Floor:   P("Floor", 24,1,16, 0,0.5,0, ...)        -- Y=0.5 (half thickness above ground)
-  Wall:    P("Wall",  24,10,0.8, 0,5.5,8, ...)       -- Y=5.5 (half wall height + floor)
-  Ceiling: P("Ceil",  24,0.5,16, 0,10.5,0, ...)      -- Y=10.5 (wall height + floor)
-  Roof:    W("Roof",  13,3,16, -6.5,12,0, ...)       -- Y=12 (above ceiling)
-  Door:    empty space in wall (make 2 wall sections with gap between)
-  Window:  P("Glass", 4,3,0.2, -5,5,8.1, "Glass", 180,215,240, 0.4)  -- slightly in front of wall
+COORDINATE SYSTEM — THIS IS THE #1 THING YOU MUST GET RIGHT:
+All positions are RELATIVE to (0,0,0) which is ground level at the spawn point.
+  X = left/right, Y = up/down (height), Z = forward/backward
+  relY is HEIGHT ABOVE GROUND. Y=0 is ground. Y=5 means 5 studs up.
+  CRITICAL FORMULA: relY = height_of_parts_below + (this_part_height / 2)
+
+STACKING MATH (how parts sit ON TOP of each other):
+  Position Y = center of the part, NOT the bottom edge.
+  A part with sizeY=4 at relY=2 means: bottom at Y=0 (ground), top at Y=4.
+  A part with sizeY=6 at relY=7 means: bottom at Y=4, top at Y=10.
+  To stack Part B on top of Part A: B.relY = A.relY + A.sizeY/2 + B.sizeY/2
+
+TREE MATH (most common mistake — canopy floats or clips through trunk):
+  Trunk: Cyl("Trunk", height=8, diam=1.5, 0, height/2, 0) → relY=4 (center of 8-tall trunk)
+  Canopy: Ball("Canopy", diam=10, 0, trunkHeight + diam/2 - 1, 0) → relY=8+5-1=12
+  The "-1" makes canopy slightly overlap the trunk top (natural look)
+  Additional canopy balls: offset X and Z by ±1-3 studs, same Y or ±1
+
+WALL MATH (walls connect at edges, not overlap):
+  Floor:   P("Floor", 24,1,16, 0,0.5,0, ...)        -- Y=0.5 (half of 1-thick slab)
+  Wall:    P("Wall",  24,10,0.8, 0,5.5,8, ...)       -- Y=5.5 (0.5 floor + 10/2 wall)
+  Ceiling: P("Ceil",  24,0.5,16, 0,10.5,0, ...)      -- Y=10.5 (0.5 floor + 10 wall)
+  Left wall X = -floorWidth/2, Right wall X = +floorWidth/2
+  Front wall Z = -floorDepth/2, Back wall Z = +floorDepth/2
+  Door:    SPLIT the front wall into two sections with a gap between
+  Window:  Glass SLIGHTLY in front of wall (wallZ + 0.1)
+
+EVERYTHING MUST CONNECT — no floating parts, no gaps between walls and floor.
+  Walls touch floor (wall bottom Y = floor top Y)
+  Walls touch ceiling (wall top Y = ceiling bottom Y)
+  Walls meet at corners (left wall X = front wall left edge X)
 
 MATERIALS: Concrete(foundations) Brick(buildings) Cobblestone(paths) Glass(windows+Transparency) Granite(stone) Metal(poles/industrial) Marble(luxury) Neon(accents ONLY) Slate(roofs) Wood(trunks) WoodPlanks(floors/furniture)
 COLOR PALETTES (pick based on game style):
