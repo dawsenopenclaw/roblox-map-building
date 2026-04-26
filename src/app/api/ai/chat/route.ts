@@ -1240,6 +1240,55 @@ async function sendCodeToStudio(sessionId: string | null, code: string, teamId?:
     }
 
     const { commands, hasUntranslatableCode, warnings } = luauToStructuredCommands(fixedCode)
+
+    // ── SHAPE FIXER: Force correct shapes based on part names ──────────────
+    // The AI often generates flat blocks for everything. This post-processor
+    // detects organic objects by name and forces the correct shape + materials.
+    let shapeFixes = 0
+    for (const cmd of commands) {
+      if (cmd.type !== 'create_part') continue
+      const n = ((cmd as { name?: string }).name || '').toLowerCase()
+      const part = cmd as { shape?: string; material?: string; color?: { r: number; g: number; b: number }; size?: { x: number; y: number; z: number } }
+
+      // Trunks → Cylinder + Wood material + brown color
+      if (/trunk|pole|post|stem|stalk|pillar|column/i.test(n) && part.shape !== 'Cylinder') {
+        part.shape = 'Cylinder'
+        if (part.material === 'Concrete' || part.material === 'SmoothPlastic') part.material = 'Wood'
+        if (part.color && part.color.r > 150 && part.color.g > 150 && part.color.b > 150) {
+          part.color = { r: 90 + Math.floor(Math.random() * 20), g: 60 + Math.floor(Math.random() * 10), b: 30 }
+        }
+        shapeFixes++
+      }
+      // Canopy/leaves/foliage → Ball + Grass material + green color
+      else if (/canopy|leaves|leaf|foliage|crown|bush|shrub|hedge|treetop/i.test(n) && part.shape !== 'Ball') {
+        part.shape = 'Ball'
+        if (part.material === 'Concrete' || part.material === 'SmoothPlastic' || part.material === 'Wood') part.material = 'Grass'
+        if (part.color && (part.color.r > 150 || (part.color.g < 80 && part.color.b < 80))) {
+          part.color = { r: 50 + Math.floor(Math.random() * 30), g: 100 + Math.floor(Math.random() * 40), b: 35 + Math.floor(Math.random() * 20) }
+        }
+        shapeFixes++
+      }
+      // Lamp bulbs/globes → Ball
+      else if (/bulb|globe|orb|sphere|ball|dome/i.test(n) && part.shape !== 'Ball') {
+        part.shape = 'Ball'
+        shapeFixes++
+      }
+      // Wheels → Cylinder
+      else if (/wheel|tire|rim/i.test(n) && part.shape !== 'Cylinder') {
+        part.shape = 'Cylinder'
+        shapeFixes++
+      }
+      // Rocks/boulders → Ball
+      else if (/rock|boulder|stone|pebble/i.test(n) && !n.includes('wall') && part.shape !== 'Ball') {
+        part.shape = 'Ball'
+        if (part.material === 'Concrete' || part.material === 'SmoothPlastic') part.material = 'Granite'
+        shapeFixes++
+      }
+    }
+    if (shapeFixes > 0) {
+      console.log(`[ShapeFixer] Fixed ${shapeFixes} part shapes (trunk→Cylinder, canopy→Ball, etc.)`)
+    }
+
     if (warnings.length > 0) {
       console.log('[sendCodeToStudio] Translation warnings:', warnings)
     }
