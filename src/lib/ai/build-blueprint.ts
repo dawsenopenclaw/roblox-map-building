@@ -112,19 +112,19 @@ export async function estimateComplexity(
   const isMassive = /\b(town|village|city|castle|kingdom|fortress|mansion|estate|campus|district|complex|arena|stadium|cathedral|temple|palace|neighborhood)\b/.test(lower)
   const isLarge = /\b(house|building|shop|restaurant|cafe|school|hospital|factory|warehouse|church|station|hotel|apartment|barn|hangar|bridge|park)\b/.test(lower)
 
-  let targetParts = difficulty === 'simple' ? 20 : difficulty === 'medium' ? 50 : 120
-  let targetLights = difficulty === 'simple' ? 1 : difficulty === 'medium' ? 4 : 10
-  let targetInteractive = difficulty === 'simple' ? 0 : difficulty === 'medium' ? 2 : 5
+  let targetParts = difficulty === 'simple' ? 30 : difficulty === 'medium' ? 100 : 250
+  let targetLights = difficulty === 'simple' ? 2 : difficulty === 'medium' ? 6 : 15
+  let targetInteractive = difficulty === 'simple' ? 0 : difficulty === 'medium' ? 3 : 8
 
-  // Scale up for massive builds
+  // Scale up for massive builds — real Roblox games have 14K-25K parts
   if (isMassive) {
-    targetParts = Math.max(targetParts, 200)
-    targetLights = Math.max(targetLights, 15)
-    targetInteractive = Math.max(targetInteractive, 8)
+    targetParts = Math.max(targetParts, 400)
+    targetLights = Math.max(targetLights, 20)
+    targetInteractive = Math.max(targetInteractive, 12)
   } else if (isLarge) {
-    targetParts = Math.max(targetParts, 80)
-    targetLights = Math.max(targetLights, 6)
-    targetInteractive = Math.max(targetInteractive, 3)
+    targetParts = Math.max(targetParts, 150)
+    targetLights = Math.max(targetLights, 10)
+    targetInteractive = Math.max(targetInteractive, 5)
   }
 
   // Multi-object scenes get even more

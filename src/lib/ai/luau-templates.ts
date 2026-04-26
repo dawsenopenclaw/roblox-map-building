@@ -1,3 +1,6 @@
+import { rpgGame, horrorGame, towerDefenseGame, battleRoyaleGame, racingGame, survivalGame } from './luau-templates-games'
+import type { RPGGameParams, HorrorGameParams, TowerDefenseParams, BattleRoyaleParams, RacingGameParams, SurvivalGameParams } from './luau-templates-games'
+
 /**
  * Luau Template Library — pre-built, parameterized Roblox game system scripts.
  *
@@ -5086,9 +5089,9 @@ print("[Animation] ${animationName} system ready — speed: ${speed}, looping: $
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Re-export new game templates
-export { rpgGame, horrorGame, towerDefenseGame, battleRoyaleGame, racingGame, survivalGame } from './luau-templates-games'
-export type { RPGGameParams, HorrorGameParams, TowerDefenseParams, BattleRoyaleParams, RacingGameParams, SurvivalGameParams } from './luau-templates-games'
+// Re-export game templates (imported at top of file)
+export { rpgGame, horrorGame, towerDefenseGame, battleRoyaleGame, racingGame, survivalGame }
+export type { RPGGameParams, HorrorGameParams, TowerDefenseParams, BattleRoyaleParams, RacingGameParams, SurvivalGameParams }
 
 // Template registry — maps task template names to generator functions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -5118,6 +5121,12 @@ export type TemplateName =
   | 'particle_effect'
   | 'weather_system'
   | 'animation_system'
+  | 'rpg_game'
+  | 'horror_game'
+  | 'tower_defense_game'
+  | 'battle_royale_game'
+  | 'racing_game'
+  | 'survival_game'
 
 export interface TemplateRegistry {
   economy_system: (p: EconomySystemParams) => string
@@ -5144,6 +5153,12 @@ export interface TemplateRegistry {
   particle_effect: (p: ParticleEffectSystemParams) => string
   weather_system: (p: WeatherSystemParams) => string
   animation_system: (p: AnimationSystemParams) => string
+  rpg_game: (p: RPGGameParams) => string
+  horror_game: (p: HorrorGameParams) => string
+  tower_defense_game: (p: TowerDefenseParams) => string
+  battle_royale_game: (p: BattleRoyaleParams) => string
+  racing_game: (p: RacingGameParams) => string
+  survival_game: (p: SurvivalGameParams) => string
 }
 
 export const TEMPLATE_REGISTRY: TemplateRegistry = {
@@ -5171,4 +5186,10 @@ export const TEMPLATE_REGISTRY: TemplateRegistry = {
   particle_effect: particleEffectSystem,
   weather_system: weatherSystem,
   animation_system: animationSystem,
+  rpg_game: rpgGame,
+  horror_game: horrorGame,
+  tower_defense_game: towerDefenseGame,
+  battle_royale_game: battleRoyaleGame,
+  racing_game: racingGame,
+  survival_game: survivalGame,
 }

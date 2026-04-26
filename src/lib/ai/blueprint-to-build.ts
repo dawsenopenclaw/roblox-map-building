@@ -769,13 +769,87 @@ export function blueprintToBuild(blueprint: Blueprint): { parts: BuildPart[]; lu
     }
     if (building.features?.includes('porch')) {
       parts.push(generateFloor(bx, bz + hd + 3, building.width + 2, 5, by, 0.5, 'WoodPlanks', [150, 110, 65], `${prefix}_porch_floor`))
-      // Porch pillars
-      parts.push({ name: `${prefix}_porch_pillar_l`, size: [0.5, 8, 0.5], position: [bx - hw, by + 4.5, bz + hd + 5], rotation: [0, 0, 0], material: 'Wood', color: [200, 195, 190], shape: 'Cylinder' })
-      parts.push({ name: `${prefix}_porch_pillar_r`, size: [0.5, 8, 0.5], position: [bx + hw, by + 4.5, bz + hd + 5], rotation: [0, 0, 0], material: 'Wood', color: [200, 195, 190], shape: 'Cylinder' })
+      // Porch pillars (4 for a wrap-around feel)
+      parts.push({ name: `${prefix}_porch_pillar_fl`, size: [0.5, 8, 0.5], position: [bx - hw, by + 4.5, bz + hd + 5], rotation: [0, 0, 0], material: 'Wood', color: [200, 195, 190], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_porch_pillar_fr`, size: [0.5, 8, 0.5], position: [bx + hw, by + 4.5, bz + hd + 5], rotation: [0, 0, 0], material: 'Wood', color: [200, 195, 190], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_porch_pillar_ml`, size: [0.5, 8, 0.5], position: [bx - hw / 2, by + 4.5, bz + hd + 5], rotation: [0, 0, 0], material: 'Wood', color: [200, 195, 190], shape: 'Cylinder' })
+      parts.push({ name: `${prefix}_porch_pillar_mr`, size: [0.5, 8, 0.5], position: [bx + hw / 2, by + 4.5, bz + hd + 5], rotation: [0, 0, 0], material: 'Wood', color: [200, 195, 190], shape: 'Cylinder' })
       // Porch roof
       parts.push({ name: `${prefix}_porch_roof`, size: [building.width + 3, 0.5, 6], position: [bx, by + 8.5, bz + hd + 3], rotation: [0, 0, 0], material: palette.roofMaterial, color: palette.roofColor })
+      // Porch railing (top rail + bottom rail + balusters)
+      parts.push({ name: `${prefix}_porch_rail_top`, size: [building.width + 1, 0.15, 0.15], position: [bx, by + 3, bz + hd + 5.2], rotation: [0, 0, 0], material: 'Wood', color: [190, 185, 175] })
+      parts.push({ name: `${prefix}_porch_rail_bot`, size: [building.width + 1, 0.15, 0.15], position: [bx, by + 1.2, bz + hd + 5.2], rotation: [0, 0, 0], material: 'Wood', color: [190, 185, 175] })
+      for (let b = 0; b < 8; b++) {
+        parts.push({ name: `${prefix}_porch_baluster_${b}`, size: [0.12, 1.6, 0.12], position: [bx - hw + 1 + b * (building.width / 8), by + 2.1, bz + hd + 5.2], rotation: [0, 0, 0], material: 'Wood', color: [185, 180, 170] })
+      }
       // Steps
       parts.push(...generateStairs(bx, by, bz + hd + 5.5, 4, 2, 'south', 'Concrete', [140, 135, 130], `${prefix}_porch_steps`))
+    }
+    if (building.features?.includes('balcony') && building.floors > 1) {
+      const balcY = by + floorHeight + 0.5
+      // Balcony platform
+      parts.push({ name: `${prefix}_balcony_floor`, size: [building.width * 0.5, 0.4, 4], position: [bx, balcY, bz + hd + 2], rotation: [0, 0, 0], material: 'Concrete', color: [170, 165, 158] })
+      // Railing
+      parts.push({ name: `${prefix}_balcony_rail_front`, size: [building.width * 0.5, 3, 0.15], position: [bx, balcY + 1.5, bz + hd + 4], rotation: [0, 0, 0], material: 'Metal', color: [50, 50, 55] })
+      parts.push({ name: `${prefix}_balcony_rail_left`, size: [0.15, 3, 4], position: [bx - building.width * 0.25, balcY + 1.5, bz + hd + 2], rotation: [0, 0, 0], material: 'Metal', color: [50, 50, 55] })
+      parts.push({ name: `${prefix}_balcony_rail_right`, size: [0.15, 3, 4], position: [bx + building.width * 0.25, balcY + 1.5, bz + hd + 2], rotation: [0, 0, 0], material: 'Metal', color: [50, 50, 55] })
+      // Support brackets
+      parts.push({ name: `${prefix}_balcony_bracket_l`, size: [0.5, 1.5, 2], position: [bx - building.width * 0.2, balcY - 0.8, bz + hd + 1], rotation: [0, 0, 0], material: 'Concrete', color: [155, 150, 143] })
+      parts.push({ name: `${prefix}_balcony_bracket_r`, size: [0.5, 1.5, 2], position: [bx + building.width * 0.2, balcY - 0.8, bz + hd + 1], rotation: [0, 0, 0], material: 'Concrete', color: [155, 150, 143] })
+    }
+    if (building.features?.includes('garage')) {
+      const gx = bx + hw + 6
+      const gz = bz
+      // Garage structure
+      parts.push({ name: `${prefix}_garage_floor`, size: [10, 0.4, 10], position: [gx, by + 0.2, gz], rotation: [0, 0, 0], material: 'Concrete', color: [150, 148, 142] })
+      parts.push({ name: `${prefix}_garage_wall_back`, size: [10, 8, 0.8], position: [gx, by + 4.5, gz - 5], rotation: [0, 0, 0], material: palette.wallMaterial, color: palette.wallColor })
+      parts.push({ name: `${prefix}_garage_wall_left`, size: [0.8, 8, 10], position: [gx - 5, by + 4.5, gz], rotation: [0, 0, 0], material: palette.wallMaterial, color: palette.wallColor })
+      parts.push({ name: `${prefix}_garage_wall_right`, size: [0.8, 8, 10], position: [gx + 5, by + 4.5, gz], rotation: [0, 0, 0], material: palette.wallMaterial, color: palette.wallColor })
+      // Garage door (wide opening)
+      parts.push({ name: `${prefix}_garage_door`, size: [8, 7, 0.3], position: [gx, by + 4, gz + 5], rotation: [0, 0, 0], material: 'Metal', color: [180, 178, 172] })
+      parts.push({ name: `${prefix}_garage_door_handle`, size: [1, 0.15, 0.15], position: [gx, by + 2, gz + 5.2], rotation: [0, 0, 0], material: 'Metal', color: [80, 80, 85] })
+      // Roof
+      parts.push({ name: `${prefix}_garage_roof`, size: [11, 0.5, 11], position: [gx, by + 8.75, gz], rotation: [0, 0, 0], material: palette.roofMaterial, color: palette.roofColor })
+      // Car inside (simplified)
+      parts.push({ name: `${prefix}_car_body`, size: [4, 1.8, 8], position: [gx, by + 1.5, gz - 0.5], rotation: [0, 0, 0], material: 'Metal', color: [40, 80, 160] })
+      parts.push({ name: `${prefix}_car_roof`, size: [3.5, 1.2, 4], position: [gx, by + 3, gz - 1], rotation: [0, 0, 0], material: 'Metal', color: [40, 80, 160] })
+      parts.push({ name: `${prefix}_car_windshield`, size: [3.3, 1.1, 0.1], position: [gx, by + 3, gz + 1], rotation: [15, 0, 0], material: 'Glass', color: [200, 220, 240], transparency: 0.4 })
+      // Driveway connecting to building
+      parts.push({ name: `${prefix}_driveway`, size: [6, 0.15, 15], position: [gx, by + 0.08, gz + 10], rotation: [0, 0, 0], material: 'Concrete', color: [140, 138, 132] })
+    }
+    if (building.features?.includes('tower')) {
+      const tx = bx - hw - 4
+      const towerH = building.floors * floorHeight + 8
+      // Tower cylinder body
+      parts.push({ name: `${prefix}_tower_base`, size: [6, towerH, 6], position: [tx, by + towerH / 2, bz - hd + 3], rotation: [0, 0, 0], material: palette.wallMaterial, color: palette.wallColor, shape: 'Cylinder' })
+      // Battlement rim at top
+      for (let c = 0; c < 8; c++) {
+        const cAngle = (c / 8) * Math.PI * 2
+        parts.push({ name: `${prefix}_tower_merlon_${c}`, size: [1, 1.5, 1], position: [tx + Math.cos(cAngle) * 3, by + towerH + 0.75, bz - hd + 3 + Math.sin(cAngle) * 3], rotation: [0, cAngle * (180 / Math.PI), 0], material: palette.wallMaterial, color: palette.wallColor })
+      }
+      // Cone roof
+      parts.push({ name: `${prefix}_tower_roof`, size: [7, 5, 7], position: [tx, by + towerH + 4, bz - hd + 3], rotation: [0, 0, 0], material: palette.roofMaterial, color: palette.roofColor, shape: 'Ball' })
+      // Window slits
+      for (let ws = 0; ws < 3; ws++) {
+        parts.push({ name: `${prefix}_tower_slit_${ws}`, size: [0.5, 2, 0.2], position: [tx + 3.1, by + 5 + ws * 6, bz - hd + 3], rotation: [0, 0, 0], material: 'Glass', color: [200, 220, 240], transparency: 0.4 })
+      }
+    }
+    if (building.features?.includes('garden')) {
+      const gx = bx - hw - 8
+      // Garden bed frame
+      parts.push({ name: `${prefix}_garden_bed`, size: [6, 0.3, 4], position: [gx, by + 0.15, bz + hd - 2], rotation: [0, 0, 0], material: 'Wood', color: [100, 65, 30] })
+      parts.push({ name: `${prefix}_garden_soil`, size: [5.6, 0.2, 3.6], position: [gx, by + 0.4, bz + hd - 2], rotation: [0, 0, 0], material: 'Grass', color: [60, 40, 20] })
+      // Flowers in garden
+      const flowerColors: [number, number, number][] = [[220, 50, 70], [255, 180, 40], [180, 50, 200], [255, 120, 60], [50, 180, 220]]
+      for (let f = 0; f < 10; f++) {
+        const fx = gx - 2.2 + (f % 5) * 1.1
+        const fz = bz + hd - 3 + Math.floor(f / 5) * 1.5
+        parts.push({ name: `${prefix}_flower_${f}`, size: [0.4, 0.4, 0.4], position: [fx, by + 0.8, fz], rotation: [0, f * 36, 0], material: 'Grass', color: flowerColors[f % 5], shape: 'Ball' })
+        parts.push({ name: `${prefix}_stem_${f}`, size: [0.08, 0.5, 0.08], position: [fx, by + 0.55, fz], rotation: [0, 0, 0], material: 'Grass', color: [40, 120, 40], shape: 'Cylinder' })
+      }
+      // Watering can prop
+      parts.push({ name: `${prefix}_watercan_body`, size: [0.6, 0.5, 0.4], position: [gx + 2, by + 0.55, bz + hd - 0.5], rotation: [0, 30, 0], material: 'Metal', color: [60, 120, 60] })
+      parts.push({ name: `${prefix}_watercan_spout`, size: [0.1, 0.1, 0.5], position: [gx + 2.3, by + 0.7, bz + hd - 0.2], rotation: [20, 30, 0], material: 'Metal', color: [55, 115, 55] })
     }
   }
 
@@ -977,8 +1051,8 @@ When the user asks for something complex (building, castle, town, scene), output
 Available styles: medieval, modern, rustic, fantasy, scifi, japanese, horror, pirate, western, tropical, underwater, space
 Available room types: living, kitchen, bedroom, bathroom, dining, library, throne, storage, workshop, tavern, shop, hallway, office, lab, armory
 Available building types: house, castle, tower, shop, tavern, church, barn, warehouse, mansion, cabin, fortress, palace
-Available features: porch, balcony, chimney, tower, garage, garden
+Available features: porch (with railing+columns+steps), balcony (with railing+brackets, requires 2+ floors), chimney (with cap), tower (with battlements+cone roof+arrow slits), garage (with car+driveway), garden (with flowers+soil bed+watering can)
 
-The system auto-generates: walls with trim+baseboard+crown molding, windows with glass+frames+sills, doors with frames+knobs, furniture per room type, lighting, landscaping, fencing, paths, trees.
+The system auto-generates: walls with trim+baseboard+crown molding, windows with glass+frames+sills, doors with frames+knobs, furniture per room type, lighting, landscaping, fencing, paths, trees, fountains, market stalls (medieval/fantasy), gravestones (horror), coral (underwater).
 
-A blueprint with 2 buildings, 6 rooms, and outdoor features produces 400-800+ parts automatically. Use blueprints for ANY complex build request.`
+A blueprint with 2 buildings, 6 rooms, and outdoor features produces 400-1000+ parts automatically. Use blueprints for ANY complex build request. ALWAYS prefer blueprints over raw Luau for buildings, castles, towns, maps, and scenes.`
