@@ -3088,7 +3088,7 @@ async function callGemini(
               })),
               { role: 'user', parts: [{ text: userMessage }] },
             ],
-            generationConfig: { maxOutputTokens: maxTokens, temperature: 0.15 },
+            generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4 },
           }),
         },
       )
@@ -5591,19 +5591,27 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       }
     }
 
-    // Single-pass: race both models — first valid result wins (fallback for staged pipeline, primary for simple builds)
+    // Single-pass: GEMINI FIRST for builds (best at structured code), Groq as fallback
+    // Old approach raced 4 providers and Groq (Llama 3.3) always won because it's fastest,
+    // but produced garbage 15-part builds. Gemini 2.5 Flash is much better at following
+    // complex building instructions with part counts, loops, and architectural detail.
     let buildRace: { result: string; index: number } | null = null
-    const outputTokens = isScriptIntent ? 32768 : 16384 // 16K for builds (30-50 parts), 32K for scripts
+    const outputTokens = isScriptIntent ? 32768 : 16384
     if (!luauCode) {
-      console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
-      // 4 providers racing — first to respond wins
-      // Groq first (fastest), Anthropic (reliable), Gemini (quota issues), OpenRouter (fallback)
-      buildRace = await raceNonNull(
-        callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
-        callAnthropicChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
-        callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
-        callOpenRouterChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
-      )
+      console.log('[SinglePass] Gemini-first build gen for:', message.slice(0, 50))
+      // Try Gemini first — it's the best at structured code generation
+      const geminiResult = await callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens)
+      if (geminiResult && geminiResult.length > 200) {
+        buildRace = { result: geminiResult, index: 2 }
+        console.log('[SinglePass] Gemini responded:', geminiResult.length, 'chars')
+      } else {
+        // Gemini failed/empty — fall back to racing remaining providers
+        console.log('[SinglePass] Gemini failed, racing fallbacks')
+        buildRace = await raceNonNull(
+          callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
+          callOpenRouterChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
+        )
+      }
     }
 
     // Extract conversation text (everything before the ```lua block) and code
