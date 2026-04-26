@@ -1357,6 +1357,955 @@ const GAME_SYSTEMS: SystemCategory[] = [
         how: 'Emote table: {name, animationId, icon, category}. Categories: Greetings(wave, bow), Dances(shuffle, spin), Actions(sit, lay, push-up), Funny(chicken, robot). Trigger: /e command in chat or emote wheel UI (radial menu, hold E key). Play Animation on Humanoid.Animator. Looping emotes: stop on movement. Some emotes purchasable (DevProduct). Emote favorites: player pins top 8 to quick wheel. Custom emotes: premium feature.' },
       { name: 'Gift Sending', keywords: ['gift', 'send gift', 'give item', 'gift player', 'present'],
         how: 'ScreenGui "Send Gift": select recipient from friends/nearby list, select item from inventory or purchase gift wrap (DevProduct). Confirm → RemoteEvent "SendGift". Server: validate sender owns item, recipient exists, not blocked. Remove from sender, add to recipient inbox (not direct inventory). Recipient notification: "You received a gift from {player}!" + gift box animation (3D model opens with sparkles). Gift log in DataStore. Daily gift limit: 5 per day (anti-exploit).' },
+      { name: 'Player Profile Card', keywords: ['profile', 'player card', 'player profile', 'bio', 'profile card'],
+        how: 'ScreenGui profile panel: player thumbnail (Players:GetUserThumbnailAsync), display name, level, guild tag, title, playtime, join date. Stats section: total kills, quests completed, achievements earned. Badge showcase: top 6 rarest achievements with colored frames. Bio TextBox (50 char limit, saved DataStore). View others: click player in world → "View Profile" ProximityPrompt. Compare stats option. Profile background themes purchasable.' },
+      { name: 'Player Reporting', keywords: ['report', 'report player', 'report abuse', 'player report', 'flag player'],
+        how: 'Right-click player name or "Report" button in profile. ScreenGui report form: dropdown reason (Hacking, Toxicity, Scamming, Inappropriate Name, Other), TextBox description (200 char). RemoteEvent "ReportPlayer". Server stores in DataStore "Reports" {reporter, reported, reason, description, timestamp, serverJobId}. Anti-spam: max 3 reports per player per hour. Confirmation: "Report submitted, thank you." Admin panel: review queue with action buttons.' },
+      { name: 'Social Hub / Lobby', keywords: ['social hub', 'lobby', 'hangout', 'social space', 'chill zone'],
+        how: 'Dedicated map area with: dance floor (Neon color-cycling Parts), seating areas (bench Models), jukebox (ProximityPrompt to queue songs, Sound objects), photo booth (camera angle + screenshot), mini-games (tic-tac-toe board, chess board SurfaceGui), food/drink NPC vendor, stage for performances. No combat allowed (damage disabled in zone). Ambient music. Seasonal decorations rotate. Central fountain meeting point. Teleport portals to game zones.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // TYCOON SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Tycoon Systems',
+    systems: [
+      { name: 'Dropper & Conveyor', keywords: ['dropper', 'conveyor', 'tycoon dropper', 'ore dropper', 'conveyor belt'],
+        how: 'Dropper Part spawns resource Part every 2s (task.spawn loop: clone template, parent to workspace, CFrame = dropper position - Vector3.new(0,2,0)). Conveyor: long Part with Velocity = Vector3.new(0,0,-10) on surface. Resource Part slides along conveyor via BasePart.Velocity or BodyVelocity. Upgrade dropper: spawn rate decrease (2s→1s→0.5s), resource value increase. Visual: machine Model with spinning gear Parts (CFrame rotation loop). Sound: mechanical hum.' },
+      { name: 'Tycoon Buttons', keywords: ['tycoon button', 'buy button', 'upgrade pad', 'purchase button', 'unlock button'],
+        how: 'Neon Part on ground with SurfaceGui showing item name + price. ProximityPrompt or Touched event. On purchase: validate coins >= price, deduct coins, Destroy button, spawn unlocked item (building/machine/upgrade). Buttons appear in sequence (button 2 visible only after button 1 purchased). Visual: green glow when affordable, red when too expensive. Each button in DataStore for persistence. Sound: cash register cha-ching on buy.' },
+      { name: 'Tycoon Base Building', keywords: ['tycoon base', 'tycoon plot', 'tycoon building', 'factory building', 'base upgrade'],
+        how: 'Player claims plot (Touched pad assigns ownership). Base starts empty. Purchase buttons unlock: walls, floor upgrades, machines, decorations. Each unlock: server spawns pre-positioned Parts from template folder. DataStore stores list of purchased unlockIds. On rejoin: iterate purchased list, spawn all. Base expansion: later buttons unlock adjacent area. Model hierarchy: PlotFolder > Buildings > individual Parts. Walls/roof give passive bonuses.' },
+      { name: 'Collector & Sell Pad', keywords: ['collector', 'sell pad', 'collect resources', 'sell resources', 'tycoon sell'],
+        how: 'Sell pad: Part at end of conveyor. Touched by resource Part: Destroy resource, add value to player coins (IntValue in leaderstats). BillboardGui "+$50" floats up (TweenService Y offset). Auto-collector upgrade: invisible Region3 around base, collects all loose resource Parts every 1s, adds values. Sell multiplier upgrades: 2x, 5x, 10x (stored in DataStore). Sound: coin clink. Visual: resource Part shrinks on contact then Debris.' },
+      { name: 'Rebirth/Prestige Tycoon', keywords: ['tycoon rebirth', 'tycoon prestige', 'reset tycoon', 'tycoon restart'],
+        how: 'When player reaches income threshold: "Rebirth" button appears. On rebirth: destroy all base buildings, reset coins to 0, increment Rebirth counter (IntValue in leaderstats). Bonus: all earnings multiplied by 1 + (rebirths * 0.5). Some items persist across rebirths (marked "Permanent"). New rebirth-only items unlock at rebirth milestones. Visual: dramatic explosion of base, rebuilds from scratch. Rebirth shop: spend rebirth tokens on permanent upgrades.' },
+      { name: 'Income Display', keywords: ['income display', 'money per second', 'earnings display', 'revenue counter', 'income counter'],
+        how: 'Server tracks income rate per player: sum of all dropper values / dropper intervals. BillboardGui or SurfaceGui on base showing "$X/sec" updating every second. ScreenGui HUD element: current coins + income rate. History graph: ScreenGui with Frame bars showing last 60s of earnings. Total earned stat in DataStore. Milestone celebrations: "$1M earned!" notification with fireworks ParticleEmitter. Leaderboard: sort by income rate.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // SIMULATOR MECHANICS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Simulator Mechanics',
+    systems: [
+      { name: 'Click/Tap Mechanic', keywords: ['clicker', 'click simulator', 'tap', 'clicking game', 'click power'],
+        how: 'Tool or ScreenGui button. Each click: RemoteEvent "Click". Server: increment resource by clickPower (IntValue, upgradeable). Visual: number popup "+{power}" at click point (BillboardGui, TweenService float up + fade). Click combo: rapid clicks within 0.5s each build multiplier (2x, 3x...). Auto-clicker detection: if clicks > 20/sec, flag and ignore excess. Upgrade clickPower at shop. Prestige resets power but gives permanent multiplier.' },
+      { name: 'Backpack/Capacity System', keywords: ['backpack', 'capacity', 'bag', 'storage capacity', 'bag upgrade', 'backpack upgrade'],
+        how: 'IntValue "BackpackSize" (default 100). Collecting resources: current += resourceValue. When current >= BackpackSize: "Backpack Full!" notification, cannot collect more. Must sell at sell pad to empty. Upgrade backpack: shop tiers (100→250→500→1000→5000→unlimited). Visual: character carries bag Model that grows with fill level. Progress bar in HUD shows current/max. Auto-sell pet: companion that sells when full.' },
+      { name: 'Zone Unlocking', keywords: ['zone unlock', 'area unlock', 'unlock zone', 'zone gate', 'zone portal', 'new area'],
+        how: 'Invisible wall Parts with SurfaceGui "Requires 10,000 Coins to Enter". ProximityPrompt "Unlock Zone". Server validates coins or level. On unlock: remove wall, play unlock animation (walls slide apart via TweenService), store in DataStore. Each zone: better resources, harder enemies, new NPCs. Zone progression: 5-10 zones getting harder. Teleport shortcut to unlocked zones via ScreenGui map. First-time zone entry: camera pan showing the zone.' },
+      { name: 'Auto-Farm/Idle Mechanic', keywords: ['auto farm', 'idle', 'afk farm', 'auto collect', 'idle game', 'offline progress'],
+        how: 'Toggle "Auto-Farm" in ScreenGui (unlocked via gamepass or in-game purchase). When enabled: server task.spawn loop fires click event every 0.5s automatically. Idle multiplier: reduced rate (50%) when auto-farming to incentivize active play. Offline earnings: on rejoin, calculate minutes since last save, grant offlineMinutes * incomePerMinute * 0.1 (10% of active rate). Cap offline earnings at 8 hours. Notification: "While you were away, you earned $X!"' },
+      { name: 'World/Dimension Hopping', keywords: ['dimension', 'world hop', 'parallel world', 'alternate dimension', 'realm'],
+        how: 'Multiple game worlds accessible via portal. Each world: different theme, resources, enemies, economy. Portal Part (swirling ParticleEmitter): ProximityPrompt "Travel to Ice Realm". TeleportService:TeleportToPlaceAsync to sub-place, or swap map content in same server. Progress carries across dimensions (shared DataStore). Dimension-exclusive items incentivize visiting all. World map ScreenGui shows all dimensions with unlock status.' },
+      { name: 'Leaderboard Races', keywords: ['race leaderboard', 'first to', 'competition', 'race to top', 'global race'],
+        how: 'Timed event: "First to 1,000,000 coins wins!" Server-wide race starts at set time. OrderedDataStore tracks participant scores, updates every 30s. Live leaderboard SurfaceGui in spawn shows top 10. Rewards: 1st place = exclusive item + 10K coins, top 10 = coins + badge. Duration: 1-24 hours. Anti-cheat: validate coin gains against maximum possible rate. Announce winner globally via RemoteEvent "RaceWinner" + celebration effects.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // VEHICLE & TRANSPORT ADVANCED
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Vehicle & Transport Advanced',
+    systems: [
+      { name: 'Vehicle Garage', keywords: ['garage', 'vehicle garage', 'car garage', 'vehicle storage', 'park car'],
+        how: 'Garage building with door that opens (TweenService Part position). ProximityPrompt "Open Garage". ScreenGui vehicle selector: grid of owned vehicles with stats. Select → vehicle spawns at garage exit point. Only 1 vehicle out at a time (Destroy previous). DataStore stores owned vehicle IDs. Buy vehicles from dealer NPC. Customize: color picker per vehicle part. Premium garage: more slots, faster spawn.' },
+      { name: 'Vehicle Customization', keywords: ['car customize', 'vehicle paint', 'car mod', 'vehicle upgrade', 'car parts'],
+        how: 'Customization station Part. ProximityPrompt opens ScreenGui with categories: Paint (color picker → apply to all body Parts), Wheels (swap wheel Models), Spoiler (toggle), Underglow (Neon Part beneath, color choice), Decals (ImageLabel on sides), Performance (speed/handling/brake upgrades via VehicleSeat properties). Each customization costs coins. Preview before buying. Save config per vehicle in DataStore. "Reset to Default" option.' },
+      { name: 'Fuel System', keywords: ['fuel', 'gas', 'refuel', 'fuel tank', 'gas station', 'fuel gauge'],
+        how: 'NumberValue "Fuel" per vehicle (max 100). Driving consumes fuel: Heartbeat loop deducts fuel based on Throttle input. At 0: vehicle stops (MaxSpeed = 0). Gas station: ProximityPrompt "Refuel ($50)". Server validates coins, sets Fuel to 100. HUD fuel gauge: horizontal bar with gradient (green→yellow→red). Warning at 20%: flashing icon + sound. Fuel upgrades: larger tank (150, 200). Jerry can item: refuel anywhere once.' },
+      { name: 'Traffic System', keywords: ['traffic', 'traffic light', 'road rules', 'npc cars', 'traffic system'],
+        how: 'Traffic lights: Model with 3 Neon circles (red/yellow/green). Server cycles: Green(15s) → Yellow(3s) → Red(12s). Sync lights at intersections. NPC vehicles: pre-placed car Models on invisible rails (CFrame path via for loop of waypoints). NPCs stop at red lights (check nearest light state). Player running red: fine ($100 deducted), police notification. Road markings: Decals on road Parts (lane lines, stop lines, crosswalks).' },
+      { name: 'Boat & Water Vehicle', keywords: ['boat', 'water vehicle', 'ship', 'sailboat', 'jet ski', 'water craft'],
+        how: 'Boat Model with VehicleSeat. Float: BodyPosition constrained to water Y level (Heartbeat: if pos.Y < waterLevel, BodyPosition.Position = Vector3.new(pos.X, waterLevel, pos.Z)). Bobbing: slight Y oscillation via math.sin(tick()). Wake effect: ParticleEmitter at stern when moving. Speed: BodyVelocity in look direction * throttle. Turn: BodyAngularVelocity on Y axis. Anchor: toggle stops all forces. Damage from collision (check velocity on Touched).' },
+      { name: 'Aircraft & Flying', keywords: ['airplane', 'aircraft', 'helicopter', 'fly', 'plane', 'flying vehicle'],
+        how: 'Aircraft Model with VehicleSeat. Flight: BodyVelocity for thrust (forward = lookVector * speed), BodyGyro for orientation. Controls: W/S = pitch, A/D = roll, Q/E = yaw. Throttle: speed ramps 0→maxSpeed. Lift: if speed > stallSpeed, BodyForce counteracts gravity. Stall below stallSpeed: nose drops. Landing gear: toggle, Parts move down via TweenService. Engine sound: pitch scales with speed. Propeller: Part with CFrame rotation loop. Altitude HUD display.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // WEATHER & TIME SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Weather & Time Systems',
+    systems: [
+      { name: 'Dynamic Weather', keywords: ['weather', 'rain', 'snow', 'storm', 'weather system', 'dynamic weather'],
+        how: 'Server weather state: Clear/Cloudy/Rain/Storm/Snow. Transition every 5-10 min (random). On change: RemoteEvent to all clients. Rain: ParticleEmitter attached to camera (falling blue dots, Rate=200). Storm: rain + Lightning (bright flash via ColorCorrection Brightness spike 0.5s + thunder Sound). Snow: white particles, slower fall. Fog: Atmosphere Density increases. Puddle decals appear during rain. Weather affects gameplay: rain = slippery (-20% traction), snow = slow (-10% speed).' },
+      { name: 'Day/Night Cycle', keywords: ['day night', 'time cycle', 'sun', 'moon', 'day cycle', 'night cycle'],
+        how: 'Server task.spawn loop: Lighting.ClockTime += 0.01 every 0.5s (1 full day = ~12 min real time). Dawn(5-7): warm ColorCorrection, birds Sound. Day(7-17): bright, full visibility. Dusk(17-19): orange tint. Night(19-5): dark, stars visible (SpaceTexture skybox), streetlamps auto-on (PointLight Enabled toggle), moon glow. Gameplay: nocturnal enemies spawn at night, shops close, different NPC dialogue. HUD clock display shows current time.' },
+      { name: 'Wind System', keywords: ['wind', 'breeze', 'wind direction', 'wind effect', 'windy'],
+        how: 'Server NumberValue "WindSpeed" (0-50) and Vector3Value "WindDirection". Affects: tree canopy Parts sway (CFrame oscillation scaled by wind), ParticleEmitter drift direction, flag Parts wave, player movement (slight push BodyVelocity in wind direction if WindSpeed > 30). Visual: leaf particles in air during high wind. Sound: wind howl volume scales with speed. Kite/sail items benefit from wind. Weather connection: storms = high wind.' },
+      { name: 'Temperature System', keywords: ['temperature', 'heat', 'cold', 'freeze', 'overheat', 'thermal'],
+        how: 'NumberValue "Temperature" per player. Biome-based: desert=hot, tundra=cold, normal=neutral. Exposure: temperature drifts toward biome temp over time. Effects: too cold(<20) = screen frost overlay (ImageLabel), movement slow, health drain. Too hot(>80) = heat shimmer overlay, stamina drain. Counter: warm clothing (equip reduces cold rate), cooling items. Camp fire: proximity warms player. HUD thermometer bar with blue-green-red gradient. Shelter (under roof) stabilizes temperature.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // INVENTORY & EQUIPMENT ADVANCED
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Inventory & Equipment Advanced',
+    systems: [
+      { name: 'Equipment Slots', keywords: ['equipment', 'equip slot', 'armor slot', 'gear slot', 'equipment screen', 'wear gear'],
+        how: 'Slots: Head, Chest, Legs, Boots, Weapon, Shield, Accessory1, Accessory2. ScreenGui character silhouette with slot frames around it. Drag item from inventory to slot (InputBegan drag, InputEnded drop). Server validates: item matches slot type, player owns item. On equip: apply stat bonuses (defense, speed, damage), attach visual Model to character (HumanoidDescription or welded accessory). Unequip: remove bonuses, remove visual. DataStore saves equipped item IDs.' },
+      { name: 'Inventory Sorting', keywords: ['sort inventory', 'inventory sort', 'organize inventory', 'auto sort', 'inventory filter'],
+        how: 'Sort buttons in inventory ScreenGui: "By Rarity" (Legendary first), "By Type" (weapons, armor, materials grouped), "By Recent" (newest first), "By Value" (highest sell price first). Sort function: table.sort with comparator per sort mode. Filter: search TextBox + category tabs (All, Weapons, Armor, Materials, Consumables). Filtered items hidden (Visible=false). Pinned items: star icon, always appear first regardless of sort.' },
+      { name: 'Loot Crate / Chest', keywords: ['loot crate', 'chest', 'treasure chest', 'loot box', 'reward chest', 'open crate'],
+        how: 'Chest Model in world or earned from quests. ProximityPrompt "Open Chest" or click in inventory. Server rolls N items from weighted loot table (1-5 items per chest). Animation: chest Model lid rotates open (TweenService CFrame), items fly out one by one (spawn Part, BodyVelocity upward, BillboardGui with name+rarity). ScreenGui reveal: items appear sequentially with rarity flash (gold for Legendary). Sound: creak open, item reveal chime escalating pitch. Duplicate protection optional.' },
+      { name: 'Item Enchanting', keywords: ['enchant', 'enchanting', 'enchantment', 'imbue', 'enchant item', 'magic upgrade'],
+        how: 'Enchanting table station with ProximityPrompt. ScreenGui: item slot + enchantment scroll slot + "Enchant" button. Enchantment scrolls: found as rare loot (Fire Enchant, Speed Enchant, Lifesteal Enchant). Each enchantment: adds special effect to weapon/armor. Fire: attacks burn (DoT 3s), Speed: +15% movement, Lifesteal: heal 10% of damage dealt. Items can have max 2 enchantments. Chance of failure (destroys scroll, not item): 20% base, reduced by Enchanting skill level.' },
+      { name: 'Item Durability', keywords: ['durability', 'item break', 'repair', 'item condition', 'weapon durability'],
+        how: 'NumberValue "Durability" per equipped item (max 100). Usage decreases: weapon attack=-1, armor hit taken=-1. At 0: item breaks (red flash, cracking sound), stats deactivated, must repair. Repair at blacksmith NPC: cost = item value * (1 - durability/100). Or use repair kit consumable (+50 durability). HUD shows durability bar per equipped item. Warning at 20%: icon flashes. Unbreakable trait on rare items.' },
+      { name: 'Item Set Bonuses', keywords: ['set bonus', 'armor set', 'item set', 'collection bonus', 'matching gear'],
+        how: 'Sets: groups of items (Dark Knight Helm + Chest + Legs + Boots). DataStore tracks equipped set pieces. On equip change: count matching set pieces. Bonuses: 2-piece=+10% HP, 3-piece=+15% damage, 4-piece=unique ability (e.g., shadow dash). ScreenGui set panel: shows all sets, owned pieces highlighted, bonus thresholds. Visual: full set = special aura ParticleEmitter. Mixing sets: only highest single set bonus applies (no stacking different sets).' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // TRANSPORTATION & TRAVEL
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Transportation & Travel',
+    systems: [
+      { name: 'Fast Travel / Waypoints', keywords: ['fast travel', 'waypoint', 'teleport point', 'travel point', 'warp'],
+        how: 'Waypoint Parts in each zone with ProximityPrompt "Discover Waypoint". On discover: store waypointId in DataStore discoveredWaypoints table. SurfaceGui on waypoint shows zone name. ScreenGui map: click discovered waypoint → confirm teleport → CFrame player to waypoint position. Undiscovered waypoints: "???" on map. Cost: free or small coin fee per travel. Cooldown 10s between fast travels. Visual: beam of light at waypoint locations.' },
+      { name: 'Train / Rail System', keywords: ['train', 'rail', 'railroad', 'subway', 'train station', 'railway'],
+        how: 'Track: Parts forming rail path with CFrame waypoints. Train Model moves along waypoints (TweenService CFrame between points, constant speed). Stops at stations for 10s (doors open: Part slides via TweenService). Player boards: ProximityPrompt "Board Train", weld to seat. ScreenGui shows next stop + ETA. Multiple train lines (colors). Schedule: trains depart every 60s. Sound: horn on departure, rail clacking loop while moving. Station platform Model with bench + sign.' },
+      { name: 'Mount System', keywords: ['mount', 'horse', 'ride mount', 'riding', 'mount system', 'rideable'],
+        how: 'Mount Model with Humanoid (no health bar display). Mount in inventory. Summon: keybind (M) or ScreenGui button. Spawn mount at player position. Player sits: Seat in mount model. Mount WalkSpeed > player (32 vs 16). Dismount: jump key (destroy mount or store). Mount types: Horse(speed), Dragon(fly), Wolf(dash ability). Mount customization: saddle color, armor. Feed mount to keep happiness (affects speed). DataStore stores active mount + customizations.' },
+      { name: 'Elevator System', keywords: ['elevator', 'lift', 'floor select', 'elevator system', 'go up'],
+        how: 'Elevator Part platform with walls. Player steps on: ProximityPrompt "Call Elevator" or automatic via Touched. ScreenGui floor selector: buttons 1-N. On select: doors close (Parts slide inward via TweenService), platform moves to target Y (TweenService position, 3s per floor). Doors open at destination. Floor indicator: SurfaceGui number updates during travel. Sound: ding on arrival, hum while moving. Weight limit optional: max 4 players (count Touched humanoids).' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // BOSS & DUNGEON SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Boss & Dungeon Systems',
+    systems: [
+      { name: 'Dungeon Generator', keywords: ['dungeon', 'procedural dungeon', 'random dungeon', 'dungeon crawl', 'roguelike'],
+        how: 'Grid-based room generation: NxN grid, start room at center. Walk algorithm: random direction, place room if empty. Room templates: table of pre-built room Models (fight room, treasure room, puzzle room, boss room). Connect rooms with corridor Parts. Entrance at first room, boss at furthest room. Populate: enemies scale with dungeon level. Loot: better at deeper rooms. Reset on completion. Party enters together via TeleportService ReservedServer.' },
+      { name: 'Boss Phases', keywords: ['boss phase', 'boss stage', 'boss mechanic', 'boss pattern', 'multi phase boss'],
+        how: 'Boss Humanoid with high MaxHealth. Phase transitions at HP thresholds: Phase1(100-75%): basic attacks. Phase2(75-50%): new attack pattern + minion spawns. Phase3(50-25%): enrage (speed+damage up, red aura). Phase4(25-0%): desperation (AoE attacks, arena hazards). Each phase: different Animation set, different attack cooldowns, visual change (ParticleEmitter color shift). Transition: boss invulnerable 3s, dramatic pose, screen shake, phase announcement text.' },
+      { name: 'Dungeon Loot Table', keywords: ['dungeon loot', 'dungeon reward', 'dungeon treasure', 'boss loot', 'dungeon drop'],
+        how: 'Per-dungeon loot table: {boss:{items:[{name,chance,rarity}]}, chests:{items:[]}, mobs:{items:[]}}. Boss guaranteed 1+ drops. Chest: ProximityPrompt, rolls from chest table. Mob: roll on death. Difficulty scaling: higher dungeon level = better loot table (shift weights toward rarer items). First-clear bonus: extra guaranteed rare item on first dungeon completion. Weekly lockout on boss loot (prevents farming, DataStore tracks last clear timestamp).' },
+      { name: 'Arena Wave Survival', keywords: ['wave survival', 'arena survival', 'horde mode', 'endless waves', 'survive waves'],
+        how: 'Enclosed arena. Waves: enemyCount = 3 + wave * 2. Enemy HP scales: baseHP * (1 + wave * 0.2). Spawn from multiple spawn points around edges. Between waves: 15s rest, shop NPC appears (buy ammo/health). Boss wave every 5th wave. Scoring: kills + wave reached + time survived. Leaderboard for highest wave. Rewards: coins per wave, bonus at milestones (wave 10, 25, 50). Game over when all players dead. Revive tokens purchasable.' },
+      { name: 'Raid Party System', keywords: ['raid', 'raid party', 'raid boss', 'raid group', 'group boss'],
+        how: 'Raid requires party of 4-8 players. Queue at raid entrance: party leader initiates, all members confirm. TeleportService to ReservedServer raid instance. Raid: 3-5 rooms of trash mobs + 1 final boss. Roles: tank (taunt aggro), healer (group heal), DPS. Loot: personal (each player rolls own drops). Weekly lockout per raid tier. Raid difficulty tiers: Normal/Hard/Mythic with scaled HP/damage/rewards. Wipe (all dead) = restart from last checkpoint.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // TUTORIAL & ONBOARDING
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Tutorial & Onboarding',
+    systems: [
+      { name: 'Step-by-Step Tutorial', keywords: ['tutorial', 'onboarding', 'new player', 'first time', 'tutorial system', 'guide'],
+        how: 'DataStore BoolValue "TutorialComplete". On first join: tutorial sequence starts. Steps stored in ModuleScript: [{text, highlight:Instance, action:"click"|"move"|"interact", nextCondition}]. ScreenGui: dark overlay with cutout around highlighted element. Arrow indicator pointing at target. Text box at bottom with NPC avatar + instruction text. Advance on action completion. Skip button (set TutorialComplete=true). Reward on completion: starter pack items.' },
+      { name: 'Hint / Tooltip System', keywords: ['hint', 'game hint', 'help tooltip', 'contextual hint', 'tip system'],
+        how: 'Context-aware hints: if player stands still >15s near quest NPC → show hint "Talk to the NPC! Press E". If inventory full for 30s → "Your backpack is full! Visit the sell pad." Hints queue: table of pending hints, show one at a time. ScreenGui: bottom-center Frame slides up, auto-dismiss 5s. "Don\'t show again" checkbox stores preference in DataStore. Hint conditions checked via Heartbeat polling every 5s. Max 1 hint per 30s to avoid spam.' },
+      { name: 'Quest Arrow / Waypoint Marker', keywords: ['quest arrow', 'waypoint marker', 'objective marker', 'quest marker', 'guide arrow'],
+        how: 'Active quest has target position. ScreenGui: arrow ImageLabel always points toward target (math.atan2 between screen-projected target pos and center). If target off-screen: arrow at screen edge pointing toward it. If target visible: floating diamond marker above target (BillboardGui). Distance text "150m" updates each frame. Multiple markers: stack with priority (main quest = gold, side quest = silver, event = purple). Marker disappears on quest completion.' },
+      { name: 'Practice Mode / Sandbox', keywords: ['practice', 'sandbox mode', 'training area', 'practice area', 'training dummy'],
+        how: 'Dedicated zone with: training dummies (Humanoid models that regenerate HP, don\'t fight back), target range (targets at various distances for ranged practice), obstacle course (practice movement), crafting bench with free materials. No death penalty in zone. Stats don\'t count toward leaderboards. Entry: portal or ScreenGui button. Useful for testing new weapons/abilities before real combat. Timer shows how long practicing. NPC trainer gives combat tips.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // COSMETICS & CUSTOMIZATION
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Cosmetics & Customization',
+    systems: [
+      { name: 'Skin / Outfit System', keywords: ['skin', 'outfit', 'costume', 'character skin', 'player skin', 'cosmetic skin'],
+        how: 'Skins table: {id, name, rarity, shirtId, pantsId, bodyColors, accessories:[]}. DataStore stores owned skins + equipped skin. Apply: HumanoidDescription properties set from skin config. ScreenGui wardrobe: grid of owned skins with preview (ViewportFrame showing character with skin applied). Equip button. Skin sources: shop purchase, event reward, achievement unlock, crate drop. Preview before purchase. Favorite skins pinned to top.' },
+      { name: 'Trail / Footprint Effect', keywords: ['trail', 'footprint', 'walk trail', 'movement trail', 'trail effect'],
+        how: 'Trail instance attached between two Attachments on character (UpperBody top → LowerBody bottom). Trail properties: Color (ColorSequence), Lifetime 0.5s, Width 1. Trails unlocked via shop/achievements. Footprints: on each step (Humanoid.Running event), spawn flat Part at foot position (Debris 3s), Decal on top with footprint image. Trail selector ScreenGui: preview each trail type. Equip one at a time. Some trails: fire, rainbow, sparkle, ice, shadow.' },
+      { name: 'Title / Name Tag', keywords: ['title', 'name tag', 'player title', 'name title', 'overhead title'],
+        how: 'BillboardGui above character Head: TextLabel with player name + optional title below in smaller colored text. Titles earned from achievements, events, purchases. DataStore stores unlockedTitles table + equippedTitle. ScreenGui title selector: list with preview. Rarity-colored title text: Common=white, Rare=blue, Legendary=gold. Some titles animated: Rainbow cycles Hue, Glowing pulses transparency. Title sources: "Dragon Slayer" (defeat boss), "Whale" (spend 100K coins), "OG" (play since launch day).' },
+      { name: 'Kill Effect', keywords: ['kill effect', 'death effect', 'elimination effect', 'kill animation'],
+        how: 'On defeating enemy: custom visual effect plays at death location. Effect types: Explosion(default, ParticleEmitter burst), Disintegrate(character parts Transparency tween 0→1 sequentially), Freeze(character turns ice blue, shatters into Parts with BodyVelocity), Lightning(bolt strikes from above, flash), Black Hole(sphere shrinks, pulls nearby loose Parts). Equip via cosmetics ScreenGui. Earn from PvP milestones or shop. Sound per effect type.' },
+      { name: 'Emote Dances', keywords: ['dance emote', 'custom dance', 'dance moves', 'emote dance', 'dance animation'],
+        how: 'Dance catalog: {name, animationId, duration, looping, category}. Categories: Popular, Funny, Celebration, Classic. Trigger: /e dance or emote wheel. Play Animation with looping priority. Cancel on movement (Humanoid.MoveDirection.Magnitude > 0). Dance floor detection: if on Part tagged "DanceFloor", boost effect (disco lights, music syncs). Group dance: if 3+ players same dance within 10 studs, sync start + bonus XP. Purchasable dances via DevProduct.' },
+      { name: 'Weapon Skins', keywords: ['weapon skin', 'gun skin', 'sword skin', 'weapon cosmetic', 'tool skin'],
+        how: 'Each weapon base model has variant skins: different Texture/Color applied to Parts. Skins table: {weaponId, skinId, name, rarity, colors:{}, textures:{}}. Apply: iterate weapon model Parts, set BrickColor/Material per skin config. ScreenGui weapon skin selector: grid per owned weapon, click skin to preview in ViewportFrame. Skin does NOT change stats (cosmetic only). Sources: crate drops, battle pass, shop. "Inspect" view: rotate weapon model in 3D.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // BATTLE PASS & PROGRESSION
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Battle Pass & Progression',
+    systems: [
+      { name: 'Battle Pass Track', keywords: ['battle pass', 'season pass', 'pass track', 'reward track', 'tier system'],
+        how: 'Pass: 50 tiers. XP per tier: tier * 100. Free track: basic rewards at tiers 1,5,10,20,30,40,50. Premium track (DevProduct $4.99): reward at every tier + exclusive final reward. XP sources: daily quests, challenges, gameplay. ScreenGui: horizontal scrolling tier track, current tier highlighted, free/premium rows. Claim button on completed tiers. Season duration: 30 days. At season end: unclaimed rewards auto-granted, progress resets, new season content.' },
+      { name: 'XP / Level System', keywords: ['xp', 'experience', 'level up', 'leveling', 'experience points', 'xp system'],
+        how: 'IntValue "XP" and "Level" in leaderstats. XP to next level: level * 150. On XP gain: check if XP >= threshold → Level += 1, XP -= threshold, fire "LevelUp" RemoteEvent. Level up: full-screen golden flash, sound fanfare, "+1 Stat Point" popup. XP sources: quests(50-500), kills(10-50), crafting(5-20), exploration(25 per new area). HUD XP bar: filled portion with percentage text. Double XP events: server-wide multiplier for limited time.' },
+      { name: 'Weekly Challenges', keywords: ['weekly challenge', 'weekly quest', 'weekly mission', 'weekly objective', 'challenge list'],
+        how: 'Reset every Monday 00:00 UTC. 7 challenges generated from pool: {description:"Deal 5000 total damage", type:"cumulative_damage", target:5000, reward:{xp:500, coins:1000}}. Tracked server-side, progress synced via RemoteEvent. ScreenGui challenge tab: list with progress bars. Complete all 7: mega bonus (battle pass XP + exclusive item). Difficulty auto-scales with player level. Cannot reroll (prevents cherry-picking easy ones). Push notification when challenge completed.' },
+      { name: 'Mastery / Skill Tree', keywords: ['skill tree', 'mastery', 'talent tree', 'perk tree', 'ability tree'],
+        how: 'Tree structure: root → branches → nodes. Each node: {name, cost:skillPoints, effect, prerequisite:nodeId}. Skill points earned per level (1 per level). Categories: Combat(damage, crit, speed), Survival(HP, regen, defense), Utility(luck, gathering speed, XP bonus). ScreenGui: visual tree with connecting lines, nodes light up when purchased. Click node: preview effect + cost. Respec: costly reset of all points (coins or premium item). Max points < total nodes (forces specialization).' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // MAP & ZONE DESIGN
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Map & Zone Design',
+    systems: [
+      { name: 'Spawn Plaza', keywords: ['spawn', 'spawn area', 'spawn plaza', 'starting area', 'hub area'],
+        how: 'Central hub at (0,0,0). Circular plaza (Marble material, 40 stud radius). Features: fountain Model in center, 4 directional paths leading to game zones, NPC shops around edges, leaderboard displays, noticeboard SurfaceGui with announcements, portal arches to each zone. Safe zone: no damage, no PvP. Ambient music: calm loop. Lighting: bright, welcoming (Atmosphere low density, warm ColorCorrection). SpawnLocation Parts spread around plaza.' },
+      { name: 'Zone Transition / Portal', keywords: ['zone portal', 'zone transition', 'area portal', 'zone gate', 'biome portal'],
+        how: 'Portal Model: stone arch frame + swirling ParticleEmitter inside (circular motion, zone-themed color). SurfaceGui: zone name + level requirement + "Enter" label. ProximityPrompt "Enter {ZoneName}". Server: validate player level >= zoneMinLevel. On enter: screen fade to black (TweenService ScreenGui overlay Transparency 0→1→0), CFrame player to zone spawn point. Loading text during transition. Each zone: distinct Lighting, Terrain, ambience. Return portal in each zone back to hub.' },
+      { name: 'Safe Zone / No-PvP Area', keywords: ['safe zone', 'no pvp', 'peaceful zone', 'protected area', 'no combat zone'],
+        how: 'Invisible Part zone with tag "SafeZone". Player enters (Touched or magnitude check): set BoolValue "InSafeZone"=true. While in safe zone: damage events check attacker/target safe zone status, if either is in safe zone → cancel damage. Visual: border glow (Neon ring at ground level, green). HUD indicator: shield icon when in safe zone. NPC shops only in safe zones. PvP flagging: player can toggle PvP outside safe zone, cannot toggle inside.' },
+      { name: 'Hidden / Secret Area', keywords: ['hidden area', 'secret area', 'secret room', 'hidden room', 'easter egg location'],
+        how: 'Disguised entrance: breakable wall (looks identical to surroundings but has ClickDetector or lower HP), underwater cave, behind waterfall (walk through transparent Part). Secret area contains: exclusive chest, rare NPC, unique item, lore text SurfaceGui. Discovery: DataStore stores found secrets per player. Achievement: "Explorer" for finding all secrets. Hints: NPC dialogue mentions "strange wall in the cave" vaguely. No map marker (truly hidden). Community discovers and shares.' },
+      { name: 'Destructible Environment', keywords: ['destructible', 'breakable wall', 'destroy environment', 'break objects', 'destroyable'],
+        how: 'Breakable objects: tagged Parts with IntValue "HP" and BoolValue "Breakable". On hit by weapon: HP -= damage. Crack decals appear at HP thresholds (75%, 50%, 25%). At 0: shatter into 5-10 small Parts (random sizes, BodyVelocity outward, Debris 3s). Drop loot from loot table. Respawn after 120s (clone from template in ServerStorage). Types: crates(5HP, common loot), boulders(20HP, stone/ore), walls(50HP, passage behind). Sound: wood crack, stone crumble, glass shatter per material.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // TOWER DEFENSE ADVANCED
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Tower Defense Advanced',
+    systems: [
+      { name: 'Tower Placement Grid', keywords: ['tower placement', 'tower grid', 'place tower', 'tower spot', 'td placement'],
+        how: 'Path defined by CFrame waypoints. Placeable area: grid of cells (4x4 stud each) adjacent to path. Ghost preview: transparent tower Model follows mouse position, snapped to grid. Green=valid, Red=invalid (on path, on existing tower, out of range). Click to place: RemoteEvent "PlaceTower" with gridPos + towerType. Server validates: cell empty, player has coins. Spawn tower model at grid position. DataStore per match (not persistent). Sell: click tower, "Sell" button returns 75% cost.' },
+      { name: 'Tower Upgrade System', keywords: ['tower upgrade', 'upgrade tower', 'tower level', 'tower path', 'td upgrade'],
+        how: 'Each tower has 3 upgrade paths (e.g., Damage, Range, Special). Max 5 levels per path. Cost escalates: baseCost * 1.5^level. Click placed tower → ScreenGui upgrade panel: 3 buttons with cost + effect preview. Server validates coins, increments tower level. Visual per level: size slightly larger, color shift, particle effect at max level. Level 5 of any path: ultimate ability (e.g., Damage path 5: double shot). Cannot max all 3 paths (force choice: max 2 paths fully).' },
+      { name: 'Enemy Waves & Spawning', keywords: ['enemy wave', 'wave spawn', 'td wave', 'mob wave', 'spawn wave'],
+        how: 'Wave config table: [{wave:1, enemies:[{type:"Zombie", count:10, interval:1s, hp:100}]}, {wave:5, enemies:[{type:"Boss", count:1, hp:5000}]}]. Between waves: 15s prep time (countdown timer). Spawn: clone enemy model from ServerStorage, set Humanoid HP, start pathfinding along waypoints. Enemy reaches end: lives -= 1 (IntValue "Lives", starts at 20). Game over at 0 lives. Wave indicator: "Wave 5/30" in HUD. Fast-forward button: skip prep time.' },
+      { name: 'TD Enemy Types', keywords: ['td enemy', 'enemy type', 'fast enemy', 'armored enemy', 'flying enemy', 'td mob'],
+        how: 'Enemy types: Normal(standard speed/HP), Fast(2x speed, low HP), Armored(0.5x speed, 3x HP, reduces tower damage by flat amount), Flying(ignores ground path, goes straight to end — only anti-air towers hit them), Healer(heals nearby enemies +5HP/s), Splitter(on death spawns 2 mini versions), Boss(huge HP, periodic shield 5s). Each type: distinct model, BillboardGui type icon. Spawn mixed types in later waves. Type-specific tower bonuses (fire tower 2x vs armored).' },
+      { name: 'Tower Types', keywords: ['tower type', 'archer tower', 'cannon tower', 'ice tower', 'td tower'],
+        how: 'Tower catalog: Archer(fast, single target, low damage, cheap), Cannon(slow, AoE splash, medium damage), Ice(slow enemies in range by 50%, no damage), Lightning(chain hits 3 targets, moderate damage), Sniper(huge range, high damage, very slow), Farm(generates coins per wave, no attack), Mortar(hits ground area after delay, high damage). Each tower: distinct model + attack animation + sound. Balance: no single tower wins — combine types for synergy.' },
+      { name: 'TD Economy & Lives', keywords: ['td economy', 'tower defense money', 'td coins', 'td lives', 'td income'],
+        how: 'Starting coins: 500. Earn coins: per enemy kill (value = enemyHP / 10), wave completion bonus (wave * 50), farm tower income. Spend: place towers + upgrades. Lives start at 20. Lost per leak: 1 for normal, 2 for boss. Gain lives: rare, only from specific milestones or items. No-leak bonus: +100 coins if entire wave killed. Economy display in HUD: coins + lives prominently shown. Interest: between waves, earn 5% of current coins as interest (incentivizes saving).' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // SURVIVAL GAME SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Survival Game Systems',
+    systems: [
+      { name: 'Hunger & Thirst', keywords: ['hunger', 'thirst', 'food bar', 'water bar', 'survival needs', 'starve'],
+        how: 'NumberValues "Hunger" and "Thirst" (max 100, start 100). Heartbeat drain: -1 every 10s (hunger), -1.5 every 10s (thirst). Running drains faster (2x rate). At 0 hunger: health drain -2/s. At 0 thirst: health drain -3/s + screen desaturation. Eat food: hunger += foodValue (Apple=20, Steak=50). Drink: thirst += drinkValue (Water=30, Juice=50). HUD: two vertical bars (brown=hunger, blue=thirst). Warning sound at 20%. Cooking increases food value 2x raw value.' },
+      { name: 'Shelter Building', keywords: ['shelter', 'build shelter', 'survival base', 'survival building', 'camp'],
+        how: 'Craft building pieces: Wall(10 Wood), Floor(8 Wood), Roof(12 Wood), Door(6 Wood + 2 Metal). Place mode: ghost piece follows mouse, snaps to grid, snaps to existing pieces (proximity check). Server validates placement + material cost. Shelter benefits: blocks rain (no "Wet" debuff), sleeping bag inside (time skip + heal), storage chest (persistent DataStore inventory). Decay: structures lose 1 HP/hour if not maintained (repair with materials). Raiders: other players can break structures (PvP server).' },
+      { name: 'Campfire / Warmth', keywords: ['campfire', 'fire', 'warmth', 'torch', 'camp fire', 'keep warm'],
+        how: 'Craft Campfire: 5 Wood + 2 Stone. Place in world. Fire: PointLight (warm orange, Range 15) + ParticleEmitter (fire particles). Warmth radius: 12 studs. Players within radius: temperature increases toward comfortable zone. Cooking: ProximityPrompt on campfire "Cook" when holding raw food → cooked food (better stats). Fuel: burns 5 minutes per Wood added (ProximityPrompt "Add Fuel"). No fuel = fire dies (light off, no warmth). Torch: portable, 3 min fuel, held as Tool.' },
+      { name: 'Resource Gathering (Survival)', keywords: ['chop tree', 'gather wood', 'mine stone', 'survival resource', 'survival gather'],
+        how: 'Trees: Parts with IntValue "Wood" (5-15). Axe tool: Activate → raycast → if tree Part, Wood -= 1, grant 1 Wood. At 0: tree falls (Part anchored=false, BodyVelocity push), Debris 5s. Stump remains, tree regrows in 120s. Rocks: similar with Pickaxe, drops Stone/Flint/Ore. Bushes: hand-gather (ProximityPrompt "Forage"), drops Berries/Fiber. Each resource: specific Tool required (or hand-gather at 3x time). Gathering animation per tool type. Sound: chop, clink, rustle.' },
+      { name: 'Day/Night Survival', keywords: ['night survival', 'survive night', 'night danger', 'night time survival', 'darkness danger'],
+        how: 'Day: safe, gather resources, build. Night (Lighting.ClockTime 19-5): hostile mobs spawn (Zombies/Wolves) in darkness away from light sources. Mob spawn rate increases each night (night 1: 5 mobs, night 10: 20 mobs). Light sources prevent spawning within radius (campfire=15 studs, torch=8, lamp=20). Player in complete darkness: "Fear" effect (screen vignette darkens, heartbeat sound, movement speed -20%). Survive night: morning reward chest spawns at base. Night counter in HUD.' },
+      { name: 'Crafting Recipes (Survival)', keywords: ['survival craft', 'craft weapon', 'craft tool', 'survival recipe', 'primitive craft'],
+        how: 'Progression: Stone Age → Metal Age → Advanced. Early crafts: Stone Axe(2 Stone + 3 Wood), Campfire(5 Wood + 2 Stone), Bandage(3 Fiber). Metal: Iron Axe(2 Iron Bar + 2 Wood, requires forge), Sword(3 Iron Bar + 1 Wood), Armor(5 Iron Bar). Advanced: Gun(5 Metal + 2 Gunpowder + 1 Glass), Radio(3 Metal + 2 Wire + 1 Battery). Recipe book ScreenGui: tabs per age, locked until materials found. Auto-unlock recipe when holding all required ingredients. Craft time: 1-10s with progress bar.' },
+      { name: 'Status Effects (Survival)', keywords: ['bleeding', 'infection', 'cold', 'wet', 'broken bone', 'survival status'],
+        how: 'Status effects: Bleeding(-2HP/s until bandaged), Infection(from zombie hit, -1HP/s, cured by Medicine), Cold(below freezing biome, -1HP/s + slow, warmed by fire), Wet(in rain without shelter, reduces warmth rate), Broken Bone(from fall damage > 50%, WalkSpeed halved, cured by Splint). Active effects: icon strip in HUD with timers. Multiple can stack. Some effects apply others (Wet→Cold faster). Anti-poison, anti-bleed, anti-infection items craftable. Sound: specific per status (shivering, heartbeat, dripping).' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // MARKETPLACE & TRADING ADVANCED
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Marketplace & Trading Advanced',
+    systems: [
+      { name: 'Player Shops / Stalls', keywords: ['player shop', 'player stall', 'player store', 'set up shop', 'vendor stall'],
+        how: 'Player rents stall in marketplace zone (ProximityPrompt "Rent Stall - $500/day"). Stall Model with SurfaceGui sign (customizable name). Owner stocks items from inventory: ScreenGui drag items to stall slots, set price per item. Buyers: ProximityPrompt "Browse Shop" → ScreenGui showing stall items with prices. Buy: coins transfer seller→buyer automatically (even offline). Revenue stored in DataStore "PendingRevenue", collected on login. Max 6 items per stall. Stall expires if rent unpaid.' },
+      { name: 'Trade Verification', keywords: ['trade verify', 'trade confirm', 'safe trade', 'trade window', 'secure trade'],
+        how: 'Two-panel trade ScreenGui: left=your offer, right=their offer. Both players drag items from inventory to offer panel. "Ready" checkbox per player. Both ready: 5s countdown + final confirmation dialog ("CONFIRM TRADE? You give: X, You receive: Y"). Server atomic swap: in single pcall, remove items from both, add crossed items. If either side fails: full rollback. Trade log in DataStore: {timestamp, player1, player2, items1, items2}. Anti-scam: last-second item removal resets countdown. Value warning if trade is heavily lopsided.' },
+      { name: 'Price History / Graphs', keywords: ['price history', 'price graph', 'item history', 'price tracker', 'market graph'],
+        how: 'Track every sale: DataStore "PriceHistory" per item stores last 100 sales {price, timestamp}. ScreenGui graph: X=time, Y=price. Draw with Frame bars (height = normalized price). Average price line: mean of last 20 sales. Trend indicator: arrow up (price rising) or down (falling). Time periods: 1 day, 7 days, 30 days. Help players know fair price. Tooltip on hover shows exact sale price + date. Accessible from auction house item detail view.' },
+      { name: 'Escrow / Middleman', keywords: ['escrow', 'middleman', 'secure payment', 'trade escrow', 'safe exchange'],
+        how: 'For high-value trades: escrow system. Both parties deposit items/coins into escrow (server holds temporarily in DataStore "EscrowHolds"). 24h review period: either party can cancel (full refund). After 24h: if both confirmed, complete exchange. If disputed: admin review queue. Escrow fee: 2% of total value (anti-abuse). ScreenGui escrow panel: status tracker (Deposited → Review → Complete/Cancelled). Notification on status change.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // SPORTS & ATHLETICS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Sports & Athletics',
+    systems: [
+      { name: 'Soccer / Football', keywords: ['soccer', 'football', 'kick ball', 'soccer game', 'football game', 'goal'],
+        how: 'Ball Part (Ball shape, CanCollide true, CustomPhysicalProperties low friction). Kick: player Touched + moving toward ball → BodyVelocity in player look direction * kickPower. Goals: Part trigger zones at each end. Ball enters goal zone (Touched): score +1 for scoring team, ball reset to center. Two teams (Team objects). Match timer: 300s. Scoreboard SurfaceGui. Offside optional. Goalkeeper NPC or player. Sound: kick thud, crowd cheer on goal, whistle on start/end.' },
+      { name: 'Basketball', keywords: ['basketball', 'hoop', 'shoot ball', 'basketball game', 'dunk'],
+        how: 'Ball Part (Ball shape). Pick up: ProximityPrompt on ball, welds to hand. Shoot: keybind (LMB), release ball with BodyVelocity = lookVector * power + upVector * arcHeight. Power: hold duration (0.5-2s) determines force. Hoop: Part ring with net mesh, goal detection (ball passes through cylinder Region3 above rim). Dunk: if within 3 studs of hoop, jump + click = slam animation, guaranteed score. 2-point/3-point line distance check. Shot clock: 24s timer per possession.' },
+      { name: 'Swimming / Water Sports', keywords: ['swim', 'swimming', 'water sport', 'dive', 'underwater', 'pool'],
+        how: 'Water zone: transparent blue Part (CanCollide false) at water level. Player enters water: switch to swim mode (Humanoid.FloorMaterial == nil + position.Y < waterLevel). Swim controls: WASD moves horizontally, Space = ascend, Shift = descend. Speed: WalkSpeed * 0.6 in water. Breath: NumberValue "Oxygen" 100, drains -5/s underwater, refills instantly at surface. At 0: health drain -10/s. HUD oxygen bar when underwater. Swim animation. Splash ParticleEmitter on surface entry.' },
+      { name: 'Parkour / Freerunning', keywords: ['parkour', 'freerun', 'wall run', 'wall jump', 'vault', 'parkour system'],
+        how: 'Wall run: raycast sideways while jumping near wall → apply BodyVelocity along wall + slight upward for 1s. Wall jump: during wall run, jump launches perpendicular + up. Vault: running toward waist-height obstacle (raycast forward, hit height < 4 studs) → auto-vault animation (character lifts over). Ledge grab: raycast forward hits ledge at head height → hang (WalkSpeed=0, BodyPosition at ledge), press Space to climb up. Speed momentum: chaining moves preserves speed. Visual: dust puffs on land.' },
+      { name: 'Archery Range', keywords: ['archery', 'bow arrow', 'archery range', 'target practice', 'archery game'],
+        how: 'Bow Tool: hold click to draw (power increases 0→100 over 2s, bow animation bends). Release: spawn Arrow Part with BodyVelocity = lookVector * power * 2. Arrow gravity: BodyForce downward simulates arc. Arrow Touched: stick into surface (Anchor=true, CFrame adjusted to face velocity direction). Target boards at various distances: ring zones (bullseye=100pts, inner=50, outer=25). SurfaceGui shows score. Round: 10 arrows, total score tracked. Leaderboard for best round.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // EDUCATION & LEARNING GAMES
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Education & Learning Games',
+    systems: [
+      { name: 'Quiz / Trivia System', keywords: ['quiz', 'trivia', 'question', 'quiz game', 'trivia game', 'knowledge'],
+        how: 'Question bank ModuleScript: [{question:"What is 7*8?", options:["54","56","58","62"], correct:2}]. Round: display question on large SurfaceGui or ScreenGui. 4 answer pads on ground (Parts with BillboardGui showing option). Stand on pad to answer. Timer: 15s per question. Correct: +100 points, green flash. Wrong: 0 points, red flash, show correct answer. 10 questions per round. Leaderboard at end. Categories: Math, Science, History, Roblox. Random order, no repeats per game.' },
+      { name: 'Typing Speed Challenge', keywords: ['typing', 'typing speed', 'type race', 'typing game', 'typing challenge'],
+        how: 'ScreenGui: TextLabel shows target sentence. TextBox below for player input. Timer starts on first keystroke. Track: WPM = (charCount/5) / (timeElapsed/60). Accuracy = correctChars / totalChars * 100. Color feedback: typed chars turn green (correct) or red (wrong). Complete sentence: show WPM + accuracy. Leaderboard: highest WPM with >95% accuracy. Difficulty levels: Easy(common words), Medium(longer words), Hard(technical terms). Race mode: multiple players type same sentence, progress bars show positions.' },
+      { name: 'Puzzle Solving', keywords: ['puzzle', 'puzzle game', 'brain teaser', 'logic puzzle', 'riddle'],
+        how: 'Puzzle types: Sliding tile (3x3 grid, one empty slot, click adjacent to swap, solve image), Pattern sequence (show 3 shapes, pick 4th from options), Maze (overhead camera, navigate Part character through), Code lock (find clues in room to get 4-digit code). Each puzzle: ProximityPrompt to start, ScreenGui interface, timer, hints available (costs coins, 3 hints max). Complete: reward chest + puzzle XP. Daily puzzle: new puzzle each day, streak bonus. Difficulty adaptive: easier if player fails 3x.' },
+      { name: 'Memory Match Game', keywords: ['memory game', 'match game', 'card flip', 'memory match', 'pair matching'],
+        how: 'Grid of face-down card Parts (4x4 = 8 pairs). Click card (ClickDetector): flip over (TweenService rotate 180°, show face Decal). Click second card: if match → both stay face-up, ParticleEmitter sparkle, +10 points. No match: both flip back after 1s. Track moves count. Timer optional. Win: all pairs found. Scoring: fewer moves = more points. Multiplayer: take turns, player with most pairs wins. Card themes: animals, fruits, Roblox items. Difficulty: 4x4, 5x5, 6x6 grids.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // MUSIC & RHYTHM GAMES
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Music & Rhythm Games',
+    systems: [
+      { name: 'Rhythm / Beat Game', keywords: ['rhythm', 'beat', 'music game', 'rhythm game', 'note hit', 'beat saber'],
+        how: 'Notes fall from top of screen toward hit zone at bottom (4 lanes: D,F,J,K keys). ScreenGui: 4 lane Frame columns. Note = ImageLabel moving downward (TweenService Y position). Hit zone: highlighted row at bottom. On key press: check if note within ±0.15s of hit zone. Perfect(±0.05s)=300pts, Great(±0.1s)=200pts, Good(±0.15s)=100pts, Miss=0+combo reset. Combo multiplier: streak of non-miss hits. Sound: note sound on hit. Song: table of {time, lane} beat entries synced to Sound object.' },
+      { name: 'DJ / Music Mixer', keywords: ['dj', 'music mixer', 'music maker', 'mix music', 'beat maker', 'sound board'],
+        how: 'ScreenGui sound board: grid of buttons (4x4), each mapped to a Sound (kick, snare, hihat, bass, synth, etc.). Click button: play Sound. Loop toggle: button stays active, Sound loops. Volume slider per sound. Record button: captures button presses with timestamps into sequence table. Playback: iterate sequence, fire sounds at recorded times. Save/load beats in DataStore. Share: play to nearby players (RemoteEvent broadcasts sequence, recipients play sounds locally). BPM slider adjusts playback speed.' },
+      { name: 'Concert / Stage System', keywords: ['concert', 'stage', 'performance', 'music stage', 'live performance'],
+        how: 'Stage Model: elevated platform, speaker Models on sides, spotlight Parts (SpotLight instances, colored, aim at center stage). Performer steps on stage: triggered "Performance Mode" — camera angles shift for audience, stage lights activate (cycling colors via task.spawn loop). Instruments: Guitar/Drums/Piano Tools with playing animations. Audience area: seats, glow sticks (Neon Part toggled by keybind). Applause: after performance, audience press E for clap sound. Tip jar: coins donated to performer.' },
+      { name: 'Dance Floor System', keywords: ['dance floor', 'disco', 'dance party', 'dance floor lights', 'dance club'],
+        how: 'Floor: grid of Parts (8x8). Color cycle: task.spawn loop changes each Part BrickColor randomly every 0.5s (staggered for wave effect). Overhead disco ball: reflective Ball Part rotating (CFrame:Angles loop) with SpotLight. Music: Sound object with playlist (queue of SoundIds). Song controls: SurfaceGui on DJ booth (play/pause/skip/volume). Players on floor: auto-play dance animation if standing still > 3s. Light show: synchronized color changes with beat (analyze Sound.PlaybackLoudness).' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // STEALTH & INFILTRATION
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Stealth & Infiltration',
+    systems: [
+      { name: 'Line of Sight / Vision Cones', keywords: ['vision cone', 'line of sight', 'los', 'guard vision', 'sight detection', 'patrol vision'],
+        how: 'Guard NPCs have vision cone: angle (60°) and range (30 studs). Server Heartbeat: for each guard, check all players: calculate angle between guard lookVector and direction to player (dot product). If angle < coneAngle/2 AND distance < range AND raycast unobstructed → player DETECTED. Visual: optional transparent cone Part for debug (Transparency 0.7, yellow). Detection states: Unaware → Suspicious (yellow, investigate) → Alert (red, chase). Detection meter fills gradually, resets when out of sight.' },
+      { name: 'Noise System', keywords: ['noise', 'sound detection', 'stealth noise', 'footstep noise', 'loud noise'],
+        how: 'Each player action has noise value: walking=1, running=3, jumping=5, shooting=10, breaking glass=8. Guards check noise: if noise source within hearingRange (20 studs), alert level increases. Crouching: noise halved. Carpet/grass surface: noise halved again. Noisy environment (machinery): masks noise below threshold. Visual: expanding ring Part at noise origin (Transparency 0.5→1 over 1s, size expands). HUD noise meter: bar shows current noise level. Silent takedown: kills without noise if from behind.' },
+      { name: 'Security Camera System', keywords: ['security camera', 'cctv', 'camera system', 'surveillance', 'camera detection'],
+        how: 'Camera Models mounted on walls: rotating Part (CFrame:Angles loop, sweeps 90° arc over 5s, then back). Detection: same cone check as guards but from camera position/angle. On detect: alarm triggers (Sound, all guards enter Alert state, doors lock for 30s). Counter: disable camera by shooting/hacking (ProximityPrompt hold 5s from behind). Camera room: player can hack to see all camera ViewportFrames + disable remotely. Visual: red PointLight on active camera, green when disabled. Loop hole: timing the sweep to pass through gap.' },
+      { name: 'Disguise System', keywords: ['disguise', 'costume stealth', 'blend in', 'undercover', 'stealth disguise'],
+        how: 'Find disguise items in environment: Guard Uniform, Lab Coat, Janitor Outfit. Equip: HumanoidDescription changes to match NPC type. While disguised: guards ignore you (skip detection check if player wearing matching zone disguise). Restrictions: cannot run (breaks disguise), cannot use weapons (breaks disguise), must stay in appropriate zone (guard uniform only works in guard areas). Timer: disguise lasts 120s or until broken. ScreenGui shows disguise timer + warning when near wrong zone.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // ECONOMY SIMULATION
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Economy Simulation',
+    systems: [
+      { name: 'Supply & Demand', keywords: ['supply demand', 'dynamic pricing', 'market simulation', 'price fluctuation', 'economy sim'],
+        how: 'Each item has supply (total in circulation) and demand (purchases per hour). Price formula: basePrice * (demand/supply) clamped to [0.5x, 5x]. Server recalculates every 5 minutes. High demand + low supply = price spikes. Market crash: if supply exceeds demand 10x, price tanks to floor. SurfaceGui market board: shows top items with price arrows (up/down/stable). Players influence: selling floods supply, buying increases demand. Savvy players buy low, sell high. Historical price graph.' },
+      { name: 'Job / Employment System', keywords: ['job', 'employment', 'work', 'career', 'job system', 'occupation'],
+        how: 'Jobs: Miner, Fisher, Chef, Guard, Merchant, Builder. Apply at job board NPC. Each job: specific tasks (Miner: mine N rocks/day, Guard: patrol route). Job pays salary every 60s (scales with job level 1-10). Job XP: completing tasks levels up job, increasing salary + unlocking perks. Switch jobs: 24h cooldown. Job uniform: HumanoidDescription changes while working. Perk examples: Miner gets 2x ore, Fisher catches faster, Chef cooks instantly. ScreenGui job panel: current job, tasks, XP progress, salary info.' },
+      { name: 'Real Estate System', keywords: ['real estate', 'buy house', 'property market', 'rent income', 'property value'],
+        how: 'Properties: pre-built houses/shops in world. Each property: DataStore stores {owner, value, rentPrice}. Buy: at Property NPC, pay listed price. Own: collect rent from NPC tenants every hour (passive income). Property value fluctuates: +5% each time someone buys a property in same zone, -2% each time someone sells. Upgrade property (costs coins): increases rent and value. Sell property: get current market value. Max 3 properties per player. SurfaceGui on each property shows status. Eviction: if owner doesn\'t log in for 7 days, property goes back to market.' },
+      { name: 'Business / Company System', keywords: ['business', 'company', 'start business', 'run business', 'entrepreneur'],
+        how: 'Create business: 5000 coins + business license. Business types: Shop(sell items to players), Factory(produce items automatically), Service(complete tasks for others). ScreenGui business dashboard: revenue, expenses, inventory, employees (hire NPC workers, salary cost). Revenue: automatic NPC customers buy from shop every 5 minutes (rate scales with location + quality). Upgrades: better location, advertising (increases customer rate), larger inventory. Profit = revenue - salary - rent. Compete with other player businesses in same category.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // BUILDING TOOLS & SANDBOX CREATIVE
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Building Tools & Sandbox Creative',
+    systems: [
+      { name: 'Block Placement (Minecraft-style)', keywords: ['block place', 'block building', 'voxel', 'block game', 'block world', 'place block'],
+        how: 'Grid-based: 4x4x4 stud blocks. Hotbar: 9 slots with different block types (Grass, Stone, Wood, Glass, etc.). Place: raycast from camera, highlight target face (ghost block preview), click to place block at grid position. Remove: right-click on block, destroy with breaking animation (crack decals, Part debris). Block inventory: carry max 999 of each type. Craft blocks from materials. Save player builds in DataStore as table of {pos, blockType}. Load on join. Creative mode: unlimited blocks.' },
+      { name: 'Paint / Color Tool', keywords: ['paint tool', 'color tool', 'paint block', 'color block', 'painting'],
+        how: 'Tool mode: Color Picker ScreenGui (HSV wheel + brightness slider). Click any owned Part: BrickColor changes to selected color. Material picker: dropdown (Concrete, Wood, Brick, Metal, etc.), click Part to change Material. Cost: free in creative, 1 coin per Part in survival. Eyedropper: hold Alt + click Part = copy its color+material. Fill: hold Shift + click = change all connected Parts of same color. Undo: Ctrl+Z reverts last 10 color changes (stack in table).' },
+      { name: 'Resize / Transform Tool', keywords: ['resize tool', 'scale tool', 'move tool', 'rotate tool', 'transform tool'],
+        how: 'Select Part (click). Handles appear: Move(arrow handles on X/Y/Z axes), Rotate(circle handles around axes), Scale(box handles at corners). Drag handle: TweenService updates Part CFrame/Size in real-time. Grid snap: configurable (1, 0.5, 0.25 studs). Rotation snap: 15° increments. Constraints: minimum size 0.5, maximum 100 studs per axis. Multi-select: hold Shift + click multiple Parts. Group move: all selected move together preserving relative positions. Undo/redo stack.' },
+      { name: 'Blueprint / Copy-Paste', keywords: ['blueprint', 'copy paste', 'duplicate build', 'save build', 'template build'],
+        how: 'Select region: click two corners to define 3D box. Copy: serialize all Parts inside box as table {relativePos, size, color, material, name}. Paste: ghost preview of entire build follows mouse, click to place at cursor. Rotate before placing: R key rotates 90°. Save as blueprint: named template in DataStore "Blueprints". Share blueprints: code system (8-char random code). Load blueprint: enter code, preview in ViewportFrame, place in world. Blueprint limits: max 200 Parts per blueprint.' },
+      { name: 'Weld / Constraint Tool', keywords: ['weld tool', 'constraint', 'hinge', 'spring', 'joint tool'],
+        how: 'Connect Parts with physics constraints. Select tool type: Weld(rigid join), Hinge(rotation axis), Spring(bouncy connection), Rope(flexible hanging). Click Part A, then click Part B: create constraint between them. Hinge: set axis by clicking face of Part A. Spring: adjust stiffness/damping in properties panel. Rope: set length. Delete constraint: click constraint visualization (beam/indicator). Group constraints: all constraints in a Model travel together. Test: toggle physics simulation to see constraints in action.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // COLLECTION & COMPLETIONIST
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Collection & Completionist',
+    systems: [
+      { name: 'Card Collection', keywords: ['card collect', 'trading card', 'card game', 'card pack', 'card collection'],
+        how: 'Cards: {id, name, rarity, image, stats:{attack,defense}, set}. Card packs: DevProduct or in-game currency, contains 5 random cards (weighted). Collection book ScreenGui: grid showing all cards, owned highlighted, unowned grayed. Completion by set: full set = bonus (e.g., complete "Dragon Set" = exclusive dragon pet). Card trading between players via trade system. Card battling: simple compare stats, higher wins. Duplicate cards: combine 5 dupes = upgrade to next rarity. Total collection progress percentage displayed.' },
+      { name: 'Stamp / Sticker Album', keywords: ['stamp', 'sticker', 'album', 'collect stamp', 'sticker book', 'stamp book'],
+        how: 'Stamps earned from: visiting locations (auto-grant on enter zone), completing challenges, beating bosses, seasonal events. Album ScreenGui: page layout with empty stamp slots. Earned stamps: ImageLabel fills slot with stamp graphic. Stamps per category: Exploration, Combat, Social, Events. Page completion: fill entire page = reward. Full album = ultimate reward + permanent title. Stamps are permanent (never lost). BillboardGui on stamp locations shows stamp icon before collection. Sound: satisfying stamp press on earn.' },
+      { name: 'Creature Compendium', keywords: ['compendium', 'bestiary', 'creature log', 'enemy log', 'monster index'],
+        how: 'Every enemy/creature encountered gets logged. ScreenGui compendium: grid of creature portraits. First encounter: silhouette + "???" (DataStore records seen). After defeating 1: basic info (name, HP). After defeating 10: full info (drops, weaknesses, locations). After defeating 100: expert entry (lore text, hidden drops). Completion rewards at 25/50/75/100% entries. Each entry: 3D ViewportFrame of creature model + stats panel. Sort by: zone, rarity, defeated count. Rare creatures: special golden border.' },
+      { name: 'Fossil / Artifact Dig', keywords: ['fossil', 'artifact', 'dig', 'excavation', 'dig site', 'archaeology'],
+        how: 'Dig sites: Parts in specific locations with Decal "X marks the spot". Shovel Tool: Activate on dig site → minigame (ScreenGui: grid of tiles, click to reveal, find artifact pieces among dirt tiles without hitting rocks). Complete minigame: grant fossil/artifact item. Each artifact part of a set (e.g., 4 T-Rex bones = complete T-Rex skeleton). Display in museum (player-owned or communal). Completed sets: mount on display stand Model, grant coins + XP. Dig sites respawn weekly. Rare artifacts: golden glow, unique sound on discovery.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // ROYALE / BATTLE ROYALE
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Royale / Battle Royale',
+    systems: [
+      { name: 'Shrinking Zone', keywords: ['shrinking zone', 'storm circle', 'safe zone shrink', 'battle royale zone', 'closing circle'],
+        how: 'Zone: circular safe area defined by center Vector3 + radius NumberValue. Shrink phases: [{delay:60, shrinkTime:30, newRadius:200}, {delay:45, shrinkTime:25, newRadius:100}, ...]. Outside zone: damage -5HP/s (increases each phase). Visual: translucent cylinder Part (Neon, red, Transparency 0.8) at zone edge, shrinks via TweenService Scale. Minimap: circle overlay shows current zone + next zone. Warning: "Zone shrinking in 30s!" notification. Final zone: radius 10 studs, forces final fight.' },
+      { name: 'Loot Spawning (BR)', keywords: ['loot spawn br', 'floor loot', 'weapon spawn', 'random loot', 'loot distribution'],
+        how: 'Loot spawn points: Parts tagged "LootSpawn" at pre-placed positions across map. On match start: iterate all spawn points, roll random item from loot table, spawn item Model at position. Loot tiers: Common(gray, 50%), Uncommon(green, 30%), Rare(blue, 15%), Epic(purple, 4%), Legendary(gold, 1%). Items: weapons, shields, healing, ammo. ProximityPrompt "Pick Up" on each item. Sound: pickup chime. Despawn uncollected items in 120s. Visual: rarity-colored glow beneath item.' },
+      { name: 'Bus / Drop System', keywords: ['battle bus', 'drop', 'skydive', 'deploy', 'br drop', 'landing'],
+        how: 'Pre-game: 60s lobby (players in waiting area). Match start: all players teleported to "bus" (invisible platform at Y=500, moving in random direction across map at speed 50 studs/s). Players jump off: keybind Space → freefall (BodyVelocity downward + slight forward drift). Parachute/glider: auto-deploy at Y=100 (or manual earlier), slow descent (BodyVelocity Y=-20). Land: remove flying state, normal movement. Camera: third-person during drop. Map overview: minimap shows bus path before drop.' },
+      { name: 'Kill Feed / Elimination', keywords: ['kill feed', 'elimination', 'br kill', 'player eliminated', 'last standing'],
+        how: 'On player death: RemoteEvent "PlayerEliminated" to all. Kill feed ScreenGui: top-right, scrolling list of "[Killer] eliminated [Victim]" (white text, slide in from right, fade after 5s). Eliminated player: drop all inventory items at death position. Spectate: eliminated players can watch remaining players (camera follows via ScreenGui player selector). Win condition: last player/team alive. Win screen: champion spotlight, stats (kills, damage, survival time). Placement: "#5 / 20 players" shown on elimination.' },
+      { name: 'Storm Damage & Warning', keywords: ['storm damage', 'zone damage', 'outside zone', 'storm warning', 'gas damage'],
+        how: 'Players outside safe zone: Heartbeat check distance from zone center vs radius. If outside: damage tick every 1s, amount scales per phase (Phase1: 1HP/s, Phase2: 3HP/s, Phase3: 5HP/s, Final: 10HP/s). Visual: red screen vignette pulsing, ColorCorrection red tint, fog increases. Sound: ominous wind howl, heartbeat at low HP. Healing in storm: possible but outpaced by late-phase damage. Storm notification: "STORM APPROACHING" 30s before shrink, directional indicator showing nearest safe zone edge.' },
+      { name: 'BR Inventory / Loadout', keywords: ['br inventory', 'br loadout', 'weapon slot', 'br backpack', 'quick swap'],
+        how: 'Max 5 weapon slots + 1 healing slot. HUD hotbar: 6 slots at bottom. Pick up item: auto-equip to empty slot, or swap if full (drop current for new). Rarity priority: auto-swap lower rarity for higher of same weapon type. Quick swap: number keys 1-6 or scroll wheel. Drop item: keybind G drops currently held item at feet. Ammo: shared pool per ammo type (light, medium, heavy, shells). Inventory ScreenGui: shows all items with stats, swap by dragging. No crafting in BR (pre-made items only).' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // INFECTION / ZOMBIE GAMES
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Infection / Zombie Games',
+    systems: [
+      { name: 'Infection Tag', keywords: ['infection', 'infected', 'infection tag', 'zombie tag', 'convert player'],
+        how: 'Two teams: Survivors(green) and Infected(red). Round start: 1 random player becomes Infected. Infected touches Survivor: Survivor converts to Infected team (RemoteEvent "Infect"). Converted: character appearance changes (green skin via BodyColors, torn clothes), WalkSpeed slightly faster (+2). Last survivor wins. Timer: 180s, if survivors remain = they win. Round-based: 5 rounds, track wins per player. Infected see survivors through walls (BillboardGui visible). Survivors can barricade (push Parts to block doors).' },
+      { name: 'Zombie Horde AI', keywords: ['zombie horde', 'zombie ai', 'undead horde', 'zombie swarm', 'horde mode zombie'],
+        how: 'Zombie spawner: clone from ServerStorage, set random appearance (BodyColors green/gray, torn MeshPart accessories). AI: detect nearest player within 60 studs (GetPartBoundsInRadius), PathfindingService to target. Stuck detection: if position unchanged > 3s, re-path. Attack: within 5 studs, play swing animation, TakeDamage on player. Horde behavior: multiple zombies converge from different directions. Special zombies every 5th wave: Fast(2x speed), Tank(5x HP slow), Spitter(ranged projectile). Sound: groans(ambient), scream(on detect player), splat(on death).' },
+      { name: 'Barricade System', keywords: ['barricade', 'board up', 'block door', 'fortify', 'barrier build'],
+        how: 'Barricade spots: tagged Frames at windows/doors. ProximityPrompt "Board Up" (requires 5 Wood). Creates plank Parts across opening (WeldConstraint to frame). Planks have IntValue HP (3 hits from zombies to break). Zombies attack barricades before entering. Repair: ProximityPrompt "Repair" (+1 plank HP per Wood spent). Max 3 planks per opening. Visual: wooden planks with nail Models. Sound: hammer on build, wood crack on zombie hit. Strategic: choose which openings to barricade (not enough wood for all).' },
+      { name: 'Safe Room / Extraction', keywords: ['safe room', 'extraction', 'escape point', 'extraction zone', 'helicopter escape'],
+        how: 'Objective: reach extraction point before timer expires. Extraction: Part zone at map edge, active only in final 60s of round. Helicopter Model descends (TweenService Y position), door opens. Players enter zone: "Extracting... 5s" progress bar. Successful extraction = full reward. Miss extraction = reduced reward. Safe rooms mid-map: locked door (find key), inside: health kit, ammo, brief respite. Safe room door auto-locks after 30s (no camping). BillboardGui waypoint marker shows extraction location when active.' },
+      { name: 'Survivor Loadout', keywords: ['survivor weapon', 'zombie weapon', 'survival loadout', 'weapon shop zombie', 'equip survivor'],
+        how: 'Between rounds: weapon shop ScreenGui. Buy weapons with earned coins: Pistol(free, low damage, unlimited ammo), Shotgun(500, high close damage, slow), Rifle(1000, balanced), Sniper(2000, one-shot zombies), Minigun(5000, rapid fire). Also: Medkit(200, heal 50HP), Grenade(300, AoE), Turret(1500, auto-shoots). Weapons persist across rounds in same match. Ammo: weapon comes with starting ammo, buy more at shop. Loadout displayed on character (visible weapon model).' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // PET SIMULATOR ADVANCED
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Pet Simulator Advanced',
+    systems: [
+      { name: 'Pet Equip Slots', keywords: ['pet slot', 'equip pet', 'pet equip', 'active pet', 'pet limit', 'pet slots'],
+        how: 'Max equipped pets: starts at 3 (upgrade to 6 via gamepass or in-game milestone). Equipped pets follow player in formation (V-shape behind, BodyPosition offsets calculated per slot). ScreenGui pet bar: horizontal slots showing equipped pet icons. Drag from inventory to equip. Unequip: drag out of slot. Equipped pets: active stats applied (damage boost, luck boost, coin multiplier). Unequipped pets: in storage, no passive benefit. Best pets: auto-equip option sorts by stat value and equips top N.' },
+      { name: 'Pet Inventory / Storage', keywords: ['pet storage', 'pet inventory', 'pet box', 'pet bank', 'store pets'],
+        how: 'Pet inventory ScreenGui: grid of pet icons sorted by rarity (Legendary first). Capacity: starts at 50, upgrade to 100/200/500. At capacity: cannot hatch new eggs (blocked with warning). Delete pet: select + "Release" button (confirm dialog). Batch select: checkbox per pet, "Release Selected" for mass delete. Lock valuable pets: click lock icon prevents accidental release. Sort: by rarity, by level, by name, by damage. Filter: by element type, by equipped status. Pet count: "47/100" at top.' },
+      { name: 'Pet Trading', keywords: ['trade pet', 'pet trade', 'swap pets', 'pet exchange', 'trade system pets'],
+        how: 'Trade request: click player → "Trade" option. Two-panel ScreenGui: each side shows 6 pet slots. Drag pets from inventory to trade panel. Both players see each other\'s offers. Value calculator: shows estimated total value of each side (sum of pet rarity values). "Ready" button per player. Both ready: 5s countdown + final confirm. Server validates ownership, atomic swap. Trade history log. Anti-scam: flash warning if value difference > 50%. Rate limit: 5 trades per 10 minutes. Block list: prevent trade requests from specific players.' },
+      { name: 'Pet Abilities', keywords: ['pet ability', 'pet skill', 'pet power', 'pet special', 'pet active ability'],
+        how: 'Each pet has passive ability + active ability. Passives: +10% coins, +5% XP, +2 luck, +15% damage. Actives (cooldown-based): Coin Magnet(pull all coins in 30 stud radius, 60s CD), Double Collect(next 10 collections are 2x, 120s CD), Speed Boost(player speed +50% for 15s, 90s CD), Shield(absorb 1 hit, 180s CD). Active triggered by keybind (R) for currently selected pet. Cooldown shown on pet HUD icon. Rarer pets: stronger abilities + shorter cooldowns. Evolution unlocks upgraded ability version.' },
+      { name: 'Pet Daycare / Training', keywords: ['pet daycare', 'pet training', 'train pet', 'pet gym', 'pet upgrade', 'pet xp farm'],
+        how: 'Daycare building: ProximityPrompt opens ScreenGui with 6 training slots. Place pet in slot + select training type (Damage Training, Speed Training, Luck Training). Training takes real time: 1 hour = +1 stat point. Premium training: 2x speed. Collect when done: notification "Your pet finished training!" Max training: stat cap per rarity (Common=10 bonus stats, Legendary=50). Cannot use pet while in daycare. Multiple pets can train simultaneously. Offline training: continues while logged off (timestamp comparison on login).' },
+      { name: 'Golden / Rainbow Enchant', keywords: ['golden pet', 'rainbow enchant', 'enchant pet', 'pet enchant', 'upgrade pet rarity'],
+        how: 'Enchant system: convert normal pet → Golden (2x stats) → Rainbow (3x stats) → Dark Matter (5x stats). Golden: sacrifice 3 of same pet at Enchant Altar. Rainbow: sacrifice 3 Golden of same pet. Dark Matter: sacrifice 3 Rainbow of same pet. Animation: pets placed on altar pedestals, swirl inward, bright flash, new enchanted pet emerges. Enchanted pet: distinct visual (golden shimmer, rainbow color cycle, dark particle aura). Stats multiply base values. Enchanted pets shown with special border in inventory. Cannot un-enchant.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // STORY & NARRATIVE SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Story & Narrative Systems',
+    systems: [
+      { name: 'Cutscene System', keywords: ['cutscene', 'cinematic', 'camera animation', 'story scene', 'scripted scene'],
+        how: 'Camera waypoints: table of {CFrame, duration, easingStyle}. On cutscene trigger: disable player controls (humanoid WalkSpeed=0), hide HUD. Camera CFrame tweened between waypoints sequentially (TweenService). Dialogue: text overlays appear during specific segments (typewriter effect). NPC animations play at scripted times. Letterbox: black bars at top/bottom (Frame elements, TweenService height). Skip button after 2s. Resume: restore controls, re-enable HUD. Trigger: ProximityPrompt, quest completion, zone entry.' },
+      { name: 'Lore / Codex System', keywords: ['lore', 'codex', 'lore entry', 'story log', 'world lore', 'lore book'],
+        how: 'Lore entries: ModuleScript table [{id, title, text, category, discoveryCondition}]. Categories: World History, Characters, Creatures, Locations. Discover: find lore scrolls in world (ClickDetector on scroll Part), complete quests, defeat bosses. On discover: "New Codex Entry!" notification. ScreenGui codex: book-style layout with tabs per category. Undiscovered entries show "???". Reading lore grants small XP reward. Total discovered: "23/50 Entries". Complete category: bonus reward. Lore hints at secret locations and boss weaknesses.' },
+      { name: 'Branching Storyline', keywords: ['branching story', 'story choice', 'narrative choice', 'story branch', 'choose path'],
+        how: 'Story nodes: ModuleScript tree {id, narration, choices:[{text, consequence, nextNodeId}]}. Consequence types: give item, change reputation, unlock area, alter NPC dialogue. DataStore stores current node + all past choices. Major choices: 2-3 options with different outcomes (help villain = villain allies later, betray villain = harder fight but hero allies). ScreenGui choice screen: dramatic pause, options with brief preview of direction. Cannot undo choices. Multiple endings based on accumulated choices. Replay value: different paths on second playthrough.' },
+      { name: 'Flashback / Memory System', keywords: ['flashback', 'memory', 'past event', 'backstory', 'time flashback'],
+        how: 'Trigger: interact with specific objects (old photo, landmark, NPC dialogue option "Tell me about the past"). Transition: screen ripple effect (ImageLabel distortion + ColorCorrection desaturate). Flashback scene: teleport to past version of area (different Models, different Lighting, sepia tone). Player observes as ghost (Transparency 0.5, cannot interact). NPC actors perform scripted scene (MoveTo waypoints + animations + dialogue). After: return to present, unlock new knowledge/quest. 3-5 flashbacks per story arc.' },
+      { name: 'Reputation System', keywords: ['reputation', 'faction rep', 'standing', 'allegiance', 'reputation level'],
+        how: 'Factions: {name, currentRep:0, tiers:[{threshold:0, title:"Neutral"}, {threshold:100, title:"Friendly"}, {threshold:500, title:"Honored"}, {threshold:1000, title:"Exalted"}]}. Gain rep: complete faction quests (+25-100), turn in faction items (+10 each). Lose rep: attack faction NPCs (-50), help rival faction (-25). Rep tier unlocks: Friendly=shop discount 10%, Honored=exclusive quests, Exalted=unique mount + title. Multiple factions: some rival (gaining rep with one loses with another). ScreenGui faction panel: bars showing each faction standing.' },
+      { name: 'Journal / Quest Log', keywords: ['journal', 'quest log', 'quest journal', 'quest tracker', 'mission log'],
+        how: 'ScreenGui journal: left panel = quest list (Active / Completed tabs). Right panel = selected quest details (description, objectives checklist, rewards preview). Active quest tracking: pin quest to HUD sidebar showing current objective + progress. Auto-track newest quest. Max 5 tracked simultaneously. Completed quests: grayed but readable for lore. Objective types: collect(X/10), talk to NPC(checkbox), defeat(X/5), reach location(checkbox). Sort: by priority (main quest first), by zone, by type. Quest chain indicator: "Part 2 of 5".' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // MODULAR GAME SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Modular Game Systems',
+    systems: [
+      { name: 'Round-Based Match System', keywords: ['round system', 'match system', 'game round', 'round timer', 'match lobby'],
+        how: 'Game phases: Lobby(30s, players join)→Intermission(10s, teleport to map)→Active(180s, gameplay)→Results(15s, show winner)→reset. IntValue "GamePhase" on server. Phase timer: task.wait(duration). Phase transitions: RemoteEvent "PhaseChanged" to all clients for UI updates. Map voting: during Lobby, show 3 random map options, players click to vote (SurfaceGui). Winning map loaded (clone from ServerStorage). Players teleported to SpawnLocations in active map. On round end: teleport all back to lobby. Stats: kills/deaths tracked per round.' },
+      { name: 'Lobby / Waiting Room', keywords: ['lobby', 'waiting room', 'game lobby', 'pre-game', 'waiting area'],
+        how: 'Lobby map: small area with: player counter SurfaceGui ("5/12 Players"), countdown timer display, map vote boards, practice area (target dummies), cosmetic preview, leaderboard display. Minimum players to start: configurable (default 2). Timer: starts when minimum reached (30s countdown). Late joiners: added if round hasn\'t started. ScreenGui: "Waiting for players..." or "Game starting in 15s". Lobby music: calm ambient. Player list: visible on SurfaceGui with team assignment preview.' },
+      { name: 'Map Rotation System', keywords: ['map rotation', 'map select', 'map pool', 'random map', 'map vote'],
+        how: 'Map pool: folder in ServerStorage with 5-10 complete map Models. Rotation: random or voted. Vote system: 3 random maps shown as options (SurfaceGui with preview image + name). Players stand on vote pad (count players on each pad after 15s). Winner = most votes (tie = random). Load map: clone winning map Model, parent to workspace at (0,0,0). Unload: Destroy current map Model after round. Map metadata: ModuleScript per map {name, maxPlayers, gamemode, spawnLocations}. History: don\'t repeat last 2 maps.' },
+      { name: 'Spectator System', keywords: ['spectator', 'spectate', 'watch game', 'observer', 'camera spectate'],
+        how: 'Eliminated/dead players enter spectator mode. Character hidden (Destroy). Camera follows alive players: cycle through with Q/E keys. Camera modes: follow(behind player), free(WASD fly cam), overhead(top-down). ScreenGui: spectated player name + health bar + kill count. Cannot interact with game world. Chat: spectators can only see spectator chat (prevent ghosting). Leave spectate: "Return to Lobby" button. Auto-assign spectator on death. In lobby: can spectate active match.' },
+      { name: 'Replay / Kill Cam', keywords: ['replay', 'kill cam', 'death cam', 'replay system', 'instant replay'],
+        how: 'On death: 5s replay from killer\'s perspective. Record: server stores last 5s of all player CFrames (ring buffer, 30 entries/s). On kill: package killer\'s CFrame history + action data. Send to victim via RemoteEvent. Client: replay camera follows killer CFrame sequence. Slow-motion: 0.5x playback speed. Visual: slight desaturation + "ELIMINATED BY [name]" text overlay. Skip button after 2s. After replay: normal respawn or spectate. Performance: only store active combat moments, discard idle frames.' },
+      { name: 'Anti-Cheat Framework', keywords: ['anti cheat', 'exploit detection', 'cheat prevention', 'anti exploit', 'hack detection'],
+        how: 'Server-side validation on ALL game actions. Speed check: Heartbeat tracks player position, if distance/dt > maxSpeed*1.5 → teleport back + strike. Damage validation: server confirms raycast hit before applying damage. Teleport detection: if player moves > 50 studs in one frame → flag. Remote spam: rate limit all RemoteEvents (max 30/s per player). Value tampering: leaderstats only modified server-side, client values are display-only. Strike system: 3 strikes = auto-kick. Log violations to DataStore for admin review. Obfuscate client-side code.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // MINIGAME COLLECTION
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Minigame Collection',
+    systems: [
+      { name: 'Obby Race', keywords: ['obby race', 'obstacle race', 'parkour race', 'speed run', 'race obby'],
+        how: 'Timed obstacle course. Start pad: Touched starts timer. Obstacles: jump gaps, dodge spinning Parts (CFrame rotation loop), moving platforms (TweenService ping-pong), disappearing Parts (Transparency cycle), wall jumps. Checkpoints: Parts that save progress (Touched stores last checkpoint CFrame). Fall = respawn at last checkpoint. Finish pad: stop timer, show completion time. Leaderboard: OrderedDataStore for best times. Ghost: replay best run as transparent character for reference. Personal best display.' },
+      { name: 'Color Floor / Musical Chairs', keywords: ['color floor', 'musical chairs', 'color game', 'floor is lava', 'random floor'],
+        how: 'Platform grid: NxN colored Parts. Server picks random safe color every 5s. Announcement: "Safe color: BLUE!" (ScreenGui + BillboardGui). Players rush to safe color Parts. After 3s: all non-safe colored Parts become CanCollide=false (players fall). Falling = elimination. Round narrows: fewer Parts remain each round. Last standing wins. Between rounds: all Parts restore. Speed increases: safe period shrinks (5s→4s→3s→2s). Visual: safe Parts glow (PointLight), danger Parts flash red before dropping. Sound: dramatic countdown beeps.' },
+      { name: 'King of the Hill', keywords: ['king of hill', 'hill control', 'capture point', 'control zone', 'hold the point'],
+        how: 'Central elevated platform. Players fight to stay on top. Scoring: every 1s on platform = +1 point. Push others off: on contact, BodyVelocity knockback. Powerups spawn around arena: Speed Boost, Super Jump, Shield, Mega Push. Win: first to 100 points. HUD: current points per player, platform indicator (who\'s on top). Visual: platform glows with current king\'s team color. Sound: crowd cheer when new king takes over. Anti-camping: after 30s continuous control, platform shrinks slightly.' },
+      { name: 'Spleef / Floor Destroy', keywords: ['spleef', 'floor destroy', 'break floor', 'dig floor', 'spleef game'],
+        how: 'Arena with destructible floor grid (4x4 stud Parts, 15x15 grid = 225 Parts). Each player has Tool: click Part → Destroy it (or CanCollide=false + Transparency tween). Fall through hole = eliminated. Strategy: destroy floor around opponents, avoid destroying your own path. Multiple layers: 3 floors, fall through one = land on next. Last player standing wins. Timer: 120s, if >1 alive = most Parts destroyed wins. Sound: crumble on destroy. Visual: cracks appear before full destroy (0.3s warning).' },
+      { name: 'Simon Says', keywords: ['simon says', 'simon game', 'follow command', 'do what simon says', 'command game'],
+        how: 'Server NPC "Simon" issues commands via BillboardGui + ScreenGui: "Simon says JUMP!", "Simon says SIT!", "DANCE!" (no simon says = trap). Players must perform action within 3s. Detection: Jump(Humanoid.StateChanged to Jumping), Sit(Humanoid:SetStateEnabled Seated), Dance(detect emote). If player does action without "Simon says" prefix → eliminated. If player doesn\'t do "Simon says" action → eliminated. Rounds get faster (5s→4s→3s→2s→1s delay between commands). Last player wins. 15 command varieties.' },
+      { name: 'Hide and Seek', keywords: ['hide seek', 'hide and seek', 'hiding game', 'seeker game', 'prop hunt'],
+        how: 'Roles: 1 Seeker, rest Hiders. 30s hiding phase: seeker blindfolded (black ScreenGui overlay), hiders scatter. Seek phase: 180s. Seeker finds hiders (ProximityPrompt "Tag" within 5 studs). Tagged = eliminated (join seeker team or spectate). Hiders: can use disguise (Prop Hunt variant: transform into objects like chairs/crates by clicking them). Seeker: flashlight Tool (SpotLight). Last hider wins (or time expires = hiders win). Footstep sounds: louder when seeker is near. Heartbeat sound: proximity-based audio fear.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // MAGIC & SPELL SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Magic & Spell Systems',
+    systems: [
+      { name: 'Spell Book / Spell Slots', keywords: ['spell book', 'spell slot', 'magic spell', 'learn spell', 'spell list'],
+        how: 'Spell book ModuleScript: [{name:"Fireball", manaCost:20, damage:50, range:40, cooldown:5, animation:"Cast", element:"Fire", level:1}]. Player DataStore stores learnedSpells table. Learn spells: find spell scrolls, buy from mage NPC, level up rewards. Equip: max 4 active spell slots (hotbar 1-4). ScreenGui spell bar: 4 slots with icon + cooldown overlay + mana cost label. Unlearned spells: "???" in spell book. Spell upgrade: use 3 scrolls of same spell = upgraded version (+50% damage, -20% mana cost).' },
+      { name: 'Mana System', keywords: ['mana', 'magic points', 'mp', 'mana bar', 'mana regen', 'magic energy'],
+        how: 'NumberValue "Mana" (default max 100). Each spell costs mana. Insufficient mana: cast fails, "Not enough mana!" text. Regen: +5/s naturally, +10/s while standing still. Mana potions: consumable +50 mana instant. HUD mana bar: blue gradient, positioned below health bar. Upgrades: max mana increases with level (+10 per level). Equipment bonuses: mage robes +20 max mana, staffs +2 mana regen. At 0 mana: minor visual effect (character slightly desaturated). Meditation pose: sit emote = 3x mana regen rate.' },
+      { name: 'Projectile Spells', keywords: ['fireball', 'ice bolt', 'magic projectile', 'spell projectile', 'cast spell attack'],
+        how: 'Cast: play animation, spawn projectile Part at hand position. Projectile: BodyVelocity in camera lookVector * speed. Visual per element: Fireball(orange Neon sphere, fire ParticleEmitter trail), IceBolt(cyan Glass, frost trail), Lightning(yellow Neon, chain to nearby targets). On hit (Touched): TakeDamage + status effect (Fire=Burn, Ice=Slow, Lightning=Stun). Splash damage optional (GetPartBoundsInRadius). Projectile lifetime: 3s then Debris. Sound: whoosh on cast, impact sound per element. Homing upgrade: slight CFrame correction toward nearest enemy.' },
+      { name: 'Area Spells / Ritual', keywords: ['area spell', 'ritual', 'magic circle', 'aoe spell', 'ground spell', 'magic area'],
+        how: 'Cast: aim at ground (mouse raycast to floor). Spawn magic circle at hit position: flat cylinder Part (Neon, spell color, Transparency 0.3) + decal with rune pattern. After channel time (1-3s, interruptible): spell activates. Effects in radius: Heal Circle(allies +5HP/s for 5s, green), Fire Rain(enemies -10HP/s, red, falling fire particles), Freeze Zone(enemies slowed 50%, blue, frost floor), Shield Dome(transparent sphere blocks projectiles 5s). Circle fades after duration. Sound: mystical hum during channel, activation burst. Visible to all players.' },
+      { name: 'Summoning System', keywords: ['summon', 'summon creature', 'conjure', 'familiar', 'summon minion', 'necromancy'],
+        how: 'Summon spell: high mana cost (50+), long cooldown (60s). Spawn creature Model at target position with Humanoid. Summoned creature AI: attack nearest enemy (pathfind + melee/ranged). Duration: 30s then despawns (fade out). Types: Skeleton Warrior(melee, medium HP), Fire Elemental(ranged, AoE, low HP), Stone Golem(tank, slow, high HP), Spirit Wolf(fast, flanks enemies). Max 2 summons active. Summon dies: cooldown resets. Visual: magic circle on ground → creature rises from it. Owner nameplate: "{Player}\'s Skeleton".' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // SPACE & SCI-FI SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Space & Sci-Fi Systems',
+    systems: [
+      { name: 'Space Station Interior', keywords: ['space station', 'station interior', 'space base', 'orbital station', 'space hub'],
+        how: 'Zero-gravity areas: BodyForce counters gravity (Y force = mass * 196.2). Player floats, movement via BodyVelocity in input direction. Magnetic boots toggle: walk normally on designated floor Parts (tagged "MagFloor"). Airlock system: door Parts with ProximityPrompt, outer door requires suit check. Oxygen: NumberValue drains in unpressurized areas (-2/s). Refill at O2 stations. Interior: Metal/DiamondPlate materials, Neon accent lighting, viewport windows (Glass) showing space skybox. Sound: spacey ambient hum, hiss on airlock cycle.' },
+      { name: 'Planet Exploration', keywords: ['planet', 'space explore', 'alien planet', 'planet surface', 'space travel planet'],
+        how: 'Multiple planets: different environments/Terrain/gravity. Travel: ship cockpit → select planet on star map ScreenGui → loading screen → spawn on planet surface. Each planet: unique Terrain (Mars=red Sand, Ice Planet=Ice+Snow, Jungle=Grass+green), unique gravity (BodyForce modifier), unique atmosphere (Atmosphere settings), unique resources (mine alien ores). Planet completion: discover all resources + defeat planet boss + find artifacts. Star map shows visited planets (colored) vs unexplored (gray). Each planet: distinct ambient soundtrack.' },
+      { name: 'Laser / Energy Weapons', keywords: ['laser', 'laser gun', 'energy weapon', 'blaster', 'sci fi weapon', 'plasma'],
+        how: 'Laser Tool: Activate → raycast from barrel. Instant hit (no travel time). Visual: Beam instance from barrel to hit point (Neon color, Width 0.5, FadeLength 0.5, lifetime 0.1s for flash effect). Hit: TakeDamage + small spark ParticleEmitter at impact. Energy ammo: "Charge" NumberValue (max 100), each shot costs 5-20 depending on weapon. Recharge: slow passive regen (+2/s) or use energy cell item. Overheat: rapid fire depletes charge fast, at 0 = forced cooldown 3s. Sound: pew/zap per weapon type. Scope: optional zoom (FieldOfView tween).' },
+      { name: 'Shield Generator', keywords: ['shield generator', 'energy shield', 'force field', 'barrier generator', 'shield system'],
+        how: 'Placeable shield generator Part. On activate: spawn transparent sphere (ForceField material, team color, Transparency 0.5) around area (radius 15 studs). Shield HP: IntValue, absorbs incoming damage (damage deducted from shield HP, not player HP). At 0: shield breaks (shatter animation: Parts fly outward, Debris). Regen: shield HP recovers +5/s when not taking damage for 5s. Generator destroyable: enemies can target it (exposed Part, 100 HP). Upgrade: larger radius, more HP, faster regen. One active per team. Sound: energy hum while active, crackle on hit.' },
+      { name: 'Alien Creature Taming', keywords: ['tame alien', 'alien pet', 'creature tame', 'space creature', 'alien companion'],
+        how: 'Alien creatures on planets: unique Models per planet biome. Tame: approach carefully (crouch to avoid scaring), use Food item matching creature diet (RemoteEvent "OfferFood"). Trust meter: feed multiple times (3-5 depending on rarity). Meter in BillboardGui above creature. Max trust: creature becomes pet (follows player, BodyPosition offset). Each alien has unique ability: Glowbug(light source), Rockback(mining bonus), Floater(carry player over gaps). DataStore stores tamed creatures per player. Release: free tamed creature back to wild.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // MERCHANT & SHOP ADVANCED
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Merchant & Shop Advanced',
+    systems: [
+      { name: 'Rotating Stock Shop', keywords: ['rotating shop', 'daily shop', 'shop refresh', 'rotating stock', 'item rotation'],
+        how: 'Shop refreshes stock every 6h. Server: seed random with math.floor(os.time()/21600) for deterministic daily rotation. Pool of 50+ items, show 8 per rotation. Featured item slot: always one rare+ item. SurfaceGui clock shows "Refreshes in 2h 15m". Items not purchased carry over (different weight next rotation). "Notify Me" button per item: fires RemoteEvent when item appears in future rotation. Pricing: some items discounted randomly (10-30% off, shown with strikethrough original price). Season exclusives only appear during matching season.' },
+      { name: 'Traveling Merchant NPC', keywords: ['traveling merchant', 'wandering trader', 'rare vendor', 'special merchant', 'mystery merchant'],
+        how: 'Rare NPC spawns at random location every 30-60 minutes. Announcement: "A mysterious merchant has appeared!" (all players). NPC Model: hooded figure with unique cart Model. Sells exclusive items not in regular shops (unique crafting materials, rare cosmetics, one-time buffs). Accepts special currency (Ancient Coins found in dungeons). Despawns after 10 minutes or when stock sold out. Location hint: general area ("spotted near the eastern forest"). BillboardGui "?" marker visible when within 100 studs. Sound: mystical chime when near.' },
+      { name: 'Bundle / Package Deals', keywords: ['bundle', 'package deal', 'starter pack', 'value pack', 'item bundle'],
+        how: 'Bundles: predefined groups of items sold together at discount. Config: {name:"Warrior Starter Pack", items:["Iron Sword","Shield","Health Potion x5","Armor Set"], individualTotal:2500, bundlePrice:1500, savings:"40%"}. ScreenGui shop tab "Bundles": card layout showing bundle contents + savings percentage. One-time purchase (DataStore tracks purchased bundles). DevProduct bundles: real money. In-game bundles: coins. "Best Value" tag on highest savings bundle. Limited-time bundles expire with countdown timer.' },
+      { name: 'Black Friday / Sale Event', keywords: ['sale event', 'discount', 'sale', 'black friday', 'shop sale', 'price cut'],
+        how: 'Admin-triggered or scheduled sale event. All/selected shop items get discount multiplier (0.5 = 50% off). Visual: red "SALE" tag on discounted items, original price crossed out. Shop banner: "MEGA SALE - 50% OFF EVERYTHING!" with festive colors. Duration: 24-72h. Flash sales: specific items 70% off for 1h only (urgency). ScreenGui notification when sale starts. Revenue tracking: compare purchases during sale vs normal. Limit purchases: max 5 of each item during sale to prevent hoarding.' },
+      { name: 'NPC Bargaining / Haggle', keywords: ['bargain', 'haggle', 'negotiate price', 'haggle npc', 'bargain price'],
+        how: 'At specific merchant NPCs: "Haggle" button next to buy. ScreenGui haggle interface: NPC starting price at top, player offer TextBox. Submit offer: if offer >= 70% of asking price, NPC accepts. If 50-69%: NPC counter-offers (midpoint). If < 50%: NPC refuses ("That\'s insulting!"). Each round: NPC may lower price slightly (max 3 rounds). Charisma stat: higher charisma = NPC accepts lower offers. Critical haggle (1% chance): NPC gives item free ("Take it, you remind me of my son"). Failed haggle: price increases 10% temporarily.' },
+      { name: 'VIP / Premium Shop', keywords: ['vip shop', 'premium shop', 'exclusive shop', 'gamepass shop', 'vip store'],
+        how: 'Separate shop area accessible only to VIP gamepass holders (MarketplaceService:UserOwnsGamePassAsync check). Door with "VIP ONLY" SurfaceGui, non-VIP gets "Purchase VIP to enter" prompt (PromptGamePassPurchase). Inside: exclusive items not available elsewhere, 20% discount on regular items, premium cosmetics. VIP exclusive pets with unique abilities. Monthly VIP reward chest (DataStore tracks last claim, claimable once per 30 days). VIP badge above head (BillboardGui star icon). VIP-only chat color (gold name).' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // CLAN TERRITORY & WARS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Clan Territory & Wars',
+    systems: [
+      { name: 'Territory Control', keywords: ['territory', 'control zone', 'capture territory', 'territory war', 'zone control', 'turf war'],
+        how: 'Map divided into 10-20 territories (Part zones with SurfaceGui showing owner clan name + color). Capture: stand on territory flag (central Part) for 30s uncontested. Progress bar: fills while capturing, resets if enemy enters. Owning territory: passive income for clan (coins per 5 min per territory). Territory defense: owner clan spawns at territory. Map ScreenGui: color-coded territories showing all clan ownership. Territory bonuses: resource territories give 2x gathering, shop territories give discount. Daily reset: contested territories go neutral at midnight.' },
+      { name: 'War Declaration', keywords: ['declare war', 'war declaration', 'clan war start', 'war challenge', 'challenge clan'],
+        how: 'Clan leader opens ScreenGui war panel, selects target clan, stakes wager (coins from clan bank). Target clan leader receives notification + must accept/decline within 24h. Decline: no penalty. Accept: war begins at scheduled time (both leaders pick from available slots). War parameters: team size (5v5, 10v10), map (random or voted), best of 3/5 rounds. During war: participants teleported to war arena (ReservedServer). Non-participants can spectate. Winner: receives wager + loser territory. War cooldown: 48h between wars for same clans.' },
+      { name: 'Clan Base Building', keywords: ['clan base', 'clan headquarters', 'clan home', 'faction base', 'clan build'],
+        how: 'Each clan gets base plot (larger than player plots: 80x80 studs). Clan leader + officers can build. Budget: clan bank funds construction. Buildings: Barracks(+2 member spawn points), Workshop(crafting bonus), Vault(increased bank storage), War Room(view territory map), Training Ground(+XP for sparring). Each building: pre-built Model spawned at chosen position within plot. Upgrade buildings: 3 levels each (size+benefit increase). Enemy raids: other clans can attack base during war (destroy buildings for advantage). Rebuild cost: 50% of original.' },
+      { name: 'Clan Reputation / Ranking', keywords: ['clan rank', 'clan reputation', 'clan leaderboard', 'top clan', 'clan tier'],
+        how: 'Global clan leaderboard: sorted by Clan Power (composite score). Power = (memberCount * 10) + (totalWealth / 100) + (warWins * 50) + (territoriesOwned * 100) + (questsCompleted * 5). Tiers: Bronze(0-500), Silver(500-2000), Gold(2000-5000), Diamond(5000-15000), Champion(15000+). Tier benefits: higher tier = more member slots, better clan quests, exclusive clan cosmetics (banner, tag color). SurfaceGui leaderboard in spawn shows top 10 clans. Weekly reset of some points to keep competition active.' },
+      { name: 'Alliance System', keywords: ['alliance', 'ally clan', 'faction alliance', 'peace treaty', 'alliance system'],
+        how: 'Clan leader sends alliance request to another clan (max 2 allies). Accepted: allied clans cannot attack each other, shared territory benefits (can traverse ally territory without contest), joint quests available (require members from both clans). Alliance ScreenGui: shows allied clans + shared stats. Break alliance: 48h cooldown before can attack former ally. Betrayal mechanic: breaking alliance during war = reputation penalty. Alliance chat channel: shared TextChatService channel. Visual: ally members have green nameplate instead of white.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // EXPLORATION & DISCOVERY
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Exploration & Discovery',
+    systems: [
+      { name: 'Fog of War / Map Reveal', keywords: ['fog of war', 'map reveal', 'explore map', 'undiscovered area', 'map discovery'],
+        how: 'Minimap/world map: unexplored areas covered by dark overlay (ImageLabel black). Player movement reveals area in radius (15 studs): server updates explored grid in DataStore (2D boolean array, 10-stud resolution). On minimap: revealed areas show terrain, unrevealed show black. Percentage explored: "42% Discovered" text. Milestone rewards at 25/50/75/100%. Scout ability: temporarily reveals larger radius (50 studs for 10s). Bird\'s eye items: reveal entire zone. Shared map: party members share revealed areas. Fog persists between sessions.' },
+      { name: 'Treasure Map / Clue Trail', keywords: ['treasure map', 'treasure hunt', 'clue', 'clue trail', 'treasure trail', 'scavenger hunt'],
+        how: 'Treasure map item: ScreenGui shows hand-drawn style map (ImageLabel) with X marking treasure location. Map shows landmarks but no minimap coordinates (player must visually match landmarks). Clue trail variant: sequence of riddle SurfaceGuis at locations, each pointing to next. Dig at X: Shovel tool + interact at correct position (±5 studs tolerance). Reward: rare items, large coin reward, exclusive cosmetic. Map sources: quest reward, rare drop, NPC purchase. Difficulty: easy maps show more detail, hard maps are vague sketches. One treasure per map (consumed on dig).' },
+      { name: 'Collectible Orbs / Hidden Items', keywords: ['collectible', 'hidden collectible', 'orb', 'star coin', 'collect all', 'hidden item'],
+        how: 'Collectibles placed throughout world: small glowing Parts (Ball shape, Neon material, rotating via CFrame loop). Categories: Red Orbs(easy, visible), Blue Orbs(medium, slightly hidden), Gold Orbs(hard, very hidden). Touched: collect (Destroy on client, RemoteEvent to server). DataStore: table of collected orbIds. Counter: "47/100 Red, 12/50 Blue, 3/25 Gold". Rewards at milestones. Map markers: option to show nearby uncollected (togglable). Sound: satisfying ping on collect, pitch rises with streak. Reset option for speedrun challenge.' },
+      { name: 'Environmental Puzzles', keywords: ['environmental puzzle', 'pressure plate', 'lever puzzle', 'switch puzzle', 'dungeon puzzle'],
+        how: 'Puzzle types: Pressure Plates(step on in correct order, incorrect resets), Lever Sequence(flip levers matching symbol pattern shown on wall SurfaceGui), Push Block(move Part to target position on grid, magnitude check), Light Beam(rotate mirror Parts to reflect beam to target — Beam instance between mirrors), Color Match(torch Parts must all match target color via ClickDetector cycling R→G→B). Solve: door opens (TweenService Part position) or treasure chest activates. Hint system: faded SurfaceGui shows partial solution after 3 failed attempts. Sound: mechanism clicks on correct step, buzz on wrong.' },
+      { name: 'Teleport Network / Portal Hub', keywords: ['teleport network', 'portal hub', 'warp network', 'portal system', 'teleport hub'],
+        how: 'Central hub room with ring of portal arches. Each portal: destination SurfaceGui label + image preview + unlock status. Unlocked by visiting destination first (walking to portal at destination activates return link). ScreenGui fast travel menu: list of unlocked destinations, click to teleport (2s channel time, interruptible). Network map: web diagram showing connections. Two-way: unlock from either end. Premium shortcut: direct teleport from anywhere (no hub required). Animation: step through portal, screen flash, appear at destination. Sound: magical whoosh. Cooldown: 30s between teleports.' },
+      { name: 'Underwater Exploration', keywords: ['underwater', 'ocean explore', 'dive', 'submarine', 'deep sea', 'ocean floor'],
+        how: 'Underwater zone: blue-tinted Lighting (ColorCorrection blue shift), reduced visibility (Atmosphere high density). Oxygen system: NumberValue 100, drains -3/s underwater. Refill: surface, air bubbles (collectible Parts that restore +20), oxygen tank equipment (+60s). Swimming: WASD + Space/Shift for up/down. Submarine vehicle: enclosed, unlimited oxygen, lights (SpotLight), storage. Sea creatures: decorative fish (scripted patrol paths), dangerous sharks (chase if too close). Treasure: shipwrecks with chests, coral caves, ancient ruins. Depth meter: HUD shows current Y depth.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // ECONOMY SINKS & BALANCE
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Economy Sinks & Balance',
+    systems: [
+      { name: 'Item Repair Cost', keywords: ['repair cost', 'maintenance', 'item upkeep', 'repair fee', 'equipment maintenance'],
+        how: 'All equipment degrades with use (durability system). Repair costs scale with item rarity: Common=10 coins, Rare=100, Legendary=1000. Progressive cost: each repair costs 10% more than previous (encourages eventual replacement). Auto-repair toggle: deduct coins automatically when durability < 20%. Broken item: 50% stats until repaired. Economy impact: major coin sink, prevents inflation. Repair NPC: blacksmith with ProximityPrompt. Sound: hammer on anvil. Visual: sparks during repair animation.' },
+      { name: 'Cosmetic Sink', keywords: ['cosmetic purchase', 'vanity item', 'cosmetic sink', 'cosmetic shop', 'appearance cost'],
+        how: 'Expensive cosmetics that don\'t affect gameplay: Name Colors(5000 coins), Chat Bubbles(3000), Kill Effects(10000), Trails(7500), Titles(2000-50000), Pet Skins(15000), Housing Decorations(500-20000). New cosmetics added monthly to maintain interest. Limited edition: available for 7 days then gone forever (FOMO drives purchases). Preview all cosmetics before buying (ViewportFrame + character preview). "Own X/Y" counter per category. Complete collection bonuses. Major economy sink: absorbs excess coins from wealthy players.' },
+      { name: 'Gambling / Risk System', keywords: ['gambling sink', 'coin flip', 'risk reward', 'double or nothing', 'casino'],
+        how: 'Casino NPC or zone. Games: Coin Flip(50/50, 2x return), Dice Roll(higher number wins, 3x return), Color Wheel(pick color, varying odds: 2x/5x/20x). House edge: all games have slight house advantage (48% actual win rate on "50/50"). Bet limits: min 10, max 10000 coins. Cooldown: 5s between bets (prevent addiction-speed). Sound: slot machine jingle, dice roll, coin clink. Visual: animated wheel/dice. Warning: "Gambling can be addictive" message. Daily loss limit: max 50000 coins lost per day. Major economy sink for endgame players.' },
+      { name: 'Property Tax / Upkeep', keywords: ['property tax', 'upkeep cost', 'maintenance fee', 'daily cost', 'plot upkeep'],
+        how: 'Owned properties cost daily upkeep: Small Plot=50/day, Medium=150/day, Large=500/day. Deducted automatically on login (check os.time() since last deduction, charge for missed days up to 7). Cannot go negative: if insufficient coins, property enters "Delinquent" state (visual: warning sign, some features disabled). 7 days delinquent: property repossessed (cleared, put back on market). Upkeep notification: "Property tax due: $150" on login. Discount: consecutive payment streak -10% (max -50%). Encourages active play.' },
+      { name: 'Respec / Reset Cost', keywords: ['respec cost', 'reset stats', 'skill reset', 'stat reset', 'respec fee'],
+        how: 'Reset allocated stat/skill points. First respec: free. Subsequent: escalating cost (100, 500, 2000, 10000, 50000 coins). Or purchasable Respec Token (DevProduct or rare drop). ScreenGui confirmation: "Reset all stat points? Cost: 2000 coins. Are you sure?" Server validates coins, resets all allocations to unspent points. Cannot partially respec (all or nothing). Alternative: respec at specific milestone (every 10 levels = free respec). Economic purpose: absorbs coins from players who experiment with builds frequently.' },
+      { name: 'Enchant Failure / Material Loss', keywords: ['enchant fail', 'upgrade fail', 'material loss', 'crafting failure', 'break on upgrade'],
+        how: 'High-tier enchanting/upgrading has failure chance. Success rates: +1 to +5 = 90%, +6 to +10 = 50%, +11 to +15 = 20%. Failure: materials consumed but no upgrade. Critical failure (5% of failures): item destroyed entirely. Protection scroll: prevents item destruction on critical fail (consumed). ScreenGui upgrade screen: shows success rate prominently + "Use Protection? (1 Scroll)" checkbox. Safety net: after 5 consecutive failures, next attempt guaranteed success. Major material sink: failed attempts still consume expensive crafting materials.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // ACCESSIBILITY & QOL
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Accessibility & QOL',
+    systems: [
+      { name: 'Colorblind Mode', keywords: ['colorblind', 'accessibility color', 'color blind mode', 'color assist', 'deuteranopia'],
+        how: 'Settings toggle: Colorblind Mode (Off, Deuteranopia, Protanopia, Tritanopia). When enabled: add distinct shape indicators alongside color (e.g., red=circle, green=triangle, blue=square). Rarity indicators: use patterns (stripes/dots/stars) in addition to colors. Enemy health bars: add percentage text. Chat names: underline style varies by team. ColorCorrection adjustments: shift problematic hues. Preview in settings before applying. Persist in DataStore. Affects all UI elements via Theme module integration.' },
+      { name: 'Screen Reader Support', keywords: ['screen reader', 'narration', 'text to speech', 'accessibility narrate', 'blind accessible'],
+        how: 'TextChatService messages can convey all important game events as text. All UI buttons have descriptive Name property for screen reader tools. Notification text: always includes full context ("You earned 50 coins from defeating Zombie Level 3"). Sound cues: distinct sounds for different event types (coin collect = clink, damage = thud, level up = fanfare, quest complete = trumpet). Navigation: Tab key cycles through interactive UI elements with highlight. Gamepad support: full navigation without mouse.' },
+      { name: 'Auto-Save Indicator', keywords: ['auto save', 'save indicator', 'save icon', 'data saved', 'save status'],
+        how: 'Visual indicator in HUD corner: spinning disk/cloud icon during save, checkmark when complete. Auto-save triggers: every 60s, on significant event (level up, purchase, quest complete), on PlayerRemoving. Unsaved changes warning: if player tries to leave during save → "Saving data..." delay. Save status: "Last saved: 30s ago" tooltip on hover. Error handling: if save fails, retry 3x with exponential backoff, show warning "Save failed, retrying..." in red. Sound: subtle click on successful save.' },
+      { name: 'Ping / Latency Display', keywords: ['ping', 'latency', 'ping display', 'connection quality', 'lag indicator'],
+        how: 'Client LocalScript: every 5s, fire RemoteEvent "Ping" to server with os.clock() timestamp. Server immediately fires back with same timestamp. Client: latency = (os.clock() - sentTimestamp) * 1000 (ms). Display: small text in corner "32ms" with color (green<50, yellow<100, red>100). Connection quality icon: 4 bars like phone signal. At high ping: show "Connection Issues" warning. Log: track average ping over session for diagnostics. Option to hide in settings.' },
+      { name: 'Control Remapping', keywords: ['remap controls', 'custom controls', 'rebind key', 'control settings', 'key config'],
+        how: 'Settings → Controls tab. Grid: Action name | Current Key | "Rebind" button. Click Rebind → "Press any key..." state. UserInputService.InputBegan: capture keycode, update binding. Validate: no duplicate bindings (warn if conflict). Default bindings: WASD=move, Space=jump, E=interact, R=ability, Tab=inventory, M=map. Save to DataStore keybinds table. Apply: all input checks reference keybinds table instead of hardcoded keys. "Reset to Defaults" button. Controller support: separate gamepad bindings tab.' },
+      { name: 'Performance Settings', keywords: ['graphics settings', 'quality settings', 'fps setting', 'performance option', 'low quality mode'],
+        how: 'Settings → Graphics tab. Presets: Low, Medium, High, Ultra. Adjustable: Shadows(on/off = GlobalShadows), Particles(reduce Rate to 25%), Draw Distance(StreamingMinRadius 64→256), Post Processing(Bloom/ColorCorrection on/off), Grass/Foliage(Terrain decoration on/off). Apply immediately on change. Auto-detect: on first join, benchmark 5s, select preset based on average FPS. Show current FPS counter (optional toggle). Save preference in DataStore. Warning: "Ultra" label shows "May reduce performance on older devices".' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // CLICKER / IDLE GAME SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Clicker / Idle Game Systems',
+    systems: [
+      { name: 'Auto-Clicker / Auto-Farm Upgrades', keywords: ['auto click', 'auto clicker', 'auto farm upgrade', 'passive click', 'afk upgrade'],
+        how: 'Upgrade tiers: Manual Only → Auto-Click 1/s(500 coins) → 2/s(2000) → 5/s(10000) → 10/s(50000). Each tier: server task.spawn loop fires resource gain at configured rate while player is in game. Purchase at upgrade NPC. ScreenGui shows current auto-rate. Offline auto: disabled by default. Premium offline auto: gamepass, earns at 10% of active auto rate. Anti-AFK: after 20 minutes idle, auto-rate drops to 0 until player moves. Visual: machine Model animation speed matches auto-rate.' },
+      { name: 'Multiplier Stacking', keywords: ['multiplier', 'stack multiplier', 'boost multiplier', 'coin multiplier', 'multiply earnings'],
+        how: 'Multiple multiplier sources stack multiplicatively: Base(1x) * Pet(1.5x) * Gamepass(2x) * Event(2x) * Rebirth(1+0.5*rebirths) = total. ScreenGui breakdown: list all active multipliers with values. Total multiplier displayed prominently: "x12.5 EARNINGS". Temporary multipliers: potions (2x for 15 min), events (server-wide 2x). Each source: NumberValue or calculated from DataStore. Cap total at 100x to prevent inflation explosion. Visual: multiplier text gets bigger/more colorful at higher values. Sound: power-up chime when multiplier increases.' },
+      { name: 'Offline Progress Calculation', keywords: ['offline progress', 'offline earnings', 'away earnings', 'idle earnings', 'offline income'],
+        how: 'On player join: lastOnline = DataStore timestamp. elapsed = os.time() - lastOnline. offlineEarnings = elapsed * incomePerSecond * offlineMultiplier(0.1). Cap: max 8 hours (28800s) of offline earnings. ScreenGui popup on join: "While you were away (3h 22m), you earned $45,230!" with collect button. Premium offline: gamepass increases multiplier to 0.5 (5x more). Breakdown: show income sources. Option to watch ad (DevProduct) to double offline earnings. Offline earnings don\'t count toward leaderboard scores.' },
+      { name: 'Prestige / Ascension System', keywords: ['prestige system', 'ascension', 'new game plus', 'reset progress', 'prestige rewards'],
+        how: 'At maximum level or income threshold: "Prestige" button unlocks. On prestige: ALL progress resets (coins, upgrades, zones). Gain: Prestige Points (PP) based on total lifetime earnings. PP spent at Prestige Shop: permanent multipliers, exclusive upgrades, cosmetics, faster progression. Each prestige: faster to reach threshold again (due to permanent bonuses). Prestige counter in leaderboard. ScreenGui prestige panel: estimated PP gain, shop preview, confirmation. Visual: dramatic reset animation (world rebuilds). Max prestige: unlimited, but diminishing returns on PP.' },
+      { name: 'Upgrade Tree (Idle)', keywords: ['upgrade tree idle', 'idle upgrades', 'passive upgrade', 'unlock upgrade', 'upgrade path idle'],
+        how: 'Tree of upgrades branching from center. Nodes: {name, cost, effect, prerequisite}. Categories: Production(increase income per click/auto), Efficiency(reduce costs), Expansion(unlock new areas/resources), Special(unique abilities). ScreenGui: visual tree with lines connecting nodes. Purchased: gold glow. Available: white border. Locked: gray, shows prerequisite. Costs scale exponentially: baseCost * 1.15^timesPurchased. Some nodes: repeatable (buy multiple times, each more expensive). Reset tree: prestige or respec item. Auto-purchase toggle: buys cheapest available node automatically.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // MYSTERY & DETECTIVE GAMES
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Mystery & Detective Games',
+    systems: [
+      { name: 'Murder Mystery Roles', keywords: ['murder mystery', 'murderer', 'sheriff', 'innocent', 'murder game', 'mystery role'],
+        how: 'Round start: randomly assign roles. 1 Murderer(gets knife Tool), 1 Sheriff(gets gun Tool), rest Innocent. Murderer: must kill all innocents without being caught. Sheriff: must identify and shoot murderer. Innocent: survive, pick up gun if sheriff dies. Knife: melee kill (Touched). Gun: raycast, 1 shot kills. If sheriff shoots innocent: sheriff dies. Roles hidden: no nameplate role display. Dead players: spectate. Round: 180s or until murderer/innocents win. HUD: role display (only your role), alive count, timer.' },
+      { name: 'Clue / Evidence System', keywords: ['clue', 'evidence', 'investigate', 'detective clue', 'find evidence', 'investigation'],
+        how: 'Crime scene: designated area with interactable objects. Evidence items: Parts with ProximityPrompt "Investigate" (magnifying glass icon). On investigate: ScreenGui evidence popup showing image + description. Evidence types: Fingerprint(points to suspect), Weapon(narrows method), Witness Statement(NPC dialogue), CCTV Footage(short replay). Evidence board ScreenGui: pin collected evidence, draw connections. 5+ correct connections: can "Accuse" suspect. Wrong accusation: penalty (lose turn/points). Sound: investigation "hmm" + notepad scribble.' },
+      { name: 'Voting / Accusation', keywords: ['vote player', 'accuse', 'voting round', 'town meeting', 'vote out'],
+        how: 'Meeting called: all players teleported to meeting area. Discussion phase: 30s, players argue in chat. Vote phase: 15s, ScreenGui shows all alive players as vote targets. Click to vote. Skip option. Majority vote: accused player eliminated (removed from round). Tie or skip majority: nobody eliminated. After vote: reveal eliminated player\'s role. Return to gameplay. Emergency meeting: limited uses (1 per player per game). Dead players: cannot vote or speak. Results screen shows vote distribution.' },
+      { name: 'Impostor / Among Us Style', keywords: ['impostor', 'among us', 'sus', 'crewmate', 'sabotage', 'vent'],
+        how: 'Roles: Crewmates(majority) and Impostors(1-2). Crewmates: complete tasks (minigames at stations — wiring puzzle, card swipe, asteroids shoot). Impostors: fake tasks, kill crewmates (proximity + cooldown), sabotage (disable lights=dark screen for crew, lock doors=CanCollide true on doors for 10s). Vent: impostors can teleport between vent locations (ProximityPrompt, CFrame to destination). Report body: Touched dead character Part → emergency meeting. Win: crew completes all tasks or votes out all impostors. Impostor wins: kills enough for majority. Task bar: ProgressBar showing global crew task completion.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // GACHA & LOOTBOX SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Gacha & Lootbox Systems',
+    systems: [
+      { name: 'Banner / Rate-Up System', keywords: ['banner', 'rate up', 'featured', 'gacha banner', 'limited banner', 'pull rate'],
+        how: 'Banners: time-limited gacha events (7-14 days) with featured items at boosted rates. Config: {name, endTime, featuredItems:[{id, boostedRate:5}], regularPool:[]}. Featured item: rate increased from 0.5% to 5%. SurfaceGui/ScreenGui banner display: featured item art + "Rate Up!" tag + countdown timer. Pity system: guaranteed featured item within 90 pulls. Pull history: DataStore stores last 200 pulls for player review. Multi-pull: 10x pull with one guaranteed rare+ (saves time). Sound: dramatic reveal per rarity (common=soft, legendary=orchestra hit).' },
+      { name: 'Pity / Mercy System', keywords: ['pity system', 'mercy pull', 'guaranteed pull', 'soft pity', 'hard pity'],
+        how: 'Track pulls since last highest-rarity item: IntValue "PityCounter". Soft pity: after 75 pulls, rate increases by 5% per pull. Hard pity: at 90 pulls, guaranteed highest rarity (100% rate). Counter resets on any highest-rarity pull (whether by luck or pity). Display: "89/90 to guaranteed" in pull screen. Cross-banner: pity carries between banners of same type (character pity vs weapon pity separate). Prevents infinite bad luck. Communicate odds clearly: "4.5% chance at 80+ pulls" transparency. DataStore: pityCounter persists across sessions.' },
+      { name: 'Wish / Pull Animation', keywords: ['pull animation', 'gacha animation', 'wish animation', 'summon animation', 'reveal animation'],
+        how: 'Single pull: shooting star animation (Part trails across sky, explosion at landing). Color: matches rarity (white→green→blue→purple→gold). Multi-pull: sequential reveals, each with brief pause. Skip button after seeing all. Camera: zooms to summoning circle (ground decal + ParticleEmitter). Rarity escalation: starts subdued, screen cracks/flashes for epic+. Legendary: special unique animation (dragon flies across, lightning strikes, etc.). Sound: building crescendo, climax based on rarity. Social: nearby players see your pull result as floating notification.' },
+      { name: 'Gacha Currency System', keywords: ['gacha currency', 'pull currency', 'primogem', 'star quartz', 'summon ticket'],
+        how: 'Two pull currencies: free(earned in-game) and premium(purchased with Robux/DevProduct). Free: earned from daily quests(50/day), achievements(100-500), events(200-1000). Premium: bought in packs (100=$0.99, 1000=$8.99, 5000=$39.99). Pull cost: 1 pull = 160 free currency or 160 premium. 10-pull: 1440 (10% discount). Monthly pass: DevProduct, grants 90 free currency/day for 30 days (best value). Exchange rate: premium currency cannot be earned, preserving value. HUD display: both currencies prominently shown.' },
+      { name: 'Duplicate / Constellation System', keywords: ['duplicate', 'constellation', 'dupe system', 'character dupe', 'star up', 'dupe bonus'],
+        how: 'Pulling duplicate: instead of useless copy, grants upgrade material. Characters: dupe = +1 Constellation (max 6). Each constellation: specific bonus (+20% damage at C1, new ability at C2, +30% HP at C4, transform ultimate at C6). Items: dupe = Stardust currency. Stardust shop: buy other items/characters directly (high cost). DataStore tracks constellation level per character. ScreenGui constellation screen: star map showing unlocked nodes. Sound: special reveal for first constellation upgrade. Value: every pull has purpose, no true waste.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // PHOTOGRAPHY & MEDIA
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Photography & Media',
+    systems: [
+      { name: 'Photo Mode / Screenshot', keywords: ['photo mode', 'screenshot', 'camera mode', 'photo capture', 'picture mode'],
+        how: 'Toggle: keybind (P) enters photo mode. Hide all HUD (ScreenGui Enabled=false). Free camera: WASD + mouse look (custom camera script). Controls ScreenGui (minimal): FOV slider, Roll angle, Filter (color presets via ColorCorrection), Depth of Field toggle + focus distance, Time of day slider (Lighting.ClockTime). Pose: freeze player animation. Frame: capture (client-side, no actual image API but can signal screenshot tool). Sticker/text overlay: ImageLabel/TextLabel draggable on screen. Exit: same keybind. Used for social media sharing.' },
+      { name: 'Photo Gallery / Album', keywords: ['photo gallery', 'album', 'photo album', 'save photo', 'photo collection'],
+        how: 'Photos stored as metadata: {timestamp, location:CFrame, filter, dayTime, caption, playerPosition}. DataStore saves last 50 photo entries. Gallery ScreenGui: grid of "photos" (ViewportFrame recreating the scene from stored CFrame + settings is too complex, so use: screenshot thumbnail as ImageLabel if available, or scenic text description). Caption: player-written 100-char description. Share: generate link code, others can view gallery. Like system: visitors can heart photos. Best photos: weekly contest, community voted, winner gets reward.' },
+      { name: 'Video Recording Cue', keywords: ['video', 'record', 'clip', 'highlight', 'gameplay clip'],
+        how: 'Highlight detection: on notable events (epic kill, level up, rare drop, close call), fire RemoteEvent "HighlightMoment" to client. Client: show brief "HIGHLIGHT!" text overlay (golden, 0.5s). If player has recording software: this serves as visual cue to clip. Instant replay: store last 10s of camera CFrames + key events. Replay button: plays back with cinematic camera angles (auto-generated: over-shoulder, zoom on action, slow-mo on impact). Used for content creation. Share: replay data code for others to watch.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // NPC COMPANIONS & FOLLOWERS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'NPC Companions & Followers',
+    systems: [
+      { name: 'Companion AI', keywords: ['companion', 'npc companion', 'ai companion', 'follower npc', 'helper npc', 'buddy'],
+        how: 'Companion Model with Humanoid (no damage taken from environment). Follows player: BodyPosition offset behind player (Vector3.new(-3, 0, -3)), updates every Heartbeat. Combat: attacks player\'s target (same enemy player is fighting), basic AI: pathfind to enemy, melee/ranged attack, return to player when enemy dead. Dialogue: periodic quips ("Look out!" when enemy spawns, "Nice!" on player level up). Dismissable: ScreenGui button to dismiss/summon. Health: companion has HP, retreats at low HP, heals over time. Different companions: warrior, healer, ranged. Only 1 active.' },
+      { name: 'NPC Hire System', keywords: ['hire npc', 'mercenary', 'hire worker', 'npc worker', 'hire helper'],
+        how: 'Hire NPCs at tavern/guild hall. Types: Fighter(deals damage, 500 coins/hr), Gatherer(auto-collects resources in radius, 300/hr), Porter(increases backpack capacity +100, 200/hr). Hire screen: NPC portraits with stats + hourly cost. Coins deducted every 60s from player while NPC active. Fire: dismiss NPC (no refund for current hour). Max 2 hired NPCs. NPC quality tiers: Bronze(1x stats), Silver(1.5x, more expensive), Gold(2x, premium). DataStore stores active hires + remaining time. NPC disappears when player leaves (re-hire on return).' },
+      { name: 'Pet Dialogue / Personality', keywords: ['pet dialogue', 'pet talk', 'pet personality', 'companion chat', 'pet speech'],
+        how: 'Each pet species has personality traits: {mood, chattiness, humor}. Dialogue pool per personality: idle remarks ("I\'m hungry!"), combat callouts ("Behind you!"), discovery reactions ("Ooh shiny!"), encouragement ("You can do it!"). Trigger: random chance every 60s (chattiness affects frequency). Display: BillboardGui speech bubble above pet, typewriter text, auto-dismiss 4s. Mood system: happiness NumberValue affected by feeding, playing minigame with pet, time equipped. Low mood: sad dialogue, reduced stat bonuses. High mood: enthusiastic dialogue, bonus stats.' },
+      { name: 'Mount Combat', keywords: ['mounted combat', 'fight on mount', 'cavalry', 'mounted attack', 'horseback combat'],
+        how: 'While mounted: access mounted weapon set (Lance, Bow from horseback). Lance: high damage charge attack (bonus damage proportional to mount speed). Bow: normal ranged but with mount speed benefit for drive-by attacks. Mount takes damage separately from rider (mount HP bar above mount). If mount HP reaches 0: dismount forced, mount despawns (cooldown to resummon). Mount armor: equippable, adds defense to mount. Mounted dash: special ability, short burst of speed + knockback to nearby enemies. Cannot use ground-only abilities while mounted.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // MODDING & USER GENERATED CONTENT
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Modding & User Generated Content',
+    systems: [
+      { name: 'Custom Map Editor', keywords: ['map editor', 'custom map', 'level editor', 'map creator', 'build map'],
+        how: 'In-game editor mode: fly camera, toolbar of Parts/Models. Place/move/delete Parts with handles. Save map: serialize all Parts as JSON-like table {parts:[{size,pos,color,material,name}]}. DataStore stores maps per player. Share: map code system (8-char code). Others can load and play your map. Rating: after playing, rate 1-5 stars. Featured maps: admin-picked or highest rated. Map browser: ScreenGui with search + filters + preview (ViewportFrame). Version history: keep last 3 saves. Play test: toggle between edit and play mode. Part limit: 500 per map (free), 2000 (premium).' },
+      { name: 'Custom Game Mode Creator', keywords: ['custom game mode', 'game creator', 'user game', 'custom rules', 'game maker'],
+        how: 'ScreenGui game mode editor: set rules without code. Options: team count(1-4), round time(30-600s), win condition(most kills/first to N/last standing/score), respawn(yes/no, delay), gravity(0.5x-3x), walkspeed(8-32), health(50-500), weapons(toggle each), powerups(toggle each). Save as game mode: name + rules table in DataStore. Host: create private server with custom mode. Browse community modes: list with ratings. Editor generates ModuleScript-compatible config that standard round system reads. Cannot inject scripts (safety).' },
+      { name: 'Skin / Asset Creator', keywords: ['skin creator', 'custom skin', 'design skin', 'create cosmetic', 'asset creator'],
+        how: 'In-game skin editor: select base item (sword, armor, pet). Customize: color per part section (head, body, limbs), material per section, pattern overlays (stripe, dots, stars — Decal presets), nameplate text. Preview in ViewportFrame. Submit for review: stored in DataStore "PendingAssets". Admin approval queue. Approved: available in marketplace for other players to buy (creator earns 70% of sale price). Reject: feedback message to creator. Content guidelines displayed during creation. Anti-inappropriate: banned color combos, text filter on names.' },
+      { name: 'Replay Sharing System', keywords: ['replay share', 'share game', 'game replay', 'watch replay', 'replay code'],
+        how: 'Record match: server stores all player actions as event stream [{tick, playerId, action, data}]. Compress: delta encoding (only store changes). Save: DataStore + unique replay code (8 chars). Share code: paste in ScreenGui replay browser. Watch: client plays back events, spawning NPCs that mimic original players. Camera: free cam or follow specific player. Speed controls: 0.5x, 1x, 2x, skip to timestamp. Bookmark highlights: mark interesting moments during playback. Storage limit: keep last 20 replays per player. Public replays: opt-in, browseable by others, sorted by rating.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // ANTI-GRIEF & MODERATION TOOLS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Anti-Grief & Moderation Tools',
+    systems: [
+      { name: 'Vote Kick', keywords: ['vote kick', 'kick player', 'votekick', 'remove player', 'kick vote'],
+        how: 'Initiate: ScreenGui "Vote Kick" against target player. Requires 3+ online players. Vote prompt sent to all others: "{Player} wants to kick {Target}. Reason: {reason}. Vote: Yes/No". 30s vote window. Threshold: >60% Yes votes = kick. Kicked player: teleported out, 15-minute rejoin cooldown for that server. Abuse prevention: each player can initiate 1 vote per 10 minutes. If vote fails: initiator cannot re-target same player for 30 min. Log all vote kicks to DataStore for admin review.' },
+      { name: 'Chat Filter / Toxicity', keywords: ['chat filter', 'toxicity filter', 'bad word', 'profanity filter', 'chat moderation'],
+        how: 'Roblox TextChatService has built-in filter. Additional custom layer: ModuleScript banned phrases (update without code deploy via DataStore "BannedPhrases"). On chat message: check against custom list (exact + fuzzy match for l33t speak). Violation: replace message with "***", increment warnings counter. 3 warnings: auto-mute 10 minutes. 5 warnings: auto-mute 1 hour. Persistent offenders: flag for admin review. Positive reinforcement: helpful messages tracked, reward "Friendly Player" badge at 100 positive interactions.' },
+      { name: 'Grief Prevention Zones', keywords: ['grief prevention', 'protected zone', 'anti grief', 'building protection', 'no destroy zone'],
+        how: 'Player-owned areas: only owner can modify Parts within bounds. Server validates: on any Part operation (place/move/destroy), check if Part is within another player\'s protected zone AND actor is not owner → reject. Shared access: owner can add collaborators (DataStore whitelist). Public areas: admin-only modification. Collision: cannot push other players (CustomPhysicalProperties with infinite friction or BodyPosition resistance). Item dropping: disabled near other player bases. Build permission levels: None/View/Interact/Build/Admin.' },
+      { name: 'Admin Command System', keywords: ['admin command', 'admin tool', 'moderator', 'admin panel', 'mod commands'],
+        how: 'Admin list: table of userIds in ModuleScript + DataStore (hot-updateable). Commands via chat prefix "!": !kick(player, reason), !ban(player, duration, reason), !mute(player, duration), !tp(player, destination), !give(player, item, amount), !announce(message), !warn(player, message). Parse: split by space, match command, validate args. Log all commands: DataStore "AdminLog" {admin, command, target, timestamp}. ScreenGui admin panel: buttons for common actions, player list with quick-action dropdown. Rank levels: Mod(kick/mute), Admin(ban/give), Owner(all).' },
+      { name: 'Automated Behavior Detection', keywords: ['auto detect', 'behavior detection', 'bot detection', 'exploit detect', 'auto ban'],
+        how: 'Server monitors: RemoteEvent fire rate (>50/s = bot), movement pattern (perfectly straight lines = pathfinding exploit), economy anomalies (gaining coins faster than maximum possible rate), damage output (exceeding weapon maximum). Detection: flag account, log evidence (timestamps + values). Thresholds: warning(1 flag per 5 min), auto-kick(3 flags per 10 min), temp-ban(kicked 3x = 24h ban). False positive protection: threshold buffer + admin review queue for bans. Appeal: banned players see link to appeal form. Evidence packet saved for admin review.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // PLATFORMER SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Platformer Systems',
+    systems: [
+      { name: 'Double Jump / Wall Jump', keywords: ['double jump', 'wall jump', 'extra jump', 'air jump', 'jump boost'],
+        how: 'Double jump: UserInputService detects Space while Humanoid.FloorMaterial == nil (in air). Apply upward BodyVelocity (Velocity = Vector3.new(0, jumpForce, 0), MaxForce = Vector3.one * 1e5, Debris 0.15s). Track jumps with IntValue "JumpsRemaining" (reset to 2 on land). Triple jump upgrade: JumpsRemaining = 3. Visual: puff ParticleEmitter at feet on each air jump. Sound: whoosh, softer each subsequent jump. Wall jump: raycast sideways while in air + near wall, if hit → launch perpendicular + up. Wall slide: slow descent while touching wall (reduced gravity BodyForce).' },
+      { name: 'Checkpoint System', keywords: ['checkpoint', 'save point', 'respawn point', 'checkpoint flag', 'progress save'],
+        how: 'Checkpoint Parts at intervals along course. Touched event: if player reaches new checkpoint (index > current), save checkpoint CFrame in player data. On death: respawn at last checkpoint (CFrame player to saved position). Visual: flag Model (Cyl pole + wedge flag Part). Inactive: white flag. Active: green flag + glow PointLight. Sound: checkpoint chime. DataStore: save last checkpoint index for persistence. "Restart" button: reset to first checkpoint. Checkpoint counter in HUD: "Checkpoint 5/12". Per-player (not shared) checkpoints.' },
+      { name: 'Moving Platforms', keywords: ['moving platform', 'platform move', 'sliding platform', 'platform puzzle', 'elevator platform'],
+        how: 'Platform Part moves between 2+ waypoints. Movement: TweenService ping-pong between CFrame waypoints (TweenInfo RepeatCount=-1, Reverses=true). Player standing on platform: moves with it (Touched → WeldConstraint to platform, TouchEnded → remove weld). Types: horizontal slide, vertical elevator, circular orbit (CFrame:Angles rotation path), disappearing (Transparency cycle, CanCollide toggle). Timing challenge: platforms appear/disappear on interval. Speed varies: slow=easy, fast=hard. Sound: mechanical hum while moving.' },
+      { name: 'Collectible Coins / Stars', keywords: ['platformer coin', 'collect star', 'platform collectible', 'coin collect', 'floating coin'],
+        how: 'Small Part collectibles (Cyl for coins, Ball for stars) floating in air. Hover: slight Y oscillation via CFrame loop (math.sin). Rotate: CFrame Y rotation loop. Touched by player: collect (Destroy local, RemoteEvent to server). Grant: +1 coin/star to player count. BillboardGui "+1" floats up and fades. Sound: ascending pitch coin collect (vary by streak). Placement: along paths, on platforms, in tricky spots. Counter: "47/100 Coins" in HUD. 100% collection: special reward. Respawn on stage restart.' },
+      { name: 'Hazards / Traps', keywords: ['trap', 'hazard', 'spike', 'lava floor', 'kill brick', 'danger zone'],
+        how: 'Kill bricks: red Neon Parts, Touched = instant death (Humanoid.Health = 0). Lava: red-orange Neon floor, same kill mechanic + fire ParticleEmitter. Spikes: sharp wedge Parts that pop up on timer (TweenService Y position). Saw blades: rotating disc Parts (CFrame rotation loop) that deal damage on contact. Falling rocks: scripted to fall when player passes trigger Part (anchor=false on Touched). Laser grid: Beam instances that toggle on/off (gap timing). Crusher: Part moves up/down, kills between floor and crusher. Sound: unique per hazard.' },
+      { name: 'Boss Platform Fight', keywords: ['platform boss', 'boss fight platformer', 'jump boss', 'dodge boss', 'platformer boss'],
+        how: 'Boss arena: enclosed area, boss Model at far end. Boss attacks: projectiles (Part with BodyVelocity toward player, dodge by jumping), ground slam (floor tiles flash red, then kill 1s later — dodge by jumping to safe tiles), laser sweep (horizontal Beam moves up, duck or jump over). Boss takes damage: jump on head (Touched on boss top Part = -1 HP) or use projectile weapons. 3 hits to defeat. Between hits: boss becomes invulnerable, new attack pattern. On defeat: boss explodes (ParticleEmitter), door opens to next area. Dramatic music during fight.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // SEASONAL CONTENT & EVENTS ADVANCED
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Seasonal Content & Events Advanced',
+    systems: [
+      { name: 'Event Pass / Ticket System', keywords: ['event pass', 'event ticket', 'entry ticket', 'event entry', 'premium event'],
+        how: 'Special events require entry ticket. Free ticket: 1 per day (DataStore last claim timestamp). Premium tickets: DevProduct purchase (5 for $1.99). Ticket consumed on event entry. Event instances: ReservedServer per group of players. Event types: raid boss, treasure hunt, PvP tournament, obstacle course. ScreenGui event lobby: shows upcoming events with start times, ticket cost, reward preview. No ticket = spectate only. Event history: DataStore logs participation + rewards earned. Leaderboard: per-event performance ranking.' },
+      { name: 'Community Goal', keywords: ['community goal', 'global goal', 'server goal', 'collective challenge', 'community event'],
+        how: 'Server-wide or global objective: "Collectively defeat 10,000 enemies this week!" Progress: MessagingService broadcasts increments across all servers. Global counter: DataStore key "CommunityGoal_Week42" incremented atomically (UpdateAsync). Display: giant SurfaceGui in spawn showing progress bar + current count. Milestones: at 25%/50%/75%/100%, all online players get instant reward. 100% completion: exclusive item unlocked for all who contributed. Contribution tracking: per-player DataStore stores individual contribution for reward scaling. New goal each week.' },
+      { name: 'World Boss Event', keywords: ['world boss', 'server boss', 'public boss', 'raid event', 'mega boss'],
+        how: 'Scheduled: every 2 hours, announced 5 minutes prior via RemoteEvent "WorldBossIncoming". Boss spawns in designated arena: massive Model (3-5x player size), Humanoid with 100,000+ HP. All online players can participate. DPS contribution tracked per player (DataStore during fight). Boss mechanics: AoE ground slam (floor circles), projectile barrage, add spawns every 25%. On defeat: loot distributed proportional to contribution (top DPS = best loot). Timer: 10 minutes to defeat, or boss despawns (fail). Resurrection during fight: automatic after 5s. Leaderboard: top damage dealers shown post-fight.' },
+      { name: 'Countdown / Hype Timer', keywords: ['countdown', 'hype timer', 'event countdown', 'new content timer', 'countdown clock'],
+        how: 'For upcoming content/events: SurfaceGui countdown clock in spawn area. Shows: days:hours:minutes:seconds until event. BillboardGui hologram of upcoming content preview (ViewportFrame with rotating model of new item/area). Daily teasers: DataStore-driven SurfaceGui that changes text/image daily ("3 days: A new challenger approaches...", "2 days: They say it breathes fire...", "1 day: TOMORROW."). Notification: push when countdown < 1h. At 0: content unlocks automatically (server swaps in new content from ServerStorage). Confetti + trumpet sound + announcement screen on launch.' },
+      { name: 'Limited-Time Challenge', keywords: ['limited challenge', 'timed challenge', 'time challenge', 'speed challenge', 'rush event'],
+        how: 'Pop-up events lasting 15-60 minutes. Types: Speed Run(complete obby fastest), Kill Rush(most enemies in time), Collection Frenzy(most collectibles gathered), Survival(last standing in shrinking zone). Announce: server-wide RemoteEvent + ScreenGui popup "CHALLENGE STARTING IN 30s!". Auto-opt-in: all players in relevant zone. Scoring: real-time leaderboard (ScreenGui sidebar). End: freeze scores, announce top 3, distribute rewards (1st/2nd/3rd get scaling prizes, all participants get participation reward). Cooldown: next challenge in 45 min. History: DataStore logs results.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // ECONOMY ADVANCED FEATURES
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Economy Advanced Features',
+    systems: [
+      { name: 'Token/Ticket Redemption', keywords: ['token redeem', 'ticket prize', 'prize shop', 'redeem tokens', 'arcade tickets'],
+        how: 'Earn tokens from minigames (5-100 per game based on score). Token counter: IntValue in leaderstats. Prize shop: NPC with ScreenGui showing prize items with token costs. Prizes: cosmetics(50-500 tokens), consumables(10-30), exclusive pets(1000+), limited items(5000+). Cannot buy tokens directly (must earn through gameplay). Token cap: max 99,999 to prevent inflation. ScreenGui shows token animation: "+25 Tokens" after each minigame. Prize display: physical Models on shelves behind counter with SurfaceGui price tags.' },
+      { name: 'Lending / Borrowing', keywords: ['lend', 'borrow', 'loan item', 'lend item', 'temporary trade'],
+        how: 'Lend item to friend: select item + recipient + duration (1h/4h/24h). Server: move item from lender to borrower inventory with BoolValue "Borrowed" + NumberValue "ReturnTime". Borrower can use item normally. At ReturnTime: server auto-returns item to lender (even if borrower offline — DataStore pending returns). Borrower cannot trade/sell/destroy borrowed items. Early return: borrower can return via ProximityPrompt or ScreenGui button. Collateral: optional, borrower deposits coins held until return. Late return: 2x collateral taken.' },
+      { name: 'Reward Multiplier Events', keywords: ['2x coins', 'double xp', 'multiplier event', 'bonus weekend', '2x event'],
+        how: 'Server-wide multiplier: NumberValue "EventMultiplier" (default 1). Admin or schedule sets to 2 (or 3, 5 for special occasions). Applies to: coin gains, XP gains, drop rates. Duration: 1-72 hours. Announcement: "2X COINS ACTIVE!" permanent banner in HUD (gold text, pulsing). Countdown: time remaining shown. Stacks with personal multipliers (pet, gamepass). Sound: power-up chime on event start. Schedule: weekends = 2x, holidays = 3x, milestones (1M total visits) = 5x for 24h. ScreenGui event popup explains what is boosted.' },
+      { name: 'Achievement Currency', keywords: ['achievement points', 'achievement currency', 'achievement shop', 'merit points', 'honor points'],
+        how: 'Separate currency earned ONLY from achievements. Cannot be bought or traded. Points per achievement scaled by difficulty: Easy=10, Medium=50, Hard=200, Secret=500. Achievement shop: exclusive items purchasable only with achievement points. Items: unique cosmetics, permanent stat boosts, convenience upgrades. Prevent pay-to-win: achievement currency ensures these rewards come from skill/time investment. ScreenGui: achievement points displayed with badge icon. Points persist permanently (never spent, only accumulated — shops check total points not balance). Milestone tiers at 100/500/1000/5000 points unlock shop tiers.' },
+      { name: 'Mystery Box / Lucky Dip', keywords: ['mystery box', 'lucky dip', 'random reward', 'surprise box', 'mystery reward'],
+        how: 'Physical mystery box Part in world (colorful wrapped present Model). Cost: coins or earned from quests. Open: ProximityPrompt → server rolls from weighted table. Possible contents: coins (50% chance, 1-5x cost), rare item (30%, value exceeds cost), junk (15%, funny useless items — great for laughs), jackpot (5%, high-value item worth 10-50x cost). Opening animation: box shakes, lid pops off (TweenService), item rises from box (BodyVelocity up + spotlight), reveal with rarity flash. Sound: drum roll during open, result jingle matches rarity. Daily free box: one free per day.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // SANDBOX DESTRUCTION & PHYSICS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Sandbox Destruction & Physics',
+    systems: [
+      { name: 'Ragdoll System', keywords: ['ragdoll', 'ragdoll physics', 'ragdoll death', 'limp body', 'physics body'],
+        how: 'On death or trigger: convert R15 character to ragdoll. Method: set all Motor6D joints to BallSocketConstraint (or HingeConstraint per joint type). Disable Humanoid.AutoRotate, Humanoid:SetStateEnabled(GettingUp, false). Each limb becomes physics-driven. Velocity from last movement carries into ragdoll (realistic fall direction). Duration: 3s then either reset (stand up) or respawn. Sound: thud on body hitting ground. Ragdoll on: death, strong knockback, stun effects, comedic moments. Toggle in settings (some players dislike it).' },
+      { name: 'Explosive Barrel / Chain Reaction', keywords: ['explosive barrel', 'explosion chain', 'chain reaction', 'barrel explosion', 'explode'],
+        how: 'Red barrel Parts scattered in environment. On hit (weapon damage or explosion): barrel HP -= damage. At 0: Explosion instance (BlastRadius 15, BlastPressure 500000, DestroyJointRadiusPercent 0). Chain: explosion hits nearby barrels, triggering them too. Debris: barrel shatters into 6-8 small Parts with BodyVelocity outward. Fire ParticleEmitter at explosion center (2s). Sound: boom + metal debris clink. Deals damage to players/NPCs in radius. Strategic placement: near enemy groups for chain reaction combos. Respawn barrels after 120s.' },
+      { name: 'Cannon / Catapult', keywords: ['cannon', 'catapult', 'launch', 'trebuchet', 'cannon fire'],
+        how: 'Cannon Model with barrel Part. VehicleSeat to aim (A/D rotates Y axis, W/S adjusts elevation angle). Fire: keybind (F) spawns cannonball Part (Ball shape, Metal material) at barrel end with BodyVelocity in barrel lookVector * power. Cannonball: Touched = Explosion(BlastRadius 10). Gravity affects trajectory (parabolic arc). Power charge: hold F to increase power (0.5-3s hold = different ranges). Sound: boom on fire, whistle during flight, explosion on impact. Catapult variant: same physics but Medieval aesthetic, loads Part into scoop, release flings.' },
+      { name: 'Physics Playground', keywords: ['physics playground', 'physics sandbox', 'physics toy', 'wrecking ball', 'physics fun'],
+        how: 'Area with physics-interactive objects: domino line (tall thin Parts, tip first → chain falls), wrecking ball (Ball on RopeConstraint attached to ceiling, swing into structures), bowling (Ball launched at Pin parts via BodyVelocity), Jenga tower (stacked small Parts, remove one via ClickDetector without toppling), marble run (Ball rolling through ramp/funnel Parts). All objects: Anchored=false, CollisionGroup set to interact. Reset button: restores all objects to original CFrame. Physics quality: server authoritative, client prediction for responsiveness. Sound: impact thuds, rolling, clattering.' },
+      { name: 'Building Demolition', keywords: ['demolish', 'demolition', 'tear down', 'wreck building', 'destroy building'],
+        how: 'Pre-built structures made of many unanchored Parts (WeldConstraint holding them together). Weld HP: IntValue per weld. Damage to weld: explosions and heavy impacts break welds. When weld breaks: connected Parts become loose (fall under gravity). Chain collapse: upper Parts lose support → fall → impact breaks more welds below. Controlled demolition: place charges at key structural welds (ProximityPrompt "Place Charge"), trigger all at once for satisfying collapse. Debris cleanup: loose Parts Debris:AddItem after 10s. Scoring: most Parts knocked down = highest score. Slow-motion replay of best demolition.' },
+      { name: 'Grapple / Rope Physics', keywords: ['grapple', 'rope', 'grappling hook', 'swing', 'rope swing'],
+        how: 'Grapple Tool: Activate → raycast from player toward mouse position (max range 60 studs). If hit surface: spawn RopeConstraint between character and hit point. Swing physics: character swings as pendulum (RopeConstraint Length = distance to hit). Shorten rope: W key decreases Length (pull toward anchor). Release: jump key detaches rope. Speed boost: release at bottom of swing for maximum velocity (conservation of momentum). Visual: Beam between hand and anchor point. Sound: whoosh while swinging, rope creak. Cooldown: 1s after release before can grapple again.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // STRATEGY & RESOURCE MANAGEMENT
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Strategy & Resource Management',
+    systems: [
+      { name: 'Resource Nodes & Respawn', keywords: ['resource node', 'resource respawn', 'resource point', 'gathering node', 'node respawn'],
+        how: 'Resource nodes: Parts placed in world tagged by type (Wood, Stone, Iron, Gold, Crystal). Each node: IntValue "Remaining" (3-10 harvests). Interact: Tool hit or ProximityPrompt → grant resource, decrement Remaining. At 0: node depletes (visual: Part becomes dark + Transparency 0.5). Respawn timer: 120-600s depending on rarity. On respawn: full reset, visual restore. Randomized locations: each server seed slightly shifts node positions (not always same spot). Mini-map markers for discovered nodes. Competition: first-come-first-served, no reservations.' },
+      { name: 'Army / Unit Management', keywords: ['army', 'unit', 'troops', 'command army', 'unit management', 'strategy army'],
+        how: 'Recruit units at barracks: {type:"Swordsman", cost:100, hp:50, damage:10, speed:12}. Unit cap: based on supply (start 10, upgrade to 50). Spawn units: click location on field, units pathfind there. Group select: drag rectangle on ground Part (Region3 check). Commands: Move(click location), Attack(click enemy), Patrol(two points, walk back and forth), Guard(stand at position, attack enemies in range). Formation: units auto-arrange in grid around command point. Unit health shown as small BillboardGui bars. Killed units: respawn at barracks after cooldown.' },
+      { name: 'Base Defense / Siege', keywords: ['base defense', 'siege', 'defend base', 'castle siege', 'wall defense'],
+        how: 'Defender builds walls/towers in preparation phase (30-60s). Attacker waves spawn after prep. Walls: Parts with IntValue HP, enemies attack walls to break through. Towers: auto-attack enemies in range (projectile Parts). Gate: main entry, highest HP, must be breached for attackers to win. Defender tools: repair walls (ProximityPrompt, costs resources), deploy traps (spike strips, pitfalls), call reinforcement NPC waves. Attacker tools: siege weapons (catapult damages walls at range), ladder (lets units climb walls). Win: attacker destroys core OR timer expires (defender wins).' },
+      { name: 'Tech / Research Tree', keywords: ['tech tree', 'research', 'unlock tech', 'technology', 'upgrade research'],
+        how: 'Research panel ScreenGui: tree diagram of technologies. Each tech: {name, cost:{coins, time}, requires:[techIds], effect}. Research: select tech, pay cost, wait researchTime (real seconds, 30-300). Progress bar shows completion. Effects: unlock new units, unlock new buildings, improve stats (+10% damage globally), unlock abilities. Only one research active at time (queue optional upgrade). Era system: research enough techs in current era to unlock next era\'s tree. Visual: completed techs glow, available pulse, locked are dimmed. Cannot rush research (patience-based progression).' },
+      { name: 'Supply Chain / Production', keywords: ['supply chain', 'production', 'factory production', 'manufacture', 'production line'],
+        how: 'Buildings produce resources over time. Farm → Food (1/min). Mine → Stone (1/min). Lumber Mill → Wood (1/min). Smelter: consumes 2 Stone → produces 1 Metal (2 min). Armory: consumes 3 Metal → produces 1 Weapon (5 min). Chain: output of one building feeds input of next. ScreenGui production overview: flowchart showing all buildings with production rates, bottleneck highlighting (red if input insufficient). Upgrade buildings: faster rate, larger output buffer. Workers: assign NPC workers to buildings for bonus. Storage limit per resource: build warehouses for more capacity.' },
+      { name: 'Diplomacy / Trade Routes', keywords: ['diplomacy', 'trade route', 'trade agreement', 'peace', 'war declaration strategy'],
+        how: 'Between player-controlled bases/factions. Diplomacy panel ScreenGui: list all other players/factions with relationship status (War/Neutral/Friendly/Allied). Actions: Propose Peace(stop attacks), Trade Agreement(shared resource access, both benefit), Alliance(mutual defense), Declare War(enables attacking). Trade routes: if Trade Agreement active, caravan NPC travels between bases periodically carrying resources (both players receive bonus resources per trip). Routes vulnerable: enemies can ambush caravans on the path. Broken agreements: reputation penalty, 24h cooldown before new agreements.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // ADVANCED PET FEATURES
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Advanced Pet Features',
+    systems: [
+      { name: 'Pet Accessory / Fashion', keywords: ['pet accessory', 'pet hat', 'pet outfit', 'pet fashion', 'dress pet'],
+        how: 'Pet accessories: small Parts/MeshParts welded to pet model. Categories: Hats(top of head), Necklace(neck area), Wings(back), Aura(ParticleEmitter around body). Each accessory: {name, slot, model, rarity, statBonus}. Equip: ScreenGui pet customization panel, drag accessory to slot. Some accessories: stat bonuses (+5% damage, +10% luck). Sources: crafting, shop, event rewards, gacha. Preview in ViewportFrame before equipping. Outfit presets: save 3 combos for quick swap. Fashion contests: periodic event where players vote on best-dressed pet.' },
+      { name: 'Pet Breeding', keywords: ['breed', 'pet breed', 'combine pets', 'breed system', 'offspring', 'baby pet'],
+        how: 'Select 2 pets of same species. Breeding station: ProximityPrompt opens ScreenGui with parent slots. Both parents must be max level. Cost: coins + breeding token (rare item). Result: offspring inherits random traits from both parents. Offspring rarity: weighted average of parents (two Legendaries rarely produce below Epic). Unique traits: color blending (parent colors mix), stat inheritance (random parent stat per category). Breeding cooldown: 24h per pet. Offspring starts at level 1. Rare mutation chance (1%): unique color pattern not available otherwise. DataStore: family tree tracking parentage.' },
+      { name: 'Pet Battles (PvP)', keywords: ['pet pvp', 'pet battle pvp', 'pet fight player', 'pet duel', 'pet versus'],
+        how: 'Challenge player: RemoteEvent "PetBattleChallenge". Both accept → battle screen. Turn-based: each pet has 4 moves (Attack, Special, Defend, Heal). Stats determine damage: attacker.damage - defender.defense = damage dealt. Element matchups apply (1.5x advantage, 0.5x disadvantage). HP bars per pet. 3v3 format: each player selects 3 pets, send out one at a time, switch on KO. Turn timer: 15s or auto-defend. Winner: all opponent pets KO\'d. Reward: battle points currency for exclusive shop items. Rank system: Bronze→Silver→Gold→Diamond→Champion based on win record.' },
+      { name: 'Pet Housing / Habitat', keywords: ['pet house', 'pet habitat', 'pet room', 'pet home', 'pet den'],
+        how: 'Each pet has preferred habitat type: Forest, Ocean, Mountain, Desert, Sky. Habitat slots in player\'s pet area. Build habitat: 500 coins, select type. Assign pet to matching habitat: happiness bonus (+20%), stat boost (+10%). Wrong habitat: no bonus. Habitat decorations: plants, toys, food bowls (purchasable from shop, grant additional bonuses). Visit pet in habitat: ScreenGui shows pet animated in habitat with decorations. Multiple habitats: unlock more slots at player level milestones. Habitat level: earn XP from assigned pets, unlock better decorations at higher levels.' },
+      { name: 'Pet Expedition / Auto-Farm', keywords: ['pet expedition', 'pet auto farm', 'pet mission', 'send pet', 'pet adventure'],
+        how: 'Send idle pets (not equipped) on expeditions. Expedition board ScreenGui: missions with requirements (pet level, pet element, expedition duration). Assign 1-3 pets. Duration: 1h/4h/8h (real time, offline OK). Rewards: coins, materials, rare items (better with higher rarity pets + matching element). Success rate: based on combined pet power vs mission difficulty. Failure: reduced rewards, no pet loss. Collect on return: ScreenGui shows expedition results with item reveals. Max 3 expeditions simultaneously. DataStore: stores active expeditions with start time, calculates on collection.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // NARRATIVE & WORLD BUILDING
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Narrative & World Building',
+    systems: [
+      { name: 'NPC Relationship / Affinity', keywords: ['npc relationship', 'affinity', 'friendship npc', 'npc trust', 'relationship level'],
+        how: 'Each NPC has relationship value per player (0-100). Increase: give gifts (NPC-preferred items), complete their quests, talk daily. Decrease: attack NPC, steal from NPC, fail quests. Tiers: Stranger(0-20), Acquaintance(20-40), Friend(40-60), Close Friend(60-80), Best Friend(80-100). Each tier unlocks: new dialogue options, personal quests, discounts at their shop, gift items. Heart icon above NPC shows current tier (gray→green→blue→purple→gold). Daily interaction cap (3 gifts, 1 quest) prevents speed-running. DataStore stores per-NPC-per-player relationships.' },
+      { name: 'Day-Night NPC Behavior', keywords: ['npc day night', 'npc sleep', 'npc behavior time', 'npc home', 'npc schedule time'],
+        how: 'NPC schedules linked to Lighting.ClockTime. Morning(6-9): NPCs walk to workplace (PathfindingService). Day(9-17): NPCs at stations (shopkeeper behind counter, guard on patrol route, farmer at field). Evening(17-20): NPCs socialize (walk to tavern/plaza, group animations). Night(20-6): NPCs go home (enter house door, despawn until morning). Closed shops: SurfaceGui shows "CLOSED - Open 9AM". Night guard NPCs: only active at night, patrol with torch. Moon phases affect certain NPCs (werewolf NPC at full moon). Dialogue changes by time: "Good morning!" vs "Late night, huh?"' },
+      { name: 'Environmental Storytelling', keywords: ['environmental story', 'world lore', 'visual narrative', 'story through environment', 'show dont tell'],
+        how: 'Tell story through placed objects, not just dialogue. Examples: abandoned campsite (overturned chairs, scattered items) hints at sudden evacuation. Claw marks on walls (Decals) suggest monster attack. Journal pages (SurfaceGui on Part) scattered in ruins reveal history. Graveyard headstones with dates tell timeline of plague. Trail of footprints (Decals) leads to hidden area. Burned village with charred Parts tells of dragon attack. Faded mural (ImageLabel on wall) shows ancient civilization. Each environmental detail: clickable ProximityPrompt "Examine" reveals player thought ("These scratches look recent...").' },
+      { name: 'Faction War / World State', keywords: ['faction war', 'world state', 'dynamic world', 'world change', 'faction control'],
+        how: 'Two+ factions compete for map control. World state: DataStore tracks which faction controls each zone (updated by player actions — kills, quests, donations). Zone appearance changes: winning faction\'s banners hang, NPC guards match faction, shop inventory reflects faction. Frontline zones: contested, PvP enabled, special quest objectives (capture flag, eliminate leader). Player contributes to faction by: quests in faction territory, PvP kills, resource donations. Server recalculates control every hour. Map UI: color-coded zones showing faction control. Losing faction: rallying bonuses to prevent steamroll (+25% stats in contested zones).' },
+      { name: 'Prophecy / Destiny System', keywords: ['prophecy', 'destiny', 'chosen one', 'fate', 'prophecy system'],
+        how: 'On first join: generate player "Prophecy" from template: "The {adjective} {noun} shall {verb} the {place} and {outcome}." Adjective: based on first action taken. Noun: based on first item obtained. Verb: evolves based on playstyle (combat-focused="conquer", social="unite", explorer="discover"). Place: most-visited zone. Outcome: hidden until fulfilled. Prophecy revealed gradually: pieces unlock at milestones. ScreenGui prophecy scroll: shows revealed portions, "???" for hidden. Fulfillment: when all conditions met → special event + unique reward. Each player gets unique prophecy. Shareable: compare with friends.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // AUTOMATION & FACTORY SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Automation & Factory Systems',
+    systems: [
+      { name: 'Conveyor Belt Network', keywords: ['conveyor network', 'belt system', 'item transport', 'factory conveyor', 'logistics belt'],
+        how: 'Conveyor Parts: long thin Parts with surface Velocity property (Vector3 along belt direction). Items placed on conveyor: pushed by Velocity. Connect conveyors: place end-to-end, items transfer between. Splitter: 1 belt → 2 outputs (alternating items left/right). Merger: 2 belts → 1 output (first-come). Corner pieces: velocity changes direction via angled Part. Speed tiers: Slow(5 studs/s, free), Medium(15, 500 coins), Fast(30, 2000 coins). Visual: animated texture (scrolling arrow Decal via TextureOffset loop). Sound: rubber belt hum. Blueprint: save conveyor layouts for copy-paste.' },
+      { name: 'Auto-Miner / Auto-Collector', keywords: ['auto miner', 'auto collector', 'automatic mining', 'drone mine', 'auto gather'],
+        how: 'Machines that automatically gather resources. Auto-Miner Model: placed near resource node, task.spawn loop every 10s extracts 1 resource (deducts from node, adds to storage). Storage bin: IntValue capacity (50 default, upgradeable). Full storage: stops until collected. Collector drone: small floating Part that flies between resource nodes and storage (TweenService path). Upgrade: faster extraction (10s→5s→2s), larger storage (50→100→500). Cost: escalating per machine. ScreenGui shows all machine statuses: resource type, storage fill, active/inactive. Power system optional: machines require fuel (coal = 100 operations).' },
+      { name: 'Factory Production Line', keywords: ['production line', 'assembly line', 'factory line', 'manufacture', 'auto produce'],
+        how: 'Chain: input chest → processing machine → output chest. Machine types: Furnace(ore→bar), Sawmill(log→plank), Assembler(2+ materials→product). Each machine: input/output slots (IntValue tracking items). Processing time: 5-30s per item. Queue: if input has items and output has space, auto-process. Multiple machines chained: output of Furnace feeds Assembler. ScreenGui factory dashboard: flowchart of all machines with throughput stats (items/min). Bottleneck highlight: slowest machine in chain shown in red. Upgrade machines: faster processing, batch processing (2 items at once).' },
+      { name: 'Power / Energy Grid', keywords: ['power grid', 'energy', 'generator', 'electricity', 'power system'],
+        how: 'Machines require power. Generator Models: Coal(10 power, burns 1 coal/min), Solar(5 power, free but day-only), Nuclear(50 power, expensive). Power grid: total generation vs total consumption. If consumption > generation: random machines shut off. Power lines: visual Beam between generator and machines (decorative). ScreenGui power panel: bar showing generation/consumption, list of consumers. Battery: stores excess power (capacity 100), used when generation dips. Upgrade: higher-tier generators. Power priority: set which machines get power first when supply is limited. Brown-out warning: flicker Lighting when power is critical.' },
+      { name: 'Pipe / Fluid System', keywords: ['pipe', 'fluid', 'water pipe', 'oil pipe', 'pipe system', 'pipeline'],
+        how: 'Transport fluids between machines. Pipe Parts: Cyl shape connecting machines. Fluid types: Water, Oil, Lava, Acid (color-coded contents visible through transparent pipe). Flow rate: amount per second based on pipe tier (1/s, 5/s, 20/s). Pumps: required to push fluid uphill (BodyForce analog). Valves: toggle flow on/off (BoolValue). Tank storage: hold fluid buffer (capacity varies). Fluid used in: cooling machines (Water), fuel (Oil), crafting (Acid for etching). Leaks: damaged pipes (from attacks or wear) lose fluid until repaired. ScreenGui: pipeline diagram showing flow rates and tank levels.' },
+      { name: 'Drone / Robot Workers', keywords: ['drone worker', 'robot worker', 'automation drone', 'worker bot', 'automated worker'],
+        how: 'Programmable drones: small Model bots that perform tasks. Program via ScreenGui: simple command list [Collect(resource, location), Deliver(location), Mine(node), Build(blueprint)]. Drone executes commands in sequence loop. Pathfinding: PathfindingService to each waypoint. Capacity: carries 10 items max (upgrade to 50). Speed: 16 studs/s (upgrade to 32). Battery: NumberValue drains while active, recharge at station (20s). Max drones: 2 (free), 5 (premium). ScreenGui drone manager: status per drone (active task, location, battery, cargo). Idle drones return to home station. Sound: quiet electric hum.' },
     ],
   },
 ]
