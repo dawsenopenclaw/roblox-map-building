@@ -3090,6 +3090,7 @@ async function callGemini(
             ],
             generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4 },
           }),
+          signal: AbortSignal.timeout(30_000),
         },
       )
       if (res.status === 429) {
@@ -3158,6 +3159,7 @@ async function callGroq(
           temperature: 0.2,
           messages,
         }),
+        signal: AbortSignal.timeout(15_000),
       })
 
       if (res.status === 429) {
@@ -3685,6 +3687,13 @@ async function freeModelTwoPass(
     const { message: cleanConv, suggestions } = extractSuggestions(convRace.result)
     return { conversationText: cleanConv, luauCode: null, executedInStudio: false, suggestions, model: modelNames[convRace.index] }
   }
+
+  // ── PIPELINE TIMEOUT: return partial results instead of letting Vercel kill us ──
+  const PIPELINE_DEADLINE_MS = 90_000 // 90s hard deadline (Vercel limit is 120s)
+  const pipelineStart = Date.now()
+  const pipelineElapsed = () => Date.now() - pipelineStart
+  const isPipelineTimedOut = () => pipelineElapsed() > PIPELINE_DEADLINE_MS
+  const logTiming = (stage: string) => console.log(`[Pipeline:${stage}] +${(pipelineElapsed() / 1000).toFixed(1)}s`)
 
   // ── BUILD/SCRIPT INTENTS: Single-pass — generate description + code in ONE call ──
   const isScriptIntent = SCRIPT_INTENTS.has(intent) || SCRIPT_KEYWORDS.test(message)
@@ -5611,12 +5620,16 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     let buildRace: { result: string; index: number } | null = null
     const outputTokens = isScriptIntent ? 32768 : 16384
     if (!luauCode) {
+      logTiming('pre-gemini')
       console.log(`[SinglePass] Gemini-first build gen for: "${message.slice(0, 50)}" | prompt: ${enrichedCodePrompt.length} chars (base: ${basePromptLength}, enriched: +${enrichmentChars})`)
       // Try Gemini first — it's the best at structured code generation
       const geminiResult = await callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens)
+      logTiming('post-gemini')
       if (geminiResult && geminiResult.length > 200) {
         buildRace = { result: geminiResult, index: 2 }
         console.log('[SinglePass] Gemini responded:', geminiResult.length, 'chars')
+      } else if (isPipelineTimedOut()) {
+        console.warn(`[SinglePass] Pipeline deadline reached after Gemini (${(pipelineElapsed() / 1000).toFixed(1)}s) — skipping fallbacks`)
       } else {
         // Gemini failed/empty — fall back to racing remaining providers
         console.log('[SinglePass] Gemini failed, racing fallbacks')
@@ -5660,7 +5673,7 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
 
       // AUTO-RETRY: if build/script intent but AI returned text without code, retry once
       // with a stricter prompt that demands only code output
-      if (!luauCode && (intent === 'build' || isScriptIntent)) {
+      if (!luauCode && (intent === 'build' || isScriptIntent) && !isPipelineTimedOut()) {
         console.warn('[SinglePass] No code block found in response — retrying with strict code-only prompt')
         // Gemini first for strict retry too — Groq produces garbage code-only output
         const strictPrompt = isScriptIntent
@@ -5785,7 +5798,8 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       }
 
       // ── VERIFICATION PIPELINE ── Pre-test code before delivery
-      if (luauCode) {
+      logTiming('pre-verify')
+      if (luauCode && !isPipelineTimedOut()) {
         try {
           const verification = await verifyLuauCode(luauCode)
           finalVerificationScore = verification.score
@@ -5805,7 +5819,7 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
           }
           // If score is bad (25-50), attempt one re-generation with error context
           // Old threshold was 75 which retried decent builds, wasting time+tokens
-          else if (verification.score < 50 && verification.errors.length > 0) {
+          else if (verification.score < 50 && verification.errors.length > 0 && !isPipelineTimedOut()) {
             console.log(`[Verify] Score ${verification.score} is low, attempting re-generation with error feedback`)
             const errorFeedback = verification.errors.map(e => `- ${e}`).join('\n')
             const retryInstruction = `ORIGINAL USER REQUEST: "${message}"
@@ -5848,7 +5862,8 @@ ${effectiveInstruction}`
       }
 
       // ── LLM QUALITY SCORING: judge the output with a separate AI call ──
-      if (luauCode && !isObviouslyBroken(luauCode)) {
+      logTiming('pre-quality-score')
+      if (luauCode && !isObviouslyBroken(luauCode) && !isPipelineTimedOut()) {
         try {
           const qualityResult = await scoreOutput({
             prompt: message,
@@ -5872,12 +5887,13 @@ ${effectiveInstruction}`
       }
 
       // ── COMPLETENESS AUDIT: verify AI actually built what it described ──
-      if (luauCode && conversationText) {
+      logTiming('pre-audit')
+      if (luauCode && conversationText && !isPipelineTimedOut()) {
         try {
           const audit = auditBuild(luauCode, conversationText, message)
           console.log(`[Audit] Detail score: ${audit.detailScore}/100, parts: ${audit.partCount}, claims: ${audit.claimedFeatures.length}, missing: ${audit.missingFeatures.length}`)
 
-          if (!audit.passed && finalVerificationScore >= 40) {
+          if (!audit.passed && finalVerificationScore >= 40 && !isPipelineTimedOut()) {
             // Build passed syntax checks but is INCOMPLETE — additive retry (build on existing code)
             console.warn(`[Audit] Build INCOMPLETE: ${audit.suggestions.slice(0, 3).join('; ')}`)
             // Use additive retry — keeps existing code, adds what's missing
@@ -5969,7 +5985,7 @@ ${effectiveInstruction}`
     }
 
     // If both models failed to produce code, try lightweight retry then template fallback
-    if (!luauCode) {
+    if (!luauCode && !isPipelineTimedOut()) {
       console.warn('[SinglePass] Both models failed or code rejected — trying lightweight retry')
 
       // Retry with a MUCH shorter system prompt (no RAG, no patterns, no examples)
@@ -6002,7 +6018,7 @@ ${effectiveInstruction}`
 
       // Nuclear fallback: try OpenRouter multi-model race
       // This fires when ALL direct providers (Gemini, Groq, Anthropic) are down
-      if (!luauCode && process.env.OPENROUTER_API_KEY) {
+      if (!luauCode && process.env.OPENROUTER_API_KEY && !isPipelineTimedOut()) {
         console.warn('[SinglePass] All direct models failed — trying OpenRouter multi-model race')
         try {
           const { raceOpenRouterModels, selectModelChain, estimateBuildComplexity } = await import('@/lib/ai/openrouter')
@@ -6064,7 +6080,7 @@ ${effectiveInstruction}`
         }
 
         // Self-healing: check for runtime errors after deployment and auto-fix
-        if (executedInStudio) {
+        if (executedInStudio && !isPipelineTimedOut()) {
           // Wait 3 seconds for any runtime errors to surface in Studio console
           await new Promise(resolve => setTimeout(resolve, 3000))
           const runtimeErrors = await checkConsoleForErrors(sessionId)
