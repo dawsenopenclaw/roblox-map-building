@@ -3243,6 +3243,845 @@ local DIALOGUES = {
       'NPC dialogue without state check (player can turn in quest they never started)',
     ],
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DEVFORUM PRO BUILDER KNOWLEDGE — Extracted from 20+ top DevForum threads
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    name: 'Pro Building — Dimensions & Scale (DevForum)',
+    keywords: ['build', 'house', 'building', 'wall', 'door', 'window', 'room', 'scale', 'size', 'stud', 'dimension', 'architecture', 'structure', 'cabin', 'castle', 'shop', 'store', 'apartment', 'office'],
+    snippet: `-- PRO BUILDER DIMENSIONS (from DevForum showcase builders)
+-- R15 character height: ~5 studs (1 stud = 0.28 meters)
+-- GOLDEN RULE: Scale to Roblox character, NOT real-world measurements
+
+-- ROOM & STRUCTURE SIZES:
+-- Standard room height: 10-12 studs (comfortable for R15)
+-- Standard door: 4.6W x 6.7H studs (with 0.05 thick door part)
+-- Standard window: 3W x 3H studs (centered at ~6 studs up)
+-- Hallway width: 6-8 studs minimum
+-- Staircase: 2 stud treads, 1 stud risers, 6-8 studs wide
+
+-- WALL CONSTRUCTION:
+-- Wall thickness: 0.8-1.0 studs (NEVER 2-4, looks chunky)
+-- Walls thinner than 0.4 studs = exploiters clip through
+-- ALWAYS: wall panel + baseboard(0.3h) + crown molding(0.2h) + corner posts(0.4x0.4)
+
+-- ROOF RULES:
+-- Overhang: 1.5-2.0 studs past walls (NEVER flush — looks amateur)
+-- Roof pitch: 30-45 degrees using WedgeParts
+-- Chimney: 1.5x1.5 studs, extends 3-4 studs above ridge
+
+-- FOUNDATION:
+-- Every building sits on a visible foundation
+-- 0.5-1.0 stud thick, extends 0.5-1.0 past walls
+-- Material: Concrete or Cobblestone, slightly darker than walls
+
+-- GRID SNAPPING (pro workflow):
+-- Structure: 1 stud grid | Detail: 0.2 stud | Fine: 0.125 stud
+-- Rotation: 15 degrees for main, free rotation for organic detail
+-- For modular builds: use multiples of 4, 8, 16, 32 studs`,
+    pitfalls: [
+      'Walls thicker than 1 stud look chunky and waste interior space',
+      'No roof overhang = instant amateur tell (always 1.5-2 stud overhang)',
+      'Forgetting foundation makes buildings float (always add 0.5-1 stud base)',
+      'Real-world scale looks wrong in Roblox — scale to character (5 studs tall)',
+      'Flat roofs on residential buildings look lazy — use WedgeParts for pitch',
+      'Uniform grid alignment everywhere looks robotic — vary rotation on details',
+    ],
+  },
+
+  {
+    name: 'Pro Building — Color & Material Variation (DevForum)',
+    keywords: ['color', 'material', 'palette', 'paint', 'variation', 'texture', 'build', 'house', 'building', 'stone', 'brick', 'wood', 'design', 'aesthetic'],
+    snippet: `-- COLOR VARIATION TECHNIQUE (from top DevForum showcase builders)
+-- THE #1 TECHNIQUE that separates pro from amateur:
+-- NEVER use one flat color on large surfaces.
+
+-- HOW TO VARY COLOR:
+-- 1. Pick a base color (e.g., RGB 180, 140, 100 for warm brick)
+-- 2. For each section of wall/floor, vary by ±10-15 RGB per channel
+-- 3. Randomly darken some parts (shader-like depth)
+-- 4. Max 3 color variations per material type (performance)
+
+-- EXAMPLE — Stone Wall with Variation:
+-- Base: Color3.fromRGB(140, 135, 130) — Concrete
+-- Darker: Color3.fromRGB(125, 120, 115) — Concrete
+-- Lighter: Color3.fromRGB(155, 150, 145) — Concrete
+-- Accent: Color3.fromRGB(110, 105, 100) — Slate
+
+-- PROVEN COLOR PALETTES BY GENRE:
+-- Medieval: Brown(139,90,43) + Stone(158,148,136) + Dark Wood(80,50,20)
+-- Modern: White(240,240,240) + Gray(180,180,180) + Accent Blue(65,145,220)
+-- Fantasy: Purple(130,80,180) + Gold(212,175,55) + Teal(0,180,170)
+-- Horror: Dark Gray(50,50,55) + Rust Red(139,0,0) + Sickly Green(80,120,50)
+-- Tropical: Sand(237,221,175) + Ocean(0,150,200) + Palm(60,140,60)
+-- Cottage: Cream(255,245,225) + Sage(140,170,130) + Wood(160,110,60)
+
+-- ROTATION VARIATION (breaks the grid look):
+-- Set rotation snap to 0 (free rotation)
+-- Rotate individual detail elements randomly on X,Y,Z
+-- Creates worn/aged/organic aesthetic
+-- Especially effective on: stones, bricks, planks, shingles, debris`,
+    pitfalls: [
+      'Using exact same color on every part of a wall (looks flat and artificial)',
+      'More than 3 color variations per material (hurts performance, looks noisy)',
+      'All SmoothPlastic materials (use Concrete, Wood, Brick, Cobblestone, Slate)',
+      'Neon material overuse (looks cheap — reserve for actual lights and accents)',
+      'Ignoring color theory — clashing colors kill the aesthetic',
+    ],
+  },
+
+  {
+    name: 'Pro Lighting — Future Technology Setup (DevForum)',
+    keywords: ['lighting', 'atmosphere', 'light', 'future', 'shadow', 'glow', 'ambient', 'sun', 'fog', 'bloom', 'post process', 'color correction', 'sky', 'time of day'],
+    snippet: `-- PRO LIGHTING SETUP (from DevForum lighting guides)
+-- Use Future lighting technology for best quality
+
+-- LIGHTING SERVICE PROPERTIES:
+-- Technology = Enum.Technology.Future
+-- Brightness = 1.5 (range 1-3, use 2.3 for bright midday)
+-- ClockTime = 14 (warm afternoon — range 12-16 for daytime)
+-- ShadowSoftness = 0.1 (crisp shadows — 0 = hard, 1 = blurry)
+-- ExposureCompensation = 0.5 (0.5-0.8 range)
+-- EnvironmentSpecularScale = 1 (full metal/glass reflections)
+-- Ambient = Color3.fromRGB(80, 80, 90) (cool-toned gray)
+-- OutdoorAmbient = Color3.fromRGB(120, 115, 100) (warm outdoor)
+
+-- POST-PROCESSING (children of Lighting):
+-- ColorCorrectionEffect:
+--   Saturation = 0.1 (subtle — don't over-saturate)
+--   Contrast = 0.1
+--   Brightness = 0 (leave at default)
+--
+-- BloomEffect:
+--   Intensity = 0.1 (SUBTLE — never above 0.3)
+--   Size = 0.4
+--   Threshold = 0.8 (only bright things bloom)
+--
+-- SunRaysEffect:
+--   Intensity = 0.2 (SUBTLE — excessive sun rays = #1 amateur tell)
+--   Spread = 0.7
+--
+-- DepthOfFieldEffect (OPTIONAL, use sparingly):
+--   FarIntensity = 0.1 (high values cause nausea)
+--   FocusDistance = 50
+--   InFocusRadius = 30
+--
+-- Atmosphere (child of Lighting):
+--   Density = 0.3
+--   Offset = 0
+--   Color = Color3.fromRGB(200, 210, 230) (blue-tinted for outdoor)
+--   Decay = Color3.fromRGB(100, 80, 60) (warm sunset decay)
+--   Glare = 10
+--   Haze = 1.55
+
+-- GENRE-SPECIFIC SETTINGS:
+-- Horror: ClockTime=0, Brightness=0.5, FogEnd=200, no Bloom, no SunRays
+-- Tropical: ClockTime=14, Brightness=2.5, Atmosphere.Color=cyan-tinted
+-- Medieval: ClockTime=16, Brightness=1.5, warm Ambient, heavy Atmosphere
+-- Space: ClockTime=0, Brightness=0, only PointLights on structures
+
+-- INTERIOR LIGHTING (NEVER skip):
+-- Every enclosed room: PointLight (Brightness=1.5, Range=16)
+-- Warm indoor: Color3.fromRGB(255, 220, 180)
+-- Cold fluorescent: Color3.fromRGB(200, 220, 255)
+-- Fireplace: Fire + PointLight(255,150,50) + Brightness=2, Range=12`,
+    pitfalls: [
+      'Excessive SunRays intensity (>0.3) — the #1 amateur lighting mistake',
+      'Stacking ALL post-processing effects at once (washed out, laggy)',
+      'DepthOfField with high FarIntensity (causes motion sickness)',
+      'No interior lights (rooms are pitch black with Future lighting)',
+      'Bloom > 0.3 makes everything look like a fever dream',
+      'Using ShadowMap technology when Future is available (worse quality)',
+    ],
+  },
+
+  {
+    name: 'Furniture & Interior Placement (DevForum)',
+    keywords: ['furniture', 'interior', 'room', 'house', 'bed', 'chair', 'table', 'kitchen', 'bathroom', 'living room', 'bedroom', 'decoration', 'decor', 'inside', 'indoor'],
+    snippet: `-- FURNITURE PLACEMENT RULES (DevForum pro builders)
+-- Character is ~5 studs tall — all furniture scales from this
+
+-- STANDARD FURNITURE DIMENSIONS (in studs):
+-- Dining table: 5W x 3D x 3H (top at 3 studs = waist height)
+-- Chair: 2W x 2D x 4.5H (seat at 2.5 studs)
+-- Desk: 4W x 2D x 3H
+-- Bed single: 4W x 7D x 2.5H (frame) + 0.8H mattress
+-- Bed double: 6W x 7D x 2.5H (frame) + 0.8H mattress
+-- Sofa: 6W x 3D x 3H (cushions 0.5 studs above frame)
+-- Bookshelf: 4W x 1.2D x 6H (4 shelves + colored book parts)
+-- Kitchen counter: 3H x 2D (continuous along walls)
+-- Sink: 2W x 2D, recessed 0.3 into counter
+-- Toilet: 1.5W x 2.5D x 3H
+-- Bathtub: 3W x 6D x 2.5H
+
+-- ROOM LAYOUT RULES:
+-- Leave 3+ stud walkways between furniture
+-- Push furniture against walls (not floating in center)
+-- Rug under dining set (extends 2 studs past chairs)
+-- Nightstands flanking beds
+-- Lamps on nightstands and end tables
+-- Pictures on walls (0.2 thick, hung at 6-7 studs up)
+-- Curtains flanking windows (0.15 thick, floor to ceiling)
+
+-- KITCHEN LAYOUT:
+-- L-shape or U-shape counter along 2-3 walls
+-- Stove: counter section with 4 cylinder burners on top
+-- Fridge: 3W x 2D x 6H box with handle part
+-- Sink in counter with faucet (cylinder parts)
+
+-- DETAIL PARTS (what separates good from great):
+-- Door handles: 0.15 diameter cylinder, offset from door face
+-- Cabinet handles: thin cylinder or rectangular pull
+-- Flower pots: cylinder with green sphere-ish plant on top
+-- Ceiling fan: 4 blade parts + motor housing + PointLight
+-- Clock on wall: thin cylinder with frame ring`,
+    pitfalls: [
+      'Empty rooms (EVERY room needs furniture appropriate to its function)',
+      'Furniture floating in center of room (push against walls)',
+      'All furniture same height/size (vary it — small tables, tall shelves)',
+      'Forgetting rugs, wall decorations, and small props (feels sterile)',
+      'No lights in rooms (every room needs at least 1 PointLight)',
+    ],
+  },
+
+  {
+    name: 'Landscaping & Exterior Detail (DevForum)',
+    keywords: ['tree', 'landscape', 'garden', 'path', 'rock', 'bush', 'flower', 'grass', 'outdoor', 'yard', 'park', 'street', 'sidewalk', 'fence', 'nature', 'terrain'],
+    snippet: `-- LANDSCAPING RULES (DevForum pro builders)
+
+-- TREE CONSTRUCTION (multi-part, NOT one block):
+-- Trunk: Brown cylinder, 1-1.5W x 6-10H studs
+-- Canopy: 2-4 green sphere/ellipsoid parts, overlapping
+-- Low-poly style: single WedgePart pyramid canopy
+-- Branch: thin cylinders angled from trunk
+-- Root detail: 2-3 thin parts at base
+
+-- PLACEMENT PATTERNS:
+-- Trees: clusters of 3-5, not uniform grid
+-- Rocks: groups of 2-3, varying sizes (large + 2 small)
+-- Bushes: line along building foundations and paths
+-- Flowers: small color pops near entrances and paths
+
+-- PATH CONSTRUCTION:
+-- Width: 4-6 studs (2 characters side by side)
+-- Material: Cobblestone or Slate
+-- Color: slightly darker than surrounding ground
+-- Edge stones: 0.3-stud-tall border parts on each side
+
+-- FENCING:
+-- Post: 0.4x0.4 square, 4 studs tall, every 4-6 studs
+-- Rail: 0.2x0.2, connects post to post at 1.5 and 3 studs height
+-- Picket fence: vertical 0.2x3x0.1 planks every 0.6 studs
+
+-- STREET INFRASTRUCTURE:
+-- Lamp post: base(1.5x1.5x0.3) + pole(0.3x10x0.3) + arm(2x0.3x0.3) + housing(1x0.8x1) + PointLight
+-- Bench: 2 stone ends + 3 wood slats for seat + 2 slats for back = 7 parts
+-- Fire hydrant: cylinder base + cylinder body + 2 nozzles = 4 parts
+-- Trash can: cylinder + flat cylinder lid = 2 parts
+-- Mailbox: box(1.5x1.5x1) on pole(0.3x3x0.3) + flag = 3 parts
+
+-- GROUND DETAIL:
+-- Vary ground color (±5-10 RGB from base)
+-- Add small debris near buildings (tiny Parts)
+-- Puddles: flat cylinders with Glass material + 0.5 transparency
+-- Moss on old buildings: green-tinted parts at base of walls`,
+    pitfalls: [
+      'Trees as single block (always multi-part: trunk + canopy + branches)',
+      'Grid-aligned trees (cluster organically in groups of 3-5)',
+      'No path edge detail (always add border stones or pavement edges)',
+      'Empty yards (add bushes, rocks, flowers near buildings)',
+      'Ignoring scale — trees should be 10-20 studs tall minimum',
+    ],
+  },
+
+  {
+    name: 'Horror Entity AI (DevForum)',
+    keywords: ['horror', 'entity', 'monster', 'chase', 'jumpscare', 'scare', 'ai', 'pathfinding', 'doors', 'fnaf', 'backrooms', 'creepy', 'haunted'],
+    snippet: `-- HORROR ENTITY AI SYSTEM (from DevForum Doors-style breakdowns)
+
+-- ENTITY STATE MACHINE:
+local EntityState = {
+  Dormant = "Dormant",   -- Hidden, waiting for trigger
+  Stalking = "Stalking", -- Following at distance, peeking
+  Chasing = "Chasing",   -- Full speed pursuit
+  Attacking = "Attacking",-- Kill animation
+  Retreating = "Retreating", -- Returns to dormant
+}
+
+-- PATHFINDING SETUP:
+local PathfindingService = game:GetService("PathfindingService")
+local agentParams = {
+  AgentRadius = 2,
+  AgentHeight = 6,
+  AgentCanJump = false,
+  AgentCanClimb = false,
+  WaypointSpacing = 4,
+  -- Use pathfinding modifiers for doors:
+  Costs = { DoorOpen = 1, DoorClosed = 5 },
+}
+
+-- CHASE MECHANICS:
+-- Speed: Walk=8, Stalk=12, Chase=24-28 (faster than player sprint of 16)
+-- Detection: Raycast from entity eyes to player head
+-- Line of sight check: if blocked by wall, lose aggro after 3 seconds
+-- Sound cues: heartbeat gets louder as entity approaches
+-- Footstep sounds with increasing tempo during chase
+
+-- JUMPSCARE TRIGGER:
+-- When entity reaches player (distance < 4 studs):
+-- 1. Anchor player's HumanoidRootPart
+-- 2. Fire RemoteEvent to show fullscreen jumpscare GUI
+-- 3. Camera CFrame to entity face
+-- 4. Play scream sound (not too loud — 0.5 volume)
+-- 5. Wait 1.5 seconds
+-- 6. Kill player via Humanoid:TakeDamage(math.huge)
+
+-- HIDING MECHANIC (Doors-style):
+-- Closet/locker with ProximityPrompt "Hide"
+-- Player teleported inside, camera switched to peek-through-crack view
+-- Entity checks hiding spots: 30% chance to check each one
+-- If found: jumpscare from inside. If not: entity passes.
+
+-- DOOR INTERACTION:
+-- Entity approaches locked door → plays bang animation
+-- After 3 bangs (2s each), door breaks open
+-- Player can barricade doors (adds 2 extra bangs required)
+-- PathfindingModifier on door Parts to make entity prefer open routes
+
+-- SPAWN LOGIC:
+-- Never spawn entity in player's line of sight
+-- Spawn at furthest valid point from all players
+-- Minimum 60 stud distance from nearest player
+-- Audio cue 5-8 seconds before entity appears (warning)`,
+    pitfalls: [
+      'Entity spawning in view (breaks immersion — always spawn out of sight)',
+      'Jumpscare volume too loud (0.5 max, players have headphones)',
+      'Entity faster than humanly reactable (cap at 28 speed, player sprint is 16)',
+      'No audio cues before chase (players need 3-5 second warning)',
+      'Client-side entity logic (exploiters disable the entity)',
+      'Constant chasing with no downtime (tension needs release cycles)',
+    ],
+  },
+
+  {
+    name: 'Racing Vehicle Physics (DevForum)',
+    keywords: ['racing', 'race', 'vehicle', 'car', 'kart', 'drift', 'speed', 'track', 'lap', 'vehicleseat', 'drive'],
+    snippet: `-- RACING VEHICLE SYSTEM (DevForum best practices)
+
+-- VEHICLE SETUP (VehicleSeat-based):
+-- VehicleSeat is the ONLY seat type that provides Steer/Throttle inputs
+-- Properties: MaxSpeed=80, Torque=50000, TurnSpeed=2
+-- For kart racing: MaxSpeed=60, TurnSpeed=3 (tighter turns)
+-- For street racing: MaxSpeed=120, TurnSpeed=1.5
+
+-- CHASSIS CONSTRUCTION:
+-- Body: Main Part (8x2x14 studs for standard car)
+-- VehicleSeat: centered, slightly below body top
+-- Wheels: 4 Cylinder parts, connected via HingeConstraints
+-- Wheel size: 1.5 radius for kart, 2 radius for car
+-- Suspension: SpringConstraints between body and wheel axles
+
+-- DRIFT MECHANIC:
+-- Detect: VehicleSeat.Steer ~= 0 AND speed > 40
+-- Apply: Reduce wheel friction via CustomPhysicalProperties
+-- Normal friction: 0.7  |  Drift friction: 0.2
+-- Visual: tire smoke particles when drifting
+-- Boost: accumulate drift time → release for speed burst
+
+-- LAP TRACKING (server-side):
+-- Checkpoint Parts (CanCollide=false, Transparency=1)
+-- Player must hit checkpoints IN ORDER (prevents shortcutting)
+-- Lap complete only when ALL checkpoints touched + crossing finish line
+-- Store best lap time in OrderedDataStore
+
+-- CHECKPOINT SYSTEM:
+local checkpoints = {} -- folder of Parts named "CP_1", "CP_2", etc.
+local playerProgress = {} -- [userId] = { currentCP = 1, lapCount = 0, startTime = 0 }
+
+-- On checkpoint touch:
+-- if checkpoint.Name == "CP_" .. (playerProgress[userId].currentCP) then
+--   playerProgress[userId].currentCP += 1
+--   if currentCP > totalCheckpoints then
+--     playerProgress[userId].currentCP = 1
+--     playerProgress[userId].lapCount += 1
+--   end
+-- end
+
+-- NITRO/BOOST:
+-- BodyVelocity applied in look direction for 2 seconds
+-- MaxForce = Vector3.new(50000, 0, 50000)
+-- Velocity = rootPart.CFrame.LookVector * boostSpeed
+-- Cooldown: 10 seconds between uses
+-- Pickup pads on track restore boost charge`,
+    pitfalls: [
+      'Using Seat instead of VehicleSeat (no steering/throttle input)',
+      'Client-side speed (exploiters go 9999 speed — validate on server)',
+      'No anti-shortcut (checkpoint system prevents cutting track)',
+      'Wheels without SpringConstraints (car bounces uncontrollably)',
+      'MaxSpeed too high (>150 causes physics instability in Roblox)',
+    ],
+  },
+
+  {
+    name: 'Round-Based Game Loop (DevForum)',
+    keywords: ['round', 'lobby', 'match', 'countdown', 'intermission', 'game loop', 'round based', 'matchmaking', 'waiting', 'arena'],
+    snippet: `-- ROUND-BASED GAME LOOP (DevForum pattern)
+
+-- STATE MACHINE:
+-- Waiting → Countdown → Playing → Results → Waiting
+local GameState = { Waiting = 1, Countdown = 2, Playing = 3, Results = 4 }
+local currentState = GameState.Waiting
+
+-- CONFIGURATION:
+local MIN_PLAYERS = 2
+local COUNTDOWN_TIME = 10 -- seconds
+local ROUND_DURATION = 120 -- seconds
+local RESULTS_TIME = 8 -- seconds
+local INTERMISSION_TIME = 15 -- seconds
+
+-- MAIN LOOP (runs forever on server):
+while true do
+  -- WAITING: Need minimum players
+  currentState = GameState.Waiting
+  repeat
+    updateStatus("Waiting for players... (" .. #activePlayers .. "/" .. MIN_PLAYERS .. ")")
+    task.wait(1)
+  until #getAlivePlayers() >= MIN_PLAYERS
+
+  -- COUNTDOWN: Players confirmed, start countdown
+  currentState = GameState.Countdown
+  for i = COUNTDOWN_TIME, 1, -1 do
+    updateStatus("Starting in " .. i .. "...")
+    task.wait(1)
+    if #getAlivePlayers() < MIN_PLAYERS then break end -- Abort if players leave
+  end
+  if #getAlivePlayers() < MIN_PLAYERS then continue end -- Restart loop
+
+  -- PLAYING: Teleport to arena, start round
+  currentState = GameState.Playing
+  local arenaSpawns = workspace.Arena.Spawns:GetChildren()
+  for i, player in getAlivePlayers() do
+    local spawn = arenaSpawns[((i - 1) % #arenaSpawns) + 1]
+    teleportPlayer(player, spawn.CFrame + Vector3.new(0, 3, 0))
+    giveWeapons(player)
+  end
+
+  -- Round timer
+  local roundStart = os.clock()
+  repeat
+    local elapsed = os.clock() - roundStart
+    local remaining = math.max(0, ROUND_DURATION - elapsed)
+    updateStatus("Round: " .. math.ceil(remaining) .. "s left | Alive: " .. #getAlivePlayers())
+    task.wait(0.5)
+  until #getAlivePlayers() <= 1 or (os.clock() - roundStart) >= ROUND_DURATION
+
+  -- RESULTS: Show winner, award prizes
+  currentState = GameState.Results
+  local winner = getAlivePlayers()[1]
+  if winner then
+    awardPrize(winner, 100) -- coins
+    updateStatus(winner.Name .. " wins! +100 coins")
+  else
+    updateStatus("Draw! No winner.")
+  end
+  task.wait(RESULTS_TIME)
+
+  -- Cleanup: teleport all back to lobby, remove weapons
+  teleportAllToLobby()
+  task.wait(INTERMISSION_TIME)
+end`,
+    pitfalls: [
+      'No minimum player check (round starts with 1 player)',
+      'Client-side round timer (exploiter extends their round time)',
+      'Not handling player disconnect mid-round (nil checks everywhere)',
+      'Teleporting without adding 3 studs Y offset (player falls through floor)',
+      'No abort on player leave during countdown (round starts with 1 player)',
+    ],
+  },
+
+  {
+    name: 'Trading System — Secure (DevForum)',
+    keywords: ['trade', 'trading', 'exchange', 'swap', 'give', 'offer', 'accept', 'trade system'],
+    snippet: `-- SECURE TRADING SYSTEM (DevForum anti-dupe patterns)
+
+-- CRITICAL: All trades validated SERVER-SIDE
+-- Client only shows UI and sends trade requests
+
+-- TRADE SESSION (server-side):
+local activeTrades = {} -- [tradeId] = { player1, player2, offers1, offers2, confirmed1, confirmed2 }
+
+-- ANTI-DUPLICATION RULES:
+-- 1. Lock items when placed in trade window (can't be used/traded elsewhere)
+-- 2. Verify item ownership AGAIN at confirmation time (not just at offer time)
+-- 3. Use a trade lock: player can only be in 1 trade at a time
+-- 4. Double-confirm: both players must confirm, then 3-second countdown, then re-verify
+
+-- TRADE FLOW:
+-- 1. Player A sends trade request to Player B (ProximityPrompt or GUI)
+-- 2. Player B accepts → trade window opens for both
+-- 3. Both drag items into offer slots (server validates ownership)
+-- 4. Both click "Ready" → items lock
+-- 5. Both click "Confirm" → 3s countdown (can cancel during)
+-- 6. Server RE-VERIFIES both players still own offered items
+-- 7. Atomic swap: remove items from both, give items to both
+-- 8. If any step fails → return all items, cancel trade
+
+-- ITEM LOCKING:
+local lockedItems = {} -- [itemId] = tradeId
+local function lockItem(itemId: string, tradeId: string): boolean
+  if lockedItems[itemId] then return false end -- Already in another trade
+  lockedItems[itemId] = tradeId
+  return true
+end
+
+-- ATOMIC SWAP (the critical section):
+local function executeTrade(trade)
+  -- RE-VERIFY ownership of all items
+  for _, item in trade.offers1 do
+    if not playerOwnsItem(trade.player1, item) then return false, "Items changed" end
+  end
+  for _, item in trade.offers2 do
+    if not playerOwnsItem(trade.player2, item) then return false, "Items changed" end
+  end
+
+  -- ATOMIC: remove then add (if add fails, restore)
+  removeItems(trade.player1, trade.offers1)
+  removeItems(trade.player2, trade.offers2)
+  addItems(trade.player1, trade.offers2)
+  addItems(trade.player2, trade.offers1)
+
+  -- Unlock all items
+  for _, item in trade.offers1 do lockedItems[item.id] = nil end
+  for _, item in trade.offers2 do lockedItems[item.id] = nil end
+
+  return true, "Trade complete"
+end`,
+    pitfalls: [
+      'Client-side item validation (exploiter duplicates items)',
+      'Not re-verifying ownership at confirmation time (item could be sold/traded meanwhile)',
+      'No item locking (same item offered in 2 simultaneous trades → duplication)',
+      'Non-atomic swap (if game crashes mid-trade, items vanish — need rollback)',
+      'No trade cooldown (spamming trade requests to grief other players)',
+    ],
+  },
+
+  {
+    name: 'CollectionService Tag Patterns (DevForum)',
+    keywords: ['collectionservice', 'tag', 'collection', 'behavior', 'component', 'system', 'pattern', 'instance'],
+    snippet: `-- COLLECTIONSERVICE PATTERNS (DevForum best practice)
+-- Use tags instead of per-instance scripts for performance
+-- One script handles ALL instances with a tag
+
+local CollectionService = game:GetService("CollectionService")
+
+-- PATTERN: Tag-based behavior system
+-- Instead of putting a script inside every coin:
+-- Tag all coins "Collectible", handle them from ONE script
+
+local function onCollectibleAdded(instance: BasePart)
+  if not instance:IsA("BasePart") then return end
+
+  -- Setup behavior for this tagged instance
+  local connection = instance.Touched:Connect(function(hit)
+    local humanoid = hit.Parent:FindFirstChild("Humanoid")
+    if not humanoid then return end
+    local player = game.Players:GetPlayerFromCharacter(hit.Parent)
+    if not player then return end
+
+    -- Award and cleanup
+    awardCoins(player, instance:GetAttribute("Value") or 1)
+    instance:Destroy()
+  end)
+
+  -- Cleanup when tag removed or instance destroyed
+  instance.Destroying:Connect(function()
+    connection:Disconnect()
+  end)
+end
+
+-- Connect to ALL current and future tagged instances
+for _, instance in CollectionService:GetTagged("Collectible") do
+  onCollectibleAdded(instance)
+end
+CollectionService:GetInstanceAddedSignal("Collectible"):Connect(onCollectibleAdded)
+
+-- COMMON TAG PATTERNS:
+-- "KillBrick" — one script handles ALL kill bricks
+-- "SpinningPart" — one script rotates ALL tagged parts
+-- "Interactable" — ProximityPrompt setup for all tagged parts
+-- "DamageZone" — periodic damage to all players inside
+-- "Checkpoint" — save progress on touch
+
+-- ATTRIBUTES ON TAGGED INSTANCES:
+-- Use instance:SetAttribute("Speed", 5) for per-instance config
+-- Read with instance:GetAttribute("Speed") or 5 (default)
+-- Avoids needing Value objects inside each part`,
+    pitfalls: [
+      'Script inside every instance (CollectionService is 10-100x more efficient)',
+      'Not handling GetInstanceAddedSignal (misses instances added after script runs)',
+      'Not cleaning up connections on instance destroy (memory leak)',
+      'Using Value objects when Attributes work (Attributes are faster and cleaner)',
+    ],
+  },
+
+  {
+    name: 'GamePass vs DevProduct — Monetization (DevForum)',
+    keywords: ['gamepass', 'devproduct', 'monetization', 'purchase', 'robux', 'revenue', 'money', 'shop', 'premium', 'vip'],
+    snippet: `-- GAMEPASS vs DEVPRODUCT (when to use which)
+
+-- GAMEPASS: One-time permanent purchase (buy once, own forever)
+-- Use for: VIP access, 2x multipliers, exclusive areas, cosmetics
+-- Pricing: 100-5000 Robux (higher = more commitment)
+--
+-- DEVPRODUCT: Repeatable purchase (can buy multiple times)
+-- Use for: Currency packs, extra lives, skip stage, speed boosts
+-- Pricing: 25-500 Robux (lower barrier, impulse buys)
+
+local MarketplaceService = game:GetService("MarketplaceService")
+
+-- CHECK GAMEPASS OWNERSHIP:
+local function hasGamepass(player: Player, gamepassId: number): boolean
+  local success, owns = pcall(function()
+    return MarketplaceService:UserOwnsGamePassAsync(player.UserId, gamepassId)
+  end)
+  return success and owns
+end
+
+-- PROCESS DEV PRODUCT PURCHASE:
+MarketplaceService.ProcessReceipt = function(receiptInfo)
+  local player = game.Players:GetPlayerFromCharacter(
+    game.Players:GetNameFromUserIdAsync(receiptInfo.PlayerId)
+  ) or game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
+
+  if not player then return Enum.ProductPurchaseDecision.NotProcessedYet end
+
+  local productId = receiptInfo.ProductId
+
+  if productId == COIN_PACK_ID then
+    addCoins(player, 1000)
+  elseif productId == SKIP_STAGE_ID then
+    skipStage(player)
+  end
+
+  -- CRITICAL: Return PurchaseGranted ONLY after granting the item
+  return Enum.ProductPurchaseDecision.PurchaseGranted
+end
+
+-- OPTIMAL PRICE TIERS (from DevForum revenue data):
+-- Entry tier: 100-300 Robux (small boosts, cosmetics, starter packs)
+-- Mid tier: 400-1000 Robux (VIP, 2x multiplier, QoL features)
+-- Premium tier: 1500-3000 Robux (exclusive items, major advantages)
+-- Whale tier: 5000+ Robux (ultimate bundles, max everything)
+
+-- REVENUE MATH:
+-- Roblox takes ~30% platform fee
+-- DevEx rate: 350 Robux = $1 USD
+-- Effective: ~24-27% of player purchase price reaches developer
+-- 1000 Robux gamepass ≈ $2 real money to developer
+-- Premium Payouts = 20-40% of total revenue for games with 15+ min sessions
+
+-- PROMPT FIRST PURCHASE:
+-- After tutorial, show limited-time "Starter Pack" (discounted)
+-- Show gamepass benefits in death screen ("2x coins would have given you 200!")
+-- Never block progress — just slow it for free players`,
+    pitfalls: [
+      'Not using pcall on MarketplaceService calls (they can fail)',
+      'Returning PurchaseGranted before actually giving the item (player loses purchase)',
+      'GamePass for consumables (use DevProduct — GamePass is permanent)',
+      'No receipt validation (ProcessReceipt must handle edge cases)',
+      'Pay-to-win that blocks free players entirely (kills retention)',
+      'Price too high for first purchase (keep entry tier under 300 Robux)',
+    ],
+  },
+
+  {
+    name: 'Player Retention — First 30 Seconds (DevForum)',
+    keywords: ['retention', 'onboarding', 'tutorial', 'new player', 'first time', 'ftue', 'engage', 'session', 'hook'],
+    snippet: `-- PLAYER RETENTION (from DevForum + official Roblox design docs)
+-- 50% of players leave in first 30 seconds if confused
+-- Target: 3-4 minute minimum session time (triggers algorithm pickup)
+
+-- FIRST 30 SECONDS CHECKLIST:
+-- 1. Camera shows something exciting immediately (not a blank lobby)
+-- 2. Clear visual cue: bouncing arrow, particle trail, glowing object
+-- 3. First action succeeds GUARANTEED (impossible to fail)
+-- 4. Reward within 10 seconds (coins, XP, item)
+-- 5. Show progression: XP bar filling, level counter, collection percentage
+
+-- ONBOARDING TECHNIQUES:
+-- Visual cues: bouncing arrows over interactables, particle trails
+-- Contextual hints: show instruction only when player reaches a feature
+-- Timed hints: if most players complete task in 10s, show hint at 11s
+-- Hide non-essential UI during tutorial (less overwhelming)
+-- Lead player through buy→use→sell cycle explicitly
+
+-- WHAT KILLS RETENTION:
+-- Camera starting outside playable world
+-- No clear UI indicator showing where to go
+-- Tutorial dumping all info at once (contextual > frontloaded)
+-- Punishing early (first death should feel like learning, not failure)
+-- Dark/unsaturated visuals (pump up saturation and brightness)
+-- Forcing players to read text walls
+-- No visible goals or progression
+
+-- REWARD SCHEDULING (keep them coming back):
+-- 0-30s: first reward (immediate gratification)
+-- 1-3m: first unlock (new area, new ability)
+-- 5m: daily reward system shown
+-- 10m: social features introduced (trading, guilds)
+-- 15m: premium features teased (not pushed)
+
+-- D1 RETENTION TARGETS:
+-- 2% = failing badly (game has fundamental issues)
+-- 10% = average for new games
+-- 20%+ = good (game is working)
+-- 40%+ = excellent (potential featured game)
+
+-- SESSION TIME:
+-- Under 2 minutes average = something is broken
+-- 3-4 minutes = baseline acceptable
+-- 10+ minutes = healthy game
+-- 30+ minutes = engaged community`,
+    pitfalls: [
+      'Forcing long tutorials before fun (get to gameplay in under 20 seconds)',
+      'Text-only instructions (use visual arrows, highlights, effects)',
+      'Punishing new players (first attempt should be impossible to fail)',
+      'No early rewards (players need dopamine hit within 10 seconds)',
+      'Same reward amount every time (escalate rewards to build excitement)',
+      'Dark depressing visuals for a kids game (bright colors retain better)',
+    ],
+  },
+
+  {
+    name: 'Parallel Luau — Actors (DevForum)',
+    keywords: ['parallel', 'actor', 'multithread', 'performance', 'heavy', 'computation', 'npc ai', 'terrain gen', 'optimize'],
+    snippet: `-- PARALLEL LUAU WITH ACTORS (DevForum 2024-2025 patterns)
+-- Use for heavy computation: NPC AI, terrain gen, pathfinding, physics
+
+-- SETUP: Actor model wraps a script for parallel execution
+-- Each Actor runs on its own thread (true parallelism)
+
+-- Structure:
+-- ServerScriptService/
+--   NPCManager (Script — orchestrator)
+--   NPCActor (Actor)
+--     NPCBrain (Script inside Actor — runs in parallel)
+
+-- ORCHESTRATOR (regular serial script):
+local actors = {}
+for _, npc in workspace.NPCs:GetChildren() do
+  local actor = ServerStorage.NPCActor:Clone()
+  actor.Parent = npc
+  actor:SetAttribute("TargetNPC", npc.Name)
+  actors[npc.Name] = actor
+end
+
+-- Send work to actors via BindableEvent inside each Actor:
+for _, actor in actors do
+  actor.ProcessAI:Fire() -- Each actor processes in parallel
+end
+
+-- ACTOR SCRIPT (runs in parallel):
+local actor = script:GetActor()
+local npc = actor.Parent
+
+actor.ProcessAI.Event:ConnectParallel(function()
+  -- This runs on a SEPARATE THREAD
+  -- CAN: math, table operations, read Instance properties
+  -- CANNOT: create/destroy instances, modify properties, fire RemoteEvents
+
+  local target = findNearestPlayer(npc) -- Pure computation
+  local path = computePath(npc.Position, target.Position)
+
+  -- Switch back to serial for Instance modification:
+  task.synchronize()
+  npc.Humanoid:MoveTo(path[1])
+  task.desynchronize() -- Back to parallel
+end)
+
+-- WHEN TO USE PARALLEL:
+-- 50+ NPCs with pathfinding → Actor per NPC
+-- Procedural terrain generation → chunk processing
+-- Raycast-heavy systems → batch raycasts in parallel
+-- Physics simulation → per-body computation
+
+-- WHEN NOT TO USE:
+-- Simple scripts (overhead > benefit for < 20 entities)
+-- Anything that mostly modifies Instances (can't in parallel)
+-- UI updates (must be serial/client-side)`,
+    pitfalls: [
+      'Modifying instances in parallel (crashes — must task.synchronize() first)',
+      'Using Parallel for simple scripts (overhead is only worth it for 20+ entities)',
+      'Not calling task.desynchronize() after synchronize (stays serial forever)',
+      'Shared state between actors without proper synchronization (race conditions)',
+    ],
+  },
+
+  {
+    name: 'Leaderboard — OrderedDataStore (DevForum)',
+    keywords: ['leaderboard', 'top', 'ranking', 'ordered', 'global leaderboard', 'high score', 'best time'],
+    snippet: `-- GLOBAL LEADERBOARD WITH ORDEREDDATASTORE (production pattern)
+
+local DataStoreService = game:GetService("DataStoreService")
+local leaderboardStore = DataStoreService:GetOrderedDataStore("GlobalLeaderboard_v1")
+
+-- SAVE SCORE (call when player earns points):
+local function saveScore(userId: number, score: number)
+  pcall(function()
+    leaderboardStore:UpdateAsync(tostring(userId), function(old)
+      -- Only update if new score is higher
+      return math.max(old or 0, score)
+    end)
+  end)
+end
+
+-- FETCH TOP PLAYERS:
+local function getTopPlayers(count: number): {{userId: number, score: number}}
+  local success, pages = pcall(function()
+    return leaderboardStore:GetSortedAsync(false, count) -- false = descending
+  end)
+  if not success then return {} end
+
+  local results = {}
+  local page = pages:GetCurrentPage()
+  for _, entry in page do
+    table.insert(results, {
+      userId = tonumber(entry.key),
+      score = entry.value,
+    })
+  end
+  return results
+end
+
+-- UPDATE LEADERBOARD GUI (every 60 seconds):
+local REFRESH_INTERVAL = 60
+while true do
+  local top10 = getTopPlayers(10)
+  for i, entry in top10 do
+    -- Get username (cache this!)
+    local success, name = pcall(function()
+      return game.Players:GetNameFromUserIdAsync(entry.userId)
+    end)
+    if success then
+      updateLeaderboardGui(i, name, entry.score)
+    end
+  end
+  task.wait(REFRESH_INTERVAL)
+end
+
+-- IMPORTANT: OrderedDataStore only stores integers
+-- For times: store as milliseconds (3.456s → 3456)
+-- For floats: multiply by 1000, store as int`,
+    pitfalls: [
+      'Using regular DataStore for leaderboards (OrderedDataStore has GetSortedAsync)',
+      'Not caching usernames (GetNameFromUserIdAsync is rate-limited)',
+      'Refreshing too often (60s minimum — DataStore has request limits)',
+      'Storing floats in OrderedDataStore (integers only — multiply by 1000)',
+      'Not versioning the DataStore key (add _v1 so you can reset if needed)',
+    ],
+  },
 ]
 
 // Merge DevForum knowledge into main array

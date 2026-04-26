@@ -39,7 +39,9 @@
     "src/components/gamification/AchievementGrid.tsx",
     "src/components/gamification/AchievementToast.tsx",
     "src/app/api/gamification/achievements/check/route.ts",
-    "src/app/(app)/achievements/AchievementsClient.tsx"
+    "src/app/(app)/achievements/AchievementsClient.tsx",
+    "src/lib/ai/playtest-verifier.ts",
+    "src/lib/ai/fix-cache.ts"
   ],
   "exclude": ["node_modules", ".next"]
 }

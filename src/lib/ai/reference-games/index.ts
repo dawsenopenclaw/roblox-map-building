@@ -6,15 +6,15 @@
  */
 
 import { getTycoonReference } from './tycoon-reference';
-import { simulatorReferenceCode } from './simulator-reference';
-import { obbyReferenceCode } from './obby-reference';
-import { rpgReferenceCode } from './rpg-reference';
+import { getSimulatorReference } from './simulator-reference';
+import { getObbyReference } from './obby-reference';
+import { getRPGReference } from './rpg-reference';
 
 // Re-export all reference functions for direct access
 export { getTycoonReference } from './tycoon-reference';
-export { simulatorReferenceCode } from './simulator-reference';
-export { obbyReferenceCode } from './obby-reference';
-export { rpgReferenceCode } from './rpg-reference';
+export { getSimulatorReference } from './simulator-reference';
+export { getObbyReference } from './obby-reference';
+export { getRPGReference } from './rpg-reference';
 
 // Keywords that map to each game type.
 // Checked against the user's prompt (lowercased) to detect intent.
@@ -89,9 +89,9 @@ export function getReferenceGame(type: string): string | null {
 
   // Direct type match first
   if (lower === 'tycoon') return getTycoonReference();
-  if (lower === 'simulator') return simulatorReferenceCode();
-  if (lower === 'obby') return obbyReferenceCode();
-  if (lower === 'rpg') return rpgReferenceCode();
+  if (lower === 'simulator') return getSimulatorReference();
+  if (lower === 'obby') return getObbyReference();
+  if (lower === 'rpg') return getRPGReference();
 
   // Keyword scan for fuzzy matching against user prompts
   for (const keyword of TYCOON_KEYWORDS) {
@@ -99,15 +99,15 @@ export function getReferenceGame(type: string): string | null {
   }
 
   for (const keyword of SIMULATOR_KEYWORDS) {
-    if (lower.includes(keyword)) return simulatorReferenceCode();
+    if (lower.includes(keyword)) return getSimulatorReference();
   }
 
   for (const keyword of OBBY_KEYWORDS) {
-    if (lower.includes(keyword)) return obbyReferenceCode();
+    if (lower.includes(keyword)) return getObbyReference();
   }
 
   for (const keyword of RPG_KEYWORDS) {
-    if (lower.includes(keyword)) return rpgReferenceCode();
+    if (lower.includes(keyword)) return getRPGReference();
   }
 
   return null;
@@ -131,9 +131,9 @@ export function getReferenceDescription(type: string): string | null {
     simulator:
       'Hub-based simulator with 3 collection zones, click-to-collect orbs, backpack capacity, sell pad, zone unlock gates, pet following system (AlignPosition), rebirth, DataStore saving.',
     obby:
-      'Obstacle course with 10 checkpoint stages (SpawnLocation), kill bricks, 2 TweenService moving platforms, speedrun timer (os.clock), win celebration particles, DataStore for best time + stage.',
+      '20-stage obstacle course across 4 difficulty tiers (Easy/Medium/Hard/Extreme), 7 obstacle types (KillBrick, MovingPlatform, SpinningBeam, DisappearingBlock, ConveyorBelt, LaunchPad, WallJump), transparent checkpoints with DataStore persistence, speedrun timer with OrderedDataStore top-10 leaderboard, skip-stage DevProduct purchase, lobby with Play button, coin rewards per stage + completion bonus, full save/load with pcall + BindToClose.',
     rpg:
-      'RPG with stat system (HP/ATK/DEF/XP/Level), damage formula with variance, 3 enemy spawns with AI + health bars, 3-quest state machine, NPC dialogue, loot drops, DataStore saving.',
+      'RPG with stat system (HP/ATK/DEF/XP/Level/Gold), combat with raycast melee + crits + damage numbers, 5-state quest FSM (kill/collect/talk/reach), branching NPC dialogue trees, equipment slots (Weapon/Armor/Accessory), shop buy/sell, enemy AI with PathfindingService (Idle/Chase/Attack/Return), boss fight with phase transitions + AoE + minion spawns, full DataStore persistence.',
   };
 
   return descriptions[type.toLowerCase()] ?? null;

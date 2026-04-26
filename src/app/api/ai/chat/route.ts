@@ -73,6 +73,7 @@ import { detectRecommendations, recordRecommendation, getTopRecommendations, for
 import { buildRAGSystemPrompt } from '@/lib/ai/rag'
 import { findSpecialist, applySpecialist } from '@/lib/ai/specialists/router'
 import { buildRobloxContext } from '@/lib/ai/roblox-knowledge'
+import { getReferenceGame } from '@/lib/ai/reference-games'
 import { validateBuild } from '@/lib/ai/build-validator'
 import { logScriptError, markErrorFixed, buildFixContext } from '@/lib/ai/error-learning'
 import { reviewCode } from '@/lib/ai/code-reviewer'
@@ -3077,6 +3078,22 @@ COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65
 PART TARGETS: Props=15-40, Buildings=80-300, Scenes/Maps=200-2000, Worlds=2000-10000+. USE FOR LOOPS for repeated elements. A castle with 150 parts looks like a toy. A castle with 500+ parts looks real. Real Roblox games: Jailbreak=20K, MeepCity=14K parts.
 QUALITY: vc() color variation, trim/molding/frames, interiors furnished (not empty), Glass always 0.3-0.5 transparency with frame, wall thickness 0.5-1.0.
 
+DEVFORUM PRO BUILDER RULES (from top showcase builders — FOLLOW ALL):
+1. WALL THICKNESS: 0.8-1.0 studs. NEVER 2-4 studs (looks chunky). Below 0.4 = clippable.
+2. ROOF OVERHANG: 1.5-2.0 studs past walls. ALWAYS. No overhang = instant amateur tell.
+3. FOUNDATION: Every building on visible foundation (0.5-1.0 thick, extends 0.5-1.0 past walls, Concrete/Cobblestone).
+4. COLOR VARIATION: NEVER one flat color on large surfaces. Vary ±10-15 RGB per part. Max 3 variations per material type.
+5. TRIM ON EVERYTHING: Baseboard (0.3h at floor, darker wood), crown molding (0.2h at ceiling), corner posts (0.4x0.4 at wall edges).
+6. WINDOW FRAMES: 4-piece frame (top, bottom/sill, left, right) around every window. Glass recessed 0.1 from wall face. Sill sticks out 0.3.
+7. DOOR DETAIL: Panel + frame (4 sides) + handle (cylinder 0.15 dia) + threshold. Never a bare rectangle.
+8. INTERIOR LIGHTING: PointLight in EVERY enclosed room. Warm=RGB(255,220,180) Brightness=1.5 Range=16. Cold=RGB(200,220,255).
+9. ROTATION VARIATION: Rotate detail elements (stones, planks, shingles) randomly ±5-15° to break grid look.
+10. FURNITURE SCALE: Table top at 3 studs (waist), chair seat at 2.5, counter at 3. Character is 5 studs tall.
+11. LANDSCAPING: Trees in clusters of 3-5 (not grid), rocks in groups of 2-3, bushes along foundations and paths.
+12. STREET DETAIL: Lamp posts (6 parts: base+pole+arm+housing+glass+PointLight), benches (7 parts), paths with edge stones.
+13. GENRE PALETTES: Medieval=Brown(139,90,43)+Stone(158,148,136) | Modern=White(240,240,240)+Gray(180,180,180)+Blue(65,145,220) | Fantasy=Purple(130,80,180)+Gold(212,175,55) | Horror=DarkGray(50,50,55)+Rust(139,0,0) | Tropical=Sand(237,221,175)+Ocean(0,150,200)
+14. LIGHTING: Future technology, Brightness=1.5, ClockTime=14, ShadowSoftness=0.1. Bloom≤0.1, SunRays≤0.2 (excessive=amateur). ColorCorrection Saturation=0.1 Contrast=0.1.
+
 CONSTRUCTION BLUEPRINTS — how to build common structures part by part:
 
 HOUSE (60-100 parts):
@@ -5170,6 +5187,9 @@ USE THIS DATA:
     const scriptTemplate = isScriptIntent ? getScriptTemplate(message) : null
     const fullGameTemplate = fullGameDetection?.templateCode || null
 
+    // Reference game injection — production-quality examples for detected game genres
+    const referenceGameCode = isScriptIntent ? getReferenceGame(message) : null
+
     // GUI TEMPLATES: If we have a perfect premium template (from gui-templates.ts),
     // use it DIRECTLY — don't let the AI rewrite it into garbage.
     // Check if the template is from our premium GUI system (starts with our wrapper pattern)
@@ -5196,6 +5216,11 @@ USE THIS DATA:
     const templateCode = scriptTemplate || fullGameTemplate
     const templateReference = templateCode
       ? `\n\n=== WORKING REFERENCE TEMPLATE (adapt to match user's request) ===\nThis is PROVEN WORKING CODE for this type of system. Use its structure, patterns, and API calls. Customize names, values, colors, and layout to match what the user asked for. Do NOT copy verbatim — adapt it.\n\`\`\`lua\n${templateCode.slice(0, 4000)}\n\`\`\`\n=== END REFERENCE ===`
+      : ''
+
+    // Production reference game injection — complete game architectures from DevForum patterns
+    const referenceGameContext = referenceGameCode
+      ? `\n\n=== PRODUCTION REFERENCE GAME (adapt this architecture — do NOT copy verbatim) ===\nThis is a COMPLETE, PRODUCTION-QUALITY game built using DevForum best practices. Study its architecture: server authority, DataStore patterns, RemoteEvent security, state machines. Adapt the patterns to fit the user's specific request.\n\`\`\`lua\n${referenceGameCode.slice(0, 6000)}\n\`\`\`\n=== END PRODUCTION REFERENCE ===`
       : ''
 
     // For fullgame intent, force a single executable world-building Luau script
@@ -5690,6 +5715,12 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     if (templateReference && isScriptIntent && canAddEnrichment(templateReference)) {
       enrichedCodePrompt += templateReference
       console.log('[ScriptTemplate] Injected working template reference for script intent')
+    }
+
+    // Inject production reference game for detected game genres (tycoon, simulator, RPG, obby)
+    if (referenceGameContext && isScriptIntent && canAddEnrichment(referenceGameContext)) {
+      enrichedCodePrompt += referenceGameContext
+      console.log('[ReferenceGame] Injected production reference game architecture')
     }
 
     if (isScriptIntent) {
