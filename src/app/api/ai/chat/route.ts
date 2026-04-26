@@ -62,7 +62,9 @@ import {
   shopGui, inventoryGui, healthBarGui, hudGui, settingsGui,
   questLogGui, leaderboardGui, dialogGui, notificationGui,
   loadingScreenGui, tradeGui, petInventoryGui, rebirthGui,
-  dailyRewardGui, miniMapGui,
+  dailyRewardGui, miniMapGui, craftingGui, auctionHouseGui,
+  guildGui, battlePassGui, achievementGui, mapTeleportGui,
+  clanWarGui, fishingGui, garageGui, emoteWheelGui,
 } from '@/lib/ai/gui-templates'
 import { formatAdditiveRetryPrompt } from '@/lib/ai/build-blueprint'
 import { detectRecommendations, recordRecommendation, getTopRecommendations, formatRecommendations } from '@/lib/ai/recommendation-tracker'
@@ -4994,6 +4996,26 @@ USE THIS DATA:
           return dailyRewardGui()
         if (/\b(minimap|mini map|radar|map overlay)\b/.test(lower))
           return miniMapGui()
+        if (/\b(craft|crafting|recipe|forge|smelt|combine items)\b/.test(lower))
+          return craftingGui()
+        if (/\b(auction|marketplace|market|bid|buyout|listing)\b/.test(lower))
+          return auctionHouseGui()
+        if (/\b(guild|clan|faction|alliance|guild panel)\b/.test(lower))
+          return guildGui()
+        if (/\b(battle ?pass|season pass|tier reward|premium pass)\b/.test(lower))
+          return battlePassGui()
+        if (/\b(achievement|trophy|badge|unlock|milestone)\b/.test(lower))
+          return achievementGui()
+        if (/\b(world ?map|teleport|zone select|fast travel|warp)\b/.test(lower))
+          return mapTeleportGui()
+        if (/\b(clan ?war|team ?battle|pvp ?scoreboard|war ?score|faction war)\b/.test(lower))
+          return clanWarGui()
+        if (/\b(fish|fishing|cast|rod|bait|catch)\b/.test(lower))
+          return fishingGui()
+        if (/\b(garage|vehicle|car ?select|car ?menu|vehicle ?list)\b/.test(lower))
+          return garageGui()
+        if (/\b(emote|emote ?wheel|gesture|expression|dance ?wheel)\b/.test(lower))
+          return emoteWheelGui()
         if (/\b(character|customiz|avatar|outfit|appearance|wardrobe|skin)\b/.test(lower))
           return CHARACTER_CUSTOMIZATION_TEMPLATE
         if (/\b(select|selector|choose|pick|car select|vehicle select|class select|team select)\b/.test(lower))
@@ -5150,6 +5172,47 @@ OBBY CODE PATTERN — checkpoints + kill bricks + moving platforms:
 This is a GAME SYSTEM request — prioritize SCRIPTS over PARTS. The user wants working game mechanics, not just a pretty build.${gameTypeGuidance}${templateReference}`
       : ''
 
+    // ── CUSTOMIZATION EXTRACTION: detect user preferences from prompt ──
+    let customizationContext = ''
+    {
+      const lower = message.toLowerCase()
+      const customs: string[] = []
+
+      // Color preferences
+      const colorMatch = lower.match(/\b(red|blue|green|yellow|purple|orange|pink|black|white|gold|silver|brown|gray|cyan|teal|navy|maroon|crimson|emerald|ruby|sapphire|ivory|cream|pastel|neon|dark|light|bright)\b.*\b(color|colored|theme|themed|style|styled|scheme)\b|\b(color|make it|paint it|in)\s+(red|blue|green|yellow|purple|orange|pink|black|white|gold|silver|brown)\b/)
+      if (colorMatch) customs.push(`COLOR: User wants ${colorMatch[0]} — apply this as the PRIMARY color on walls/panels/major surfaces`)
+
+      // Specific color mentions
+      const colorWords = lower.match(/\b(red|blue|green|yellow|purple|orange|pink|black|white|gold|silver|brown|cyan|teal|navy|crimson)\b/g)
+      if (colorWords && colorWords.length > 0 && !colorMatch) {
+        customs.push(`COLORS MENTIONED: ${[...new Set(colorWords)].join(', ')} — incorporate these into the build's palette`)
+      }
+
+      // Theme/style
+      const themeMatch = lower.match(/\b(medieval|modern|futuristic|rustic|japanese|pirate|western|tropical|underwater|space|sci-?fi|steampunk|gothic|victorian|art deco|minimalist|maximalist|cozy|dark|bright|colorful|neon|retro|vintage|cyberpunk|fantasy|fairy tale|enchanted|spooky|haunted|christmas|halloween|winter|summer|autumn|spring|cartoon|realistic|anime|pixel|voxel|low poly)\b/)
+      if (themeMatch) customs.push(`THEME: "${themeMatch[1]}" — apply this visual style to EVERYTHING (materials, colors, shapes, decorations)`)
+
+      // Size preferences
+      const sizeMatch = lower.match(/\b(big|huge|massive|giant|enormous|tiny|small|mini|compact|large|medium|tall|short|wide|narrow|thick|thin)\b/)
+      if (sizeMatch) customs.push(`SIZE: User wants "${sizeMatch[1]}" — scale the build accordingly (${sizeMatch[1] === 'big' || sizeMatch[1] === 'huge' || sizeMatch[1] === 'massive' || sizeMatch[1] === 'giant' || sizeMatch[1] === 'enormous' || sizeMatch[1] === 'large' ? '1.5-3x normal size' : sizeMatch[1] === 'tiny' || sizeMatch[1] === 'small' || sizeMatch[1] === 'mini' || sizeMatch[1] === 'compact' ? '0.5-0.75x normal size' : 'adjust as described'})`)
+
+      // Material preferences
+      const matMatch = lower.match(/\b(wood(?:en)?|stone|brick|metal(?:lic)?|glass|marble|concrete|ice|crystal|diamond|obsidian|lava|sand(?:stone)?|granite)\b/)
+      if (matMatch) customs.push(`MATERIAL: User wants "${matMatch[1]}" — use this as the PRIMARY building material`)
+
+      // Count/quantity
+      const countMatch = lower.match(/\b(\d+)\s+(rooms?|floors?|stories|windows?|doors?|towers?|trees?|chairs?|tables?|shops?|buildings?|levels?)\b/)
+      if (countMatch) customs.push(`QUANTITY: User specified ${countMatch[1]} ${countMatch[2]} — build EXACTLY that many`)
+
+      // Named build
+      const nameMatch = message.match(/(?:called|named|name it|title)\s+["']?([^"'\n,]+)["']?/i)
+      if (nameMatch) customs.push(`NAME: User wants this named "${nameMatch[1].trim()}" — use this in Model.Name and any signs/labels`)
+
+      if (customs.length > 0) {
+        customizationContext = `\n\nUSER CUSTOMIZATION (FOLLOW EXACTLY — these are NOT suggestions, they are REQUIREMENTS):\n${customs.join('\n')}\nDo NOT ignore these. The user specifically asked for these customizations.`
+      }
+    }
+
     // ── Build Blueprint: estimate complexity + plan for medium/complex builds ──
     let blueprintContext = ''
     try {
@@ -5199,7 +5262,7 @@ COMMON MODIFY PATTERNS:
 
 Wrap in ChangeHistoryService but do NOT create a new Model.
 ` : ''
-    const buildInstruction = `${isModifyIntent ? 'Modify' : 'Build'}: ${message}${continuationContext}${fullgameOverride}${blueprintContext}${tierModifier}${interiorOverride}${modifyOverride}
+    const buildInstruction = `${isModifyIntent ? 'Modify' : 'Build'}: ${message}${continuationContext}${fullgameOverride}${blueprintContext}${tierModifier}${interiorOverride}${modifyOverride}${customizationContext}
 
 First write 4-6 sentences describing what you're ${isModifyIntent ? 'changing' : 'creating'} (the mood, one cool detail, what to do next).
 Then output the Luau code in a \`\`\`lua block.${isModifyIntent ? ' Use workspace:FindFirstChild to find and modify existing objects.' : ' Use the REQUIRED PATTERN with these helpers:'}
@@ -6346,8 +6409,26 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
 
     const { message: cleanConv, suggestions } = extractSuggestions(conversationText)
     const partCount = luauCode ? countPartsInCode(luauCode) : 0
+    // Prepend game awareness summary so users know we read their game
+    // Extract stats from cameraContext if available
+    let gameAwareness = ''
+    if (cameraContext.includes('WORKSPACE STATS')) {
+      const statsMatch = cameraContext.match(/Parts:\s*(\d+)\s*\|\s*Models:\s*(\d+)\s*\|\s*Lights:\s*(\d+)/)
+      const scriptMatch = cameraContext.match(/EXISTING SCRIPTS IN GAME \((\d+)/)
+      const selMatch = cameraContext.match(/SELECTED OBJECTS \((\d+)\)/)
+      if (statsMatch) {
+        const parts_s: string[] = []
+        if (parseInt(statsMatch[1]) > 0) parts_s.push(`${statsMatch[1]} parts`)
+        if (parseInt(statsMatch[2]) > 0) parts_s.push(`${statsMatch[2]} models`)
+        if (parseInt(statsMatch[3]) > 0) parts_s.push(`${statsMatch[3]} lights`)
+        if (scriptMatch) parts_s.push(`${scriptMatch[1]} scripts`)
+        if (selMatch) parts_s.push(`${selMatch[1]} selected`)
+        if (parts_s.length > 0) gameAwareness = `*Reading your game: ${parts_s.join(', ')}*\n\n`
+      }
+    }
+    const finalConv = gameAwareness + cleanConv
     return {
-      conversationText: cleanConv,
+      conversationText: finalConv,
       luauCode,
       executedInStudio,
       suggestions,
@@ -12744,6 +12825,23 @@ DAMAGE MODULE:
     parts.push(`  7. Match the naming pattern of nearby objects. If existing parts are named "Wall_1", "Wall_2", name yours "Wall_3" etc.`)
     parts.push(`  8. If existing objects use a specific material palette (e.g. mostly Wood and Brick), match it.`)
     parts.push(`=== END STUDIO CONTEXT ===`)
+
+    // ── GAME AWARENESS PLANNING INSTRUCTION ──
+    // Force the AI to START by acknowledging what it sees and planning WITH the context
+    parts.push(``)
+    parts.push(`=== PLANNING INSTRUCTION (MANDATORY) ===`)
+    parts.push(`Before generating ANY code, you MUST start your response with a brief GAME AWARENESS section:`)
+    parts.push(`1. State what you SEE in the user's game (e.g. "I can see you have a 150-part house with a shop nearby")`)
+    parts.push(`2. Identify what ALREADY EXISTS that's relevant to the request`)
+    parts.push(`3. Explain your PLAN: what you'll add, where you'll place it, how it connects to existing content`)
+    parts.push(`4. If they have scripts, mention which ones you'll integrate with`)
+    parts.push(`5. ONLY THEN generate the code`)
+    parts.push(``)
+    parts.push(`Example response format:`)
+    parts.push(`"Looking at your game, I can see you've got a medieval village with 3 buildings, a marketplace, and a working economy script. I'll add the blacksmith shop next to your existing marketplace (at position 45,0,30) and wire it into your EconomySystem RemoteEvent so purchases use the same currency. Here's what I'm building..."`)
+    parts.push(``)
+    parts.push(`CUSTOMIZATION: The user can customize ANY aspect of the build. If they mention colors, materials, sizes, themes, or styles — follow their preferences EXACTLY. Don't use defaults when the user specified something specific.`)
+    parts.push(`=== END PLANNING INSTRUCTION ===`)
 
     cameraContext = '\n\n' + parts.join('\n')
   }
