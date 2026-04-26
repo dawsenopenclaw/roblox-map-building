@@ -966,12 +966,49 @@ balLabel.Font = Enum.Font.GothamBold
 balLabel.TextSize = 16
 balLabel.Parent = balFrame
 
+-- Toggle button (always visible, bottom-right corner)
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 44, 0, 44)
+toggleBtn.Position = UDim2.new(1, -56, 1, -56)
+toggleBtn.BackgroundColor3 = GOLD
+toggleBtn.Text = "SHOP"
+toggleBtn.TextColor3 = BG_DEEP
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 10
+toggleBtn.AutoButtonColor = false
+toggleBtn.ZIndex = 5
+toggleBtn.Parent = screenGui
+addCorner(toggleBtn, 12)
+local toggleScale = Instance.new("UIScale") toggleScale.Parent = toggleBtn
+toggleBtn.MouseEnter:Connect(function() TweenService:Create(toggleScale, TWEEN_FAST, {Scale = 1.1}):Play() end)
+toggleBtn.MouseLeave:Connect(function() TweenService:Create(toggleScale, TWEEN_FAST, {Scale = 1}):Play() end)
+
+local isOpen = true
+local function closeShop()
+  isOpen = false
+  playSound(SFX.close, 0.3)
+  TweenService:Create(main, TWEEN_CLOSE, {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.5}):Play()
+  task.wait(0.22)
+  main.Visible = false
+end
+local function openShop()
+  isOpen = true
+  main.Visible = true
+  playSound(SFX.open, 0.3)
+  animateOpen(main, UDim2.new(0.6, 0, 0.7, 0), UDim2.new(0.2, 0, 0.15, 0))
+end
+
 -- Close button
-makeCloseBtn(main, function()
-  TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-  task.wait(0.25)
-  screenGui:Destroy()
+makeCloseBtn(main, closeShop)
+
+-- Toggle button click
+toggleBtn.MouseButton1Click:Connect(function()
+  playSound(SFX.click, 0.4)
+  if isOpen then closeShop() else openShop() end
 end)
+
+-- Keybind: E to toggle shop
+bindToggle(main, Enum.KeyCode.E, openShop, closeShop)
 
 -- Scroll frame for items
 local scroll = Instance.new("ScrollingFrame")
