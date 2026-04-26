@@ -21,6 +21,7 @@ export const DEFAULT_PREFERENCES: Record<NotificationType, Record<NotificationCh
   PAYOUT_COMPLETED:     { EMAIL: true,  SMS: true,  PUSH: true,  IN_APP: true },
   REVIEW_RECEIVED:      { EMAIL: true,  SMS: false, PUSH: true,  IN_APP: true },
   PAYOUT_FAILED:        { EMAIL: true,  SMS: true,  PUSH: true,  IN_APP: true },
+  LFG_JOIN_REQUEST:     { EMAIL: false, SMS: false, PUSH: true,  IN_APP: true },
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
