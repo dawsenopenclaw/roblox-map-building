@@ -4228,18 +4228,41 @@ GLOWING WINDOWS AT NIGHT (makes buildings feel inhabited):
   -- Set window glass Color to warm yellow (255,220,150), Transparency=0.2
   -- Add SpotLight inside pointing outward through window: Range=30, Angle=45, Brightness=1
 
-=== UI/GUI GENERATION — CREATE REAL GAME INTERFACES ===
+=== UI/GUI GENERATION — PET SIMULATOR X QUALITY INTERFACES ===
 
-When user asks for UI/GUI/HUD/menu/shop/inventory, generate a COMPLETE LocalScript with ScreenGui:
-- Use UICorner (CornerRadius 8-12px) on ALL frames
-- Use UIGradient for premium backgrounds
-- Use UIStroke for borders (Thickness 1-2, Color subtle)
-- Use UIListLayout/UIGridLayout for auto-arranging
-- Buttons: Hover effect (darken on MouseEnter), click feedback (scale to 0.95)
-- Animations: TweenService for open/close (slide in from edge or scale from 0)
-- Close button: X in top-right corner of every panel
-- Currency display: icon + amount in top bar
-- Sound effects: click sounds on buttons (optional)
+THINK ABOUT HOW THE UI FEELS before writing code. Ask yourself:
+- Does every button RESPOND? (hover glow + press squish + release bounce)
+- Does every panel ANIMATE? (never instant appear/disappear)
+- Do numbers TICK UP smoothly? (tween NumberValue, don't snap)
+- Does text TYPEWRITE in? (MaxVisibleGraphemes, not instant text)
+- Is there DEPTH? (gradient backgrounds, subtle shadows, layered panels)
+- Does it feel ALIVE? (gold shimmer on buttons, pulse on important elements)
+
+INDUSTRY-STANDARD DARK THEME (never pure black):
+  BG = (20,20,20) SURFACE = (28,28,32) CARD = (32,32,38) HOVER = (42,42,50)
+  GOLD = (212,175,55) TEXT = (255,255,255) MUTED = (100,100,115) BORDER = (55,55,65)
+
+REQUIRED ON EVERY UI:
+- UICorner (8-12px) on ALL frames/buttons
+- UIStroke (1-2px, transparency 0.2) for borders
+- UIGradient on panel backgrounds (subtle gradient = depth)
+- TweenService: Exponential Out for menus (0.25s), Back Out for popups (0.35s)
+- Close button: X top-right, hover=RED, close=scale-down animation
+- AutoButtonColor=false on ALL TextButtons (handle hover ourselves)
+
+BUTTON FEEDBACK (the #1 thing that makes UI premium):
+- UIScale child on every button
+- Hover: scale 1.04, brighten color (0.15s Exponential Out)
+- Press DOWN: squish scale 0.92 (0.08s instant)
+- Release UP: bounce to 1.0 (0.2s Back Out overshoot)
+- Gold buttons: UIGradient shimmer (Offset animates -1 to 1 every 3.5s)
+
+SMOOTH COUNTERS: NumberValue tween + Changed event updates label text
+TYPEWRITER: label.MaxVisibleGraphemes incremented per character (0.03s each)
+PANEL OPEN: Size(0,0) at center → tween to target with Back Out 0.35s
+PANEL CLOSE: Tween to Size(0,0) Exponential In 0.2s → Destroy
+TOAST: Slide from right with Bounce Out 0.4s, auto-dismiss 4s
+SCROLLING: AutomaticCanvasSize=Y, ScrollBarThickness=3, gold dim color
 
 === WORLD / MAP / SCENE BUILDING — COMPLETE GAME ENVIRONMENTS ===
 
