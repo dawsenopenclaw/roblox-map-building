@@ -1038,6 +1038,7 @@ enum NotificationType {
   PAYOUT_COMPLETED
   REVIEW_RECEIVED
   PAYOUT_FAILED
+  LFG_JOIN_REQUEST
 }
 
 enum NotificationChannel {
@@ -1407,4 +1408,25 @@ model ScriptErrorLog {
   @@index([errorType])
   @@index([fixSucceeded])
   @@index([createdAt])
+}
+
+// ─── LFG (Looking For Group) ───────────────────────────────────────────────
+
+model LfgPost {
+  id             String   @id @default(cuid())
+  userId         String
+  title          String
+  description    String
+  gameType       String   // tycoon, simulator, obby, rpg, horror, etc.
+  lookingFor     String   // builders, scripters, ui-designers, etc.
+  maxMembers     Int      @default(4)
+  currentMembers Int      @default(1)
+  status         String   @default("open") // open, full, closed
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  expiresAt      DateTime // auto-close after 24h
+
+  @@index([status, gameType])
+  @@index([userId])
+  @@index([expiresAt])
 }
