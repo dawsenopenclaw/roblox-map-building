@@ -4754,6 +4754,29 @@ USE THIS DATA:
         if (/\b(survival|survive|hunger|thirst|craft|gather|resource|wilderness|stranded)\b/.test(lower))
           return survivalGame({ mapSize: 400, dayLength: 600, startingHealth: 100 })
 
+        // ── Missing genre templates (reference code from closest match + genre-specific guidance) ──
+        if (/\b(fish|fishing|rod|catch fish|fish.*game|angler)\b/.test(lower))
+          return simulatorGame({ collectibleName: 'Fish', backpackSize: 50, sellMultiplier: 2, rebirthCost: 5000 })
+            + `\n-- FISHING ADAPTATION: Replace click-to-collect with cast-and-wait mechanic.\n-- Add rod tool, cast animation, wait timer (3-8s), random fish rarity table.\n-- Fish types: Common(60%), Uncommon(25%), Rare(10%), Legendary(4%), Mythic(1%).\n-- Each fish has weight/value. Bait system: different bait = different fish pools.\n-- Fishing spots: Parts with ProximityPrompt "Cast Line" near water terrain.`
+        if (/\b(farm|farming|crop|harvest|plant|seed|garden.*game|agriculture)\b/.test(lower))
+          return simulatorGame({ collectibleName: 'Crops', backpackSize: 100, sellMultiplier: 1, rebirthCost: 10000 })
+            + `\n-- FARMING ADAPTATION: Replace click-to-collect with plant-grow-harvest cycle.\n-- Plot grid: 4x4 soil Parts, each plantable. Seed types with grow timers (30s-300s).\n-- Growth stages: seed→sprout→growing→ready (swap Part color/size per stage).\n-- Watering can tool speeds growth 2x. Seasons affect crop yield.\n-- Sell at market stall. Upgrade plots, unlock new seeds, expand farm.`
+        if (/\b(min(?:e|ing)|ore|pickaxe|dig|excavat|drill|cave)\b/.test(lower))
+          return simulatorGame({ collectibleName: 'Ore', backpackSize: 80, sellMultiplier: 1, rebirthCost: 8000 })
+            + `\n-- MINING ADAPTATION: Replace surface collecting with breakable rock nodes.\n-- Rock Parts with health bars — click/tool to mine. Drop ore on destroy.\n-- Ore tiers: Stone(common)→Iron→Gold→Diamond→Emerald→Mythril(legendary).\n-- Deeper caves = rarer ore. Pickaxe upgrades increase mining speed.\n-- Smelter converts raw ore to bars (worth 3x). Sell bars at surface shop.`
+        if (/\b(cook|cooking|chef|recipe|kitchen.*game|restaurant.*game|bak(?:e|ing))\b/.test(lower))
+          return simulatorGame({ collectibleName: 'Dishes', backpackSize: 30, sellMultiplier: 3, rebirthCost: 15000 })
+            + `\n-- COOKING ADAPTATION: Ingredient collection → recipe crafting → serving.\n-- Ingredients: spawn around map, respawn on timer. Collect to inventory.\n-- Recipe book: combine 2-4 ingredients at cooking station. Timer to cook.\n-- Quality system: timing minigame determines star rating (1-5 stars).\n-- Serve to NPC customers for coins. Higher stars = more coins.\n-- Unlock new recipes, upgrade kitchen, hire NPC chefs.`
+        if (/\b(egg|hatch|pet.*egg|egg.*hatch|incubat|gacha|loot.*box)\b/.test(lower))
+          return petFollowSystem({ petName: 'Pet', followDistance: 5, followSpeed: 20 })
+            + `\n-- EGG HATCHING SYSTEM: Buy eggs from shop (tiered: Common $100, Rare $500, Legendary $2000).\n-- Hatch mechanic: carry egg, walk/play to fill hatch meter (steps or time).\n-- Rarity roll on hatch: Common(60%), Uncommon(25%), Rare(10%), Legendary(4%), Mythic(1%).\n-- Pet inventory: equip up to 3 active pets. Pets give stat boosts.\n-- Shiny variants (1/100 chance, 2x boost). Trading between players.\n-- Pet index/Pokédex showing all discovered pets.`
+        if (/\b(prison|jail|cop|criminal|escape|jailbreak|heist)\b/.test(lower))
+          return rpgGame({ maxLevel: 30, startingHP: 100, startingGold: 0, questCount: 3 })
+            + `\n-- PRISON/JAILBREAK ADAPTATION: Two teams — Prisoners vs Guards.\n-- Prison building with cells, yard, cafeteria, vents, sewers.\n-- Escape routes: keycard doors, vent crawl, wall breach, helicopter pad.\n-- Guard tools: handcuffs, taser. Prisoner tools: lockpick, disguise.\n-- Criminal gameplay after escape: rob bank/store, earn bounty.\n-- Arrests send back to cell. Money buys vehicles, weapons, apartments.`
+        if (/\b(cafe|coffee|tea|bakery|donut|pastry)\b/.test(lower))
+          return economySystem({ currencies: ['Coins'], startingCash: 500, shopItems: [{ name: 'Espresso Machine', price: 1000 }, { name: 'Display Case', price: 500 }, { name: 'Outdoor Seating', price: 300 }] })
+            + `\n-- CAFE ADAPTATION: Player owns and manages a cafe.\n-- Customer NPCs walk in, sit down, order from menu (SurfaceGui).\n-- Player prepares drinks/food at stations (click sequence minigame).\n-- Serve customers before patience timer runs out. Tips based on speed.\n-- Upgrade: better equipment, more seats, menu items, decoration.\n-- Hire NPC workers to auto-serve. Compete on daily leaderboard.`
+
         // ── Game mechanics ──
         if (/\b(economy|currency|coins|cash|shop system|buy system|purchase|money system)\b/.test(lower))
           return economySystem({ currencies: ['Coins'], startingCash: 100, shopItems: [{ name: 'Speed Boost', price: 200 }, { name: 'Double Jump', price: 500 }, { name: 'Gravity Coil', price: 1000 }] })
@@ -4973,7 +4996,13 @@ This is a GAME SYSTEM request — prioritize SCRIPTS over PARTS. The user wants 
       console.warn('[Planner] Non-blocking error:', planErr instanceof Error ? planErr.message : planErr)
     }
 
-    const buildInstruction = `Build: ${message}${continuationContext}${fullgameOverride}${blueprintContext}${tierModifier}
+    // Detect if user wants interior/furnished — override the exterior-first default
+    const interiorKeywords = /\b(with interior|interior|furnished|inside|rooms?|bedroom|kitchen|living room|bathroom|furniture|go inside|enter|walkable|explorable|detailed house|insane house|full house|complete house)\b/i
+    const wantsInterior = interiorKeywords.test(message)
+    const interiorOverride = wantsInterior
+      ? `\n\nIMPORTANT — USER WANTS INTERIOR: Ignore the "exterior-first" default. This build MUST have:\n- Hollow interior with rooms (use thin 0.8-thick walls, NOT solid shells)\n- Furniture appropriate to each room type (bed, table, chairs, etc.)\n- Interior PointLights in every room\n- Doors between rooms with ProximityPrompt\n- Windows with Glass + frames from INSIDE view too\nSpend 50% of parts on exterior, 50% on interior. Target 150-300+ parts for a furnished building.\n`
+      : ''
+    const buildInstruction = `Build: ${message}${continuationContext}${fullgameOverride}${blueprintContext}${tierModifier}${interiorOverride}
 
 First write 4-6 sentences describing what you're creating (the mood, one cool detail, what to do next).
 Then output the Luau code in a \`\`\`lua block. Use the REQUIRED PATTERN with these helpers:
@@ -5513,6 +5542,22 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     }
     console.log(`[PromptSize] System prompt: ${enrichedCodePrompt.length} chars, instruction: ${effectiveInstruction.length} chars`)
 
+    // ── PROVEN BUILD CACHE: instant serve for common requests ──────────
+    if (!luauCode && !isScriptIntent) {
+      try {
+        const { matchProvenBuild, customizeProvenBuild } = await import('@/lib/ai/build-cache')
+        const cacheHit = matchProvenBuild(message)
+        if (cacheHit && cacheHit.build.code && cacheHit.confidence >= 0.6) {
+          luauCode = customizeProvenBuild(cacheHit.build.code, message, cacheHit.build)
+          model = 'forje-cache'
+          conversationText = `Here's a proven ${cacheHit.build.description} — ${cacheHit.build.partCount}+ parts, pre-tested and ready. Check Studio!`
+          console.log(`[BuildCache] HIT: "${cacheHit.build.id}" (confidence=${cacheHit.confidence.toFixed(2)}, ${cacheHit.build.partCount} parts)`)
+        }
+      } catch (cacheErr) {
+        console.warn('[BuildCache] Non-blocking error:', cacheErr instanceof Error ? cacheErr.message : cacheErr)
+      }
+    }
+
     // Single-pass: race both models — first valid result wins (fallback for staged pipeline, primary for simple builds)
     let buildRace: { result: string; index: number } | null = null
     const outputTokens = isScriptIntent ? 32768 : 16384 // 16K for builds (30-50 parts), 32K for scripts
@@ -5841,6 +5886,13 @@ ${effectiveInstruction}`
         }).catch((err) => {
           console.warn('[LearningSystem] Failed to record build outcome:', err instanceof Error ? err.message : err)
         })
+        // Cache high-quality builds for instant future serving
+        if (finalVerificationScore >= 65 && partCount >= 30 && !isScriptIntent && model !== 'forje-cache') {
+          try {
+            const { cacheSuccessfulBuild } = await import('@/lib/ai/build-cache')
+            cacheSuccessfulBuild(message, luauCode, partCount)
+          } catch { /* non-blocking */ }
+        }
         // Dynamic system learning — discover new game patterns from successful builds
         try {
           const { extractNewSystemFromCode } = await import('@/lib/ai/game-systems-knowledge')

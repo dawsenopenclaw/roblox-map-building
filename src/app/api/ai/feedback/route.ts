@@ -12,8 +12,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 import { feedbackBodySchema } from '@/lib/validations'
-import { applyFeedback, getOptimizerStats, type FeedbackInput } from '@/lib/ai/prompt-optimizer'
+import { applyFeedback, getOptimizerStats, type FeedbackInput, getRecord } from '@/lib/ai/prompt-optimizer'
 import { getQualityStats, getDegradingIntents } from '@/lib/ai/response-quality'
+import { recordBuildOutcome } from '@/lib/ai/experience-memory'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,6 +102,28 @@ export async function POST(req: NextRequest): Promise<NextResponse<FeedbackRespo
 
   // Apply to in-process optimizer
   const applied = applyFeedback(messageId, feedback)
+
+  // Also record to experience-memory for few-shot learning
+  // This closes the loop: user feedback → better future examples
+  try {
+    const record = getRecord(messageId)
+    if (record) {
+      const voteScore = feedback.type === 'thumbs'
+        ? (feedback.value ? 0.9 : 0.15)
+        : ((feedback.value - 1) / 4)
+      // Record with userVote so experience-memory promotes/demotes this as a few-shot example
+      await recordBuildOutcome(
+        record.userPrompt,
+        '', // no code available in feedback route — score only
+        voteScore,
+        'user-feedback',
+        { userVote: feedback.type === 'thumbs' ? feedback.value : feedback.value >= 4 }
+      )
+      console.log(`[Feedback] Recorded user ${feedback.type === 'thumbs' ? (feedback.value ? 'thumbs-up' : 'thumbs-down') : `rating=${feedback.value}`} to experience-memory for: "${record.userPrompt.slice(0, 60)}"`)
+    }
+  } catch (expErr) {
+    console.warn('[Feedback] Non-blocking experience-memory error:', expErr instanceof Error ? expErr.message : expErr)
+  }
 
   // Gather updated stats
   const optimizerStats = getOptimizerStats()

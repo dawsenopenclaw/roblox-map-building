@@ -390,6 +390,11 @@ export type FeedbackInput =
  * Apply explicit user feedback to a stored record.
  * Adjusts the record's quality score and variant win/loss counters.
  */
+/** Retrieve a stored prompt record by ID (used by feedback route to get context) */
+export function getRecord(recordId: string): PromptRecord | undefined {
+  return _records.get(recordId)
+}
+
 export function applyFeedback(recordId: string, feedback: FeedbackInput): boolean {
   const record = _records.get(recordId)
   if (!record) return false
