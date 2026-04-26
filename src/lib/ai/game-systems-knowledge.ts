@@ -1086,6 +1086,279 @@ const GAME_SYSTEMS: SystemCategory[] = [
         how: 'ModuleScript "Config" in ServerScriptService: {maxPlayers=10, roundTime=300, enemyDamageMultiplier=1, dropRates={}, enabledFeatures={PvP=true, Trading=true}}. Single source of truth for all tuneable values. Admin can hot-reload config via chat command (require() clears cache). A/B testing: config variant loaded per server based on JobId hash. Environment-specific: different values for test vs production place.' },
     ],
   },
+
+  // ════════════════════════════════════════════════════════════════════
+  // FISHING SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Fishing Systems',
+    systems: [
+      { name: 'Rod Casting', keywords: ['fishing', 'fish', 'rod', 'cast', 'fishing rod', 'cast line'],
+        how: 'Tool "FishingRod" with Handle. Activate: play cast animation, spawn invisible Part "Bobber" at camera lookvector * castPower (10-30 studs). Bobber has BodyPosition to float at water Y level. Beam from rod tip to bobber. Wait random 3-8s then bobber dips (TweenService Y -= 1 stud, bounce). Player clicks during dip window (1.5s) → catch. Miss window → bobber resets. Sound: splash on land, bubble loop while waiting, reel sound on catch.' },
+      { name: 'Fish Rarity Tiers', keywords: ['fish rarity', 'rare fish', 'legendary fish', 'fish types', 'fish tier'],
+        how: 'Fish table: {name, rarity, weight, value, icon}. Rarities: Common(50%), Uncommon(25%), Rare(15%), Epic(8%), Legendary(2%). Roll math.random(1,100) on catch. Legendary: gold ParticleEmitter burst, screen shake, "LEGENDARY CATCH!" BillboardGui. Each fish has Model shown briefly on catch. Fish log ScreenGui: grid of all fish silhouettes, colored when caught. Completion rewards at 25/50/75/100%.' },
+      { name: 'Bait System', keywords: ['bait', 'fishing bait', 'worm', 'lure', 'bait box'],
+        how: 'Bait inventory: IntValue per bait type. Bait types: {Worm: rarityBoost=0, Shrimp: rarityBoost=10, GoldenLure: rarityBoost=30}. Select bait in ScreenGui before casting. Each cast consumes 1 bait. rarityBoost shifts roll: effectiveRoll = math.random(1,100) - baitBoost. Buy bait from shop NPC. No bait = cannot fish. BillboardGui on rod tip shows equipped bait icon.' },
+      { name: 'Fishing Spots', keywords: ['fishing spot', 'fishing zone', 'fishing area', 'fish pond', 'fishing hole'],
+        how: 'Invisible Part zones in water with StringValue "FishPool" containing comma-separated fish names available. Different spots = different fish. Rare spots glow (Neon circle under water, transparency 0.6). Some spots require quest unlock or level. SurfaceGui label "Fishing Spot" with fish silhouettes. Cooldown per spot: 30s after catching, spot "depleted" visual (darker water) then restocks. Server tracks depletion per spot.' },
+      { name: 'Fishing Minigame', keywords: ['fishing minigame', 'fishing qte', 'reel in', 'fishing challenge', 'catch fish minigame'],
+        how: 'On bite: ScreenGui minigame appears. Moving bar bounces left-right in meter. Green zone = catch zone (size varies by fish rarity: Legendary=tiny). Player holds click to reel (bar moves toward fish). Release to let bar drift back. Fish stamina bar depletes when bar in green zone. If bar exits meter bounds → line breaks, fish escapes. Timer: 15s max. Sound: reel clicking, line tension twang. Perfect catch (never left green) = bonus XP.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // FARMING & AGRICULTURE
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Farming & Agriculture',
+    systems: [
+      { name: 'Plot Grid System', keywords: ['farm plot', 'plot grid', 'farming plot', 'garden plot', 'crop plot'],
+        how: 'Player owns plot: Part grid N x M (e.g. 6x6). Each cell = 4x4 stud Part "PlotCell" with StringValue "State" (empty/planted/growing/ready). Click empty cell → plant menu. Visual: brown Concrete when empty, green sprout Model when planted, full crop Model when ready. DataStore saves grid state as 2D array. Plot purchase via shop NPC. Adjacency bonus: same crop type neighbors = +10% growth speed.' },
+      { name: 'Seed Planting', keywords: ['seed', 'plant', 'planting', 'sow', 'seed bag', 'plant seed'],
+        how: 'Seed inventory: table {seedName: count}. ProximityPrompt on empty plot cell "Plant Seed". ScreenGui seed selector: grid of owned seeds with icons + count. Select seed → server validates ownership, deducts 1 seed, sets cell State="planted", stores seedType + plantTime in cell StringValue. Spawn small sprout Model (3 green Parts). Sound: dirt shuffle. Seeds bought from shop or found in loot.' },
+      { name: 'Growth Stages', keywords: ['growth', 'crop growth', 'grow stages', 'plant stages', 'growing crops'],
+        how: 'Each crop has growthTime (seconds). Stages: Sprout(0-25%), Growing(25-50%), Mature(50-75%), Ready(75-100%). Server task.spawn loop checks all planted cells every 30s: elapsed = os.time() - plantTime, stage = math.floor(elapsed/growthTime * 4). Swap Model per stage (taller, more leaves). Ready stage: golden sparkle ParticleEmitter. BillboardGui shows growth % bar above crop. Offline growth: calculates elapsed time on join.' },
+      { name: 'Watering System', keywords: ['water', 'watering', 'watering can', 'irrigate', 'water crops'],
+        how: 'Tool "WateringCan" with Handle. Activate near crop: play pour animation, blue ParticleEmitter water drops. Each crop has BoolValue "Watered" reset daily. Watered crops grow 2x speed. Un-watered crops: 0.5x speed, wilting animation (Parts tilt slightly via CFrame rotation). Auto-sprinkler upgrade: waters all plots every hour. Sound: water splash. Visual: wet soil = darker brown Concrete material.' },
+      { name: 'Harvesting', keywords: ['harvest', 'pick crop', 'collect crop', 'harvest crop', 'gather crop'],
+        how: 'ProximityPrompt on Ready crops "Harvest". Server: validate State="ready", grant crop item to inventory (table in DataStore), reset cell to empty, chance of bonus crop (10% double harvest). Animation: player reaches down, crop pops with green ParticleEmitter, "+1 Carrot" BillboardGui floats up. Some crops regrow (berries): reset to Growing stage instead of empty. Sickle tool: harvest 3x3 area at once.' },
+      { name: 'Season System', keywords: ['season', 'seasons', 'spring', 'summer', 'autumn', 'winter', 'seasonal'],
+        how: 'Server IntValue "CurrentSeason" cycles: Spring→Summer→Autumn→Winter. Duration: configurable (300s per season for fast games, 3600s for long). Each crop has allowedSeasons table. Planting wrong season: warning UI, 50% yield. Season changes: Lighting.ColorCorrection shifts (spring=bright, winter=blue), Terrain snow in winter (FillBlock white material), leaf particles in autumn. Season indicator in HUD corner.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // COOKING & RESTAURANT
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Cooking & Restaurant',
+    systems: [
+      { name: 'Ingredient Collection', keywords: ['ingredient', 'ingredients', 'collect ingredient', 'food item', 'cooking material'],
+        how: 'Ingredients spawn in world as small Part models with BillboardGui label. ProximityPrompt "Collect". Server adds to inventory table {ingredient: count}. Respawn after 60s. Categories: Vegetables (garden), Meat (hunting), Spices (shop), Fish (fishing). Each ingredient has icon ImageLabel. Ingredient bag UI: ScreenGui ScrollingFrame showing all collected with counts. Weight limit optional.' },
+      { name: 'Recipe Crafting', keywords: ['recipe', 'cook', 'cooking', 'craft food', 'recipe book', 'make food'],
+        how: 'Recipes table: {name, ingredients:{Flour=2, Egg=1, Sugar=1}, cookTime=10, result="Cake", quality="base"}. Cooking station Part with ProximityPrompt. ScreenGui recipe list: show only recipes with at least 1 required ingredient owned. Select recipe → progress bar (cookTime seconds). Server validates ingredients, deducts, grants result. New recipes unlocked by finding Recipe Scroll items or leveling cooking skill.' },
+      { name: 'Food Quality Ratings', keywords: ['food quality', 'dish quality', 'star rating food', 'cooking quality', 'meal quality'],
+        how: 'Quality tiers: 1-5 stars. Base quality from recipe. Modifiers: +1 star if all ingredients are "Fresh" (collected < 300s ago), +1 star if player cooking level >= recipe level + 5, -1 star if missing optional ingredient. Quality affects: sell price multiplier (1x-3x), buff duration (1x-2x), visual (1 star = plain, 5 star = gold particles + special Model). BillboardGui shows stars above served dish.' },
+      { name: 'Restaurant Serving', keywords: ['restaurant', 'serve', 'customer', 'waiter', 'serve food', 'diner'],
+        how: 'NPC customers spawn at door, walk to empty seat (PathfindingService to chair Part). BillboardGui thought bubble shows wanted dish icon. Player brings correct dish (Tool) to table → ProximityPrompt "Serve". Match check: dish == wanted. Correct: customer eats (wait 5s), pays coins (quality-scaled), leaves. Wrong: angry emote, no pay. Timer: customer leaves if not served in 60s. Satisfaction meter affects future customer frequency.' },
+      { name: 'Kitchen Stations', keywords: ['kitchen', 'stove', 'oven', 'cutting board', 'kitchen station', 'cooking station'],
+        how: 'Multiple station Parts: Stove (frying/boiling), Oven (baking), CuttingBoard (chopping), Mixer (blending). Each recipe requires specific station. ProximityPrompt per station. Some recipes need multiple stations in sequence (chop→mix→bake). Station in-use: BoolValue prevents double-use, smoke/steam ParticleEmitter while cooking. Upgrade stations: faster cook time, unlock advanced recipes. Sound: sizzle, chop, oven ding.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // EGG HATCHING & PETS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Egg Hatching & Pets',
+    systems: [
+      { name: 'Egg Tiers', keywords: ['egg tier', 'egg type', 'common egg', 'rare egg', 'mythic egg', 'egg shop'],
+        how: 'Egg types: {name, cost, pets:[{pet,chance}], hatchTime, model}. Common Egg(free, basic pets), Rare Egg(500 coins, better pool), Epic Egg(2000, epic pets), Mythic Egg(10000, legendary chance). Each egg: distinct Model (size, color, glow). Display on pedestals with BillboardGui showing name + cost + "Hatch!" button. DevProduct for premium eggs. Egg inventory in DataStore.' },
+      { name: 'Hatch Meter', keywords: ['hatch meter', 'hatch progress', 'incubate', 'hatch bar', 'hatching progress'],
+        how: 'After purchasing egg: ScreenGui progress bar appears. Progress increases by walking (Humanoid.MoveDirection.Magnitude > 0 each Heartbeat: progress += 1). Or by playing minigames (+50 per game). Progress target: Common=100, Rare=300, Epic=800, Mythic=2000. Bar fills with egg-colored gradient. At 100%: auto-trigger hatch animation. Multiple eggs can be incubating (show slots, active egg fills fastest). Offline progress: none (encourages play).' },
+      { name: 'Rarity Rolls', keywords: ['rarity roll', 'gacha', 'pet roll', 'hatch rarity', 'random pet', 'lucky roll'],
+        how: 'Weighted random: table of {pet, weight}. Total weight = sum all. Roll = math.random(1, totalWeight). Iterate table subtracting weights until roll <= 0. Luck multiplier: shift weights (double Legendary weight). Display odds in ScreenGui before purchase (legally required in some regions). Animation: spinning reel of pet icons, slows to land on result. Duplicate protection optional: pity system after N hatches without rare.' },
+      { name: 'Shiny Variants', keywords: ['shiny', 'shiny pet', 'golden pet', 'rainbow pet', 'special variant'],
+        how: 'Every pet has 1/1000 chance to be Shiny on hatch. Shiny: alternate color palette (gold/rainbow), +50% stat boost, special ParticleEmitter (sparkles). BillboardGui shows star icon next to name. Shiny indicator in inventory (golden border UIStroke). Separate "Shiny" BoolValue in pet data. Trading shinies: 10x value. Shiny-only leaderboard. Shiny hunt event: 2x shiny chance for limited time.' },
+      { name: 'Pet Index / Pokedex', keywords: ['pet index', 'pokedex', 'pet collection', 'pet catalog', 'pet log', 'creature index'],
+        how: 'ScreenGui "Pet Index": grid of all possible pets. Discovered pets: full color icon + name + stats. Undiscovered: dark silhouette + "???". Completion counter: "47/120 Discovered". Milestone rewards: 25%=title, 50%=exclusive pet, 75%=badge, 100%=legendary reward. Filter tabs by egg source or rarity. Each entry: click for detail view showing 3D ViewportFrame of pet model, stats, rarity, how to obtain. DataStore tracks discovered set.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // PRISON & JAILBREAK
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Prison & Jailbreak',
+    systems: [
+      { name: 'Team System (Cops vs Criminals)', keywords: ['prison', 'jailbreak', 'cops', 'criminals', 'police', 'prisoner', 'inmate'],
+        how: 'Three teams: Prisoner(orange), Police(blue), Criminal(red-escaped). Team assignment on join via Team objects. Prisoner spawn inside prison walls. Police spawn in station. Criminal = escaped prisoner (team change on leaving prison bounds). Police tools: Handcuffs, Taser. Prisoner tools: none initially. Leaderboard shows team. Team-colored overhead BillboardGui. Team chat via TextChatService channels.' },
+      { name: 'Escape Routes', keywords: ['escape', 'escape route', 'tunnel', 'vent', 'sewer escape', 'prison escape'],
+        how: 'Multiple escape paths: Sewer(crawl through Part tunnel, Touched triggers at entrance), Vent(small Parts player crawls through, size check), Wall Breach(breakable wall Part, HP reduced by pickaxe hits), Helicopter Pad(requires keycard). Each route: difficulty rating, required items. ProximityPrompt at route entrance. Server validates: player is Prisoner team, has required items. On escape: team changes to Criminal, alarm Sound plays for all, timer for police to respond.' },
+      { name: 'Prison Tools & Items', keywords: ['pickaxe prison', 'keycard', 'prison tool', 'prison item', 'handcuffs', 'taser'],
+        how: 'Prisoners find items in hidden spots (ClickDetector on objects). Pickaxe: breaks walls (10 hits). Keycard: opens locked doors (ProximityPrompt). Hammer: breaks vent covers. Rope: climb walls. Items in Backpack, confiscated on arrest (Backpack:ClearAllChildren). Police tools always equipped: Handcuffs(touch to arrest, 2s hold), Taser(ranged stun 1s, 10 stud range). Donut: heals police +25HP.' },
+      { name: 'Criminal Gameplay', keywords: ['rob', 'robbery', 'heist', 'criminal activity', 'crime', 'steal'],
+        how: 'Escaped criminals can rob locations: Bank(vault door timer 30s, bag fills with cash over 60s), Jewelry Store(smash glass cases ClickDetector, grab items), Gas Station(intimidate NPC cashier via ProximityPrompt hold 5s). Each robbery: alarm triggers, police notified via RemoteEvent, bounty increases. Cooldown per location: 300s. Cash deposited at Criminal Base (Part zone). Higher bounty = more police XP for arrest.' },
+      { name: 'Arrest System', keywords: ['arrest', 'handcuff', 'jail', 'caught', 'send to jail', 'bust'],
+        how: 'Police tool "Handcuffs". Touch Criminal/Prisoner outside bounds: RemoteEvent "Arrest". Server: validate police team, target is criminal, within 5 studs. On arrest: target teleported to jail cell SpawnLocation, team set to Prisoner, tools confiscated, arrest cooldown 3s. Arresting officer gets bounty reward (coins). Jail timer: 30s default + bounty bonus time. Timer shown in ScreenGui. Bail option: pay coins to reduce timer.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // MINING & EXCAVATION
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Mining & Excavation',
+    systems: [
+      { name: 'Breakable Rocks', keywords: ['mine', 'mining', 'rock', 'ore', 'break rock', 'mine rock', 'dig'],
+        how: 'Rock Parts with IntValue "HP" (10-100). Player Tool "Pickaxe" with Activate: raycast forward 6 studs, if hit rock Part → HP -= pickaxeDamage. Visual: small debris Parts fly out (BodyVelocity random direction, Debris 1s). Sound: rock clink. At HP=0: rock shatters (all debris fly, ParticleEmitter dust burst), grant ore to inventory. Rock respawns after 60s (Transparency tween 1→0). Bigger rocks = more HP = better ore.' },
+      { name: 'Ore Tiers', keywords: ['ore tier', 'ore type', 'copper', 'iron', 'gold ore', 'diamond ore', 'ore rarity'],
+        how: 'Ore table: {Stone(common, value=1, gray), Coal(common, value=2, black), Copper(uncommon, value=5, orange), Iron(uncommon, value=10, silver), Gold(rare, value=50, gold), Diamond(epic, value=200, cyan), Mythril(legendary, value=1000, purple)}. Rock color hints at ore inside. Rarity weighted by depth zone. Each ore: distinct Part color + BillboardGui name on pickup. Ore smelted into bars at furnace for higher value or crafting.' },
+      { name: 'Depth Zones', keywords: ['depth', 'mine depth', 'underground', 'cave', 'deep mine', 'mine level'],
+        how: 'Mine descends vertically. Zones by Y coordinate: Surface(Y>0, Stone/Coal), Shallow(Y -50 to 0, +Copper/Iron), Deep(Y -150 to -50, +Gold), Abyss(Y < -150, +Diamond/Mythril). Each zone: different Lighting (darker deeper, ColorCorrection saturation decreases), different ambient Sound, different rock HP multiplier. Elevator Part at surface: ProximityPrompt to travel to deepest unlocked zone. Zone unlock: mine N rocks in previous zone.' },
+      { name: 'Pickaxe Upgrades', keywords: ['pickaxe upgrade', 'better pickaxe', 'mining tool', 'pickaxe tier', 'upgrade tool'],
+        how: 'Pickaxe tiers: Wood(dmg=1), Stone(dmg=2, cost=100), Iron(dmg=5, cost=500), Gold(dmg=10, cost=2000), Diamond(dmg=25, cost=10000), Mythril(dmg=50, cost=50000). Upgrade at Blacksmith NPC. Server validates coins + current tier. Each tier: different Tool model (color, size scale), swing animation speed increases. Special abilities at high tiers: Gold=chance double ore, Diamond=area mine (3 rocks), Mythril=auto-collect radius.' },
+      { name: 'Smelting & Furnace', keywords: ['smelt', 'smelting', 'furnace', 'refine', 'forge', 'smelt ore'],
+        how: 'Furnace Part with ProximityPrompt. ScreenGui: input slot (ore) + fuel slot (coal) + output slot (bar). Smelt: 1 ore + 1 coal = 1 bar (10s timer, progress bar). Bars worth 3x ore value. Bars used in crafting recipes. Auto-smelt upgrade: furnace processes queue while player mines. Visual: fire ParticleEmitter inside furnace while active, smoke from chimney. Sound: crackling fire, metal ding on complete.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // PET EVOLUTION
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Pet Evolution',
+    systems: [
+      { name: 'Evolution Trees', keywords: ['evolve', 'evolution', 'pet evolve', 'transform pet', 'upgrade pet', 'evolution tree'],
+        how: 'Each pet species has evolution chain: Stage1 → Stage2 → Stage3. Evolution requirements: {level, items, coins}. Stage1 "Flame Pup" (level 10 + 5 FireStones) → Stage2 "Flame Wolf" → Stage3 "Flame Dragon". Model changes per stage (bigger, more detail). Stats multiply: Stage2=2x, Stage3=4x base. ScreenGui evolution tree: visual flowchart showing current stage, next requirements. Cannot un-evolve. Sound: dramatic evolution sequence with light burst.' },
+      { name: 'Pet Merge Mechanics', keywords: ['merge', 'pet merge', 'fuse', 'combine pets', 'pet fusion'],
+        how: 'Merge 3 identical pets → 1 higher-tier pet. Merge station: ProximityPrompt on altar Part. ScreenGui: 3 input slots + arrow + output preview. Drag pets from inventory to slots. All 3 must be same species + same tier. Result: next rarity tier (3 Common = 1 Uncommon). Visual: 3 pets float above altar (BodyPosition), spiral inward (TweenService), flash → new pet appears. 10% chance of bonus: skip tier (3 Common → 1 Rare). DataStore deducts 3, adds 1.' },
+      { name: 'Pet Stat Boosts', keywords: ['pet stats', 'pet power', 'pet level', 'pet strength', 'level up pet'],
+        how: 'Each pet has stats: {damage, speed, luck, stamina}. Level up: XP from walking, fighting, minigames. XP to next level = level * 100. On level up: stats increase by base * 0.1. Stat allocation: per level grant 2 stat points, player distributes. ScreenGui pet stats panel: bars per stat, level number, XP progress bar. Cap at level 50. Prestige system: reset to level 1 with permanent +10% stat bonus.' },
+      { name: 'Elemental Pet Types', keywords: ['elemental pet', 'pet element', 'fire pet', 'water pet', 'earth pet', 'element type'],
+        how: 'Elements: Fire, Water, Earth, Air, Lightning, Dark, Light. Each pet has element StringValue. Weakness chart: Fire>Earth>Lightning>Water>Fire, Air>Dark>Light>Air. Battle bonus: 1.5x damage vs weak element. Visual: pet has element-colored ParticleEmitter aura. Element icon in BillboardGui. Hybrid pets (two elements) from special merges. ScreenGui element chart shows matchups. Some areas boost specific elements (+25% stats in matching biome).' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // GUILD & CLAN SYSTEM
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Guild & Clan System',
+    systems: [
+      { name: 'Guild Creation', keywords: ['guild', 'clan', 'create guild', 'make clan', 'guild system', 'faction'],
+        how: 'RemoteEvent "CreateGuild": server validates unique name, player has 1000 coins, not in existing guild. DataStore "Guilds" stores {name, leader, members:[], bank:0, level:1, createdAt}. Player DataStore stores guildId. Max 50 members. Guild tag above name in BillboardGui "[TAG] PlayerName". ScreenGui guild panel: member list, settings (leader only), leave button. Guild chat channel via TextChatService.' },
+      { name: 'Guild Invites', keywords: ['guild invite', 'clan invite', 'join guild', 'recruit', 'guild request'],
+        how: 'Leader/officers send invite: RemoteEvent "GuildInvite" with target userId. Target gets ScreenGui popup: "Join [GuildName]? Yes/No". Accept: server adds to members array, notifies all online members via RemoteEvent. Deny: notify sender. Request system: non-members request to join, leader approves from pending list. Auto-decline if guild full. Kick member: leader RemoteEvent "GuildKick", remove from members, notify kicked player.' },
+      { name: 'Guild Bank', keywords: ['guild bank', 'clan bank', 'guild treasury', 'guild donate', 'guild funds'],
+        how: 'Guild DataStore field "bank" (number). Members deposit via ScreenGui: TextBox amount + "Deposit" button. RemoteEvent "GuildDeposit": server deducts from player, adds to guild bank. Withdrawal: leader only, with configurable daily limit. Bank log: table of {player, amount, action, timestamp} stored last 50 entries. Display bank balance in guild panel. Bank funds used for guild upgrades, guild quests entry fee, guild wars buy-in.' },
+      { name: 'Guild Quests', keywords: ['guild quest', 'clan quest', 'guild mission', 'guild objective', 'guild challenge'],
+        how: 'Weekly guild quests generated server-side: {objective:"Collect 10000 coins collectively", progress:0, target:10000, reward:{guildXP:500, memberCoins:200}}. All member contributions tracked. ScreenGui quest board shows active quests with progress bars. On completion: rewards distributed to all online members, guild XP added. Quest difficulty scales with guild level. 3 active quests max. Refresh on Monday 00:00 UTC.' },
+      { name: 'Guild Wars', keywords: ['guild war', 'clan war', 'guild battle', 'guild vs guild', 'clan battle'],
+        how: 'Challenge system: leader sends war challenge to another guild via ScreenGui. Both leaders accept → war starts. Duration: 24 hours. Score: member kills + objectives completed. War arena: instanced map (TeleportService ReservedServer). 5v5 format: each guild sends 5 members. Best of 3 rounds. Winner guild: coins from loser bank (10% of loser bank, capped). War history in guild panel. Cooldown: 48h between wars per guild.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // DAILY QUESTS & OBJECTIVES
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Daily Quests & Objectives',
+    systems: [
+      { name: 'Quest Board', keywords: ['quest board', 'daily quest', 'daily mission', 'quest list', 'mission board'],
+        how: 'SurfaceGui on board Part in spawn area. Shows 3 daily quests + 1 weekly quest. Quests generated on server at 00:00 UTC: random selection from quest pool weighted by player level. Quest pool: {type:"collect", target:"Coin", count:50}, {type:"defeat", target:"Zombie", count:10}, {type:"craft", target:"Sword", count:1}. Click quest for details. Active quests shown in HUD sidebar. Max 3 daily active at once.' },
+      { name: 'Random Objectives', keywords: ['random objective', 'random quest', 'random mission', 'objective generator', 'quest variety'],
+        how: 'Objective generator ModuleScript: templates [{verb:"Collect", noun:"{item}", count:"{N}"}, {verb:"Defeat", noun:"{enemy}", count:"{N}"}]. Fill from tables: items=["Coins","Gems","Fish"], enemies=["Zombie","Spider","Boss"]. Count scaled by player level (level*5 for collect, level*2 for defeat). Ensures variety: track last 5 generated, never repeat. Difficulty modifier: Easy(0.5x count, 0.5x reward), Normal(1x), Hard(2x count, 3x reward).' },
+      { name: 'Quest Completion Rewards', keywords: ['quest reward', 'mission reward', 'complete quest', 'quest completion', 'objective reward'],
+        how: 'On objective reached: RemoteEvent "QuestComplete" fires to client. ScreenGui celebration: golden frame slides in with reward list. Rewards: coins(base * difficulty), XP(50-500), items(chance of rare drop), quest tokens(for quest shop). Sound: triumphant fanfare. Auto-collect: rewards added immediately server-side. Daily completion bonus: finish all 3 dailies = bonus chest (extra random reward). Progress resets at 00:00 UTC.' },
+      { name: 'Streak Bonuses', keywords: ['streak', 'daily streak', 'login streak', 'consecutive days', 'streak bonus', 'streak reward'],
+        how: 'DataStore stores {lastQuestDay: dayNumber, streak: N}. Day = math.floor(os.time()/86400). On daily quest completion: if lastQuestDay == today-1 → streak += 1, else if lastQuestDay < today-1 → streak = 1. Streak multiplier: rewards * (1 + streak * 0.1), capped at 3x (streak 20). Streak display: flame icon + number in HUD. Milestones: 7-day = exclusive item, 30-day = title, 100-day = legendary pet. Streak freeze item: purchased, prevents reset for 1 missed day.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // SEASONAL EVENTS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Seasonal Events',
+    systems: [
+      { name: 'Holiday Themes', keywords: ['holiday', 'christmas', 'halloween', 'easter', 'valentine', 'holiday event', 'holiday theme'],
+        how: 'Server checks os.date for holiday range. Halloween (Oct 15-Nov 5): orange/purple Lighting, fog Atmosphere density 0.5, pumpkin Models replace lamps, spooky ambient Sound. Christmas (Dec 10-Jan 5): snow terrain, red/green decorations, Santa NPC, gift boxes. Easter (Mar-Apr): pastel colors, egg hunt. Valentine (Feb 10-15): pink particles, heart Models. Theme ModuleScript holds holiday configs: {lighting, decorations[], npcs[], music}. Revert to default after event.' },
+      { name: 'Limited Event Items', keywords: ['limited item', 'event exclusive', 'seasonal item', 'event item', 'limited edition'],
+        how: 'Event items: unique Models/Tools available only during event period. Shop NPC "Event Vendor" spawns during event only. Items marked "LIMITED" with countdown timer in shop GUI. After event: items remain in inventory but cannot be obtained again. Visual flair: special UIStroke pulsing border in inventory, "EVENT" tag. DataStore stores acquisition timestamp. Some items tradeable (high trade value post-event), some soulbound.' },
+      { name: 'Event Currency', keywords: ['event currency', 'event token', 'event coin', 'seasonal currency', 'candy', 'snowflake'],
+        how: 'Separate IntValue "EventTokens" (name matches event: "Candy" for Halloween, "Snowflakes" for Christmas). Earned from event-specific activities: collecting spawned items in world, event quests, event minigames. Cannot be converted to regular currency. Expires after event (reset to 0 or convert at 10:1 ratio to coins). HUD shows event currency with themed icon. Sound: special chime on collect.' },
+      { name: 'Event Shop', keywords: ['event shop', 'seasonal shop', 'event store', 'holiday shop', 'event vendor'],
+        how: 'Special NPC with themed Model (witch for Halloween, elf for Christmas). ProximityPrompt opens event ScreenGui. Items priced in event currency. Categories: Cosmetics (skins, trails), Pets (event-exclusive), Tools (themed weapons), Consumables (temporary buffs). Limited stock per item (IntValue count, shown in GUI). Countdown timer at top: "Event ends in 3d 12h". Best items most expensive to encourage grinding. Server validates event is active before any purchase.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // ACHIEVEMENT TREES
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Achievement Trees',
+    systems: [
+      { name: 'Branching Achievements', keywords: ['achievement', 'achievement tree', 'achievement branch', 'unlock achievement', 'achievement path'],
+        how: 'Achievement tree ModuleScript: nodes [{id, name, description, requirement:{type,target,count}, parent:id|null, reward, rarity}]. Tree structure: root achievements (no parent) → children unlock when parent completed. ScreenGui: visual tree with lines connecting nodes. Completed=gold, available=white, locked=gray. Click node for details. Server tracks completion in DataStore bitfield or table. Fire "AchievementUnlocked" RemoteEvent on completion.' },
+      { name: 'Milestone Rewards', keywords: ['milestone', 'achievement reward', 'achievement milestone', 'progress reward', 'milestone unlock'],
+        how: 'Global achievement counter: total achievements completed (IntValue). Milestones at 10, 25, 50, 100, 200, 500. Each milestone: escalating reward (coins, exclusive items, titles, badges). ScreenGui milestone display: progress bar to next milestone with reward preview. On milestone hit: full-screen celebration (confetti ParticleEmitter, "MILESTONE!" text scales up), reward chest animation. DataStore stores milestones claimed.' },
+      { name: 'Achievement Rarity Badges', keywords: ['badge', 'achievement badge', 'rarity badge', 'trophy', 'rare achievement'],
+        how: 'Each achievement has rarity based on % of players who completed it (server tracks globally). Rarities: Common(>50%), Uncommon(25-50%), Rare(10-25%), Epic(5-10%), Legendary(<5%). Badge color: bronze/silver/gold/purple/red. Display in player profile ScreenGui: badge showcase (top 6 rarest). BillboardGui option: show rarest badge above head. Achievement comparison: visit other player profile to compare. Global leaderboard: most rare achievements.' },
+      { name: 'Secret Achievements', keywords: ['secret achievement', 'hidden achievement', 'mystery achievement', 'discovery achievement'],
+        how: 'Subset of achievements with description hidden until discovered: "???" in achievement tree. Hints: vague clue text "Do something unexpected at the volcano". Triggered by obscure actions: visit hidden location, perform specific emote sequence, find all easter eggs. On unlock: special notification "SECRET FOUND!" with unique sound. Extra XP reward (3x normal). Achievement list shows "5 Secrets Remaining". Encourages exploration and community sharing of discoveries.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // CRAFTING SYSTEM
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Crafting System',
+    systems: [
+      { name: 'Material Gathering', keywords: ['gather', 'material', 'resource', 'collect material', 'gather resource', 'forage'],
+        how: 'Resources in world: Trees (chop with axe, drop Wood), Rocks (mine with pickaxe, drop Stone/Ore), Plants (interact, drop Herbs/Fiber), Animals (defeat, drop Hide/Meat). Each resource: Part model with IntValue HP, respawn timer. Tool required matching resource type. Gathering gives 1-3 materials per hit (random). Gathering skill: levels up with use, higher level = more drops + faster gather. Inventory ModuleScript tracks all materials as {name:count} table.' },
+      { name: 'Recipe Discovery', keywords: ['recipe discovery', 'discover recipe', 'learn recipe', 'recipe unlock', 'experiment craft'],
+        how: 'Two systems: known recipes (unlocked by finding Recipe Scroll items or NPC teaching) and experimental crafting (place any 2-4 items in crafting grid, if combination matches hidden recipe → discover it permanently). DataStore stores discovered recipe IDs. Unknown recipes show as "???" in recipe book with hint ("Combine something hard with something hot"). First discovery bonus: extra XP + "Pioneer" achievement. Share discoveries in chat notification.' },
+      { name: 'Workbench Stations', keywords: ['workbench', 'crafting table', 'anvil', 'loom', 'crafting station'],
+        how: 'Station types: Basic Workbench (wood items), Anvil (metal items, needs smelted bars), Loom (fabric/rope items), Alchemy Table (potions), Enchanting Table (add effects to equipment). Each station Part with ProximityPrompt. Station ScreenGui: shows only recipes available at this station. Higher tier stations unlock at player crafting level thresholds. Station upgrade: player builds improved station (more recipes, faster craft). Sound: unique per station (hammering, weaving, bubbling).' },
+      { name: 'Item Quality Crafting', keywords: ['item quality', 'craft quality', 'quality level', 'masterwork', 'crafting quality'],
+        how: 'Crafted items roll quality: Normal(60%), Fine(25%), Superior(10%), Masterwork(5%). Quality affects stats: Fine=+20%, Superior=+50%, Masterwork=+100%. Factors improving quality: crafting skill level (each level +1% to roll), material quality (rare materials shift odds), station tier. Visual: quality name prefix + colored glow (white/green/blue/gold). Masterwork items: unique particle trail, BillboardGui "MASTERWORK" tag. Cannot re-roll quality; craft again for another chance.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // HOUSING & DECORATION
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Housing & Decoration',
+    systems: [
+      { name: 'Plot Ownership', keywords: ['house plot', 'own plot', 'buy plot', 'plot ownership', 'home plot', 'player house'],
+        how: 'Plot Parts in housing zone with BillboardGui "For Sale - 5000 Coins" or "Owned by PlayerName". ProximityPrompt "Buy Plot". Server: validate no existing plot owned, coins >= price, assign plot to userId in DataStore. Plot boundary: invisible walls (CanCollide true, Transparency 1) prevent trespassing. Owner can toggle visitors (BoolValue "AllowVisitors"). Plot size tiers: Small(20x20), Medium(30x30), Large(40x40). Upgrade size at NPC.' },
+      { name: 'Furniture Placement', keywords: ['furniture', 'place furniture', 'decorate', 'decoration', 'furnish', 'interior design'],
+        how: 'Build mode toggle (keybind B). ScreenGui furniture catalog: owned items in grid. Select item → ghost Model follows mouse (Transparency 0.5, green=valid, red=invalid placement). Click to place: server validates within plot bounds + no overlap (GetPartBoundsInBox check). Placed items stored in DataStore as {itemId, CFrame}. Rotation: R key rotates 90°. Move: click placed item to pick up. Delete: select + Delete key. Grid snap: positions snap to 1-stud grid.' },
+      { name: 'Room Templates', keywords: ['room template', 'house template', 'preset room', 'starter house', 'house layout'],
+        how: 'Pre-built room layouts: {name:"Cozy Cabin", parts:[{size,pos,color,material}...], furniture:[{item,cframe}...]}. Apply template: ProximityPrompt at plot or button in ScreenGui. Server: clear existing plot contents, spawn all template parts + furniture. Templates: Starter Shack(free), Modern Loft(1000), Castle Room(5000), Space Station(10000). Player can modify after applying. Save custom layout as personal template (1 slot free, more slots purchasable).' },
+      { name: 'Visitor System', keywords: ['visit house', 'visitor', 'house visit', 'tour house', 'visit player', 'open house'],
+        how: 'Visit other plots: ScreenGui "Visit" button opens player list. Select player → teleport to their plot entrance. Owner controls: AllowVisitors toggle, whitelist/blacklist. Visitor counter: IntValue tracks total visits, shown on BillboardGui. Like system: visitors can "Like" once (heart button), like count displayed. Most-liked houses on leaderboard. Visitor book: SurfaceGui on Part in house, shows recent visitor names with timestamps.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // AUCTION HOUSE (ADVANCED)
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Auction House Advanced',
+    systems: [
+      { name: 'Item Listing', keywords: ['list item', 'auction listing', 'sell item', 'create listing', 'post auction'],
+        how: 'ScreenGui at Auction NPC: "List Item" tab. Select from inventory → set starting price + buyout price + duration (6h/12h/24h). RemoteEvent "CreateListing": server validates ownership, removes item from inventory, stores listing in DataStore "AuctionListings" {id, seller, item, startPrice, buyoutPrice, currentBid, highestBidder, endTime}. Listing fee: 5% of starting price (anti-spam). Max 5 active listings per player.' },
+      { name: 'Bidding System', keywords: ['bid', 'auction bid', 'place bid', 'outbid', 'highest bid'],
+        how: 'Browse listings in ScreenGui ScrollingFrame with sort/filter. Click listing → detail view with current bid, time remaining, bid history. "Bid" button: TextBox for amount, minimum = currentBid + 10% increment. Server validates: bid > current, bidder has coins, not own listing. Deduct bid amount from bidder, refund previous highest bidder. On auction end (server timer): grant item to winner, coins to seller minus 10% fee. If no bids: return item to seller.' },
+      { name: 'Buyout System', keywords: ['buyout', 'instant buy', 'buy now', 'instant purchase'],
+        how: 'Listings have optional buyoutPrice. "Buy Now" button in listing detail. Server: validate coins >= buyoutPrice, instantly complete auction (skip timer). Refund any current highest bidder. Transfer item to buyer, coins minus 10% fee to seller. Remove listing from DataStore. Notification to seller: "Your {item} sold for {buyoutPrice}!" via RemoteEvent. Popular items: buyout within seconds (price discovery).' },
+      { name: 'Auction Search & Filter', keywords: ['auction search', 'auction filter', 'search listing', 'find item', 'browse auction'],
+        how: 'ScreenGui search bar (TextBox + magnifying glass icon). Filter dropdowns: Category (Weapons/Armor/Materials/Pets), Rarity (Common-Legendary), Price Range (min/max TextBox), Sort By (Price Low→High, Time Remaining, Recently Listed). Server processes search: GetSortedAsync for ordered results, filter in memory. Pagination: 20 per page, Next/Prev buttons. Saved searches: bookmark filter combos. "Watch" button on items: notify when new listing appears.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // SOCIAL FEATURES
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Social Features',
+    systems: [
+      { name: 'Friend List', keywords: ['friend', 'friend list', 'add friend', 'friend system', 'friends'],
+        how: 'Uses Players:GetFriendsAsync(userId) for Roblox friends. Custom in-game friends: DataStore stores friendsList per player. Send request: RemoteEvent "FriendRequest". Recipient gets popup. Accept: both players add each other to lists. ScreenGui friends panel: online friends (green dot) + offline (gray). Click friend: options (Join Server, Visit House, Send Gift, Unfriend). Show friend count in profile. Best friends: top 3 most interacted.' },
+      { name: 'Party System', keywords: ['party', 'group up', 'party invite', 'team up', 'squad'],
+        how: 'Create party: RemoteEvent "CreateParty". Leader invites via ScreenGui player list. Max 4 members. Party HUD: member portraits (ViewportFrame of character) + HP bars in top-left corner. Party benefits: shared XP (split evenly), see party members on minimap (special color dot), party chat channel. Leave party: button or disconnect. Leader transfer: if leader leaves, next member becomes leader. Party disbanded when < 2 members. TeleportService: party travels together to new servers.' },
+      { name: 'Chat Channels', keywords: ['chat channel', 'global chat', 'local chat', 'trade chat', 'chat system'],
+        how: 'TextChatService channels: Global(all players on server), Local(within 50 studs, magnitude check), Trade("WTS/WTB" prefix required), Party(party members only), Guild(guild members only). Channel selector: tab buttons above chat window. Different colors per channel: Global=white, Local=yellow, Trade=green, Party=cyan, Guild=purple. Mute player: right-click name → "Mute" stores in local table. Chat filter: TextChatService built-in + custom word list.' },
+      { name: 'Emote System', keywords: ['emote', 'dance', 'wave', 'sit emote', 'emote wheel'],
+        how: 'Emote table: {name, animationId, icon, category}. Categories: Greetings(wave, bow), Dances(shuffle, spin), Actions(sit, lay, push-up), Funny(chicken, robot). Trigger: /e command in chat or emote wheel UI (radial menu, hold E key). Play Animation on Humanoid.Animator. Looping emotes: stop on movement. Some emotes purchasable (DevProduct). Emote favorites: player pins top 8 to quick wheel. Custom emotes: premium feature.' },
+      { name: 'Gift Sending', keywords: ['gift', 'send gift', 'give item', 'gift player', 'present'],
+        how: 'ScreenGui "Send Gift": select recipient from friends/nearby list, select item from inventory or purchase gift wrap (DevProduct). Confirm → RemoteEvent "SendGift". Server: validate sender owns item, recipient exists, not blocked. Remove from sender, add to recipient inbox (not direct inventory). Recipient notification: "You received a gift from {player}!" + gift box animation (3D model opens with sparkles). Gift log in DataStore. Daily gift limit: 5 per day (anti-exploit).' },
+    ],
+  },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════
