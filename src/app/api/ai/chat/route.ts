@@ -5305,9 +5305,22 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
 
     // Enrich with object blueprints (for builds) or script patterns (for scripts)
     let enrichedCodePrompt = effectivePrompt
+    const basePromptLength = effectivePrompt.length
+    // CAP total prompt size — Gemini 2.5 Flash has 1M context but more prompt = less attention on each part
+    // Keep enrichments under 15K chars total to leave room for quality code generation
+    const MAX_ENRICHMENT_CHARS = 15000
+    let enrichmentChars = 0
+    const canAddEnrichment = (addition: string) => {
+      if (enrichmentChars + addition.length > MAX_ENRICHMENT_CHARS) {
+        console.log(`[PromptCap] Skipping enrichment (${addition.length} chars would exceed ${MAX_ENRICHMENT_CHARS} cap, currently at ${enrichmentChars})`)
+        return false
+      }
+      enrichmentChars += addition.length
+      return true
+    }
 
-    // Inject working template reference for script intents
-    if (templateReference && isScriptIntent) {
+    // Inject working template reference for script intents (capped)
+    if (templateReference && isScriptIntent && canAddEnrichment(templateReference)) {
       enrichedCodePrompt += templateReference
       console.log('[ScriptTemplate] Injected working template reference for script intent')
     }
@@ -5598,7 +5611,7 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     let buildRace: { result: string; index: number } | null = null
     const outputTokens = isScriptIntent ? 32768 : 16384
     if (!luauCode) {
-      console.log('[SinglePass] Gemini-first build gen for:', message.slice(0, 50))
+      console.log(`[SinglePass] Gemini-first build gen for: "${message.slice(0, 50)}" | prompt: ${enrichedCodePrompt.length} chars (base: ${basePromptLength}, enriched: +${enrichmentChars})`)
       // Try Gemini first — it's the best at structured code generation
       const geminiResult = await callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens)
       if (geminiResult && geminiResult.length > 200) {
@@ -5649,19 +5662,14 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       // with a stricter prompt that demands only code output
       if (!luauCode && (intent === 'build' || isScriptIntent)) {
         console.warn('[SinglePass] No code block found in response — retrying with strict code-only prompt')
-        const strictRetry = await raceNonNull(
-          callGroq(
-            isScriptIntent
-              ? `You are a Roblox Luau script generator. Output ONLY a \`\`\`lua code block. No text before or after. No bullet points. No descriptions. JUST CODE.`
-              : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. No text before or after. No bullet points. No descriptions. JUST CODE. Use Instance.new("Part") for objects. Set Anchored=true, Material, Color3, Size, Position on every part. Include ChangeHistoryService boilerplate. Minimum 30 parts.`,
-            effectiveInstruction, history.slice(-2), 16384,
-          ),
-          callGemini(
-            isScriptIntent
-              ? `You are a Roblox Luau script generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE.`
-              : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE. Use Instance.new("Part"). Include ChangeHistoryService boilerplate. Minimum 30 parts.`,
-            effectiveInstruction, history.slice(-2), 16384,
-          ),
+        // Gemini first for strict retry too — Groq produces garbage code-only output
+        const strictPrompt = isScriptIntent
+          ? `You are a Roblox Luau script generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE.`
+          : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE. Use the P()/W()/Cyl()/Ball() helpers. Include ChangeHistoryService boilerplate. Minimum 60 parts for buildings. Use FOR LOOPS for repeated elements.`
+        const strictRetryResult = await callGemini(strictPrompt, effectiveInstruction, history.slice(-2), 16384)
+        const strictRetry = strictRetryResult ? { result: strictRetryResult, index: 0 } : await raceNonNull(
+          callGroq(strictPrompt, effectiveInstruction, history.slice(-2), 16384),
+          callOpenRouterChat(strictPrompt, effectiveInstruction, history.slice(-2), 16384),
         )
         if (strictRetry) {
           const retryCode = extractLuauCode(strictRetry.result)
@@ -5971,7 +5979,7 @@ ${effectiveInstruction}`
         : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. Use Instance.new("Part") for every object. Set Anchored=true, Material, Color3.fromRGB(), Size, Position on every part. Never use SmoothPlastic. Wrap in ChangeHistoryService recording. Place relative to workspace.CurrentCamera. Minimum 30 parts. Wrap in ChangeHistoryService recording.`
       const lightInstruction = isScriptIntent
         ? `Script "${message}" in Roblox. Output a complete runnable Luau script. Create Script instances with .Source property containing the game logic. Parent to ServerScriptService. First write 2 sentences explaining what it does, then the code.`
-        : `Build "${message}" in Roblox Studio. Output working Luau code with 15+ parts. Use varied materials (Concrete, Wood, Brick, Slate, Metal, Glass). Add PointLight to any light sources. First write 2 sentences describing the build, then the code.`
+        : `Build "${message}" in Roblox Studio. Output working Luau code with 60+ parts minimum. Use P()/W()/Cyl()/Ball() helpers. Use FOR LOOPS for repeated elements (windows, fence posts, lamps). Include ChangeHistoryService boilerplate, foundation, trim, exterior landscaping. Use varied materials (Concrete, Wood, Brick, Slate, Metal, Glass). Add PointLight. First write 2 sentences, then the code.`
       try {
         const lightRetry = await raceNonNull(
           callGemini(lightPrompt, lightInstruction, [], 16384),
