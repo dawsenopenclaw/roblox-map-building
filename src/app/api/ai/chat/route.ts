@@ -1142,6 +1142,24 @@ async function sendCodeToStudio(sessionId: string | null, code: string, teamId?:
     console.warn('[build-validator] Validation failed (non-fatal):', (e as Error).message)
   }
 
+  // ── STATIC ANALYSIS: catch Luau syntax/API errors before Studio ──
+  try {
+    const { analyzeLuau } = await import('@/lib/ai/static-analysis')
+    const analysis = analyzeLuau(code)
+    const errors = analysis.issues.filter(i => i.severity === 'error')
+    const autoFixed = analysis.issues.filter(i => i.fix)
+    if (analysis.issues.length > 0) {
+      console.log(`[static-analysis] ${errors.length} errors, ${autoFixed.length} auto-fixable, score ${analysis.score}/100`)
+    }
+    // Apply auto-fixes (deprecated APIs, common mistakes)
+    if (analysis.fixedCode) {
+      code = analysis.fixedCode
+      console.log(`[static-analysis] Auto-fixed ${autoFixed.length} issues`)
+    }
+  } catch (e) {
+    console.warn('[static-analysis] Non-fatal:', (e as Error).message)
+  }
+
   try {
     console.log('[sendCodeToStudio] Attempting for session:', sessionId, 'codeLen:', code.length)
 

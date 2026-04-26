@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
+import React, { useRef, useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react'
 // GlassPanel removed — not used in ChatPanel
 import type { ChatMessage, MeshResult, ModelId, ModelOption } from '@/app/(app)/editor/hooks/useChat'
 import { MODELS } from '@/app/(app)/editor/hooks/useChat'
@@ -8,6 +8,10 @@ import { McpToolCard, type McpToolResult } from './McpToolCard'
 import { McpToolbar } from './McpToolbar'
 import { ModelPreview } from './ModelPreview'
 import { VoiceInputButton } from './VoiceInputButton'
+const BuildPreviewRaw = lazy(() => import('./BuildPreview'))
+function BuildPreviewLazy({ code }: { code: string }) {
+  return <Suspense fallback={null}><BuildPreviewRaw code={code} /></Suspense>
+}
 import { VoiceOutputToggle } from './VoiceOutputToggle'
 // CheckpointPanel and CheckpointTimeline removed — not used in ChatPanel
 import { computeLineDiff, hasDiff } from '@/lib/simple-diff'
@@ -2662,6 +2666,9 @@ function MessageBubbleImpl({
           </span>
         )}
         {/* Feedback buttons — on EVERY assistant message (code or not) */}
+        {!msg.streaming && msg.luauCode && msg.role === 'assistant' && (
+          <BuildPreviewLazy code={msg.luauCode} />
+        )}
         {!msg.streaming && msg.role === 'assistant' && onSend && (
           <ConversationFeedbackButtons
             messageId={msg.id}
