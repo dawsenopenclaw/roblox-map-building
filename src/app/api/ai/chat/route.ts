@@ -4998,6 +4998,29 @@ USE THIS DATA:
     const scriptTemplate = isScriptIntent ? getScriptTemplate(message) : null
     const fullGameTemplate = fullGameDetection?.templateCode || null
 
+    // GUI TEMPLATES: If we have a perfect premium template (from gui-templates.ts),
+    // use it DIRECTLY — don't let the AI rewrite it into garbage.
+    // Check if the template is from our premium GUI system (starts with our wrapper pattern)
+    const isGuiTemplate = scriptTemplate && scriptTemplate.includes('ForjeGames') && scriptTemplate.includes('ScreenGui')
+    if (isGuiTemplate && sessionId) {
+      console.log('[GUI-Direct] Using premium GUI template directly (not as reference)')
+      try {
+        const sent = await sendCodeToStudio(sessionId, scriptTemplate)
+        if (sent) {
+          return {
+            conversationText: `Set up a premium GUI for you — dark theme with gold accents, smooth animations, sounds on every interaction, and close/toggle buttons. Check your StarterGui in Studio!\n\nThe GUI includes:\n- UICorner + UIStroke on everything\n- TweenService open/close animations\n- Button bounce on press\n- Gold gradient shimmer\n- Auto-wired to RemoteEvents`,
+            luauCode: scriptTemplate,
+            executedInStudio: true,
+            suggestions: ['Customize the colors', 'Add more items', 'Connect to a server script'],
+            model: 'gui-template',
+          }
+        }
+      } catch (err) {
+        console.warn('[GUI-Direct] Failed to send to Studio:', err)
+        // Fall through to use as reference
+      }
+    }
+
     const templateCode = scriptTemplate || fullGameTemplate
     const templateReference = templateCode
       ? `\n\n=== WORKING REFERENCE TEMPLATE (adapt to match user's request) ===\nThis is PROVEN WORKING CODE for this type of system. Use its structure, patterns, and API calls. Customize names, values, colors, and layout to match what the user asked for. Do NOT copy verbatim — adapt it.\n\`\`\`lua\n${templateCode.slice(0, 4000)}\n\`\`\`\n=== END REFERENCE ===`
@@ -6257,6 +6280,19 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
       } catch (studioErr) {
         console.error('[SinglePass] sendCodeToStudio error:', studioErr instanceof Error ? studioErr.message : studioErr)
       }
+    }
+
+    // ── GUI QUALITY AUDIT: check UI code meets PSX standards ──
+    if (luauCode && isScriptIntent) {
+      try {
+        const { auditGui, formatGuiAuditForChat } = await import('@/lib/ai/gui-auditor')
+        const guiAudit = auditGui(luauCode)
+        if (guiAudit.isGuiCode) {
+          console.log(`[GuiAuditor] ${guiAudit.summary}`)
+          const auditNote = formatGuiAuditForChat(guiAudit)
+          if (auditNote) conversationText += auditNote
+        }
+      } catch { /* non-blocking */ }
     }
 
     // Fallback conversation text if still empty
