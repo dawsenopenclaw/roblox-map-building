@@ -80,7 +80,7 @@ export default function TeamSettingsPage() {
   const fetchTeams = useCallback(async () => {
     try {
       const token = await getToken()
-      const res = await fetch(`${apiUrl}/api/teams`, {
+      const res = await fetch(`/api/team`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) {
@@ -113,7 +113,7 @@ export default function TeamSettingsPage() {
     }
     try {
       const token = await getToken()
-      const res = await fetch(`${apiUrl}/api/teams/${teamId}`, {
+      const res = await fetch(`/api/team/${teamId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) {
@@ -153,10 +153,10 @@ export default function TeamSettingsPage() {
     setSuccess('')
     try {
       const token = await getToken()
-      const res = await fetch(`${apiUrl}/api/teams/${team.id}/members/${memberId}/role`, {
-        method: 'PUT',
+      const res = await fetch(`/api/team/${team.id}/members`, {
+        method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
+        body: JSON.stringify({ userId: memberId, role }),
       })
       const data = await res.json() as { member?: TeamMember; error?: string }
       if (!res.ok) { setError(data.error || 'Failed to update role'); return }
@@ -180,7 +180,7 @@ export default function TeamSettingsPage() {
     }
     try {
       const token = await getToken()
-      await fetch(`${apiUrl}/api/teams/${team.id}/members/${memberId}`, {
+      await fetch(`/api/team/${team.id}/members?userId=${memberId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })

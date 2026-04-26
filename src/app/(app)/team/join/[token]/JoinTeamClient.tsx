@@ -35,7 +35,8 @@ export default function JoinTeamPage() {
 
         let res: Response
         try {
-          res = await fetch(`${apiUrl}/api/teams/invite/${token}`, {
+          res = await fetch(`/api/team/join/${token}`, {
+            method: 'POST',
             headers: { Authorization: `Bearer ${authToken}` },
           })
         } catch {
