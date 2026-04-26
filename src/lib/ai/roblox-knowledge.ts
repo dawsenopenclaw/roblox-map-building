@@ -2025,6 +2025,179 @@ return ShopModule
       'Not separating server and client code clearly',
     ],
   },
+
+  {
+    name: 'Detailed Building Techniques (DevForum)',
+    keywords: ['build', 'house', 'building', 'detail', 'architecture', 'wall', 'roof', 'window', 'door', 'interior', 'exterior'],
+    snippet: `-- BUILDING DETAIL TECHNIQUES (from DevForum pro builders)
+--
+-- PART COUNT TARGETS (real DevForum standards):
+-- House without interior: 100-600 parts
+-- Interior room: 30-80 parts per room
+-- Max in render distance (300 studs): 5,000 parts
+-- Real trick: 10-story building with 200 windows = 68 parts (not 800)
+--   → Use #-shaped walls (frame only) instead of filled blocks
+--   → Windows are HOLES in the wall, not separate glass parts on top
+--
+-- WALL CONSTRUCTION (DevForum pro technique):
+-- DON'T: Single thick slab for each wall
+-- DO: Frame construction — thin outer wall + inner wall + air gap
+-- This creates natural window recesses and door frames
+-- Wall thickness: 0.8-1.0 studs, NOT 2-4 studs
+--
+-- DETAIL HIERARCHY (what separates amateur from pro):
+-- Level 1: Walls + floor + roof (amateur — "box house")
+-- Level 2: + windows + door + foundation (beginner)
+-- Level 3: + trim + baseboard + crown molding + window frames (intermediate)
+-- Level 4: + shutters + flower boxes + porch railings + chimney detail (advanced)
+-- Level 5: + weathering + color variation + landscaping + interior (pro)
+-- Our AI should target Level 4-5 for every building.
+--
+-- MATERIAL LAG RANKINGS (DevForum tested):
+-- Neon: 3/5 lag (highest — use sparingly, only for actual glowing things)
+-- Glass: 3/5 lag (use but minimize — windows only)
+-- Most materials: 1-2/5 lag (safe to use freely)
+-- Concrete, Brick, Wood, WoodPlanks, Slate: all performant
+--
+-- ROOF TECHNIQUES:
+-- Gable: 2 WedgeParts meeting at ridge, overhang 1.5-2 studs past walls
+-- Hip: 4 WedgeParts meeting at center point
+-- Flat: Part with slight parapet wall around edge (0.3-0.5 height rim)
+-- Mansard: lower steep wedge + upper shallow wedge on each side
+-- ALWAYS add fascia board (thin strip under roof edge) — single biggest detail improvement
+--
+-- COLOR VARIATION (DevForum #1 tip for realism):
+-- NEVER use one flat color for large surfaces
+-- Use vc() helper or manually vary RGB by ±10-15 per part
+-- Brick walls: alternate 2-3 slightly different brick colors
+-- Wood: vary brown tones per plank
+-- Stone: each stone slightly different shade`,
+    pitfalls: [
+      'Single-color large surfaces (looks flat and fake)',
+      'Walls thicker than 1 stud (wastes parts, looks chunky)',
+      'No roof overhang (amateur tell — always extend 1.5+ past walls)',
+      'Missing baseboard/crown trim (biggest quality gap)',
+      'Using Neon for non-glowing surfaces (performance + looks wrong)',
+      'Box houses with no foundation (floating buildings look terrible)',
+      'Symmetrical everything (real buildings have asymmetric details)',
+    ],
+  },
+  {
+    name: 'Tycoon Game Architecture (DevForum)',
+    keywords: ['tycoon', 'factory', 'dropper', 'conveyor', 'collector', 'upgrade', 'rebirth', 'plot', 'idle'],
+    snippet: `-- TYCOON ARCHITECTURE (from DevForum production tycoon developers)
+--
+-- PLOT SYSTEM:
+-- Each player gets a plot (Model in Workspace with PrimaryPart)
+-- Plot contains: baseplate, plot boundary, purchase buttons
+-- Buildings CLONE from ServerStorage into the plot on purchase
+-- Server tracks ownership: plotOwners[player.UserId] = plotModel
+--
+-- DROPPER PATTERN (server-side, performant):
+-- Spawn parts at dropper position every N seconds
+-- Use BodyVelocity (NOT TweenService) for conveyor movement:
+--   local bv = Instance.new("BodyVelocity")
+--   bv.MaxForce = Vector3.new(math.huge, 0, math.huge)
+--   bv.Velocity = Vector3.new(0, 0, -10) -- conveyor direction
+--   bv.Parent = droppedPart
+--
+-- COLLECTOR PATTERN:
+-- Touched event on collector bin detects resource parts
+-- Server validates: is this part from THIS player's plot?
+-- Calculate value: baseCost * totalBoost (from upgrades)
+-- Credit currency, destroy the part
+--
+-- ECONOMY BALANCING (DevForum tested method):
+-- Set a 1-minute timer — every purchase should take ~1 min to afford
+-- This creates consistent progression pacing
+-- Upgrade costs: use exponential scaling (cost * 1.5^level)
+--
+-- CASH DISTRIBUTION (two approaches):
+-- SECURE: All server-side, ChildAdded on client destroys other players' parts
+-- PERFORMANT: Client spawns visual parts, fires remote, server validates rate
+-- Most production games use the performant approach with rate limiting
+--
+-- REBIRTH FORMULA:
+-- rebirthMultiplier = 1 + (rebirthCount * 0.5)
+-- Cost to rebirth = baseCost * (2 ^ rebirthCount)
+-- On rebirth: reset currency + buildings, keep multiplier
+-- DataStore saves: currency, buildings purchased (table), rebirth count
+--
+-- PURCHASE BUTTONS:
+-- Physical Part in workspace with SurfaceGui showing price
+-- ProximityPrompt or Touched to trigger purchase
+-- Server validates: does player have enough? Is this the right plot?
+-- On purchase: clone building from ServerStorage, parent to plot`,
+    pitfalls: [
+      'Client-side currency (exploitable — ALWAYS server-side)',
+      'TweenService for conveyor (use BodyVelocity — physics based)',
+      'No rate limiting on purchase remotes (exploit: spam buy)',
+      'Storing physical parts in ReplicatedStorage (use ServerStorage)',
+      'Not validating plot ownership on purchases (player can buy on others plots)',
+      'Linear upgrade costs (exponential feels better: cost * 1.5^level)',
+      'Not saving on BindToClose (data lost on server shutdown)',
+    ],
+  },
+  {
+    name: 'Simulator Game Architecture (DevForum)',
+    keywords: ['simulator', 'collect', 'backpack', 'sell', 'zone', 'rebirth', 'pet sim', 'clicking', 'grinding'],
+    snippet: `-- SIMULATOR ARCHITECTURE (from DevForum + Pet Sim/Bee Swarm analysis)
+--
+-- CORE LOOP: Collect → Store in Backpack → Sell at Pad → Buy Upgrades → Unlock Zones
+--
+-- COLLECTION SYSTEM:
+-- Click/touch collectibles in a zone → add to backpack
+-- Each collectible has: value, rarity, respawn time
+-- Backpack has capacity limit → forces selling
+-- Server validates every collection (anti-exploit)
+--
+-- SELL PAD:
+-- Touched event on sell pad part
+-- Calculate total: sum of all backpack items * multiplier
+-- Credit currency, clear backpack
+-- Play cha-ching sound + coin particle effect
+--
+-- ZONE UNLOCKING:
+-- Each zone has a gate with price
+-- ProximityPrompt "Unlock Zone ($X)"
+-- Server validates payment, removes gate, saves unlock
+-- Higher zones = better collectibles + harder enemies
+--
+-- PET SYSTEM (Pet Sim pattern):
+-- Eggs: buy egg → roll rarity (weighted random)
+-- Rarity weights: Common 60%, Uncommon 25%, Rare 10%, Legendary 4%, Mythic 1%
+-- local function rollRarity()
+--   local roll = math.random(1, 1000)
+--   if roll <= 10 then return "Mythic"
+--   elseif roll <= 50 then return "Legendary"
+--   elseif roll <= 150 then return "Rare"
+--   elseif roll <= 400 then return "Uncommon"
+--   else return "Common" end
+-- end
+--
+-- Pet follow: use Heartbeat to move pet toward owner
+-- Pet stats: multiply collection value/speed
+-- Pet fusion: combine 3 same pets → next tier
+--
+-- BACKPACK EXPANSION:
+-- Start with 20 slots, upgrade with currency
+-- Costs scale exponentially: 100, 500, 2500, 12500...
+-- Each upgrade adds 10-20 slots
+--
+-- REBIRTH/PRESTIGE:
+-- Resets: currency, zones, backpack contents
+-- Keeps: pets, gamepasses, rebirth multiplier
+-- Formula: multiplier = 1 + (rebirths * 0.25)
+-- Makes early game faster on each rebirth`,
+    pitfalls: [
+      'Client-side backpack (exploitable — track on server)',
+      'No backpack capacity limit (infinite grinding = no sell pressure)',
+      'Linear zone pricing (exponential creates better progression curve)',
+      'Not rate-limiting collection clicks (macro/autoclicker exploit)',
+      'Uniform rarity distribution (should be heavily weighted toward common)',
+      'Rebirth that resets too much (keep pets/passes or players quit)',
+    ],
+  },
 ]
 
 // Merge DevForum knowledge into main array
