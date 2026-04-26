@@ -335,8 +335,94 @@ local function playSound(id, volume)
   task.delay(2, function() s:Destroy() end)
 end
 
--- ═══ KEYBIND TOGGLE SYSTEM ═══
+-- ═══ COMPLETE TOGGLE SYSTEM (button on screen + close X + keybind) ═══
+-- Call this ONCE per GUI. It creates:
+--   1. A small button pinned to screen edge (always visible)
+--   2. A close X button inside the panel
+--   3. Keyboard shortcut to toggle
+--   4. Smooth open/close animations with sounds
 local UserInputService = game:GetService("UserInputService")
+local function makeToggleSystem(screenGui, mainFrame, label, keyCode, targetSize, targetPos, cornerPos)
+  cornerPos = cornerPos or UDim2.new(1, -56, 1, -56) -- default: bottom-right
+  local isOpen = true
+
+  -- Close function (hides panel, doesn't destroy)
+  local function closePanel()
+    if not isOpen then return end
+    isOpen = false
+    playSound(SFX.close, 0.3)
+    TweenService:Create(mainFrame, TWEEN_CLOSE, {
+      Size = UDim2.new(0, 0, 0, 0),
+      Position = UDim2.new(0.5, 0, 0.5, 0),
+      BackgroundTransparency = 0.5
+    }):Play()
+    task.wait(0.22)
+    mainFrame.Visible = false
+  end
+
+  -- Open function (shows panel with animation)
+  local function openPanel()
+    if isOpen then return end
+    isOpen = true
+    mainFrame.Visible = true
+    playSound(SFX.open, 0.3)
+    mainFrame.Size = UDim2.new(0, 0, 0, 0)
+    mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    mainFrame.BackgroundTransparency = 0.5
+    TweenService:Create(mainFrame, TWEEN_POPUP, {
+      Size = targetSize,
+      Position = targetPos,
+      BackgroundTransparency = 0
+    }):Play()
+  end
+
+  -- 1. Toggle button (small, always visible, pinned to screen edge)
+  local toggleBtn = Instance.new("TextButton")
+  toggleBtn.Size = UDim2.new(0, 46, 0, 46)
+  toggleBtn.Position = cornerPos
+  toggleBtn.BackgroundColor3 = GOLD
+  toggleBtn.Text = string.sub(label or "?", 1, 4)
+  toggleBtn.TextColor3 = BG_DEEP
+  toggleBtn.Font = Enum.Font.GothamBold
+  toggleBtn.TextSize = 11
+  toggleBtn.AutoButtonColor = false
+  toggleBtn.ZIndex = 5
+  toggleBtn.Parent = screenGui
+  addCorner(toggleBtn, 12)
+  addStroke(toggleBtn, GOLD_DIM, 2, 0.3)
+  local tScale = Instance.new("UIScale") tScale.Parent = toggleBtn
+  toggleBtn.MouseEnter:Connect(function()
+    TweenService:Create(tScale, TWEEN_FAST, {Scale = 1.1}):Play()
+    playSound(SFX.hover, 0.1)
+  end)
+  toggleBtn.MouseLeave:Connect(function()
+    TweenService:Create(tScale, TWEEN_FAST, {Scale = 1}):Play()
+  end)
+  toggleBtn.MouseButton1Click:Connect(function()
+    playSound(SFX.click, 0.4)
+    if isOpen then closePanel() else openPanel() end
+  end)
+
+  -- 2. Close X button (inside the panel, top-right)
+  makeCloseBtn(mainFrame, closePanel)
+
+  -- 3. Keyboard shortcut
+  if keyCode then
+    UserInputService.InputBegan:Connect(function(input, processed)
+      if processed then return end
+      if input.KeyCode == keyCode then
+        if isOpen then closePanel() else openPanel() end
+      end
+    end)
+  end
+
+  -- Initial open animation
+  openPanel()
+
+  return { open = openPanel, close = closePanel, toggle = toggleBtn }
+end
+
+-- Legacy alias
 local function bindToggle(gui, keyCode, openCallback, closeCallback)
   local isOpen = gui.Visible ~= false
   UserInputService.InputBegan:Connect(function(input, processed)
@@ -1061,49 +1147,9 @@ balLabel.Font = Enum.Font.GothamBold
 balLabel.TextSize = 16
 balLabel.Parent = balFrame
 
--- Toggle button (always visible, bottom-right corner)
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 44, 0, 44)
-toggleBtn.Position = UDim2.new(1, -56, 1, -56)
-toggleBtn.BackgroundColor3 = GOLD
-toggleBtn.Text = "SHOP"
-toggleBtn.TextColor3 = BG_DEEP
-toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.TextSize = 10
-toggleBtn.AutoButtonColor = false
-toggleBtn.ZIndex = 5
-toggleBtn.Parent = screenGui
-addCorner(toggleBtn, 12)
-local toggleScale = Instance.new("UIScale") toggleScale.Parent = toggleBtn
-toggleBtn.MouseEnter:Connect(function() TweenService:Create(toggleScale, TWEEN_FAST, {Scale = 1.1}):Play() end)
-toggleBtn.MouseLeave:Connect(function() TweenService:Create(toggleScale, TWEEN_FAST, {Scale = 1}):Play() end)
-
-local isOpen = true
-local function closeShop()
-  isOpen = false
-  playSound(SFX.close, 0.3)
-  TweenService:Create(main, TWEEN_CLOSE, {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.5}):Play()
-  task.wait(0.22)
-  main.Visible = false
-end
-local function openShop()
-  isOpen = true
-  main.Visible = true
-  playSound(SFX.open, 0.3)
-  animateOpen(main, UDim2.new(0.6, 0, 0.7, 0), UDim2.new(0.2, 0, 0.15, 0))
-end
-
--- Close button
-makeCloseBtn(main, closeShop)
-
--- Toggle button click
-toggleBtn.MouseButton1Click:Connect(function()
-  playSound(SFX.click, 0.4)
-  if isOpen then closeShop() else openShop() end
-end)
-
--- Keybind: E to toggle shop
-bindToggle(main, Enum.KeyCode.E, openShop, closeShop)
+-- Complete toggle system: screen button + close X + keybind E
+makeToggleSystem(screenGui, main, "SHOP", Enum.KeyCode.E,
+  UDim2.new(0.6, 0, 0.7, 0), UDim2.new(0.2, 0, 0.15, 0))
 
 -- Scroll frame for items
 local scroll = Instance.new("ScrollingFrame")
@@ -1212,10 +1258,10 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 22
 title.Parent = main
 
-makeCloseBtn(main, function()
-  TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size=UDim2.new(0,0,0,0)}):Play()
-  task.wait(0.25) screenGui:Destroy()
-end)
+-- Toggle system: screen button + close X + keybind I
+makeToggleSystem(screenGui, main, "INV", Enum.KeyCode.I,
+  UDim2.new(0.5, 0, 0.65, 0), UDim2.new(0.25, 0, 0.175, 0),
+  UDim2.new(1, -56, 1, -110))
 
 -- Slot grid
 local scroll = Instance.new("ScrollingFrame")
