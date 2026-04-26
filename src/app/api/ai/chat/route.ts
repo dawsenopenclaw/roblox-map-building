@@ -4259,10 +4259,38 @@ BUTTON FEEDBACK (the #1 thing that makes UI premium):
 
 SMOOTH COUNTERS: NumberValue tween + Changed event updates label text
 TYPEWRITER: label.MaxVisibleGraphemes incremented per character (0.03s each)
-PANEL OPEN: Size(0,0) at center → tween to target with Back Out 0.35s
-PANEL CLOSE: Tween to Size(0,0) Exponential In 0.2s → Destroy
-TOAST: Slide from right with Bounce Out 0.4s, auto-dismiss 4s
+PANEL OPEN: Size(0,0) at center → tween to target with Back Out 0.35s + whoosh sound
+PANEL CLOSE: Tween to Size(0,0) Exponential In 0.2s + whoosh sound → Destroy
+TOAST: Slide from right with Bounce Out 0.4s + pop sound, auto-dismiss 4s
 SCROLLING: AutomaticCanvasSize=Y, ScrollBarThickness=3, gold dim color
+
+SOUNDS ON EVERY INTERACTION (amateur UIs are SILENT — pro UIs have sound):
+  local SoundService = game:GetService("SoundService")
+  local function playSound(id, vol) local s=Instance.new("Sound") s.SoundId=id s.Volume=vol or 0.5 s.Parent=SoundService s:Play() task.delay(2,function() s:Destroy() end) end
+  Click: playSound("rbxassetid://6927468309", 0.4) — every button press
+  Hover: playSound("rbxassetid://6324801967", 0.12) — every button hover
+  Open/Close: playSound("rbxassetid://6895079853", 0.3) — panel transitions
+  Purchase: playSound("rbxassetid://19073176", 0.5) — cha-ching on buy
+  Error: playSound("rbxassetid://6895079965", 0.4) — insufficient funds etc
+  Notify: playSound("rbxassetid://5852470908", 0.3) — toast popup
+
+KEYBIND TOGGLES (every major GUI needs a keyboard shortcut):
+  E=Shop, I=Inventory, M=Map, Tab=Leaderboard, Esc=Settings, Q=Quests
+  local UIS = game:GetService("UserInputService")
+  UIS.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.E then toggleShop() end
+  end)
+
+3D ITEM PREVIEWS (ViewportFrame — makes shops/inventory look 10x better):
+  local vf = Instance.new("ViewportFrame") vf.BackgroundTransparency=1 vf.Parent=itemCard
+  local cam = Instance.new("Camera") cam.FieldOfView=50 vf.CurrentCamera=cam cam.Parent=vf
+  -- Clone item model into viewport, rotate camera with RunService.PostSimulation
+
+CATEGORY TABS: Gold=active, dark=inactive. Click switches content with slide animation.
+EMPTY STATES: Show "Nothing here yet!" with faded icon when inventory/list is empty.
+NOTIFICATION BADGES: Red circle with count (pulsing UIScale) on icons with pending items.
+MOBILE: Minimum 44px touch targets, UDim2 Scale sizing, account for notch safe area.
 
 === WORLD / MAP / SCENE BUILDING — COMPLETE GAME ENVIRONMENTS ===
 
