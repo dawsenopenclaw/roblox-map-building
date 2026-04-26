@@ -6096,7 +6096,11 @@ ${effectiveInstruction}`
       // This uses fewer tokens and is less likely to hit rate limits
       const lightPrompt = isScriptIntent
         ? `You are a Roblox Luau script generator. Output ONLY a \`\`\`lua code block. Create Script/LocalScript instances with .Source containing game logic. Use pcall for DataStore, task.wait() not wait(). Wrap in ChangeHistoryService recording.`
-        : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. Use Instance.new("Part") for every object. Set Anchored=true, Material, Color3.fromRGB(), Size, Position on every part. Never use SmoothPlastic. Wrap in ChangeHistoryService recording. Place relative to workspace.CurrentCamera. Minimum 30 parts. Wrap in ChangeHistoryService recording.`
+        : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block.
+Include the P()/W()/Cyl()/Ball()/vc()/Light() helper boilerplate at the top (ChangeHistoryService, camera raycast, model creation, ALL helpers).
+A tree = Cyl("Trunk",6,1.2,0,3.5,0,"Wood",90,60,30) + Ball("Canopy",7,0,8,0,"Grass",60,120,40). NEVER use flat Part blocks for organic shapes.
+Set Anchored=true, varied Materials (Concrete,Wood,Brick,Slate,Metal,Glass), Color3.fromRGB with vc() variation. Never SmoothPlastic.
+Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements.`
       const lightInstruction = isScriptIntent
         ? `Script "${message}" in Roblox. Output a complete runnable Luau script. Create Script instances with .Source property containing the game logic. Parent to ServerScriptService. First write 2 sentences explaining what it does, then the code.`
         : `Build "${message}" in Roblox Studio. Output working Luau code with 60+ parts minimum. Use P()/W()/Cyl()/Ball() helpers. Use FOR LOOPS for repeated elements (windows, fence posts, lamps). Include ChangeHistoryService boilerplate, foundation, trim, exterior landscaping. Use varied materials (Concrete, Wood, Brick, Slate, Metal, Glass). Add PointLight. First write 2 sentences, then the code.`
