@@ -2834,3 +2834,1904 @@ task.spawn(function()
 end)
 `)
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 16. CRAFTING GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface CraftingGuiParams {
+  recipes?: Array<{ name: string; result: string; ingredients: string }>
+  ingredientSlots?: number
+}
+
+export function craftingGui(params: CraftingGuiParams = {}): string {
+  const slots = params.ingredientSlots || 6
+  const recipes = params.recipes || [
+    { name: 'Iron Sword', result: 'Sword', ingredients: '3 Iron, 1 Wood' },
+    { name: 'Health Potion', result: 'Potion', ingredients: '2 Herb, 1 Water' },
+    { name: 'Shield', result: 'Shield', ingredients: '5 Iron, 2 Leather' },
+    { name: 'Bow', result: 'Bow', ingredients: '2 Wood, 1 String' },
+    { name: 'Fire Staff', result: 'Staff', ingredients: '1 Crystal, 3 Wood' },
+  ]
+  const recipesLua = recipes.map(r => `{name="${r.name}",result="${r.result}",ingredients="${r.ingredients}"}`).join(',')
+
+  return wrapTemplate('CraftingGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeCrafting"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0.7, 0, 0.65, 0)
+main.Position = UDim2.new(0.15, 0, 0.175, 0)
+main.BackgroundColor3 = BG
+main.BorderSizePixel = 0
+main.Parent = screenGui
+addCorner(main, 12)
+addStroke(main, GOLD_DIM, 2)
+addPadding(main, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 36)
+title.BackgroundTransparency = 1
+title.Text = "CRAFTING BENCH"
+title.TextColor3 = GOLD
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+title.Parent = main
+
+makeCloseBtn(main, function()
+  TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size=UDim2.new(0,0,0,0)}):Play()
+  task.wait(0.25) screenGui:Destroy()
+end)
+
+-- Left: ingredient inventory grid
+local invPanel = Instance.new("Frame")
+invPanel.Size = UDim2.new(0.28, 0, 1, -48)
+invPanel.Position = UDim2.new(0, 0, 0, 44)
+invPanel.BackgroundColor3 = SURFACE
+invPanel.Parent = main
+addCorner(invPanel, 8)
+addStroke(invPanel, BORDER)
+
+local invTitle = Instance.new("TextLabel")
+invTitle.Size = UDim2.new(1, 0, 0, 24)
+invTitle.BackgroundTransparency = 1
+invTitle.Text = "INGREDIENTS"
+invTitle.TextColor3 = TEXT_SUB
+invTitle.Font = Enum.Font.GothamBold
+invTitle.TextSize = 12
+invTitle.Parent = invPanel
+
+local invGrid = Instance.new("Frame")
+invGrid.Size = UDim2.new(1, -12, 1, -32)
+invGrid.Position = UDim2.new(0, 6, 0, 28)
+invGrid.BackgroundTransparency = 1
+invGrid.Parent = invPanel
+local gridLayout = Instance.new("UIGridLayout")
+gridLayout.CellSize = UDim2.new(0.47, 0, 0, 60)
+gridLayout.CellPadding = UDim2.new(0.04, 0, 0, 6)
+gridLayout.Parent = invGrid
+
+for i = 1, ${slots} do
+  local slot = Instance.new("Frame")
+  slot.BackgroundColor3 = CARD
+  slot.LayoutOrder = i
+  slot.Parent = invGrid
+  addCorner(slot, 6)
+  addStroke(slot, BORDER)
+  local lbl = Instance.new("TextLabel")
+  lbl.Size = UDim2.new(1, 0, 1, 0)
+  lbl.BackgroundTransparency = 1
+  lbl.Text = ""
+  lbl.TextColor3 = TEXT_DIM
+  lbl.Font = Enum.Font.GothamMedium
+  lbl.TextSize = 11
+  lbl.Parent = slot
+  slot.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+      TweenService:Create(slot, TWEEN_FAST, {BackgroundColor3 = CARD_HOVER}):Play()
+    end
+  end)
+  slot.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+      TweenService:Create(slot, TWEEN_FAST, {BackgroundColor3 = CARD}):Play()
+    end
+  end)
+end
+
+-- Center: crafting slots (2 input + arrow + output)
+local centerPanel = Instance.new("Frame")
+centerPanel.Size = UDim2.new(0.38, 0, 1, -48)
+centerPanel.Position = UDim2.new(0.3, 0, 0, 44)
+centerPanel.BackgroundTransparency = 1
+centerPanel.Parent = main
+
+local inputSlot1 = Instance.new("Frame")
+inputSlot1.Size = UDim2.new(0, 64, 0, 64)
+inputSlot1.Position = UDim2.new(0.15, 0, 0.2, 0)
+inputSlot1.BackgroundColor3 = CARD
+inputSlot1.Parent = centerPanel
+addCorner(inputSlot1, 8)
+addStroke(inputSlot1, GOLD_DIM, 1)
+
+local inputSlot2 = Instance.new("Frame")
+inputSlot2.Size = UDim2.new(0, 64, 0, 64)
+inputSlot2.Position = UDim2.new(0.15, 0, 0.2, 76)
+inputSlot2.BackgroundColor3 = CARD
+inputSlot2.Parent = centerPanel
+addCorner(inputSlot2, 8)
+addStroke(inputSlot2, GOLD_DIM, 1)
+
+local arrow = Instance.new("TextLabel")
+arrow.Size = UDim2.new(0, 40, 0, 40)
+arrow.Position = UDim2.new(0.5, -20, 0.35, 0)
+arrow.BackgroundTransparency = 1
+arrow.Text = ">>"
+arrow.TextColor3 = GOLD
+arrow.Font = Enum.Font.GothamBold
+arrow.TextSize = 28
+arrow.Parent = centerPanel
+
+local outputSlot = Instance.new("Frame")
+outputSlot.Size = UDim2.new(0, 72, 0, 72)
+outputSlot.Position = UDim2.new(0.7, -36, 0.28, 0)
+outputSlot.BackgroundColor3 = ELEVATED
+outputSlot.Parent = centerPanel
+addCorner(outputSlot, 10)
+addStroke(outputSlot, GOLD, 2)
+
+-- Required materials label
+local reqLabel = Instance.new("TextLabel")
+reqLabel.Size = UDim2.new(1, 0, 0, 20)
+reqLabel.Position = UDim2.new(0, 0, 0.7, 0)
+reqLabel.BackgroundTransparency = 1
+reqLabel.Text = "Select a recipe to see requirements"
+reqLabel.TextColor3 = TEXT_MUTED
+reqLabel.Font = Enum.Font.GothamMedium
+reqLabel.TextSize = 12
+reqLabel.TextWrapped = true
+reqLabel.Parent = centerPanel
+
+-- Craft button with progress bar
+local craftBtn = Instance.new("TextButton")
+craftBtn.Size = UDim2.new(0.6, 0, 0, 38)
+craftBtn.Position = UDim2.new(0.2, 0, 0.85, 0)
+craftBtn.BackgroundColor3 = GOLD
+craftBtn.Text = "CRAFT"
+craftBtn.TextColor3 = BG_DEEP
+craftBtn.Font = Enum.Font.GothamBold
+craftBtn.TextSize = 16
+craftBtn.AutoButtonColor = false
+craftBtn.Parent = centerPanel
+addCorner(craftBtn, 8)
+local craftScale = Instance.new("UIScale") craftScale.Parent = craftBtn
+
+local progressBar = Instance.new("Frame")
+progressBar.Size = UDim2.new(0, 0, 1, 0)
+progressBar.BackgroundColor3 = GREEN
+progressBar.BackgroundTransparency = 0.3
+progressBar.ZIndex = 2
+progressBar.Parent = craftBtn
+addCorner(progressBar, 8)
+
+craftBtn.MouseEnter:Connect(function()
+  TweenService:Create(craftScale, TWEEN_FAST, {Scale = 1.04}):Play()
+end)
+craftBtn.MouseLeave:Connect(function()
+  TweenService:Create(craftScale, TWEEN_FAST, {Scale = 1}):Play()
+end)
+craftBtn.MouseButton1Click:Connect(function()
+  craftBtn.Active = false
+  TweenService:Create(progressBar, TweenInfo.new(1.5, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+  task.wait(1.5)
+  craftBtn.Text = "CRAFTED!"
+  progressBar.Size = UDim2.new(0, 0, 1, 0)
+  playSound(SFX.reward, 0.5)
+  task.wait(1)
+  craftBtn.Text = "CRAFT"
+  craftBtn.Active = true
+end)
+
+-- Right: recipe list
+local recipePanel = Instance.new("ScrollingFrame")
+recipePanel.Size = UDim2.new(0.28, 0, 1, -48)
+recipePanel.Position = UDim2.new(0.72, 0, 0, 44)
+recipePanel.BackgroundColor3 = SURFACE
+recipePanel.ScrollBarThickness = 3
+recipePanel.ScrollBarImageColor3 = GOLD_DIM
+recipePanel.AutomaticCanvasSize = Enum.AutomaticSize.Y
+recipePanel.Parent = main
+addCorner(recipePanel, 8)
+addStroke(recipePanel, BORDER)
+
+local recipeList = Instance.new("UIListLayout")
+recipeList.Padding = UDim.new(0, 4)
+recipeList.SortOrder = Enum.SortOrder.LayoutOrder
+recipeList.Parent = recipePanel
+addPadding(recipePanel, 6)
+
+local recipes = {${recipesLua}}
+for idx, r in ipairs(recipes) do
+  local card = Instance.new("TextButton")
+  card.Size = UDim2.new(1, 0, 0, 48)
+  card.BackgroundColor3 = CARD
+  card.Text = ""
+  card.AutoButtonColor = false
+  card.LayoutOrder = idx
+  card.Parent = recipePanel
+  addCorner(card, 6)
+
+  local rName = Instance.new("TextLabel")
+  rName.Size = UDim2.new(1, -8, 0.5, 0)
+  rName.Position = UDim2.new(0, 4, 0, 0)
+  rName.BackgroundTransparency = 1
+  rName.Text = r.name
+  rName.TextColor3 = TEXT
+  rName.Font = Enum.Font.GothamBold
+  rName.TextSize = 13
+  rName.TextXAlignment = Enum.TextXAlignment.Left
+  rName.Parent = card
+
+  local rMats = Instance.new("TextLabel")
+  rMats.Size = UDim2.new(1, -8, 0.5, 0)
+  rMats.Position = UDim2.new(0, 4, 0.5, 0)
+  rMats.BackgroundTransparency = 1
+  rMats.Text = r.ingredients
+  rMats.TextColor3 = TEXT_MUTED
+  rMats.Font = Enum.Font.GothamMedium
+  rMats.TextSize = 10
+  rMats.TextXAlignment = Enum.TextXAlignment.Left
+  rMats.Parent = card
+
+  card.MouseEnter:Connect(function()
+    TweenService:Create(card, TWEEN_FAST, {BackgroundColor3 = CARD_HOVER}):Play()
+  end)
+  card.MouseLeave:Connect(function()
+    TweenService:Create(card, TWEEN_FAST, {BackgroundColor3 = CARD}):Play()
+  end)
+  card.MouseButton1Click:Connect(function()
+    reqLabel.Text = r.name .. ": " .. r.ingredients
+    playSound(SFX.click, 0.3)
+  end)
+end
+
+-- Open animation
+main.Size = UDim2.new(0, 0, 0, 0)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+  Size = UDim2.new(0.7, 0, 0.65, 0), Position = UDim2.new(0.15, 0, 0.175, 0)
+}):Play()
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 17. AUCTION HOUSE GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface AuctionHouseGuiParams {
+  listings?: Array<{ name: string; price: number; timeLeft: string }>
+  pageSize?: number
+}
+
+export function auctionHouseGui(params: AuctionHouseGuiParams = {}): string {
+  const pageSize = params.pageSize || 8
+  const listings = params.listings || [
+    { name: 'Legendary Sword', price: 5000, timeLeft: '2h 30m' },
+    { name: 'Rare Shield', price: 2500, timeLeft: '5h 10m' },
+    { name: 'Epic Staff', price: 8000, timeLeft: '1h 15m' },
+    { name: 'Common Helm', price: 200, timeLeft: '12h' },
+    { name: 'Mythic Ring', price: 15000, timeLeft: '45m' },
+    { name: 'Rare Boots', price: 3200, timeLeft: '3h 20m' },
+  ]
+  const listingsLua = listings.map(l => `{name="${l.name}",price=${l.price},timeLeft="${l.timeLeft}"}`).join(',')
+
+  return wrapTemplate('AuctionHouseGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeAuctionHouse"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0.65, 0, 0.7, 0)
+main.Position = UDim2.new(0.175, 0, 0.15, 0)
+main.BackgroundColor3 = BG
+main.BorderSizePixel = 0
+main.Parent = screenGui
+addCorner(main, 12)
+addStroke(main, GOLD_DIM, 2)
+addPadding(main, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 36)
+title.BackgroundTransparency = 1
+title.Text = "AUCTION HOUSE"
+title.TextColor3 = GOLD
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+title.Parent = main
+
+makeCloseBtn(main, function()
+  TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size=UDim2.new(0,0,0,0)}):Play()
+  task.wait(0.25) screenGui:Destroy()
+end)
+
+-- Tab bar
+local tabs = {"Buy", "Sell", "My Listings"}
+local tabBtns = {}
+local tabBar = Instance.new("Frame")
+tabBar.Size = UDim2.new(1, 0, 0, 30)
+tabBar.Position = UDim2.new(0, 0, 0, 40)
+tabBar.BackgroundTransparency = 1
+tabBar.Parent = main
+local tabLayout = Instance.new("UIListLayout")
+tabLayout.FillDirection = Enum.FillDirection.Horizontal
+tabLayout.Padding = UDim.new(0, 6)
+tabLayout.Parent = tabBar
+
+for i, tabName in ipairs(tabs) do
+  local tb = Instance.new("TextButton")
+  tb.Size = UDim2.new(0, 90, 1, 0)
+  tb.BackgroundColor3 = i == 1 and GOLD or CARD
+  tb.Text = tabName
+  tb.TextColor3 = i == 1 and BG_DEEP or TEXT_SUB
+  tb.Font = Enum.Font.GothamBold
+  tb.TextSize = 13
+  tb.AutoButtonColor = false
+  tb.LayoutOrder = i
+  tb.Parent = tabBar
+  addCorner(tb, 6)
+  tabBtns[i] = tb
+  tb.MouseButton1Click:Connect(function()
+    for j, b in ipairs(tabBtns) do
+      b.BackgroundColor3 = j == i and GOLD or CARD
+      b.TextColor3 = j == i and BG_DEEP or TEXT_SUB
+    end
+    playSound(SFX.click, 0.3)
+  end)
+  tb.MouseEnter:Connect(function()
+    if tb.BackgroundColor3 ~= GOLD then TweenService:Create(tb, TWEEN_FAST, {BackgroundColor3 = CARD_HOVER}):Play() end
+  end)
+  tb.MouseLeave:Connect(function()
+    if tb.TextColor3 ~= BG_DEEP then TweenService:Create(tb, TWEEN_FAST, {BackgroundColor3 = CARD}):Play() end
+  end)
+end
+
+-- Search bar
+local searchBar = Instance.new("TextBox")
+searchBar.Size = UDim2.new(1, 0, 0, 32)
+searchBar.Position = UDim2.new(0, 0, 0, 76)
+searchBar.BackgroundColor3 = SURFACE
+searchBar.Text = ""
+searchBar.PlaceholderText = "Search items..."
+searchBar.PlaceholderColor3 = TEXT_MUTED
+searchBar.TextColor3 = TEXT
+searchBar.Font = Enum.Font.GothamMedium
+searchBar.TextSize = 14
+searchBar.ClearTextOnFocus = false
+searchBar.Parent = main
+addCorner(searchBar, 6)
+addStroke(searchBar, BORDER)
+addPadding(searchBar, 8)
+
+-- Item list
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, 0, 1, -160)
+scroll.Position = UDim2.new(0, 0, 0, 116)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 3
+scroll.ScrollBarImageColor3 = GOLD_DIM
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.Parent = main
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 4)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Parent = scroll
+
+local listings = {${listingsLua}}
+for idx, item in ipairs(listings) do
+  local row = Instance.new("Frame")
+  row.Size = UDim2.new(1, 0, 0, 52)
+  row.BackgroundColor3 = CARD
+  row.LayoutOrder = idx
+  row.Parent = scroll
+  addCorner(row, 6)
+  addStroke(row, BORDER)
+
+  local icon = Instance.new("Frame")
+  icon.Size = UDim2.new(0, 40, 0, 40)
+  icon.Position = UDim2.new(0, 6, 0.5, -20)
+  icon.BackgroundColor3 = ELEVATED
+  icon.Parent = row
+  addCorner(icon, 6)
+
+  local nameLabel = Instance.new("TextLabel")
+  nameLabel.Size = UDim2.new(0.3, 0, 0.5, 0)
+  nameLabel.Position = UDim2.new(0, 52, 0, 2)
+  nameLabel.BackgroundTransparency = 1
+  nameLabel.Text = item.name
+  nameLabel.TextColor3 = TEXT
+  nameLabel.Font = Enum.Font.GothamBold
+  nameLabel.TextSize = 13
+  nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+  nameLabel.Parent = row
+
+  local priceLabel = Instance.new("TextLabel")
+  priceLabel.Size = UDim2.new(0.15, 0, 1, 0)
+  priceLabel.Position = UDim2.new(0.4, 0, 0, 0)
+  priceLabel.BackgroundTransparency = 1
+  priceLabel.Text = formatNumber(item.price)
+  priceLabel.TextColor3 = GOLD
+  priceLabel.Font = Enum.Font.GothamBold
+  priceLabel.TextSize = 14
+  priceLabel.Parent = row
+
+  local timeLabel = Instance.new("TextLabel")
+  timeLabel.Size = UDim2.new(0.15, 0, 1, 0)
+  timeLabel.Position = UDim2.new(0.56, 0, 0, 0)
+  timeLabel.BackgroundTransparency = 1
+  timeLabel.Text = item.timeLeft
+  timeLabel.TextColor3 = TEXT_MUTED
+  timeLabel.Font = Enum.Font.GothamMedium
+  timeLabel.TextSize = 12
+  timeLabel.Parent = row
+
+  local bidBtn = Instance.new("TextButton")
+  bidBtn.Size = UDim2.new(0, 52, 0, 28)
+  bidBtn.Position = UDim2.new(0.73, 0, 0.5, -14)
+  bidBtn.BackgroundColor3 = BLUE
+  bidBtn.Text = "BID"
+  bidBtn.TextColor3 = TEXT
+  bidBtn.Font = Enum.Font.GothamBold
+  bidBtn.TextSize = 11
+  bidBtn.AutoButtonColor = false
+  bidBtn.Parent = row
+  addCorner(bidBtn, 6)
+  bidBtn.MouseEnter:Connect(function() TweenService:Create(bidBtn, TWEEN_FAST, {BackgroundColor3 = Color3.fromRGB(80,150,255)}):Play() end)
+  bidBtn.MouseLeave:Connect(function() TweenService:Create(bidBtn, TWEEN_FAST, {BackgroundColor3 = BLUE}):Play() end)
+
+  local buyBtn = Instance.new("TextButton")
+  buyBtn.Size = UDim2.new(0, 60, 0, 28)
+  buyBtn.Position = UDim2.new(0.87, 0, 0.5, -14)
+  buyBtn.BackgroundColor3 = GOLD
+  buyBtn.Text = "BUYOUT"
+  buyBtn.TextColor3 = BG_DEEP
+  buyBtn.Font = Enum.Font.GothamBold
+  buyBtn.TextSize = 11
+  buyBtn.AutoButtonColor = false
+  buyBtn.Parent = row
+  addCorner(buyBtn, 6)
+  buyBtn.MouseEnter:Connect(function() TweenService:Create(buyBtn, TWEEN_FAST, {BackgroundColor3 = GOLD_BRIGHT}):Play() end)
+  buyBtn.MouseLeave:Connect(function() TweenService:Create(buyBtn, TWEEN_FAST, {BackgroundColor3 = GOLD}):Play() end)
+
+  row.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then TweenService:Create(row, TWEEN_FAST, {BackgroundColor3 = CARD_HOVER}):Play() end
+  end)
+  row.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then TweenService:Create(row, TWEEN_FAST, {BackgroundColor3 = CARD}):Play() end
+  end)
+end
+
+-- Pagination
+local pageLabel = Instance.new("TextLabel")
+pageLabel.Size = UDim2.new(1, 0, 0, 24)
+pageLabel.Position = UDim2.new(0, 0, 1, -30)
+pageLabel.BackgroundTransparency = 1
+pageLabel.Text = "Page 1 / 1"
+pageLabel.TextColor3 = TEXT_MUTED
+pageLabel.Font = Enum.Font.GothamMedium
+pageLabel.TextSize = 12
+pageLabel.Parent = main
+
+-- Open animation
+main.Size = UDim2.new(0, 0, 0, 0)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+  Size = UDim2.new(0.65, 0, 0.7, 0), Position = UDim2.new(0.175, 0, 0.15, 0)
+}):Play()
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 18. GUILD GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface GuildGuiParams {
+  guildName?: string
+  members?: Array<{ name: string; rank: string }>
+  gold?: number
+}
+
+export function guildGui(params: GuildGuiParams = {}): string {
+  const guildName = params.guildName || 'Dragon Knights'
+  const gold = params.gold || 12500
+  const members = params.members || [
+    { name: 'KingSlayer99', rank: 'Leader' },
+    { name: 'ShadowMage', rank: 'Officer' },
+    { name: 'RuneBlade', rank: 'Officer' },
+    { name: 'FrostArcher', rank: 'Member' },
+    { name: 'StormWolf', rank: 'Member' },
+  ]
+  const membersLua = members.map(m => `{name="${m.name}",rank="${m.rank}"}`).join(',')
+
+  return wrapTemplate('GuildGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeGuild"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0.55, 0, 0.7, 0)
+main.Position = UDim2.new(0.225, 0, 0.15, 0)
+main.BackgroundColor3 = BG
+main.BorderSizePixel = 0
+main.Parent = screenGui
+addCorner(main, 12)
+addStroke(main, GOLD_DIM, 2)
+addPadding(main, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 36)
+title.BackgroundTransparency = 1
+title.Text = "${guildName}"
+title.TextColor3 = GOLD
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+title.Parent = main
+
+makeCloseBtn(main, function()
+  TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size=UDim2.new(0,0,0,0)}):Play()
+  task.wait(0.25) screenGui:Destroy()
+end)
+
+-- Tabs
+local tabs = {"Members", "Bank", "Quests"}
+local tabBtns = {}
+local tabBar = Instance.new("Frame")
+tabBar.Size = UDim2.new(1, 0, 0, 30)
+tabBar.Position = UDim2.new(0, 0, 0, 40)
+tabBar.BackgroundTransparency = 1
+tabBar.Parent = main
+local tabLay = Instance.new("UIListLayout")
+tabLay.FillDirection = Enum.FillDirection.Horizontal
+tabLay.Padding = UDim.new(0, 6)
+tabLay.Parent = tabBar
+
+local contentFrames = {}
+for i, tabName in ipairs(tabs) do
+  local tb = Instance.new("TextButton")
+  tb.Size = UDim2.new(0, 80, 1, 0)
+  tb.BackgroundColor3 = i == 1 and GOLD or CARD
+  tb.Text = tabName
+  tb.TextColor3 = i == 1 and BG_DEEP or TEXT_SUB
+  tb.Font = Enum.Font.GothamBold
+  tb.TextSize = 13
+  tb.AutoButtonColor = false
+  tb.LayoutOrder = i
+  tb.Parent = tabBar
+  addCorner(tb, 6)
+  tabBtns[i] = tb
+
+  local content = Instance.new("Frame")
+  content.Size = UDim2.new(1, 0, 1, -82)
+  content.Position = UDim2.new(0, 0, 0, 78)
+  content.BackgroundTransparency = 1
+  content.Visible = i == 1
+  content.Parent = main
+  contentFrames[i] = content
+
+  tb.MouseButton1Click:Connect(function()
+    for j, b in ipairs(tabBtns) do
+      b.BackgroundColor3 = j == i and GOLD or CARD
+      b.TextColor3 = j == i and BG_DEEP or TEXT_SUB
+      contentFrames[j].Visible = j == i
+    end
+    playSound(SFX.click, 0.3)
+  end)
+  tb.MouseEnter:Connect(function()
+    if tb.BackgroundColor3 ~= GOLD then TweenService:Create(tb, TWEEN_FAST, {BackgroundColor3 = CARD_HOVER}):Play() end
+  end)
+  tb.MouseLeave:Connect(function()
+    if tb.TextColor3 ~= BG_DEEP then TweenService:Create(tb, TWEEN_FAST, {BackgroundColor3 = CARD}):Play() end
+  end)
+end
+
+-- Members tab
+local memberScroll = Instance.new("ScrollingFrame")
+memberScroll.Size = UDim2.new(1, 0, 1, 0)
+memberScroll.BackgroundTransparency = 1
+memberScroll.ScrollBarThickness = 3
+memberScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+memberScroll.Parent = contentFrames[1]
+local memberList = Instance.new("UIListLayout") memberList.Padding = UDim.new(0, 4) memberList.Parent = memberScroll
+
+local rankColors = {Leader = GOLD, Officer = BLUE, Member = TEXT}
+local members = {${membersLua}}
+for idx, m in ipairs(members) do
+  local row = Instance.new("Frame")
+  row.Size = UDim2.new(1, 0, 0, 40)
+  row.BackgroundColor3 = CARD
+  row.LayoutOrder = idx
+  row.Parent = memberScroll
+  addCorner(row, 6)
+
+  local rankDot = Instance.new("Frame")
+  rankDot.Size = UDim2.new(0, 10, 0, 10)
+  rankDot.Position = UDim2.new(0, 8, 0.5, -5)
+  rankDot.BackgroundColor3 = rankColors[m.rank] or TEXT
+  rankDot.Parent = row
+  addCorner(rankDot, 5)
+
+  local nameL = Instance.new("TextLabel")
+  nameL.Size = UDim2.new(0.5, 0, 1, 0)
+  nameL.Position = UDim2.new(0, 26, 0, 0)
+  nameL.BackgroundTransparency = 1
+  nameL.Text = m.name
+  nameL.TextColor3 = TEXT
+  nameL.Font = Enum.Font.GothamMedium
+  nameL.TextSize = 14
+  nameL.TextXAlignment = Enum.TextXAlignment.Left
+  nameL.Parent = row
+
+  local rankL = Instance.new("TextLabel")
+  rankL.Size = UDim2.new(0.3, 0, 1, 0)
+  rankL.Position = UDim2.new(0.65, 0, 0, 0)
+  rankL.BackgroundTransparency = 1
+  rankL.Text = m.rank
+  rankL.TextColor3 = rankColors[m.rank] or TEXT_MUTED
+  rankL.Font = Enum.Font.GothamBold
+  rankL.TextSize = 12
+  rankL.Parent = row
+end
+
+-- Bank tab
+local bankTitle = Instance.new("TextLabel")
+bankTitle.Size = UDim2.new(1, 0, 0, 30)
+bankTitle.BackgroundTransparency = 1
+bankTitle.Text = "Guild Bank: " .. formatNumber(${gold}) .. " Gold"
+bankTitle.TextColor3 = GOLD
+bankTitle.Font = Enum.Font.GothamBold
+bankTitle.TextSize = 18
+bankTitle.Parent = contentFrames[2]
+
+local goldInput = Instance.new("TextBox")
+goldInput.Size = UDim2.new(0.4, 0, 0, 36)
+goldInput.Position = UDim2.new(0.05, 0, 0, 44)
+goldInput.BackgroundColor3 = SURFACE
+goldInput.Text = ""
+goldInput.PlaceholderText = "Amount..."
+goldInput.PlaceholderColor3 = TEXT_MUTED
+goldInput.TextColor3 = TEXT
+goldInput.Font = Enum.Font.GothamMedium
+goldInput.TextSize = 14
+goldInput.Parent = contentFrames[2]
+addCorner(goldInput, 6)
+addStroke(goldInput, BORDER)
+
+local depositBtn = Instance.new("TextButton")
+depositBtn.Size = UDim2.new(0.22, 0, 0, 36)
+depositBtn.Position = UDim2.new(0.5, 0, 0, 44)
+depositBtn.BackgroundColor3 = GREEN
+depositBtn.Text = "DEPOSIT"
+depositBtn.TextColor3 = BG_DEEP
+depositBtn.Font = Enum.Font.GothamBold
+depositBtn.TextSize = 13
+depositBtn.AutoButtonColor = false
+depositBtn.Parent = contentFrames[2]
+addCorner(depositBtn, 6)
+depositBtn.MouseEnter:Connect(function() TweenService:Create(depositBtn, TWEEN_FAST, {BackgroundColor3 = Color3.fromRGB(60,220,100)}):Play() end)
+depositBtn.MouseLeave:Connect(function() TweenService:Create(depositBtn, TWEEN_FAST, {BackgroundColor3 = GREEN}):Play() end)
+
+local withdrawBtn = Instance.new("TextButton")
+withdrawBtn.Size = UDim2.new(0.22, 0, 0, 36)
+withdrawBtn.Position = UDim2.new(0.75, 0, 0, 44)
+withdrawBtn.BackgroundColor3 = RED
+withdrawBtn.Text = "WITHDRAW"
+withdrawBtn.TextColor3 = TEXT
+withdrawBtn.Font = Enum.Font.GothamBold
+withdrawBtn.TextSize = 13
+withdrawBtn.AutoButtonColor = false
+withdrawBtn.Parent = contentFrames[2]
+addCorner(withdrawBtn, 6)
+withdrawBtn.MouseEnter:Connect(function() TweenService:Create(withdrawBtn, TWEEN_FAST, {BackgroundColor3 = Color3.fromRGB(240,85,85)}):Play() end)
+withdrawBtn.MouseLeave:Connect(function() TweenService:Create(withdrawBtn, TWEEN_FAST, {BackgroundColor3 = RED}):Play() end)
+
+-- Quests tab
+local questData = {
+  {name = "Defeat 10 Goblins", progress = 7, total = 10},
+  {name = "Collect 50 Ore", progress = 32, total = 50},
+  {name = "Win 3 PvP Battles", progress = 1, total = 3},
+}
+for idx, q in ipairs(questData) do
+  local qFrame = Instance.new("Frame")
+  qFrame.Size = UDim2.new(1, 0, 0, 50)
+  qFrame.Position = UDim2.new(0, 0, 0, (idx-1) * 56)
+  qFrame.BackgroundColor3 = CARD
+  qFrame.Parent = contentFrames[3]
+  addCorner(qFrame, 6)
+  local qName = Instance.new("TextLabel")
+  qName.Size = UDim2.new(1, -8, 0, 22)
+  qName.Position = UDim2.new(0, 4, 0, 2)
+  qName.BackgroundTransparency = 1
+  qName.Text = q.name .. " (" .. q.progress .. "/" .. q.total .. ")"
+  qName.TextColor3 = TEXT
+  qName.Font = Enum.Font.GothamMedium
+  qName.TextSize = 13
+  qName.TextXAlignment = Enum.TextXAlignment.Left
+  qName.Parent = qFrame
+  local barBg = Instance.new("Frame")
+  barBg.Size = UDim2.new(1, -12, 0, 10)
+  barBg.Position = UDim2.new(0, 6, 1, -16)
+  barBg.BackgroundColor3 = SURFACE
+  barBg.Parent = qFrame
+  addCorner(barBg, 5)
+  local barFill = Instance.new("Frame")
+  barFill.Size = UDim2.new(q.progress / q.total, 0, 1, 0)
+  barFill.BackgroundColor3 = GOLD
+  barFill.Parent = barBg
+  addCorner(barFill, 5)
+end
+
+-- Open animation
+main.Size = UDim2.new(0, 0, 0, 0)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+  Size = UDim2.new(0.55, 0, 0.7, 0), Position = UDim2.new(0.225, 0, 0.15, 0)
+}):Play()
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 19. BATTLE PASS GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface BattlePassGuiParams {
+  currentTier?: number
+  maxTiers?: number
+  hasPremium?: boolean
+}
+
+export function battlePassGui(params: BattlePassGuiParams = {}): string {
+  const curTier = params.currentTier || 5
+  const maxT = params.maxTiers || 12
+  const hasPrem = params.hasPremium ?? false
+
+  return wrapTemplate('BattlePassGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeBattlePass"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0.8, 0, 0.55, 0)
+main.Position = UDim2.new(0.1, 0, 0.225, 0)
+main.BackgroundColor3 = BG
+main.BorderSizePixel = 0
+main.Parent = screenGui
+addCorner(main, 12)
+addStroke(main, GOLD_DIM, 2)
+addPadding(main, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0.5, 0, 0, 36)
+title.BackgroundTransparency = 1
+title.Text = "BATTLE PASS"
+title.TextColor3 = GOLD
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = main
+
+makeCloseBtn(main, function()
+  TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size=UDim2.new(0,0,0,0)}):Play()
+  task.wait(0.25) screenGui:Destroy()
+end)
+
+local curTier = ${curTier}
+local maxT = ${maxT}
+local hasPrem = ${hasPrem}
+
+if not hasPrem then
+  local buyBtn = Instance.new("TextButton")
+  buyBtn.Size = UDim2.new(0, 140, 0, 32)
+  buyBtn.Position = UDim2.new(1, -152, 0, 2)
+  buyBtn.BackgroundColor3 = GOLD
+  buyBtn.Text = "BUY PREMIUM"
+  buyBtn.TextColor3 = BG_DEEP
+  buyBtn.Font = Enum.Font.GothamBold
+  buyBtn.TextSize = 14
+  buyBtn.AutoButtonColor = false
+  buyBtn.Parent = main
+  addCorner(buyBtn, 8)
+  local buyScale = Instance.new("UIScale") buyScale.Parent = buyBtn
+  buyBtn.MouseEnter:Connect(function() TweenService:Create(buyScale, TWEEN_FAST, {Scale = 1.05}):Play() end)
+  buyBtn.MouseLeave:Connect(function() TweenService:Create(buyScale, TWEEN_FAST, {Scale = 1}):Play() end)
+end
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, 0, 1, -48)
+scroll.Position = UDim2.new(0, 0, 0, 44)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 4
+scroll.ScrollBarImageColor3 = GOLD_DIM
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.X
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.ScrollingDirection = Enum.ScrollingDirection.X
+scroll.Parent = main
+
+local tierLay = Instance.new("UIListLayout")
+tierLay.FillDirection = Enum.FillDirection.Horizontal
+tierLay.Padding = UDim.new(0, 4)
+tierLay.SortOrder = Enum.SortOrder.LayoutOrder
+tierLay.Parent = scroll
+
+for tier = 1, maxT do
+  local unlocked = tier <= curTier
+  local isCur = tier == curTier
+  local col = Instance.new("Frame")
+  col.Size = UDim2.new(0, 90, 1, 0)
+  col.BackgroundTransparency = 1
+  col.LayoutOrder = tier
+  col.Parent = scroll
+
+  local tierNum = Instance.new("TextLabel")
+  tierNum.Size = UDim2.new(1, 0, 0, 18)
+  tierNum.BackgroundTransparency = 1
+  tierNum.Text = "Tier " .. tier
+  tierNum.TextColor3 = isCur and GOLD or TEXT_MUTED
+  tierNum.Font = Enum.Font.GothamBold
+  tierNum.TextSize = 11
+  tierNum.Parent = col
+
+  local freeCard = Instance.new("Frame")
+  freeCard.Size = UDim2.new(1, -4, 0.35, 0)
+  freeCard.Position = UDim2.new(0, 2, 0, 22)
+  freeCard.BackgroundColor3 = unlocked and CARD_HOVER or CARD
+  freeCard.Parent = col
+  addCorner(freeCard, 6)
+  if isCur then addStroke(freeCard, GOLD, 2) else addStroke(freeCard, BORDER) end
+  local freeLbl = Instance.new("TextLabel")
+  freeLbl.Size = UDim2.new(1, 0, 0, 14)
+  freeLbl.Position = UDim2.new(0, 0, 0, 2)
+  freeLbl.BackgroundTransparency = 1
+  freeLbl.Text = "FREE"
+  freeLbl.TextColor3 = GREEN
+  freeLbl.Font = Enum.Font.GothamBold
+  freeLbl.TextSize = 9
+  freeLbl.Parent = freeCard
+
+  local barBg = Instance.new("Frame")
+  barBg.Size = UDim2.new(1, -4, 0, 6)
+  barBg.Position = UDim2.new(0, 2, 0.5, -1)
+  barBg.BackgroundColor3 = SURFACE
+  barBg.Parent = col
+  addCorner(barBg, 3)
+  local barFill = Instance.new("Frame")
+  barFill.Size = UDim2.new(unlocked and 1 or 0, 0, 1, 0)
+  barFill.BackgroundColor3 = GOLD
+  barFill.Parent = barBg
+  addCorner(barFill, 3)
+
+  local premCard = Instance.new("Frame")
+  premCard.Size = UDim2.new(1, -4, 0.35, 0)
+  premCard.Position = UDim2.new(0, 2, 0.62, 0)
+  premCard.BackgroundColor3 = (unlocked and hasPrem) and ELEVATED or CARD
+  premCard.BackgroundTransparency = hasPrem and 0 or 0.3
+  premCard.Parent = col
+  addCorner(premCard, 6)
+  addStroke(premCard, hasPrem and GOLD_DIM or BORDER)
+  local premLbl = Instance.new("TextLabel")
+  premLbl.Size = UDim2.new(1, 0, 0, 14)
+  premLbl.Position = UDim2.new(0, 0, 0, 2)
+  premLbl.BackgroundTransparency = 1
+  premLbl.Text = hasPrem and "PREMIUM" or "LOCKED"
+  premLbl.TextColor3 = hasPrem and GOLD or TEXT_MUTED
+  premLbl.Font = Enum.Font.GothamBold
+  premLbl.TextSize = 9
+  premLbl.Parent = premCard
+end
+
+main.Size = UDim2.new(0, 0, 0, 0)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+  Size = UDim2.new(0.8, 0, 0.55, 0), Position = UDim2.new(0.1, 0, 0.225, 0)
+}):Play()
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 20. ACHIEVEMENT GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface AchievementGuiParams {
+  categories?: string[]
+  totalCompleted?: number
+  totalAchievements?: number
+}
+
+export function achievementGui(params: AchievementGuiParams = {}): string {
+  const categories = params.categories || ['Combat', 'Exploration', 'Social', 'Crafting', 'Collection']
+  const totalCompleted = params.totalCompleted || 12
+  const totalAchievements = params.totalAchievements || 40
+  const categoriesLua = categories.map(c => `"${c}"`).join(',')
+
+  return wrapTemplate('AchievementGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeAchievements"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0.65, 0, 0.7, 0)
+main.Position = UDim2.new(0.175, 0, 0.15, 0)
+main.BackgroundColor3 = BG
+main.BorderSizePixel = 0
+main.Parent = screenGui
+addCorner(main, 12)
+addStroke(main, GOLD_DIM, 2)
+addPadding(main, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0.6, 0, 0, 36)
+title.BackgroundTransparency = 1
+title.Text = "ACHIEVEMENTS"
+title.TextColor3 = GOLD
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = main
+
+local pctLabel = Instance.new("TextLabel")
+pctLabel.Size = UDim2.new(0.35, 0, 0, 36)
+pctLabel.Position = UDim2.new(0.6, 0, 0, 0)
+pctLabel.BackgroundTransparency = 1
+pctLabel.Text = "${totalCompleted}/${totalAchievements} (" .. math.floor(${totalCompleted}/${totalAchievements}*100) .. "%)"
+pctLabel.TextColor3 = TEXT_SUB
+pctLabel.Font = Enum.Font.GothamMedium
+pctLabel.TextSize = 14
+pctLabel.TextXAlignment = Enum.TextXAlignment.Right
+pctLabel.Parent = main
+
+makeCloseBtn(main, function()
+  TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size=UDim2.new(0,0,0,0)}):Play()
+  task.wait(0.25) screenGui:Destroy()
+end)
+
+local sidebar = Instance.new("Frame")
+sidebar.Size = UDim2.new(0.22, 0, 1, -48)
+sidebar.Position = UDim2.new(0, 0, 0, 44)
+sidebar.BackgroundColor3 = SURFACE
+sidebar.Parent = main
+addCorner(sidebar, 8)
+addStroke(sidebar, BORDER)
+local sideLayout = Instance.new("UIListLayout") sideLayout.Padding = UDim.new(0, 4) sideLayout.Parent = sidebar
+addPadding(sidebar, 6)
+
+local categories = {${categoriesLua}}
+local catBtns = {}
+for i, cat in ipairs(categories) do
+  local btn = Instance.new("TextButton")
+  btn.Size = UDim2.new(1, 0, 0, 34)
+  btn.BackgroundColor3 = i == 1 and ELEVATED or CARD
+  btn.Text = cat
+  btn.TextColor3 = i == 1 and GOLD or TEXT_SUB
+  btn.Font = Enum.Font.GothamBold
+  btn.TextSize = 13
+  btn.AutoButtonColor = false
+  btn.LayoutOrder = i
+  btn.Parent = sidebar
+  addCorner(btn, 6)
+  catBtns[i] = btn
+  btn.MouseButton1Click:Connect(function()
+    for j, b in ipairs(catBtns) do
+      b.BackgroundColor3 = j == i and ELEVATED or CARD
+      b.TextColor3 = j == i and GOLD or TEXT_SUB
+    end
+    playSound(SFX.click, 0.3)
+  end)
+  btn.MouseEnter:Connect(function()
+    if btn.TextColor3 ~= GOLD then TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = CARD_HOVER}):Play() end
+  end)
+  btn.MouseLeave:Connect(function()
+    if btn.TextColor3 ~= GOLD then TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = CARD}):Play() end
+  end)
+end
+
+local gridScroll = Instance.new("ScrollingFrame")
+gridScroll.Size = UDim2.new(0.74, 0, 1, -48)
+gridScroll.Position = UDim2.new(0.25, 0, 0, 44)
+gridScroll.BackgroundTransparency = 1
+gridScroll.ScrollBarThickness = 3
+gridScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+gridScroll.Parent = main
+local achieveGrid = Instance.new("UIGridLayout")
+achieveGrid.CellSize = UDim2.new(0.48, 0, 0, 80)
+achieveGrid.CellPadding = UDim2.new(0.02, 0, 0, 6)
+achieveGrid.Parent = gridScroll
+
+local sampleAch = {
+  {name="First Blood", desc="Defeat first enemy", done=true},
+  {name="Explorer", desc="Visit 5 zones", done=true},
+  {name="Social", desc="Add 3 friends", done=true},
+  {name="Crafter", desc="Craft 20 items", done=false, progress=12, total=20},
+  {name="Collector", desc="Collect 50 items", done=false, progress=30, total=50},
+  {name="Warrior", desc="Win 10 PvP", done=false, progress=4, total=10},
+}
+for idx, a in ipairs(sampleAch) do
+  local card = Instance.new("Frame")
+  card.BackgroundColor3 = a.done and CARD_HOVER or CARD
+  card.BackgroundTransparency = a.done and 0 or 0.3
+  card.LayoutOrder = idx
+  card.Parent = gridScroll
+  addCorner(card, 8)
+  addStroke(card, a.done and GOLD_DIM or BORDER, 1, a.done and 0.1 or 0.4)
+  local aName = Instance.new("TextLabel")
+  aName.Size = UDim2.new(1, -12, 0, 20)
+  aName.Position = UDim2.new(0, 6, 0, 4)
+  aName.BackgroundTransparency = 1
+  aName.Text = a.name
+  aName.TextColor3 = a.done and GOLD or TEXT_MUTED
+  aName.Font = Enum.Font.GothamBold
+  aName.TextSize = 13
+  aName.TextXAlignment = Enum.TextXAlignment.Left
+  aName.Parent = card
+  local aDesc = Instance.new("TextLabel")
+  aDesc.Size = UDim2.new(1, -12, 0, 16)
+  aDesc.Position = UDim2.new(0, 6, 0, 26)
+  aDesc.BackgroundTransparency = 1
+  aDesc.Text = a.desc
+  aDesc.TextColor3 = TEXT_DIM
+  aDesc.Font = Enum.Font.GothamMedium
+  aDesc.TextSize = 11
+  aDesc.TextXAlignment = Enum.TextXAlignment.Left
+  aDesc.Parent = card
+  if not a.done and a.progress then
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(1, -12, 0, 8)
+    bg.Position = UDim2.new(0, 6, 1, -16)
+    bg.BackgroundColor3 = SURFACE
+    bg.Parent = card
+    addCorner(bg, 4)
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(a.progress / a.total, 0, 1, 0)
+    fill.BackgroundColor3 = GOLD_DIM
+    fill.Parent = bg
+    addCorner(fill, 4)
+  end
+end
+
+main.Size = UDim2.new(0, 0, 0, 0)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+  Size = UDim2.new(0.65, 0, 0.7, 0), Position = UDim2.new(0.175, 0, 0.15, 0)
+}):Play()
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 21. MAP TELEPORT GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface MapTeleportGuiParams {
+  zones?: Array<{ name: string; level: number; x: number; y: number; color?: string; locked?: boolean }>
+}
+
+export function mapTeleportGui(params: MapTeleportGuiParams = {}): string {
+  const zones = params.zones || [
+    { name: 'Spawn Village', level: 1, x: 0.5, y: 0.5, color: '50,200,80', locked: false },
+    { name: 'Dark Forest', level: 5, x: 0.25, y: 0.3, color: '40,140,40', locked: false },
+    { name: 'Crystal Cave', level: 10, x: 0.7, y: 0.25, color: '140,80,255', locked: false },
+    { name: 'Lava Pit', level: 20, x: 0.35, y: 0.7, color: '220,65,65', locked: true },
+    { name: 'Sky Temple', level: 30, x: 0.75, y: 0.65, color: '60,130,255', locked: true },
+  ]
+  const zonesLua = zones.map(z => `{name="${z.name}",level=${z.level},x=${z.x},y=${z.y},color=Color3.fromRGB(${z.color || '212,175,55'}),locked=${z.locked || false}}`).join(',')
+
+  return wrapTemplate('MapTeleportGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeMapTeleport"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0.6, 0, 0.65, 0)
+main.Position = UDim2.new(0.2, 0, 0.175, 0)
+main.BackgroundColor3 = BG
+main.BorderSizePixel = 0
+main.Parent = screenGui
+addCorner(main, 12)
+addStroke(main, GOLD_DIM, 2)
+addPadding(main, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 36)
+title.BackgroundTransparency = 1
+title.Text = "WORLD MAP"
+title.TextColor3 = GOLD
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+title.Parent = main
+
+makeCloseBtn(main, function()
+  TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size=UDim2.new(0,0,0,0)}):Play()
+  task.wait(0.25) screenGui:Destroy()
+end)
+
+local canvas = Instance.new("Frame")
+canvas.Size = UDim2.new(1, 0, 1, -48)
+canvas.Position = UDim2.new(0, 0, 0, 44)
+canvas.BackgroundColor3 = Color3.fromRGB(18, 22, 35)
+canvas.ClipsDescendants = true
+canvas.Parent = main
+addCorner(canvas, 8)
+addStroke(canvas, BORDER)
+
+local zones = {${zonesLua}}
+for _, z in ipairs(zones) do
+  local dot = Instance.new("TextButton")
+  dot.Size = UDim2.new(0, 36, 0, 36)
+  dot.Position = UDim2.new(z.x, -18, z.y, -18)
+  dot.BackgroundColor3 = z.locked and Color3.fromRGB(60,60,65) or z.color
+  dot.Text = ""
+  dot.AutoButtonColor = false
+  dot.Parent = canvas
+  addCorner(dot, 18)
+  addStroke(dot, z.locked and BORDER or z.color, 2)
+
+  local nameLbl = Instance.new("TextLabel")
+  nameLbl.Size = UDim2.new(0, 100, 0, 14)
+  nameLbl.Position = UDim2.new(0.5, -50, 1, 4)
+  nameLbl.BackgroundTransparency = 1
+  nameLbl.Text = z.name
+  nameLbl.TextColor3 = z.locked and TEXT_MUTED or TEXT
+  nameLbl.Font = Enum.Font.GothamBold
+  nameLbl.TextSize = 11
+  nameLbl.Parent = dot
+
+  local lvlLbl = Instance.new("TextLabel")
+  lvlLbl.Size = UDim2.new(0, 60, 0, 12)
+  lvlLbl.Position = UDim2.new(0.5, -30, 1, 18)
+  lvlLbl.BackgroundTransparency = 1
+  lvlLbl.Text = "Lv." .. z.level
+  lvlLbl.TextColor3 = z.locked and TEXT_DIM or TEXT_SUB
+  lvlLbl.Font = Enum.Font.GothamMedium
+  lvlLbl.TextSize = 10
+  lvlLbl.Parent = dot
+
+  local dotScale = Instance.new("UIScale") dotScale.Parent = dot
+  dot.MouseEnter:Connect(function()
+    TweenService:Create(dotScale, TWEEN_FAST, {Scale = 1.15}):Play()
+    playSound(SFX.hover, 0.12)
+  end)
+  dot.MouseLeave:Connect(function()
+    TweenService:Create(dotScale, TWEEN_FAST, {Scale = 1}):Play()
+  end)
+  dot.MouseButton1Click:Connect(function()
+    if z.locked then playSound(SFX.error, 0.3) return end
+    playSound(SFX.click, 0.4)
+  end)
+end
+
+main.Size = UDim2.new(0, 0, 0, 0)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+  Size = UDim2.new(0.6, 0, 0.65, 0), Position = UDim2.new(0.2, 0, 0.175, 0)
+}):Play()
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 22. CLAN WAR GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface ClanWarGuiParams {
+  teamAName?: string
+  teamBName?: string
+  timeRemaining?: number
+}
+
+export function clanWarGui(params: ClanWarGuiParams = {}): string {
+  const teamA = params.teamAName || 'Red Dragons'
+  const teamB = params.teamBName || 'Blue Wolves'
+  const timeRem = params.timeRemaining || 300
+
+  return wrapTemplate('ClanWarGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeClanWar"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0.6, 0, 0.7, 0)
+main.Position = UDim2.new(0.2, 0, 0.15, 0)
+main.BackgroundColor3 = BG
+main.BorderSizePixel = 0
+main.Parent = screenGui
+addCorner(main, 12)
+addStroke(main, GOLD_DIM, 2)
+addPadding(main, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 36)
+title.BackgroundTransparency = 1
+title.Text = "CLAN WAR"
+title.TextColor3 = GOLD
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+title.Parent = main
+
+makeCloseBtn(main, function()
+  TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size=UDim2.new(0,0,0,0)}):Play()
+  task.wait(0.25) screenGui:Destroy()
+end)
+
+local timer = Instance.new("TextLabel")
+timer.Size = UDim2.new(0.3, 0, 0, 28)
+timer.Position = UDim2.new(0.35, 0, 0, 40)
+timer.BackgroundColor3 = SURFACE
+timer.Text = "5:00"
+timer.TextColor3 = RED
+timer.Font = Enum.Font.GothamBold
+timer.TextSize = 18
+timer.Parent = main
+addCorner(timer, 6)
+
+local timeLeft = ${timeRem}
+task.spawn(function()
+  while screenGui.Parent and timeLeft > 0 do
+    timeLeft = timeLeft - 1
+    timer.Text = string.format("%d:%02d", math.floor(timeLeft/60), timeLeft%60)
+    task.wait(1)
+  end
+end)
+
+local scoreBar = Instance.new("Frame")
+scoreBar.Size = UDim2.new(1, 0, 0, 40)
+scoreBar.Position = UDim2.new(0, 0, 0, 72)
+scoreBar.BackgroundTransparency = 1
+scoreBar.Parent = main
+
+local teamAL = Instance.new("TextLabel")
+teamAL.Size = UDim2.new(0.35, 0, 1, 0)
+teamAL.BackgroundTransparency = 1
+teamAL.Text = "${teamA}"
+teamAL.TextColor3 = RED
+teamAL.Font = Enum.Font.GothamBold
+teamAL.TextSize = 16
+teamAL.TextXAlignment = Enum.TextXAlignment.Left
+teamAL.Parent = scoreBar
+
+local scoreL = Instance.new("TextLabel")
+scoreL.Size = UDim2.new(0.3, 0, 1, 0)
+scoreL.Position = UDim2.new(0.35, 0, 0, 0)
+scoreL.BackgroundTransparency = 1
+scoreL.Text = "24 - 18"
+scoreL.TextColor3 = GOLD
+scoreL.Font = Enum.Font.GothamBold
+scoreL.TextSize = 24
+scoreL.Parent = scoreBar
+
+local teamBL = Instance.new("TextLabel")
+teamBL.Size = UDim2.new(0.35, 0, 1, 0)
+teamBL.Position = UDim2.new(0.65, 0, 0, 0)
+teamBL.BackgroundTransparency = 1
+teamBL.Text = "${teamB}"
+teamBL.TextColor3 = BLUE
+teamBL.Font = Enum.Font.GothamBold
+teamBL.TextSize = 16
+teamBL.TextXAlignment = Enum.TextXAlignment.Right
+teamBL.Parent = scoreBar
+
+local colA = Instance.new("ScrollingFrame")
+colA.Size = UDim2.new(0.48, 0, 1, -170)
+colA.Position = UDim2.new(0, 0, 0, 118)
+colA.BackgroundColor3 = SURFACE
+colA.ScrollBarThickness = 3
+colA.AutomaticCanvasSize = Enum.AutomaticSize.Y
+colA.Parent = main
+addCorner(colA, 8)
+addStroke(colA, Color3.fromRGB(120,40,40))
+local listA = Instance.new("UIListLayout") listA.Padding = UDim.new(0, 2) listA.Parent = colA
+addPadding(colA, 4)
+
+local colB = Instance.new("ScrollingFrame")
+colB.Size = UDim2.new(0.48, 0, 1, -170)
+colB.Position = UDim2.new(0.52, 0, 0, 118)
+colB.BackgroundColor3 = SURFACE
+colB.ScrollBarThickness = 3
+colB.AutomaticCanvasSize = Enum.AutomaticSize.Y
+colB.Parent = main
+addCorner(colB, 8)
+addStroke(colB, Color3.fromRGB(40,60,120))
+local listB = Instance.new("UIListLayout") listB.Padding = UDim.new(0, 2) listB.Parent = colB
+addPadding(colB, 4)
+
+local function makePlayerRow(parent, pName, kills, deaths, teamColor)
+  local row = Instance.new("Frame")
+  row.Size = UDim2.new(1, 0, 0, 32)
+  row.BackgroundColor3 = CARD
+  row.Parent = parent
+  addCorner(row, 4)
+  local n = Instance.new("TextLabel")
+  n.Size = UDim2.new(0.5, 0, 1, 0)
+  n.Position = UDim2.new(0, 6, 0, 0)
+  n.BackgroundTransparency = 1
+  n.Text = pName
+  n.TextColor3 = TEXT
+  n.Font = Enum.Font.GothamMedium
+  n.TextSize = 12
+  n.TextXAlignment = Enum.TextXAlignment.Left
+  n.Parent = row
+  local kd = Instance.new("TextLabel")
+  kd.Size = UDim2.new(0.45, 0, 1, 0)
+  kd.Position = UDim2.new(0.52, 0, 0, 0)
+  kd.BackgroundTransparency = 1
+  kd.Text = kills .. "K / " .. deaths .. "D"
+  kd.TextColor3 = teamColor
+  kd.Font = Enum.Font.GothamBold
+  kd.TextSize = 12
+  kd.TextXAlignment = Enum.TextXAlignment.Right
+  kd.Parent = row
+end
+
+makePlayerRow(colA, "DragonFire", 8, 3, RED)
+makePlayerRow(colA, "RedStorm", 7, 5, RED)
+makePlayerRow(colA, "CrimsonBlade", 5, 4, RED)
+makePlayerRow(colB, "IceWolf", 6, 5, BLUE)
+makePlayerRow(colB, "AquaMage", 5, 7, BLUE)
+makePlayerRow(colB, "FrostBite", 4, 4, BLUE)
+
+local objBar = Instance.new("Frame")
+objBar.Size = UDim2.new(1, 0, 0, 36)
+objBar.Position = UDim2.new(0, 0, 1, -42)
+objBar.BackgroundColor3 = SURFACE
+objBar.Parent = main
+addCorner(objBar, 6)
+local objLabel = Instance.new("TextLabel")
+objLabel.Size = UDim2.new(0.4, 0, 1, 0)
+objLabel.Position = UDim2.new(0, 8, 0, 0)
+objLabel.BackgroundTransparency = 1
+objLabel.Text = "Capture: Zone B"
+objLabel.TextColor3 = TEXT_SUB
+objLabel.Font = Enum.Font.GothamMedium
+objLabel.TextSize = 12
+objLabel.TextXAlignment = Enum.TextXAlignment.Left
+objLabel.Parent = objBar
+local capBg = Instance.new("Frame")
+capBg.Size = UDim2.new(0.5, 0, 0, 10)
+capBg.Position = UDim2.new(0.45, 0, 0.5, -5)
+capBg.BackgroundColor3 = CARD
+capBg.Parent = objBar
+addCorner(capBg, 5)
+local capFill = Instance.new("Frame")
+capFill.Size = UDim2.new(0.65, 0, 1, 0)
+capFill.BackgroundColor3 = RED
+capFill.Parent = capBg
+addCorner(capFill, 5)
+
+main.Size = UDim2.new(0, 0, 0, 0)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+  Size = UDim2.new(0.6, 0, 0.7, 0), Position = UDim2.new(0.2, 0, 0.15, 0)
+}):Play()
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 23. FISHING GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface FishingGuiParams {
+  rodName?: string
+  baitCount?: number
+  fishCaught?: number
+}
+
+export function fishingGui(params: FishingGuiParams = {}): string {
+  const rodName = params.rodName || 'Basic Rod'
+  const baitCount = params.baitCount || 25
+  const fishCaught = params.fishCaught || 0
+
+  return wrapTemplate('FishingGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeFishing"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local hud = Instance.new("Frame")
+hud.Size = UDim2.new(0, 280, 0, 140)
+hud.Position = UDim2.new(0.5, -140, 1, -160)
+hud.BackgroundColor3 = BG
+hud.BackgroundTransparency = 0.1
+hud.Parent = screenGui
+addCorner(hud, 10)
+addStroke(hud, GOLD_DIM, 1)
+addPadding(hud, 8)
+
+makeCloseBtn(hud, function()
+  TweenService:Create(hud, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size=UDim2.new(0,0,0,0)}):Play()
+  task.wait(0.2) screenGui:Destroy()
+end)
+
+local rodLabel = Instance.new("TextLabel")
+rodLabel.Size = UDim2.new(0.6, 0, 0, 18)
+rodLabel.BackgroundTransparency = 1
+rodLabel.Text = "${rodName}"
+rodLabel.TextColor3 = GOLD
+rodLabel.Font = Enum.Font.GothamBold
+rodLabel.TextSize = 13
+rodLabel.TextXAlignment = Enum.TextXAlignment.Left
+rodLabel.Parent = hud
+
+local baitLbl = Instance.new("TextLabel")
+baitLbl.Size = UDim2.new(0.4, 0, 0, 18)
+baitLbl.Position = UDim2.new(0.55, 0, 0, 0)
+baitLbl.BackgroundTransparency = 1
+baitLbl.Text = "Bait: ${baitCount}"
+baitLbl.TextColor3 = TEXT_SUB
+baitLbl.Font = Enum.Font.GothamMedium
+baitLbl.TextSize = 11
+baitLbl.TextXAlignment = Enum.TextXAlignment.Right
+baitLbl.Parent = hud
+
+local powerBg = Instance.new("Frame")
+powerBg.Size = UDim2.new(1, 0, 0, 14)
+powerBg.Position = UDim2.new(0, 0, 0, 24)
+powerBg.BackgroundColor3 = SURFACE
+powerBg.Parent = hud
+addCorner(powerBg, 7)
+addStroke(powerBg, BORDER)
+local powerFill = Instance.new("Frame")
+powerFill.Size = UDim2.new(0, 0, 1, 0)
+powerFill.BackgroundColor3 = GREEN
+powerFill.Parent = powerBg
+addCorner(powerFill, 7)
+local powerLbl = Instance.new("TextLabel")
+powerLbl.Size = UDim2.new(1, 0, 1, 0)
+powerLbl.BackgroundTransparency = 1
+powerLbl.Text = "Hold to Cast"
+powerLbl.TextColor3 = TEXT
+powerLbl.Font = Enum.Font.GothamBold
+powerLbl.TextSize = 10
+powerLbl.ZIndex = 2
+powerLbl.Parent = powerBg
+
+local castBtn = Instance.new("TextButton")
+castBtn.Size = UDim2.new(1, 0, 0, 28)
+castBtn.Position = UDim2.new(0, 0, 0, 42)
+castBtn.BackgroundColor3 = GOLD
+castBtn.Text = "HOLD TO CAST"
+castBtn.TextColor3 = BG_DEEP
+castBtn.Font = Enum.Font.GothamBold
+castBtn.TextSize = 13
+castBtn.AutoButtonColor = false
+castBtn.Parent = hud
+addCorner(castBtn, 6)
+local castScale = Instance.new("UIScale") castScale.Parent = castBtn
+castBtn.MouseEnter:Connect(function() TweenService:Create(castScale, TWEEN_FAST, {Scale = 1.03}):Play() end)
+castBtn.MouseLeave:Connect(function() TweenService:Create(castScale, TWEEN_FAST, {Scale = 1}):Play() end)
+
+local casting = false
+local power = 0
+castBtn.MouseButton1Down:Connect(function()
+  casting = true
+  power = 0
+  task.spawn(function()
+    while casting and power < 1 do
+      power = math.min(power + 0.02, 1)
+      powerFill.Size = UDim2.new(power, 0, 1, 0)
+      powerFill.BackgroundColor3 = power < 0.7 and GREEN or (power < 0.9 and GOLD or RED)
+      powerLbl.Text = math.floor(power * 100) .. "%"
+      task.wait(0.03)
+    end
+  end)
+end)
+castBtn.MouseButton1Up:Connect(function()
+  casting = false
+  playSound(SFX.click, 0.4)
+  powerLbl.Text = "Cast at " .. math.floor(power * 100) .. "%"
+  task.wait(0.5)
+  power = 0
+  powerFill.Size = UDim2.new(0, 0, 1, 0)
+  powerLbl.Text = "Hold to Cast"
+end)
+
+local statsBar = Instance.new("Frame")
+statsBar.Size = UDim2.new(1, 0, 0, 28)
+statsBar.Position = UDim2.new(0, 0, 1, -32)
+statsBar.BackgroundColor3 = SURFACE
+statsBar.Parent = hud
+addCorner(statsBar, 6)
+local fishLbl = Instance.new("TextLabel")
+fishLbl.Size = UDim2.new(0.5, 0, 1, 0)
+fishLbl.Position = UDim2.new(0, 6, 0, 0)
+fishLbl.BackgroundTransparency = 1
+fishLbl.Text = "Fish: ${fishCaught}"
+fishLbl.TextColor3 = TEXT
+fishLbl.Font = Enum.Font.GothamBold
+fishLbl.TextSize = 12
+fishLbl.TextXAlignment = Enum.TextXAlignment.Left
+fishLbl.Parent = statsBar
+local rodStat = Instance.new("TextLabel")
+rodStat.Size = UDim2.new(0.5, 0, 1, 0)
+rodStat.Position = UDim2.new(0.5, 0, 0, 0)
+rodStat.BackgroundTransparency = 1
+rodStat.Text = "Power: 1.0x"
+rodStat.TextColor3 = GOLD
+rodStat.Font = Enum.Font.GothamMedium
+rodStat.TextSize = 11
+rodStat.TextXAlignment = Enum.TextXAlignment.Right
+rodStat.Parent = statsBar
+
+hud.Size = UDim2.new(0, 0, 0, 0)
+hud.Position = UDim2.new(0.5, 0, 1, -90)
+TweenService:Create(hud, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+  Size = UDim2.new(0, 280, 0, 140), Position = UDim2.new(0.5, -140, 1, -160)
+}):Play()
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 24. GARAGE GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface GarageGuiParams {
+  vehicles?: Array<{ name: string; speed: number; handling: number; boost: number; owned?: boolean }>
+}
+
+export function garageGui(params: GarageGuiParams = {}): string {
+  const vehicles = params.vehicles || [
+    { name: 'Street Racer', speed: 80, handling: 70, boost: 50, owned: true },
+    { name: 'Off-Road Truck', speed: 50, handling: 60, boost: 40, owned: true },
+    { name: 'Sports Car', speed: 95, handling: 85, boost: 70, owned: false },
+    { name: 'Monster Truck', speed: 45, handling: 40, boost: 90, owned: false },
+  ]
+  const vehiclesLua = vehicles.map(v => `{name="${v.name}",speed=${v.speed},handling=${v.handling},boost=${v.boost},owned=${v.owned ?? false}}`).join(',')
+
+  return wrapTemplate('GarageGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeGarage"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0.65, 0, 0.65, 0)
+main.Position = UDim2.new(0.175, 0, 0.175, 0)
+main.BackgroundColor3 = BG
+main.BorderSizePixel = 0
+main.Parent = screenGui
+addCorner(main, 12)
+addStroke(main, GOLD_DIM, 2)
+addPadding(main, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 36)
+title.BackgroundTransparency = 1
+title.Text = "GARAGE"
+title.TextColor3 = GOLD
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+title.Parent = main
+
+makeCloseBtn(main, function()
+  TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size=UDim2.new(0,0,0,0)}):Play()
+  task.wait(0.25) screenGui:Destroy()
+end)
+
+local vList = Instance.new("ScrollingFrame")
+vList.Size = UDim2.new(0.35, 0, 1, -48)
+vList.Position = UDim2.new(0, 0, 0, 44)
+vList.BackgroundColor3 = SURFACE
+vList.ScrollBarThickness = 3
+vList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+vList.Parent = main
+addCorner(vList, 8)
+addStroke(vList, BORDER)
+local vLayout = Instance.new("UIListLayout") vLayout.Padding = UDim.new(0, 4) vLayout.Parent = vList
+addPadding(vList, 6)
+
+local statsPanel = Instance.new("Frame")
+statsPanel.Size = UDim2.new(0.6, 0, 1, -48)
+statsPanel.Position = UDim2.new(0.38, 0, 0, 44)
+statsPanel.BackgroundColor3 = SURFACE
+statsPanel.Parent = main
+addCorner(statsPanel, 8)
+addStroke(statsPanel, BORDER)
+addPadding(statsPanel, 12)
+
+local selName = Instance.new("TextLabel")
+selName.Size = UDim2.new(1, 0, 0, 28)
+selName.BackgroundTransparency = 1
+selName.Text = "Select a Vehicle"
+selName.TextColor3 = GOLD
+selName.Font = Enum.Font.GothamBold
+selName.TextSize = 18
+selName.TextXAlignment = Enum.TextXAlignment.Left
+selName.Parent = statsPanel
+
+local function makeStatBar(parent, label, yOff)
+  local lbl = Instance.new("TextLabel")
+  lbl.Size = UDim2.new(0.3, 0, 0, 18)
+  lbl.Position = UDim2.new(0, 0, 0, yOff)
+  lbl.BackgroundTransparency = 1
+  lbl.Text = label
+  lbl.TextColor3 = TEXT_SUB
+  lbl.Font = Enum.Font.GothamMedium
+  lbl.TextSize = 12
+  lbl.TextXAlignment = Enum.TextXAlignment.Left
+  lbl.Parent = parent
+  local bg = Instance.new("Frame")
+  bg.Size = UDim2.new(0.65, 0, 0, 12)
+  bg.Position = UDim2.new(0.32, 0, 0, yOff + 3)
+  bg.BackgroundColor3 = CARD
+  bg.Parent = parent
+  addCorner(bg, 6)
+  local fill = Instance.new("Frame")
+  fill.Size = UDim2.new(0, 0, 1, 0)
+  fill.BackgroundColor3 = GOLD
+  fill.Parent = bg
+  addCorner(fill, 6)
+  return fill
+end
+
+local speedFill = makeStatBar(statsPanel, "Speed", 40)
+local handFill = makeStatBar(statsPanel, "Handling", 66)
+local boostFill = makeStatBar(statsPanel, "Boost", 92)
+
+-- Color picker
+local colorLbl = Instance.new("TextLabel")
+colorLbl.Size = UDim2.new(1, 0, 0, 18)
+colorLbl.Position = UDim2.new(0, 0, 0, 124)
+colorLbl.BackgroundTransparency = 1
+colorLbl.Text = "COLOR"
+colorLbl.TextColor3 = TEXT_SUB
+colorLbl.Font = Enum.Font.GothamBold
+colorLbl.TextSize = 11
+colorLbl.TextXAlignment = Enum.TextXAlignment.Left
+colorLbl.Parent = statsPanel
+
+local swatchColors = {
+  Color3.fromRGB(220,65,65), Color3.fromRGB(60,130,255),
+  Color3.fromRGB(50,200,80), Color3.fromRGB(212,175,55),
+  Color3.fromRGB(140,80,255), Color3.fromRGB(255,140,50),
+  Color3.fromRGB(255,255,255), Color3.fromRGB(40,40,45),
+}
+for i, c in ipairs(swatchColors) do
+  local swatch = Instance.new("TextButton")
+  swatch.Size = UDim2.new(0, 28, 0, 28)
+  swatch.Position = UDim2.new(0, (i-1) * 34, 0, 144)
+  swatch.BackgroundColor3 = c
+  swatch.Text = ""
+  swatch.AutoButtonColor = false
+  swatch.Parent = statsPanel
+  addCorner(swatch, 6)
+  addStroke(swatch, BORDER)
+  local swScale = Instance.new("UIScale") swScale.Parent = swatch
+  swatch.MouseEnter:Connect(function() TweenService:Create(swScale, TWEEN_FAST, {Scale = 1.15}):Play() end)
+  swatch.MouseLeave:Connect(function() TweenService:Create(swScale, TWEEN_FAST, {Scale = 1}):Play() end)
+  swatch.MouseButton1Click:Connect(function() playSound(SFX.click, 0.3) end)
+end
+
+local equipBtn = Instance.new("TextButton")
+equipBtn.Size = UDim2.new(0.6, 0, 0, 36)
+equipBtn.Position = UDim2.new(0.2, 0, 1, -48)
+equipBtn.BackgroundColor3 = GOLD
+equipBtn.Text = "EQUIP"
+equipBtn.TextColor3 = BG_DEEP
+equipBtn.Font = Enum.Font.GothamBold
+equipBtn.TextSize = 16
+equipBtn.AutoButtonColor = false
+equipBtn.Parent = statsPanel
+addCorner(equipBtn, 8)
+local eqScale = Instance.new("UIScale") eqScale.Parent = equipBtn
+equipBtn.MouseEnter:Connect(function() TweenService:Create(eqScale, TWEEN_FAST, {Scale = 1.04}):Play() end)
+equipBtn.MouseLeave:Connect(function() TweenService:Create(eqScale, TWEEN_FAST, {Scale = 1}):Play() end)
+
+local vehicles = {${vehiclesLua}}
+for idx, v in ipairs(vehicles) do
+  local card = Instance.new("TextButton")
+  card.Size = UDim2.new(1, 0, 0, 44)
+  card.BackgroundColor3 = CARD
+  card.Text = ""
+  card.AutoButtonColor = false
+  card.LayoutOrder = idx
+  card.Parent = vList
+  addCorner(card, 6)
+  local vName = Instance.new("TextLabel")
+  vName.Size = UDim2.new(0.75, 0, 1, 0)
+  vName.Position = UDim2.new(0, 8, 0, 0)
+  vName.BackgroundTransparency = 1
+  vName.Text = v.name
+  vName.TextColor3 = v.owned and TEXT or TEXT_MUTED
+  vName.Font = Enum.Font.GothamBold
+  vName.TextSize = 13
+  vName.TextXAlignment = Enum.TextXAlignment.Left
+  vName.Parent = card
+  if not v.owned then
+    local lock = Instance.new("TextLabel")
+    lock.Size = UDim2.new(0, 20, 0, 20)
+    lock.Position = UDim2.new(1, -26, 0.5, -10)
+    lock.BackgroundTransparency = 1
+    lock.Text = "?"
+    lock.TextColor3 = TEXT_MUTED
+    lock.Font = Enum.Font.GothamBold
+    lock.TextSize = 14
+    lock.Parent = card
+  end
+  card.MouseEnter:Connect(function() TweenService:Create(card, TWEEN_FAST, {BackgroundColor3 = CARD_HOVER}):Play() end)
+  card.MouseLeave:Connect(function() TweenService:Create(card, TWEEN_FAST, {BackgroundColor3 = CARD}):Play() end)
+  card.MouseButton1Click:Connect(function()
+    selName.Text = v.name
+    TweenService:Create(speedFill, TWEEN_NORMAL, {Size = UDim2.new(v.speed/100, 0, 1, 0)}):Play()
+    TweenService:Create(handFill, TWEEN_NORMAL, {Size = UDim2.new(v.handling/100, 0, 1, 0)}):Play()
+    TweenService:Create(boostFill, TWEEN_NORMAL, {Size = UDim2.new(v.boost/100, 0, 1, 0)}):Play()
+    equipBtn.Text = v.owned and "EQUIP" or "LOCKED"
+    equipBtn.BackgroundColor3 = v.owned and GOLD or CARD
+    playSound(SFX.click, 0.3)
+  end)
+end
+
+main.Size = UDim2.new(0, 0, 0, 0)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+  Size = UDim2.new(0.65, 0, 0.65, 0), Position = UDim2.new(0.175, 0, 0.175, 0)
+}):Play()
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 25. EMOTE WHEEL GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface EmoteWheelGuiParams {
+  emotes?: Array<{ name: string; icon?: string }>
+}
+
+export function emoteWheelGui(params: EmoteWheelGuiParams = {}): string {
+  const emotes = params.emotes || [
+    { name: 'Wave' }, { name: 'Dance' }, { name: 'Laugh' }, { name: 'Salute' },
+    { name: 'Sit' }, { name: 'Point' }, { name: 'Cheer' }, { name: 'Shrug' },
+  ]
+  const emotesLua = emotes.map(e => `{name="${e.name}"}`).join(',')
+
+  return wrapTemplate('EmoteWheelGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeEmoteWheel"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 320, 0, 380)
+main.Position = UDim2.new(0.5, -160, 0.5, -190)
+main.BackgroundColor3 = BG
+main.BackgroundTransparency = 0.05
+main.Parent = screenGui
+addCorner(main, 12)
+addStroke(main, GOLD_DIM, 2)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 32)
+title.BackgroundTransparency = 1
+title.Text = "EMOTES"
+title.TextColor3 = GOLD
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.Parent = main
+
+makeCloseBtn(main, function()
+  TweenService:Create(main, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size=UDim2.new(0,0,0,0)}):Play()
+  task.wait(0.2) screenGui:Destroy()
+end)
+
+local wheel = Instance.new("Frame")
+wheel.Size = UDim2.new(0, 260, 0, 260)
+wheel.Position = UDim2.new(0.5, -130, 0, 36)
+wheel.BackgroundTransparency = 1
+wheel.Parent = main
+
+local center = Instance.new("Frame")
+center.Size = UDim2.new(0, 50, 0, 50)
+center.Position = UDim2.new(0.5, -25, 0.5, -25)
+center.BackgroundColor3 = SURFACE
+center.Parent = wheel
+addCorner(center, 25)
+addStroke(center, GOLD_DIM, 1)
+local centerLbl = Instance.new("TextLabel")
+centerLbl.Size = UDim2.new(1, 0, 1, 0)
+centerLbl.BackgroundTransparency = 1
+centerLbl.Text = "?"
+centerLbl.TextColor3 = GOLD
+centerLbl.Font = Enum.Font.GothamBold
+centerLbl.TextSize = 16
+centerLbl.Parent = center
+
+local emotes = {${emotesLua}}
+local radius = 95
+for i, emote in ipairs(emotes) do
+  local angle = (i - 1) * (2 * math.pi / #emotes) - math.pi / 2
+  local x = math.cos(angle) * radius
+  local y = math.sin(angle) * radius
+
+  local btn = Instance.new("TextButton")
+  btn.Size = UDim2.new(0, 60, 0, 60)
+  btn.Position = UDim2.new(0.5, x - 30, 0.5, y - 30)
+  btn.BackgroundColor3 = CARD
+  btn.Text = ""
+  btn.AutoButtonColor = false
+  btn.Parent = wheel
+  addCorner(btn, 30)
+  addStroke(btn, BORDER, 1)
+
+  local icon = Instance.new("TextLabel")
+  icon.Size = UDim2.new(1, 0, 0.55, 0)
+  icon.BackgroundTransparency = 1
+  icon.Text = string.sub(emote.name, 1, 1)
+  icon.TextColor3 = TEXT_SUB
+  icon.Font = Enum.Font.GothamBold
+  icon.TextSize = 20
+  icon.Parent = btn
+
+  local nameLbl = Instance.new("TextLabel")
+  nameLbl.Size = UDim2.new(1, 0, 0.35, 0)
+  nameLbl.Position = UDim2.new(0, 0, 0.6, 0)
+  nameLbl.BackgroundTransparency = 1
+  nameLbl.Text = emote.name
+  nameLbl.TextColor3 = TEXT_DIM
+  nameLbl.Font = Enum.Font.GothamMedium
+  nameLbl.TextSize = 9
+  nameLbl.Parent = btn
+
+  local btnScale = Instance.new("UIScale") btnScale.Parent = btn
+  btn.MouseEnter:Connect(function()
+    TweenService:Create(btnScale, TWEEN_FAST, {Scale = 1.12}):Play()
+    TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = ELEVATED}):Play()
+    centerLbl.Text = emote.name
+    playSound(SFX.hover, 0.12)
+  end)
+  btn.MouseLeave:Connect(function()
+    TweenService:Create(btnScale, TWEEN_FAST, {Scale = 1}):Play()
+    TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = CARD}):Play()
+    centerLbl.Text = "?"
+  end)
+  btn.MouseButton1Click:Connect(function()
+    playSound(SFX.click, 0.4)
+    centerLbl.Text = emote.name .. "!"
+    TweenService:Create(btn, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {BackgroundColor3 = GOLD}):Play()
+    task.wait(0.3)
+    TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = CARD}):Play()
+  end)
+end
+
+local recentBar = Instance.new("Frame")
+recentBar.Size = UDim2.new(1, -16, 0, 44)
+recentBar.Position = UDim2.new(0, 8, 1, -52)
+recentBar.BackgroundColor3 = SURFACE
+recentBar.Parent = main
+addCorner(recentBar, 8)
+addStroke(recentBar, BORDER)
+local recentTitle = Instance.new("TextLabel")
+recentTitle.Size = UDim2.new(0, 60, 1, 0)
+recentTitle.Position = UDim2.new(0, 6, 0, 0)
+recentTitle.BackgroundTransparency = 1
+recentTitle.Text = "Recent:"
+recentTitle.TextColor3 = TEXT_MUTED
+recentTitle.Font = Enum.Font.GothamMedium
+recentTitle.TextSize = 10
+recentTitle.TextXAlignment = Enum.TextXAlignment.Left
+recentTitle.Parent = recentBar
+for r = 1, 4 do
+  local recent = Instance.new("Frame")
+  recent.Size = UDim2.new(0, 32, 0, 32)
+  recent.Position = UDim2.new(0, 62 + (r-1) * 38, 0.5, -16)
+  recent.BackgroundColor3 = CARD
+  recent.Parent = recentBar
+  addCorner(recent, 16)
+  addStroke(recent, BORDER)
+end
+
+main.Size = UDim2.new(0, 0, 0, 0)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+  Size = UDim2.new(0, 320, 0, 380), Position = UDim2.new(0.5, -160, 0.5, -190)
+}):Play()
+`)
+}
