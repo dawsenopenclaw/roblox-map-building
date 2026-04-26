@@ -58,6 +58,7 @@ import { formatGraphPrompt, recordBuildSuccess, detectComponentsInCode } from '@
 import { buildFocusedPrompt } from '@/lib/ai/focused-prompt'
 import { shouldUseAsset, findMatchingAssets } from '@/lib/ai/asset-library'
 import { getRelevantBuildingKnowledge } from '@/lib/ai/devforum-knowledge'
+import { getRelevantGameDesign } from '@/lib/ai/game-design-knowledge'
 import { runStagedPipeline } from '@/lib/ai/staged-pipeline'
 import {
   shopGui, inventoryGui, healthBarGui, hudGui, settingsGui,
@@ -3925,8 +3926,10 @@ end`)
 
   // Inject DevForum building knowledge — matched to this specific request
   const devforumKnowledge = getRelevantBuildingKnowledge(message)
+  // Inject game design knowledge — retention, monetization, genre-specific patterns
+  const gameDesignKnowledge = getRelevantGameDesign(message)
 
-  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + focusedContext + devforumKnowledge + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
+  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + focusedContext + devforumKnowledge + gameDesignKnowledge + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
 
 RESPONSE FORMAT (follow EXACTLY):
 1. First, write 3-5 sentences describing what you're creating. Be specific about what a player would see. End with a suggestion for what to build next.
