@@ -4054,6 +4054,17 @@ EVERYTHING MUST CONNECT — no floating parts, no gaps between walls and floor.
   Walls touch ceiling (wall top Y = ceiling bottom Y)
   Walls meet at corners (left wall X = front wall left edge X)
 
+ROBLOX GAME ARCHITECTURE — WHERE THINGS GO:
+  ServerScriptService: ALL game logic. Currency, combat, DataStore, spawning, validation.
+  ReplicatedStorage: RemoteEvents (client↔server), shared ModuleScripts, game config.
+  StarterGui: ScreenGuis with ResetOnSpawn=false. UI LocalScripts.
+  StarterPlayerScripts: Camera control, input handling, client-side effects.
+  Workspace: ONLY physical parts, models, terrain. NO scripts in Workspace.
+  Lighting: Atmosphere, effects, time of day. Use Future technology.
+
+NEVER put game logic in Workspace. NEVER trust the client with currency/HP/damage.
+ALWAYS validate on the server. ALWAYS pcall DataStore operations.
+
 MATERIALS: Concrete(foundations) Brick(buildings) Cobblestone(paths) Glass(windows+Transparency) Granite(stone) Metal(poles/industrial) Marble(luxury) Neon(accents ONLY) Slate(roofs) Wood(trunks) WoodPlanks(floors/furniture)
 COLOR PALETTES (pick based on game style):
   VIBRANT (Pet Sim/Adopt Me style): Ground=100,200,80 Buildings=255,220,140 Roofs=255,100,100 Trees=60,200,80 Accent=255,130,80

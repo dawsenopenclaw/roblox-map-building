@@ -2308,6 +2308,95 @@ const GAME_SYSTEMS: SystemCategory[] = [
         how: 'Programmable drones: small Model bots that perform tasks. Program via ScreenGui: simple command list [Collect(resource, location), Deliver(location), Mine(node), Build(blueprint)]. Drone executes commands in sequence loop. Pathfinding: PathfindingService to each waypoint. Capacity: carries 10 items max (upgrade to 50). Speed: 16 studs/s (upgrade to 32). Battery: NumberValue drains while active, recharge at station (20s). Max drones: 2 (free), 5 (premium). ScreenGui drone manager: status per drone (active task, location, battery, cargo). Idle drones return to home station. Sound: quiet electric hum.' },
     ],
   },
+
+  // ════════════════════════════════════════════════════════════════════
+  // CODE ARCHITECTURE — WHERE THINGS GO
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Code Architecture',
+    systems: [
+      { name: 'ServerScriptService Structure', keywords: ['server script', 'serverscriptservice', 'game logic', 'server side', 'server code', 'backend'],
+        how: 'ALL game logic lives in ServerScriptService. Currency handling, combat calculations, DataStore operations, spawning, NPC AI, validation — everything authoritative goes here. Never trust client values for HP/damage/currency. Every Script in SSS runs on the server and cannot be seen or modified by exploiters.' },
+      { name: 'ReplicatedStorage Structure', keywords: ['replicated storage', 'replicatedstorage', 'remote event', 'remote function', 'shared module', 'client server communication'],
+        how: 'ReplicatedStorage holds: RemoteEvents/RemoteFunctions for client↔server communication, shared ModuleScripts (configs, utility functions, types), game configuration tables, asset references. Both server and client can require() modules from here. Organize: Remotes/ folder for events, Modules/ folder for shared code, Config/ folder for game settings.' },
+      { name: 'StarterGui Structure', keywords: ['starter gui', 'startergui', 'screen gui', 'ui script', 'gui layout', 'user interface'],
+        how: 'StarterGui contains ScreenGuis with ResetOnSpawn=false so UI persists across deaths. Each ScreenGui has LocalScripts that manage that UI panel. Organize: one ScreenGui per major feature (ShopGui, InventoryGui, HUDGui). LocalScripts inside fire RemoteEvents to request server actions — never modify game state directly. Use UIListLayout/UIGridLayout for responsive layouts.' },
+      { name: 'StarterPlayerScripts Structure', keywords: ['starter player', 'starterplayerscripts', 'camera control', 'input handler', 'client script', 'keybind'],
+        how: 'StarterPlayerScripts for client-only logic: camera controllers (custom CFrame manipulation), input handling (UserInputService/ContextActionService), client-side visual effects, local sound management. Scripts here run once per player join and persist. NOT for UI (use StarterGui). NOT for game logic (use ServerScriptService).' },
+      { name: 'Workspace Organization', keywords: ['workspace', 'workspace structure', 'model organization', 'part placement', 'physical world'],
+        how: 'Workspace contains ONLY physical objects: Parts, Models, Terrain, MeshParts, Unions. NO Scripts in Workspace (they run but are visible to exploiters). Organize into Folders: Map/, Props/, SpawnPoints/, NPCs/. Terrain for large landscapes. Use Model containers with PrimaryPart set for grouped objects. Camera and player characters also live here at runtime.' },
+      { name: 'Lighting Setup', keywords: ['lighting', 'atmosphere', 'time of day', 'lighting technology', 'post processing'],
+        how: 'Lighting service: set Technology to Future for best quality. Atmosphere instance for fog/haze (Density, Offset, Color). BloomEffect, ColorCorrectionEffect, SunRaysEffect for post-processing. ClockTime controls time of day (14=afternoon, 0=midnight). Ambient and OutdoorAmbient for shadow fill. Brightness 2-3 default. GlobalShadows=true always.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // GAME LOOP PATTERNS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Game Loop Patterns',
+    systems: [
+      { name: 'Round-Based Game Loop', keywords: ['round', 'round based', 'lobby', 'countdown', 'intermission', 'match', 'game round'],
+        how: 'State machine: Lobby→Countdown→Playing→Results→Lobby. Server Script with while true loop. Lobby: teleport all to lobby spawn, wait for minPlayers. Countdown: 10s timer, RemoteEvent updates client HUD. Playing: teleport to arena, enable combat/objectives, timer (60-300s). Results: announce winner, award coins, 10s display. Use StringValue "GameState" in ReplicatedStorage so clients read current state. task.wait() between phases.' },
+      { name: 'Continuous Game Loop', keywords: ['continuous', 'open world', 'persistent', 'always playing', 'sandbox loop', 'free roam'],
+        how: 'No rounds — players always active. Events spawn periodically: task.spawn loop on server picks random event every 120-300s (meteor shower, boss spawn, double XP, treasure hunt). Announce via RemoteEvent to all clients. Event runs 60-180s, then cleanup. Multiple events can overlap. Player progress is persistent (DataStore save on interval + PlayerRemoving). World state shared via ReplicatedStorage values that clients read.' },
+      { name: 'Wave-Based Game Loop', keywords: ['wave', 'wave based', 'horde', 'survival waves', 'tower defense wave', 'zombie wave', 'endless wave'],
+        how: 'Waves 1...N with escalating difficulty. Server tracks waveNumber IntValue. Each wave: spawn enemies (count = 5 + wave*3, health = 100 + wave*20). Wait until all enemies defeated (track alive count). Between waves: 15s intermission for buying upgrades. Boss wave every 5th wave (single strong enemy). Endless mode: no cap, leaderboard for highest wave. Difficulty scaling: enemy speed, damage, new enemy types introduced at wave thresholds (wave 10=ranged, wave 20=flying).' },
+      { name: 'Phase-Based Game Loop', keywords: ['phase', 'phase based', 'day night cycle', 'build phase', 'fight phase', 'prep phase'],
+        how: 'Alternating phases: Build/Prep (60s, players set up defenses, buy gear) → Action/Fight (120s, enemies attack or PvP). Server controls phase transitions. Lighting changes to match (bright day=build, dark night=fight). Different player abilities per phase (building tools only in prep, weapons only in fight). Phase timer displayed on all clients. Transition: 5s warning with countdown sound.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // LEADERBOARD & RANKING SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Leaderboard & Ranking',
+    systems: [
+      { name: 'Global Leaderboard', keywords: ['global leaderboard', 'leaderboard', 'top players', 'ranking', 'high score', 'scoreboard'],
+        how: 'OrderedDataStore:GetSortedAsync(false, 100) for top 100. Cache results in server table, refresh every 60s via task.spawn loop (NOT every frame). Display on SurfaceGui attached to Part in lobby: ScrollingFrame with UIListLayout, each entry = Frame with Rank/Name/Score TextLabels. Fire RemoteEvent to clients with cached data so they can show in ScreenGui too. Update player score: SetAsync on meaningful events (not every coin pickup — batch updates).' },
+      { name: 'In-Game Leaderstat Board', keywords: ['leaderstats', 'player list', 'tab menu', 'player stats', 'kills deaths'],
+        how: 'Standard Roblox pattern: Folder "leaderstats" in Player. IntValues inside (Coins, Wins, Level). Automatically shown in player list (Tab menu). Server creates on PlayerAdded. DataStore load on join, save on leave + interval. NumberValues for decimals. StringValues for text display (ranks). Order in player list matches creation order of values.' },
+      { name: 'Seasonal/Weekly Leaderboard', keywords: ['seasonal leaderboard', 'weekly leaderboard', 'reset leaderboard', 'season', 'competitive season'],
+        how: 'Separate OrderedDataStore per season: "Season_" .. os.date("%Y_%W") for weekly or custom season ID. Reset: new DataStore key = fresh board. Archive old season winners in permanent DataStore. Top 3 get exclusive rewards on season end. Display both current season rank and all-time rank. Season timer: countdown in HUD to season end. Rewards distributed by server on first join after season reset.' },
+      { name: 'Elo/MMR Ranking', keywords: ['elo', 'mmr', 'matchmaking', 'skill rating', 'ranked', 'competitive rating'],
+        how: 'Each player has NumberValue "MMR" (default 1000). After match: winnerMMR += K * (1 - expectedWin), loserMMR -= K * (1 - expectedLoss). K=32 for new players, K=16 for established. Expected score = 1/(1+10^((opponentMMR-playerMMR)/400)). Store in DataStore. Matchmaking: queue players, pair by closest MMR within timeout (expand range over time). Display rank tiers: Bronze(<1000), Silver(1000-1500), Gold(1500-2000), Diamond(2000+). Badge icon next to name.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // TRADING & INVENTORY SECURITY
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Trading & Inventory Security',
+    systems: [
+      { name: 'Secure Trading System', keywords: ['secure trade', 'safe trade', 'anti dupe', 'trade lock', 'item trade', 'player trade'],
+        how: 'Server-authoritative inventory — client NEVER modifies items directly. Trade flow: 1) Player A sends trade request (RemoteEvent), server creates trade session. 2) Both players add/remove items via RemoteEvents, server validates ownership each time. 3) Both must confirm (BoolValue per player). 4) Server locks both inventories (reject all other item operations during trade). 5) Atomic swap: pcall single DataStore UpdateAsync that deducts from both and adds to both — if ANY step fails, entire trade reverts. 6) Unlock inventories. Trade cooldown 30s prevents spam. Transaction log: DataStore append {time, p1, p2, items} for rollback if needed.' },
+      { name: 'Anti-Duplication Measures', keywords: ['anti dupe', 'duplication exploit', 'item duplication', 'dupe prevention', 'inventory security'],
+        how: 'Every item has unique ID (HttpService:GenerateGUID). Server tracks all item IDs in DataStore. On trade/transfer: verify item ID exists in sender inventory, remove from sender BEFORE adding to receiver (never both exist simultaneously). Inventory checksum: hash of all item IDs, verified on load. Rate limit inventory operations (max 10/second per player). Log all item creation/deletion. If duplicate ID detected: quarantine both, alert admin via MessagingService. Session lock: DataStore key "lock_{userId}" prevents loading inventory on two servers simultaneously.' },
+      { name: 'Server-Authoritative Inventory', keywords: ['server inventory', 'secure inventory', 'server authoritative', 'inventory validation', 'server side inventory'],
+        how: 'All inventory state lives on server (table per player in ServerStorage or ServerScriptService). Client sees inventory via RemoteFunction:InvokeClient (or RemoteEvent pushes). Client requests actions: "Equip", "Use", "Drop" via RemoteEvent — server validates and executes. NEVER send full inventory to client (send display data only: name, icon, count). Validate every request: does player own item? Is quantity valid? Is action allowed in current game state? Cooldown per action type. Return result to client for UI update.' },
+      { name: 'Transaction Logging', keywords: ['transaction log', 'trade log', 'audit trail', 'item history', 'rollback'],
+        how: 'Every item movement logged: {timestamp: os.time(), action: "trade"|"purchase"|"drop"|"pickup", playerId, itemId, details: {}}. Store in DataStore "TransactionLog_{userId}" as JSON array (append new, keep last 500). Admin command to query player history. Rollback tool: reverse a transaction by re-granting removed items. Cross-reference: on dispute, compare both players\' logs. Export-friendly format for external tools.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // PET & GACHA SYSTEMS
+  // ════════════════════════════════════════════════════════════════════
+  {
+    name: 'Pet & Gacha Systems',
+    systems: [
+      { name: 'Pet Rarity Weighted Random', keywords: ['pet rarity', 'gacha', 'egg hatch', 'weighted random', 'pet chance', 'hatch egg', 'lucky egg'],
+        how: 'Rarity weights: Common(60%), Uncommon(25%), Rare(10%), Epic(4%), Legendary(1%). Roll: math.random()*100, accumulate weights until roll < cumulative. Server-side RNG only. Luck multiplier: shift weights — luck=2 means Legendary goes from 1% to 2% (subtract from Common). Display chances in egg info UI with color-coded bars. Pity system: track hatches since last Legendary in DataStore "pity_{userId}". After 100 hatches with no Legendary: force Legendary drop, reset counter. Show pity progress bar in UI. Hatching animation: egg wobbles (TweenService rotation), cracks (swap MeshPart), burst (ParticleEmitter), reveal pet with rarity-colored glow.' },
+      { name: 'Pet Following System', keywords: ['pet follow', 'pet walking', 'pet companion', 'follow player', 'pet movement'],
+        how: 'Pet Model with PrimaryPart. AlignPosition + AlignOrientation constraints targeting offset from player HumanoidRootPart (3 studs behind, 2 studs up). Responsiveness=10 for smooth follow. Idle animation: bob up/down via TweenService loop (0.5 stud amplitude, 2s period). Walking animation: play when player moves (check Humanoid.MoveDirection.Magnitude > 0). Multiple pets: offset positions in arc behind player. Pet level shown on BillboardGui above pet. Rarity particle: Legendary gets gold sparkle ParticleEmitter.' },
+      { name: 'Pet Leveling & Evolution', keywords: ['pet level', 'pet evolve', 'pet upgrade', 'pet xp', 'pet evolution', 'pet fusion'],
+        how: 'Pet data: {id, name, rarity, level, xp, maxXp}. XP gained: pet equipped while player earns coins (1 coin = 1 pet XP). Level up: xp >= maxXp → level++, maxXp = math.floor(maxXp * 1.5), reset xp to 0. Stats scale: damage = baseDamage * (1 + level*0.1). Evolution: at level 25 + evolution material → new form (swap MeshPart, increase base stats 2x, new particle effects). Fusion: combine 3 same-rarity pets → 1 next-rarity pet (3 Common → 1 Uncommon). Server validates all operations.' },
+      { name: 'Pet Inventory & Storage', keywords: ['pet inventory', 'pet storage', 'pet capacity', 'pet bank', 'pet collection'],
+        how: 'Inventory: table of pet objects in DataStore. Capacity: 50 base (upgrade with Robux: +25 per tier). Equipped slots: 1 base (3 max with gamepass). Storage: overflow goes to "Pet Bank" (separate 200-slot storage, retrieve from NPC). ScreenGui inventory grid: UIGridLayout, each cell shows pet icon + level + rarity border color. Sort by: rarity, level, name, type. Filter: by rarity, by type. Mass actions: "Delete all Common" with confirmation. Favorite system: starred pets cannot be accidentally deleted/fused.' },
+    ],
+  },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════
