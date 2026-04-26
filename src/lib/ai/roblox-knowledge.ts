@@ -1625,6 +1625,7 @@ grid.Parent = scroll`,
       'Not setting ScrollBarImageColor3 — default white scrollbar looks out of place in dark themes',
     ],
   },
+
 ]
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -1650,6 +1651,384 @@ export function findRelevantSnippets(userPrompt: string, maxSnippets: number = 4
 
   return scored.map(s => s.snippet)
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEVFORUM KNOWLEDGE — appended to ROBLOX_KNOWLEDGE array at runtime
+// ═══════════════════════════════════════════════════════════════════════════
+const DEVFORUM_KNOWLEDGE: RobloxAPISnippet[] = [
+
+  {
+    name: 'UI Design Best Practices (DevForum)',
+    keywords: ['ui', 'gui', 'screen', 'interface', 'button', 'frame', 'screengui', 'design', 'menu', 'hud', 'shop ui', 'inventory ui'],
+    snippet: `-- UI DESIGN BEST PRACTICES (from Roblox DevForum + official Roblox Staff post)
+--
+-- SCALE VS OFFSET:
+-- Use Scale (percentage) for responsive UI, NOT Offset (pixels).
+-- Scale adapts to ALL screen sizes. Offset breaks on mobile.
+-- Example: UDim2.new(0.3, 0, 0.5, 0) instead of UDim2.new(0, 200, 0, 300)
+-- EXCEPTION: Use Offset for pixel-perfect icons, UIStroke thickness, small fixed elements
+--
+-- ANCHORING:
+-- Always set AnchorPoint BEFORE Position for predictable placement.
+-- Center: AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0)
+--
+-- UIAspectRatioConstraint:
+-- Add to any element that must stay square/proportional across screens.
+-- local aspect = Instance.new("UIAspectRatioConstraint")
+-- aspect.AspectRatio = 1 -- 1:1 square
+-- aspect.Parent = frame
+--
+-- MOBILE SAFE AREA:
+-- screenGui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+-- This prevents UI from being hidden behind notches/Dynamic Island
+-- Top bar is 58px on modern Roblox (updated from old 36px)
+--
+-- UICORNER WITH SCALE (responsive corners):
+-- addCorner.CornerRadius = UDim.new(0.1, 0) -- 10% of smallest axis = responsive
+-- NOT UDim.new(0, 12) which stays 12px on all screens
+--
+-- ONE SCREENGUI VS MANY:
+-- Use ONE ScreenGui with multiple Frames (toggled via Visible).
+-- This is simpler, better for performance, and easier to manage ZIndex.
+-- Each Frame = one panel (shop, inventory, settings, etc.)
+-- Toggle with: frame.Visible = not frame.Visible
+--
+-- DESIGN MOBILE-FIRST:
+-- Design for smallest screen first. If it works on phone, it works everywhere.
+-- Minimum touch target: 44x44 pixels (Apple HIG) / 48x48 (Material Design)
+-- Test in Studio: View > Device Emulator`,
+    pitfalls: [
+      'Using Offset for main containers (breaks on different screen sizes)',
+      'Forgetting ScreenInsets — UI hidden behind phone notches/Dynamic Island',
+      'Using multiple ScreenGuis when one with toggled Frames is better',
+      'UICorner with Offset instead of Scale (corners don\'t scale)',
+      'Not testing on mobile device emulator',
+      'Top bar is 58px now, not 36px — old tutorials are wrong',
+    ],
+  },
+  {
+    name: 'RemoteEvent Security (DevForum)',
+    keywords: ['remote', 'event', 'security', 'exploit', 'hack', 'cheat', 'server', 'client', 'validate', 'sanity', 'anti-exploit'],
+    snippet: `-- REMOTEEVENT SECURITY (from DevForum security tutorials)
+-- NEVER trust the client. ALL game logic on SERVER.
+--
+-- 1. RATE LIMITING (prevent spam):
+local cooldowns = {}
+Players.PlayerAdded:Connect(function(p) cooldowns[p.UserId] = 0 end)
+Players.PlayerRemoving:Connect(function(p) cooldowns[p.UserId] = nil end)
+
+remote.OnServerEvent:Connect(function(player, ...)
+  if tick() - (cooldowns[player.UserId] or 0) < 0.2 then return end -- 200ms cooldown
+  cooldowns[player.UserId] = tick()
+  -- process safely
+end)
+
+-- 2. TYPE VALIDATION (prevent wrong types):
+remote.OnServerEvent:Connect(function(player, action, data)
+  if typeof(action) ~= "string" then return end
+  if typeof(data) ~= "table" then return end
+  if action == "BuyItem" then
+    if typeof(data.itemId) ~= "string" then return end
+    if typeof(data.quantity) ~= "number" then return end
+    if data.quantity ~= data.quantity then return end -- NaN check!
+    if data.quantity < 1 or data.quantity > 99 then return end -- sanity
+    -- safe to process purchase
+  end
+end)
+
+-- 3. STRING LENGTH LIMITS (prevent DoS):
+if typeof(chatMessage) ~= "string" then return end
+if #chatMessage > 200 then return end -- cap length
+
+-- 4. THREADING (prevent queue exhaustion):
+remote.OnServerEvent:Connect(function(player, ...)
+  task.spawn(function() -- offload to new thread
+    -- heavy processing here
+  end)
+end)`,
+    pitfalls: [
+      'NEVER let client set their own health/currency/stats',
+      'NEVER trust client-sent numeric IDs (exploiters change them)',
+      'ALWAYS check for NaN: if value ~= value then return end',
+      'ALWAYS limit string length to prevent memory attacks',
+      'ALWAYS use server-side cooldowns (client cooldowns are bypassable)',
+      'Use task.spawn() for heavy remote handlers to prevent queue exhaustion',
+      'Tables from clients can be ANY structure — validate every key',
+    ],
+  },
+  {
+    name: 'Build Optimization (DevForum)',
+    keywords: ['optimize', 'performance', 'lag', 'fps', 'frame rate', 'slow', 'mobile', 'part count', 'triangle', 'drawcall', 'streaming'],
+    snippet: `-- BUILD OPTIMIZATION (from DevForum real-world optimization guides)
+--
+-- PERFORMANCE BUDGETS (2024-2025 standards):
+-- Triangle budget: 500,000 in-scene
+-- Drawcall budget: 500 in-scene
+-- Client memory: <1.3GB (for 2GB phones)
+-- Network receive: <50KB/s
+-- Moving physics objects: 40-60 max
+--
+-- KITBASHING (how pro studios build):
+-- Reuse the SAME meshes with different Color/Rotation/Scale.
+-- Engine batches identical meshId+material into ONE drawcall.
+-- 100 trees using 4 mesh types = ~8 drawcalls (not 400!)
+--
+-- PART OPTIMIZATION:
+-- Disable on small/decorative parts:
+--   part.CanCollide = false  -- if player can't walk on it
+--   part.CanTouch = false    -- unless using Touched events
+--   part.CanQuery = false    -- unless using raycasts on it
+--   part.CastShadow = false  -- for small details
+--
+-- STREAMING ENABLED:
+-- Essential for large maps. Reduces load time + memory.
+-- game.Workspace.StreamingEnabled = true
+-- StreamingMinRadius = 256 (studs around player to keep loaded)
+-- StreamOutBehavior = Enum.StreamOutBehavior.LowMemory
+--
+-- DISTANCE CULLING (for details):
+-- Tag small objects, hide when far from camera:
+-- CollectionService:AddTag(part, "SmallDetail")
+-- In a loop: if distance > 300 then part.Parent = nil else part.Parent = workspace end
+--
+-- LIGHTING PERFORMANCE:
+-- ShadowMap = better mobile performance (outdoor maps)
+-- Future = better quality but more expensive (indoor/complex lighting)
+-- Disable CastShadow on non-essential parts
+-- Non-shadow-casting PointLights are nearly free
+-- Each shadow-casting SpotLight/SurfaceLight adds drawcalls`,
+    pitfalls: [
+      'Having >500K triangles in view (causes FPS drops on mobile)',
+      'Using Precise collision on small objects (use Box instead)',
+      'Forgetting to disable CastShadow on decorative parts',
+      'Too many unique mesh IDs (each unique mesh = separate memory)',
+      'Semi-transparent parts with decals do NOT batch (avoid)',
+      'Each ParticleEmitter = 1 drawcall regardless of particle count',
+      'SurfaceGuis and BillboardGuis consume drawcalls quickly',
+    ],
+  },
+  {
+    name: 'Modern Data Storage (DevForum 2025)',
+    keywords: ['save', 'data', 'datastore', 'profile', 'profileservice', 'profilestore', 'persist', 'session', 'database'],
+    snippet: `-- MODERN DATA STORAGE (DevForum 2025 recommendations)
+--
+-- OPTIONS (ranked by community preference):
+-- 1. ProfileStore (newest, recommended for new projects)
+-- 2. Suphi's DataStore Module (simple, well-documented)
+-- 3. ProfileService (mature but partially outdated)
+-- 4. Raw DataStoreService (full control, more work)
+--
+-- STANDARD PATTERN (works with any approach):
+local DataStoreService = game:GetService("DataStoreService")
+local store = DataStoreService:GetDataStore("GameData_v1")
+
+-- Default data template (new players get this)
+local DEFAULT_DATA = {
+  coins = 100,
+  level = 1,
+  xp = 0,
+  inventory = {},
+  settings = { music = true, sfx = true },
+  lastLogin = 0,
+}
+
+-- SESSION LOCKING (prevent data duplication):
+-- Track active sessions per player
+-- On PlayerRemoving: save + release lock
+-- On BindToClose: save ALL active players (30 second window)
+
+game:BindToClose(function()
+  for _, player in Players:GetPlayers() do
+    task.spawn(function()
+      pcall(function() store:SetAsync("Player_"..player.UserId, playerData[player.UserId]) end)
+    end)
+  end
+  task.wait(2) -- give saves time to complete
+end)
+
+-- VERSION KEY IN STORE NAME:
+-- Use "GameData_v1", "GameData_v2" etc.
+-- When schema changes, migrate: load v1, transform, save as v2
+-- NEVER delete old stores (players may have old data)`,
+    pitfalls: [
+      'Not wrapping DataStore calls in pcall (will crash on failure)',
+      'Not saving on BindToClose (data lost on server shutdown)',
+      'Not using session locking (data duplication from multiple servers)',
+      'Saving too frequently (DataStore has rate limits: 60 + numPlayers*10 per minute)',
+      'Storing Instance references in data (not serializable)',
+      'Not versioning the store name (impossible to migrate schema later)',
+      'Using UpdateAsync without understanding its retry behavior',
+    ],
+  },
+  {
+    name: 'TweenService UI Animations (DevForum)',
+    keywords: ['tween', 'animation', 'animate', 'transition', 'smooth', 'ease', 'slide', 'fade', 'bounce', 'ui animation'],
+    snippet: `-- TWEENSERVICE UI PATTERNS (from DevForum community best practices)
+local TweenService = game:GetService("TweenService")
+
+-- OPEN PANEL (scale from 0 at center, Back easing for overshoot):
+local function openPanel(frame)
+  frame.Visible = true
+  frame.Size = UDim2.new(0, 0, 0, 0)
+  frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+  frame.AnchorPoint = Vector2.new(0.5, 0.5)
+  TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0.6, 0, 0.7, 0)
+  }):Play()
+end
+
+-- CLOSE PANEL (shrink to center):
+local function closePanel(frame)
+  local tween = TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+    Size = UDim2.new(0, 0, 0, 0)
+  })
+  tween.Completed:Connect(function() frame.Visible = false end)
+  tween:Play()
+end
+
+-- BUTTON HOVER (brighten + slight scale):
+button.MouseEnter:Connect(function()
+  TweenService:Create(button, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
+    BackgroundColor3 = hoverColor
+  }):Play()
+end)
+button.MouseLeave:Connect(function()
+  TweenService:Create(button, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
+    BackgroundColor3 = normalColor
+  }):Play()
+end)
+
+-- BUTTON PRESS (squish effect via UIScale):
+local scale = Instance.new("UIScale") scale.Parent = button
+button.MouseButton1Down:Connect(function()
+  TweenService:Create(scale, TweenInfo.new(0.08), {Scale = 0.92}):Play()
+end)
+button.MouseButton1Up:Connect(function()
+  TweenService:Create(scale, TweenInfo.new(0.15, Enum.EasingStyle.Back), {Scale = 1}):Play()
+end)
+
+-- SMOOTH NUMBER COUNTER (coins going up):
+local numberValue = Instance.new("NumberValue")
+numberValue.Changed:Connect(function(val)
+  label.Text = tostring(math.floor(val))
+end)
+-- To animate: tween numberValue.Value from old to new amount
+
+-- TOAST NOTIFICATION (slide in from right):
+local function showToast(text)
+  local toast = createToastFrame(text) -- your frame creation
+  toast.Position = UDim2.new(1.5, 0, 0.9, 0) -- off-screen right
+  TweenService:Create(toast, TweenInfo.new(0.4, Enum.EasingStyle.Bounce), {
+    Position = UDim2.new(0.7, 0, 0.9, 0)
+  }):Play()
+  task.delay(3, function()
+    TweenService:Create(toast, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+      Position = UDim2.new(1.5, 0, 0.9, 0)
+    }):Play()
+    task.delay(0.3, function() toast:Destroy() end)
+  end)
+end`,
+    pitfalls: [
+      'Using Visible toggle without animation (feels jarring)',
+      'Not canceling previous tweens before starting new ones (overlapping animations)',
+      'Using linear easing (feels robotic — use Quad/Back/Bounce instead)',
+      'Destroying frames during tween (causes errors — wait for completion)',
+      'Snapping number displays instead of tweening (breaks immersion)',
+      'Not adding UIScale for button press feedback (feels unresponsive)',
+    ],
+  },
+  {
+    name: 'Mobile Performance (DevForum)',
+    keywords: ['mobile', 'phone', 'tablet', 'performance', 'optimization', 'lag', 'fps', 'low end', 'android', 'ios'],
+    snippet: `-- MOBILE PERFORMANCE (from DevForum real-world optimization)
+--
+-- CPU IS THE BOTTLENECK ON MOBILE (not GPU):
+-- Old phones are nowhere near as quick as PCs.
+-- Optimize scripts first, then rendering.
+--
+-- MEMORY TARGET: <1.3GB for 2GB phones
+-- Test on actual devices, not just Studio emulator.
+--
+-- QUALITY AUTO-DEGRADES when performance is bad:
+-- Roblox drops from Quality 10 to lower settings automatically.
+-- This removes shadows, reduces draw distance, simplifies particles.
+-- If your game runs well, it STAYS at high quality.
+--
+-- MOBILE UI RULES:
+-- Minimum touch target: 48x48 pixels (Material Design)
+-- Use Scale sizing (UDim2.new(0.3, 0, ...)) not fixed pixels
+-- Add safe area insets for notch phones:
+--   screenGui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+-- Virtual controls take screen space — don't put UI where joystick goes
+-- Test landscape AND portrait if your game supports both
+--
+-- PARTICLE OPTIMIZATION:
+-- Each ParticleEmitter = 1 drawcall (regardless of particle count)
+-- Reduce Rate, increase Lifetime for similar visual at lower cost
+-- Disable particles on mobile: if UserInputService.TouchEnabled then emitter.Rate = 0 end
+--
+-- STREAMING ENABLED = ESSENTIAL for mobile:
+-- Reduces memory usage dramatically
+-- Set StreamingMinRadius based on gameplay needs (256 default)`,
+    pitfalls: [
+      'Not testing on real mobile devices (emulator hides real performance)',
+      'Too many ParticleEmitters (each one = 1 drawcall)',
+      'Using Future lighting on mobile-first games (ShadowMap is cheaper)',
+      'Fixed-pixel UI that clips on small screens',
+      'Forgetting virtual controls take screen space on mobile',
+    ],
+  },
+  {
+    name: 'Game Architecture Patterns (DevForum)',
+    keywords: ['architecture', 'structure', 'organize', 'framework', 'pattern', 'module', 'system', 'game loop', 'state'],
+    snippet: `-- GAME ARCHITECTURE (DevForum best practices)
+--
+-- FOLDER STRUCTURE (standard Roblox game organization):
+-- ServerScriptService/ — server-only scripts (economy, combat, data)
+-- ServerStorage/ — server-only assets (tools, models, configs)
+-- ReplicatedStorage/ — shared modules, RemoteEvents, configs
+-- StarterGui/ — UI templates (ScreenGuis)
+-- StarterPlayerScripts/ — client scripts (camera, input, effects)
+-- StarterCharacterScripts/ — per-character scripts
+--
+-- MODULE PATTERN (how every system should be structured):
+-- ReplicatedStorage/Modules/ShopModule.lua:
+local ShopModule = {}
+
+function ShopModule.GetItems()
+  return { {id="sword", name="Iron Sword", price=100}, ... }
+end
+
+function ShopModule.CanAfford(player, itemId)
+  -- Server-side check
+  return playerData[player.UserId].coins >= ShopModule.GetItems()[itemId].price
+end
+
+return ShopModule
+
+-- REMOTEEVENTS ORGANIZATION:
+-- Put ALL remotes in one folder for easy management:
+-- ReplicatedStorage/Remotes/
+--   ShopPurchase (RemoteEvent)
+--   DataUpdate (RemoteEvent)
+--   GetInventory (RemoteFunction)
+--
+-- EVENT-DRIVEN ARCHITECTURE:
+-- Use BindableEvents for server-server communication:
+-- ServerScriptService/Events/PlayerLevelUp (BindableEvent)
+-- Multiple systems can listen: QuestSystem, AchievementSystem, UISystem`,
+    pitfalls: [
+      'Putting server logic in LocalScripts (exploitable)',
+      'Scattering RemoteEvents everywhere instead of one organized folder',
+      'Not using ModuleScripts for shared logic (code duplication)',
+      'Using _G or shared for global state (use ModuleScripts instead)',
+      'Not separating server and client code clearly',
+    ],
+  },
+]
+
+// Merge DevForum knowledge into main array
+ROBLOX_KNOWLEDGE.push(...DEVFORUM_KNOWLEDGE)
 
 /**
  * Build a context block from relevant snippets to inject into AI prompts.
