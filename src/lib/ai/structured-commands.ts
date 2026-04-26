@@ -619,6 +619,13 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
   // Track generic instances (lights, sounds, effects, folders) for create_instance commands
   const genericInstances = new Map<string, { className: string; name: string; parentName: string; properties: Record<string, unknown> }>()
 
+  // Detect if the code creates a ForjeAI_Build model — if so, parent all parts to it
+  // This is critical: without this, parts go into Workspace directly and the model is empty
+  const forjeModelMatch = luauCode.match(/(\w+)\.Name\s*=\s*["']ForjeAI_Build["']/) ||
+    luauCode.match(/(\w+)\s*=\s*Instance\.new\s*\(\s*["']Model["']\s*\)/) ||
+    luauCode.match(/local\s+m\s*=\s*Instance\.new\s*\(\s*["']Model["']\s*\)/)
+  const defaultParent = forjeModelMatch ? 'ForjeAI_Build' : 'Workspace'
+
   // Flag lines we can't handle — but skip known template boilerplate
   // from the CODE_GENERATION_PROMPT (P/getFolder/vc/pcall wrapper, etc.)
   for (const line of lines) {
@@ -648,7 +655,7 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         color: { r: 163, g: 162, b: 165 },
         material: 'Concrete',
         anchored: true,
-        parentName: 'Workspace',
+        parentName: defaultParent,
         instanceClass: className,
       })
     } else if (className === 'Model') {
@@ -658,12 +665,12 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
       // create_light, create_ui_modifier, create_proximity_prompt, create_weld,
       // create_decal) or as create_instance for other classes. Properties are
       // collected in Pass 2.
-      genericInstances.set(varName, { className, name: varName, parentName: 'Workspace', properties: {} })
+      genericInstances.set(varName, { className, name: varName, parentName: defaultParent, properties: {} })
     } else {
       // Unknown class — still create it as a generic instance rather than dropping it.
       // The plugin's create_instance handler can instantiate any valid Roblox class.
       warnings.push(`Unknown class "${className}" — emitting as create_instance`)
-      genericInstances.set(varName, { className, name: varName, parentName: 'Workspace', properties: {} })
+      genericInstances.set(varName, { className, name: varName, parentName: defaultParent, properties: {} })
     }
   }
 
@@ -706,7 +713,7 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
           color,
           material,
           anchored: true,
-          parentName: 'Workspace',
+          parentName: defaultParent,
         }
         if (transparency !== undefined) (cmd as unknown as Record<string, unknown>).transparency = transparency
         commands.push(cmd)
@@ -748,7 +755,7 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         color,
         material,
         anchored: true,
-        parentName: 'Workspace',
+        parentName: defaultParent,
       })
     }
   }
@@ -772,7 +779,7 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         color: rgbM ? { r: parseInt(rgbM[1]), g: parseInt(rgbM[2]), b: parseInt(rgbM[3]) } : { r: 75, g: 60, b: 50 },
         material: wm[8],
         anchored: true,
-        parentName: 'Workspace',
+        parentName: defaultParent,
         shape: 'Wedge',
         rotationY: rotYM ? parseInt(rotYM[1]) : undefined,
       } as CreatePartCommand)
@@ -791,7 +798,7 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         color: rgbM ? { r: parseInt(rgbM[1]), g: parseInt(rgbM[2]), b: parseInt(rgbM[3]) } : { r: 100, g: 65, b: 30 },
         material: cm[7],
         anchored: true,
-        parentName: 'Workspace',
+        parentName: defaultParent,
         shape: 'Cylinder',
       } as CreatePartCommand)
       continue
@@ -809,7 +816,7 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         color: rgbM ? { r: parseInt(rgbM[1]), g: parseInt(rgbM[2]), b: parseInt(rgbM[3]) } : { r: 80, g: 140, b: 40 },
         material: bm[6],
         anchored: true,
-        parentName: 'Workspace',
+        parentName: defaultParent,
         shape: 'Ball',
       } as CreatePartCommand)
       continue
