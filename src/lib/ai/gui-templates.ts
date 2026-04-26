@@ -403,6 +403,465 @@ local function addBadge(parent, count)
   return badge, num
 end
 
+-- ═══ NUMBER FORMATTING (1K, 1.5M, 2.3B — every simulator does this) ═══
+local function formatNumber(n)
+  if n >= 1e12 then return string.format("%.1fT", n/1e12)
+  elseif n >= 1e9 then return string.format("%.1fB", n/1e9)
+  elseif n >= 1e6 then return string.format("%.1fM", n/1e6)
+  elseif n >= 1e3 then return string.format("%.1fK", n/1e3)
+  else return tostring(math.floor(n)) end
+end
+-- Comma-separated version: 1,500,000
+local function commaFormat(n)
+  local s = tostring(math.floor(n))
+  local result = ""
+  for i = #s, 1, -1 do
+    result = s:sub(i,i) .. result
+    if (#s - i + 1) % 3 == 0 and i > 1 then result = "," .. result end
+  end
+  return result
+end
+
+-- ═══ CONFIRMATION POPUP (reusable "Are you sure?" for any action) ═══
+local function showConfirmation(title, message, cost, currencyName, onConfirm, onCancel)
+  playSound(SFX.open, 0.3)
+  local overlay = Instance.new("Frame")
+  overlay.Size = UDim2.new(1, 0, 1, 0)
+  overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+  overlay.BackgroundTransparency = 0.5
+  overlay.ZIndex = 50
+  overlay.Parent = playerGui:FindFirstChild("ForjeShop") or playerGui
+
+  local popup = Instance.new("Frame")
+  popup.Size = UDim2.new(0, 320, 0, 200)
+  popup.Position = UDim2.new(0.5, -160, 0.5, -100)
+  popup.BackgroundColor3 = BG
+  popup.ZIndex = 51
+  popup.Parent = overlay
+  addCorner(popup, 12)
+  addStroke(popup, GOLD, 2, 0.1)
+  addPadding(popup, 16)
+  addGradient(popup, BG_DEEP, SURFACE, 90)
+
+  local titleLabel = Instance.new("TextLabel")
+  titleLabel.Size = UDim2.new(1, 0, 0, 28)
+  titleLabel.BackgroundTransparency = 1
+  titleLabel.Text = title or "CONFIRM"
+  titleLabel.TextColor3 = GOLD
+  titleLabel.Font = Enum.Font.GothamBold
+  titleLabel.TextSize = 20
+  titleLabel.ZIndex = 52
+  titleLabel.Parent = popup
+
+  local msgLabel = Instance.new("TextLabel")
+  msgLabel.Size = UDim2.new(1, 0, 0, 40)
+  msgLabel.Position = UDim2.new(0, 0, 0, 36)
+  msgLabel.BackgroundTransparency = 1
+  msgLabel.Text = message or "Are you sure?"
+  msgLabel.TextColor3 = TEXT
+  msgLabel.Font = Enum.Font.GothamMedium
+  msgLabel.TextSize = 15
+  msgLabel.TextWrapped = true
+  msgLabel.ZIndex = 52
+  msgLabel.Parent = popup
+
+  if cost then
+    local costLabel = Instance.new("TextLabel")
+    costLabel.Size = UDim2.new(1, 0, 0, 24)
+    costLabel.Position = UDim2.new(0, 0, 0, 80)
+    costLabel.BackgroundTransparency = 1
+    costLabel.Text = "Cost: " .. formatNumber(cost) .. " " .. (currencyName or "Coins")
+    costLabel.TextColor3 = GOLD
+    costLabel.Font = Enum.Font.GothamBold
+    costLabel.TextSize = 18
+    costLabel.ZIndex = 52
+    costLabel.Parent = popup
+  end
+
+  -- Confirm button
+  local confirmBtn = Instance.new("TextButton")
+  confirmBtn.Size = UDim2.new(0.45, 0, 0, 36)
+  confirmBtn.Position = UDim2.new(0.02, 0, 1, -48)
+  confirmBtn.BackgroundColor3 = GREEN
+  confirmBtn.Text = "CONFIRM"
+  confirmBtn.TextColor3 = BG_DEEP
+  confirmBtn.Font = Enum.Font.GothamBold
+  confirmBtn.TextSize = 15
+  confirmBtn.AutoButtonColor = false
+  confirmBtn.ZIndex = 52
+  confirmBtn.Parent = popup
+  addCorner(confirmBtn, 8)
+  local confirmScale = Instance.new("UIScale") confirmScale.Parent = confirmBtn
+  confirmBtn.MouseButton1Down:Connect(function()
+    TweenService:Create(confirmScale, TweenInfo.new(0.08), {Scale = 0.92}):Play()
+  end)
+  confirmBtn.MouseButton1Up:Connect(function()
+    TweenService:Create(confirmScale, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+  end)
+  confirmBtn.MouseButton1Click:Connect(function()
+    playSound(SFX.purchase, 0.5)
+    if onConfirm then onConfirm() end
+    overlay:Destroy()
+  end)
+
+  -- Cancel button
+  local cancelBtn = Instance.new("TextButton")
+  cancelBtn.Size = UDim2.new(0.45, 0, 0, 36)
+  cancelBtn.Position = UDim2.new(0.53, 0, 1, -48)
+  cancelBtn.BackgroundColor3 = CARD
+  cancelBtn.Text = "CANCEL"
+  cancelBtn.TextColor3 = TEXT_MUTED
+  cancelBtn.Font = Enum.Font.GothamBold
+  cancelBtn.TextSize = 15
+  cancelBtn.AutoButtonColor = false
+  cancelBtn.ZIndex = 52
+  cancelBtn.Parent = popup
+  addCorner(cancelBtn, 8)
+  cancelBtn.MouseButton1Click:Connect(function()
+    playSound(SFX.close, 0.3)
+    if onCancel then onCancel() end
+    overlay:Destroy()
+  end)
+
+  -- Animate in
+  popup.Size = UDim2.new(0, 0, 0, 0)
+  popup.Position = UDim2.new(0.5, 0, 0.5, 0)
+  TweenService:Create(popup, TWEEN_POPUP, {
+    Size = UDim2.new(0, 320, 0, 200),
+    Position = UDim2.new(0.5, -160, 0.5, -100)
+  }):Play()
+  return overlay
+end
+
+-- ═══ TOOLTIP SYSTEM (hover any item → see name, stats, rarity, description) ═══
+local tooltipFrame, tooltipName, tooltipDesc, tooltipStats, tooltipRarity
+local function initTooltip()
+  if tooltipFrame then return end
+  tooltipFrame = Instance.new("Frame")
+  tooltipFrame.Size = UDim2.new(0, 220, 0, 120)
+  tooltipFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
+  tooltipFrame.Visible = false
+  tooltipFrame.ZIndex = 100
+  tooltipFrame.Parent = playerGui
+  addCorner(tooltipFrame, 8)
+  addStroke(tooltipFrame, GOLD, 1, 0.3)
+  addPadding(tooltipFrame, 10)
+
+  tooltipName = Instance.new("TextLabel")
+  tooltipName.Size = UDim2.new(1, 0, 0, 20)
+  tooltipName.BackgroundTransparency = 1
+  tooltipName.TextColor3 = TEXT
+  tooltipName.Font = Enum.Font.GothamBold
+  tooltipName.TextSize = 15
+  tooltipName.TextXAlignment = Enum.TextXAlignment.Left
+  tooltipName.ZIndex = 101
+  tooltipName.Parent = tooltipFrame
+
+  tooltipRarity = Instance.new("TextLabel")
+  tooltipRarity.Size = UDim2.new(1, 0, 0, 14)
+  tooltipRarity.Position = UDim2.new(0, 0, 0, 20)
+  tooltipRarity.BackgroundTransparency = 1
+  tooltipRarity.Font = Enum.Font.GothamBold
+  tooltipRarity.TextSize = 11
+  tooltipRarity.TextXAlignment = Enum.TextXAlignment.Left
+  tooltipRarity.ZIndex = 101
+  tooltipRarity.Parent = tooltipFrame
+
+  tooltipDesc = Instance.new("TextLabel")
+  tooltipDesc.Size = UDim2.new(1, 0, 0, 36)
+  tooltipDesc.Position = UDim2.new(0, 0, 0, 38)
+  tooltipDesc.BackgroundTransparency = 1
+  tooltipDesc.TextColor3 = TEXT_SUB
+  tooltipDesc.Font = Enum.Font.GothamMedium
+  tooltipDesc.TextSize = 13
+  tooltipDesc.TextWrapped = true
+  tooltipDesc.TextXAlignment = Enum.TextXAlignment.Left
+  tooltipDesc.TextYAlignment = Enum.TextYAlignment.Top
+  tooltipDesc.ZIndex = 101
+  tooltipDesc.Parent = tooltipFrame
+
+  tooltipStats = Instance.new("TextLabel")
+  tooltipStats.Size = UDim2.new(1, 0, 0, 20)
+  tooltipStats.Position = UDim2.new(0, 0, 1, -20)
+  tooltipStats.BackgroundTransparency = 1
+  tooltipStats.TextColor3 = GREEN
+  tooltipStats.Font = Enum.Font.GothamMedium
+  tooltipStats.TextSize = 12
+  tooltipStats.TextXAlignment = Enum.TextXAlignment.Left
+  tooltipStats.ZIndex = 101
+  tooltipStats.Parent = tooltipFrame
+end
+
+local function showTooltip(data, guiObject)
+  initTooltip()
+  if not tooltipFrame then return end
+  tooltipName.Text = data.name or "Unknown"
+  tooltipDesc.Text = data.description or ""
+  tooltipStats.Text = data.stats or ""
+  local rarityColors = {common=TEXT_MUTED, uncommon=GREEN, rare=BLUE, epic=PURPLE, legendary=GOLD}
+  tooltipRarity.Text = data.rarity and string.upper(data.rarity) or ""
+  tooltipRarity.TextColor3 = rarityColors[data.rarity] or TEXT_MUTED
+  -- Position near the hovered element
+  local pos = guiObject.AbsolutePosition
+  tooltipFrame.Position = UDim2.new(0, pos.X + guiObject.AbsoluteSize.X + 8, 0, pos.Y)
+  tooltipFrame.Visible = true
+end
+local function hideTooltip()
+  if tooltipFrame then tooltipFrame.Visible = false end
+end
+
+-- ═══ SEARCH BAR (filter items in inventory/shop) ═══
+local function makeSearchBar(parent, placeholder, onSearch)
+  local bar = Instance.new("Frame")
+  bar.Size = UDim2.new(1, 0, 0, 32)
+  bar.BackgroundColor3 = SURFACE
+  bar.Parent = parent
+  addCorner(bar, 6)
+  addStroke(bar, BORDER, 1, 0.3)
+
+  local icon = Instance.new("TextLabel")
+  icon.Size = UDim2.new(0, 28, 1, 0)
+  icon.BackgroundTransparency = 1
+  icon.Text = "?"
+  icon.TextColor3 = TEXT_MUTED
+  icon.Font = Enum.Font.GothamBold
+  icon.TextSize = 16
+  icon.Parent = bar
+
+  local input = Instance.new("TextBox")
+  input.Size = UDim2.new(1, -36, 1, 0)
+  input.Position = UDim2.new(0, 32, 0, 0)
+  input.BackgroundTransparency = 1
+  input.PlaceholderText = placeholder or "Search..."
+  input.PlaceholderColor3 = TEXT_MUTED
+  input.Text = ""
+  input.TextColor3 = TEXT
+  input.Font = Enum.Font.GothamMedium
+  input.TextSize = 14
+  input.TextXAlignment = Enum.TextXAlignment.Left
+  input.ClearTextOnFocus = false
+  input.Parent = bar
+
+  -- Focus glow
+  input.Focused:Connect(function()
+    TweenService:Create(bar, TWEEN_FAST, {BackgroundColor3 = CARD}):Play()
+    local stroke = bar:FindFirstChildOfClass("UIStroke")
+    if stroke then TweenService:Create(stroke, TWEEN_FAST, {Color = GOLD, Transparency = 0}):Play() end
+  end)
+  input.FocusLost:Connect(function(enterPressed)
+    TweenService:Create(bar, TWEEN_FAST, {BackgroundColor3 = SURFACE}):Play()
+    local stroke = bar:FindFirstChildOfClass("UIStroke")
+    if stroke then TweenService:Create(stroke, TWEEN_FAST, {Color = BORDER, Transparency = 0.3}):Play() end
+    if onSearch then onSearch(input.Text) end
+  end)
+  input:GetPropertyChangedSignal("Text"):Connect(function()
+    if onSearch then onSearch(input.Text) end
+  end)
+
+  return bar, input
+end
+
+-- ═══ SKELETON LOADING (shimmer placeholder while data loads) ═══
+local function makeSkeletonCard(parent, size, layoutOrder)
+  local card = Instance.new("Frame")
+  card.Size = size or UDim2.new(1, 0, 0, 80)
+  card.BackgroundColor3 = CARD
+  card.LayoutOrder = layoutOrder or 0
+  card.Parent = parent
+  addCorner(card, 8)
+
+  -- Shimmer gradient that sweeps across
+  local shimmer = Instance.new("UIGradient")
+  shimmer.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, CARD),
+    ColorSequenceKeypoint.new(0.4, Color3.fromRGB(50, 50, 60)),
+    ColorSequenceKeypoint.new(0.6, Color3.fromRGB(50, 50, 60)),
+    ColorSequenceKeypoint.new(1, CARD),
+  })
+  shimmer.Rotation = 25
+  shimmer.Parent = card
+
+  -- Animate shimmer loop
+  task.spawn(function()
+    while card.Parent do
+      shimmer.Offset = Vector2.new(-1.5, 0)
+      TweenService:Create(shimmer, TweenInfo.new(1.2, Enum.EasingStyle.Linear), {Offset = Vector2.new(1.5, 0)}):Play()
+      task.wait(1.8)
+    end
+  end)
+  return card
+end
+
+-- ═══ PURCHASE FLOW (the complete buy experience) ═══
+local function doPurchase(itemName, itemPrice, currencyName, balanceLabel, onSuccess, onFail)
+  -- Step 1: Show confirmation
+  showConfirmation(
+    "PURCHASE",
+    "Buy " .. itemName .. "?",
+    itemPrice,
+    currencyName or "Coins",
+    function()
+      -- Step 2: Fire server purchase
+      local re = game.ReplicatedStorage:FindFirstChild("PurchaseItem")
+      if re then
+        re:FireServer(itemName)
+      end
+
+      -- Step 3: Optimistic UI update — animate coin count DOWN
+      if balanceLabel then
+        local currentText = balanceLabel.Text
+        local currentVal = tonumber(currentText:match("[%d,]+"):gsub(",","")) or 0
+        local newVal = math.max(0, currentVal - itemPrice)
+        animateNumber(balanceLabel, newVal, 0.8, "", " " .. (currencyName or "Coins"))
+      end
+
+      -- Step 4: Success feedback
+      playSound(SFX.purchase, 0.5)
+
+      -- Step 5: Success notification toast
+      local notifRe = game.ReplicatedStorage:FindFirstChild("Notification")
+      if notifRe then
+        notifRe:FireServer("Purchased " .. itemName .. "!", "success")
+      end
+
+      if onSuccess then onSuccess() end
+    end,
+    function()
+      -- Cancelled
+      if onFail then onFail() end
+    end
+  )
+end
+
+-- ═══ ERROR TOAST (quick inline error message) ═══
+local function showError(parentFrame, message)
+  playSound(SFX.error, 0.4)
+  local toast = Instance.new("Frame")
+  toast.Size = UDim2.new(0.9, 0, 0, 32)
+  toast.Position = UDim2.new(0.05, 0, 1, 4)
+  toast.BackgroundColor3 = RED_DIM
+  toast.ZIndex = 20
+  toast.Parent = parentFrame
+  addCorner(toast, 6)
+
+  local label = Instance.new("TextLabel")
+  label.Size = UDim2.new(1, -12, 1, 0)
+  label.Position = UDim2.new(0, 6, 0, 0)
+  label.BackgroundTransparency = 1
+  label.Text = message or "Something went wrong"
+  label.TextColor3 = Color3.fromRGB(255, 180, 180)
+  label.Font = Enum.Font.GothamBold
+  label.TextSize = 13
+  label.TextXAlignment = Enum.TextXAlignment.Left
+  label.ZIndex = 21
+  label.Parent = toast
+
+  -- Slide in
+  toast.Position = UDim2.new(0.05, 0, 1, 40)
+  TweenService:Create(toast, TWEEN_NORMAL, {Position = UDim2.new(0.05, 0, 1, -38)}):Play()
+  -- Auto-dismiss
+  task.delay(3, function()
+    TweenService:Create(toast, TWEEN_CLOSE, {Position = UDim2.new(0.05, 0, 1, 40), BackgroundTransparency = 1}):Play()
+    task.wait(0.25)
+    if toast.Parent then toast:Destroy() end
+  end)
+end
+
+-- ═══ RARITY GLOW SYSTEM (animated border + shimmer for legendary items) ═══
+local RARITY_COLORS = {
+  common = {border = TEXT_MUTED, glow = false},
+  uncommon = {border = GREEN, glow = false},
+  rare = {border = BLUE, glow = true},
+  epic = {border = PURPLE, glow = true},
+  legendary = {border = GOLD, glow = true},
+  mythic = {border = Color3.fromRGB(255, 50, 50), glow = true},
+}
+local function applyRarity(frame, rarity)
+  local config = RARITY_COLORS[rarity] or RARITY_COLORS.common
+  -- Base border
+  local stroke = frame:FindFirstChildOfClass("UIStroke")
+  if stroke then stroke.Color = config.border stroke.Thickness = config.glow and 2 or 1 end
+
+  if config.glow then
+    -- Animated glow: pulsing stroke transparency
+    if stroke then
+      task.spawn(function()
+        while frame.Parent do
+          TweenService:Create(stroke, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0}):Play()
+          task.wait(0.8)
+          TweenService:Create(stroke, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.4}):Play()
+          task.wait(0.8)
+        end
+      end)
+    end
+    -- Shimmer gradient sweep
+    local shimmer = Instance.new("UIGradient")
+    shimmer.Color = ColorSequence.new({
+      ColorSequenceKeypoint.new(0, config.border),
+      ColorSequenceKeypoint.new(0.45, Color3.new(math.min(config.border.R*1.4,1), math.min(config.border.G*1.4,1), math.min(config.border.B*1.4,1))),
+      ColorSequenceKeypoint.new(0.55, Color3.new(math.min(config.border.R*1.4,1), math.min(config.border.G*1.4,1), math.min(config.border.B*1.4,1))),
+      ColorSequenceKeypoint.new(1, config.border),
+    })
+    shimmer.Rotation = 30
+    shimmer.Parent = frame
+    task.spawn(function()
+      while frame.Parent do
+        shimmer.Offset = Vector2.new(-1, 0)
+        TweenService:Create(shimmer, TweenInfo.new(1.5, Enum.EasingStyle.Linear), {Offset = Vector2.new(1, 0)}):Play()
+        task.wait(4)
+      end
+    end)
+  end
+end
+
+-- ═══ SCREEN TRANSITION (crossfade between panels) ═══
+local function crossfade(oldFrame, newFrame, duration)
+  duration = duration or 0.3
+  if oldFrame then
+    TweenService:Create(oldFrame, TweenInfo.new(duration/2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+      BackgroundTransparency = 1
+    }):Play()
+    -- Fade all children
+    for _, child in oldFrame:GetDescendants() do
+      if child:IsA("GuiObject") then
+        pcall(function()
+          TweenService:Create(child, TweenInfo.new(duration/2), {BackgroundTransparency = 1}):Play()
+        end)
+      end
+      if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+        pcall(function()
+          TweenService:Create(child, TweenInfo.new(duration/2), {TextTransparency = 1}):Play()
+        end)
+      end
+    end
+    task.wait(duration/2)
+    oldFrame.Visible = false
+  end
+  if newFrame then
+    newFrame.Visible = true
+    newFrame.BackgroundTransparency = 1
+    for _, child in newFrame:GetDescendants() do
+      if child:IsA("GuiObject") then pcall(function() child.BackgroundTransparency = 1 end) end
+      if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then pcall(function() child.TextTransparency = 1 end) end
+    end
+    TweenService:Create(newFrame, TweenInfo.new(duration/2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+      BackgroundTransparency = 0
+    }):Play()
+    for _, child in newFrame:GetDescendants() do
+      if child:IsA("GuiObject") then
+        pcall(function()
+          TweenService:Create(child, TweenInfo.new(duration/2), {BackgroundTransparency = 0}):Play()
+        end)
+      end
+      if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+        pcall(function()
+          TweenService:Create(child, TweenInfo.new(duration/2), {TextTransparency = 0}):Play()
+        end)
+      end
+    end
+  end
+end
+
 -- Legacy aliases
 local TEXT_PRIMARY = TEXT
 local function hoverBtn(btn, normalColor, hoverColor)
