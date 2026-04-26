@@ -1449,6 +1449,28 @@ async function attemptErrorRecovery(
   // Query past successful fixes for similar errors
   const pastFixContext = await buildFixContext(errorMessage, errorType)
 
+  // ── FIX CACHE: check if we've seen this error before ──
+  let cachedFixCode: string | null = null
+  try {
+    const { getCachedFix } = await import('@/lib/ai/fix-cache')
+    cachedFixCode = await getCachedFix(errorMessage)
+    if (cachedFixCode) {
+      console.log(`[ErrorRecovery] Cache HIT — applying cached fix (skipping AI call)`)
+      const deployed = await sendCodeToStudio(sessionId, cachedFixCode)
+      if (deployed) {
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        const newErrors = await checkConsoleForErrors(sessionId)
+        if (newErrors.length === 0) {
+          console.log(`[ErrorRecovery] Cached fix successful!`)
+          if (logId) await markErrorFixed(logId, cachedFixCode.slice(0, 10000))
+          return { fixed: true, fixedCode: cachedFixCode }
+        }
+        // Cached fix didn't work — fall through to AI
+        console.log('[ErrorRecovery] Cached fix failed — falling through to AI')
+      }
+    }
+  } catch { /* fix-cache unavailable — continue with AI */ }
+
   const fixPrompt = `The following Roblox Luau code was deployed to Studio but threw runtime errors.
 Fix ALL errors and return the COMPLETE corrected code in a \`\`\`lua block.
 
@@ -1481,6 +1503,12 @@ Fix every error. Keep all working code intact. Output the full corrected script.
           console.log(`[ErrorRecovery] Fix successful on attempt ${attempt}`)
           // Mark the fix as successful in the learning database
           if (logId) await markErrorFixed(logId, fixedCode.slice(0, 10000))
+          // Cache this fix for future identical errors
+          try {
+            const { cacheFix } = await import('@/lib/ai/fix-cache')
+            await cacheFix(errorMessage, fixedCode)
+            console.log('[ErrorRecovery] Fix cached for future use')
+          } catch { /* non-blocking */ }
           return { fixed: true, fixedCode }
         }
         // Still errors — try again
@@ -3225,7 +3253,7 @@ async function callOpenRouterChat(
         max_tokens: maxTokens,
         temperature: 0.2,
       }),
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(30_000),
     })
 
     if (!res.ok) {
@@ -6090,11 +6118,58 @@ ${effectiveInstruction}`
             if (recovery.fixed && recovery.fixedCode) {
               luauCode = recovery.fixedCode
               console.log('[SinglePass] Error recovery successful — code auto-fixed')
-              // Append a note to the conversation so user knows what happened
               conversationText += `\n\n*I detected ${runtimeErrors.length} runtime error${runtimeErrors.length > 1 ? 's' : ''} and auto-fixed them. The corrected code is now running in Studio.*`
             } else {
               console.warn(`[SinglePass] Error recovery failed after 3 attempts — errors: ${runtimeErrors.slice(0, 3).join('; ')}`)
               conversationText += `\n\n*I noticed some runtime errors in Studio. Try telling me what went wrong and I'll fix it.*`
+            }
+          }
+
+          // ── PLAYTEST VERIFICATION: did the build create what the user asked for? ──
+          if (!isPipelineTimedOut()) {
+            try {
+              const { generateExpectations, verifyExpectations, fetchGameTree } = await import('@/lib/ai/playtest-verifier')
+              const expectations = generateExpectations(message, intent)
+              if (expectations.length > 0) {
+                const gameTree = await fetchGameTree(sessionId)
+                if (gameTree) {
+                  const verification = verifyExpectations(gameTree, expectations)
+                  console.log(`[PlaytestVerifier] Score: ${verification.score}/100 — ${verification.passed.length} passed, ${verification.failed.length} failed`)
+
+                  if (verification.failed.length > 0 && verification.score < 60) {
+                    // Build is missing critical components — attempt to add them
+                    const failedDescriptions = verification.failed
+                      .map(f => `- ${f.description} (expected at: ${f.path})`)
+                      .join('\n')
+                    console.log(`[PlaytestVerifier] Missing components:\n${failedDescriptions}`)
+
+                    // Only retry if we have time left in the pipeline
+                    if (!isPipelineTimedOut()) {
+                      const fixPrompt = `The build partially succeeded but is MISSING these expected components:\n${failedDescriptions}\n\nPlease add ONLY the missing components. The user asked for: "${message}"\nDo NOT recreate parts that already exist. Only add what's missing. Output complete Luau code in a \`\`\`lua block.`
+                      const fixResult = await raceNonNull(
+                        callGroq('You are a Roblox Luau expert. Add missing game components.', fixPrompt, [], 16384),
+                        callGemini('You are a Roblox Luau expert. Add missing game components.', fixPrompt, [], 16384),
+                      )
+                      if (fixResult) {
+                        const fixCode = extractLuauCode(fixResult.result)
+                        if (fixCode) {
+                          const deployed = await sendCodeToStudio(sessionId, fixCode)
+                          if (deployed) {
+                            conversationText += `\n\n*I noticed some components were missing and added them: ${verification.failed.map(f => f.description).join(', ')}.*`
+                            console.log('[PlaytestVerifier] Missing components deployed successfully')
+                          }
+                        }
+                      }
+                    }
+                  } else if (verification.passed.length > 0) {
+                    // All good — optionally show verification results
+                    const passedList = verification.passed.map(p => p.description).join(', ')
+                    console.log(`[PlaytestVerifier] All checks passed: ${passedList}`)
+                  }
+                }
+              }
+            } catch (verifyErr) {
+              console.warn('[PlaytestVerifier] Non-blocking error:', verifyErr instanceof Error ? verifyErr.message : verifyErr)
             }
           }
         }
@@ -6107,6 +6182,14 @@ ${effectiveInstruction}`
     if (!conversationText || conversationText.length < 10) {
       conversationText = `Here's what I'm setting up for "${message}". Check your Studio!`
     }
+
+    // Log pipeline completion timing and timeout status
+    if (isPipelineTimedOut() && luauCode) {
+      console.warn(`[Pipeline] Deadline reached at ${(pipelineElapsed() / 1000).toFixed(1)}s — returning partial result with code (skipped some post-processing)`)
+    } else if (isPipelineTimedOut()) {
+      console.warn(`[Pipeline] Deadline reached at ${(pipelineElapsed() / 1000).toFixed(1)}s — no code generated in time`)
+    }
+    logTiming('done')
 
     const { message: cleanConv, suggestions } = extractSuggestions(conversationText)
     const partCount = luauCode ? countPartsInCode(luauCode) : 0
