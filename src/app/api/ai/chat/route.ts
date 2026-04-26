@@ -5978,6 +5978,14 @@ ${effectiveInstruction}`
         }
       }
 
+      // ── BUILD ANALYTICS ──
+      try {
+        const { trackBuild } = await import('@/lib/build-analytics')
+        void trackBuild('generated')
+        if (executedInStudio) void trackBuild('sent_to_studio')
+        if (model === 'forje-cache') void trackBuild('cache_hit')
+      } catch { /* non-blocking */ }
+
       // ── LEARNING SYSTEM: record ALL build outcomes (pass AND fail) ──
       if (luauCode) {
         const category = detectCategory(message)
@@ -6177,6 +6185,7 @@ ${effectiveInstruction}`
                     // All good — optionally show verification results
                     const passedList = verification.passed.map(p => p.description).join(', ')
                     console.log(`[PlaytestVerifier] All checks passed: ${passedList}`)
+                    try { const { trackBuild } = await import('@/lib/build-analytics'); void trackBuild('verified') } catch { /* */ }
                   }
                 }
               }

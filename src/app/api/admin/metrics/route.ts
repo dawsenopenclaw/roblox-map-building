@@ -256,6 +256,15 @@ export async function GET() {
         createdAt: u.createdAt.toISOString(),
       })),
 
+      // ─── Build Analytics ───
+      buildAnalytics: await (async () => {
+        try {
+          const { getBuildMetrics, computeSuccessRate } = await import('@/lib/build-analytics')
+          const today = await getBuildMetrics()
+          return { today, successRate: computeSuccessRate(today) }
+        } catch { return { today: {}, successRate: {} } }
+      })(),
+
       // ─── System ───
       health: { db: dbStatus, redis: redisStatus, api: 'ok' as const },
       generatedAt: now.toISOString(),

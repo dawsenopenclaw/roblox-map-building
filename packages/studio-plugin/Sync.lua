@@ -346,10 +346,28 @@ local function executeStructuredCommands(commands, commandId)
       local cmdType = cmd.type
 
       if cmdType == "create_part" then
-        local part = Instance.new("Part")
+        -- Shape handling: create the correct part type based on shape field
+        local shape = cmd.shape or "Block"
+        local part
+        if shape == "Wedge" then
+          part = Instance.new("WedgePart")
+        else
+          part = Instance.new("Part")
+          -- Set shape for Cylinder and Ball (they use Part with Shape property)
+          if shape == "Cylinder" then
+            part.Shape = Enum.PartType.Cylinder
+          elseif shape == "Ball" then
+            part.Shape = Enum.PartType.Ball
+          end
+        end
         part.Name = cmd.name or "FJ_Part"
         part.Anchored = (cmd.anchored ~= false)
         part:SetAttribute("fj_generated", true)
+
+        -- Transparency
+        if cmd.transparency then
+          part.Transparency = tonumber(cmd.transparency) or 0
+        end
 
         -- Size
         if cmd.size then
@@ -366,20 +384,30 @@ local function executeStructuredCommands(commands, commandId)
           )
         end
 
-        -- Position
+        -- Position + Rotation
+        local cf = CFrame.new(0, 5, 0)
         if cmd.position then
-          part.CFrame = CFrame.new(
+          cf = CFrame.new(
             tonumber(cmd.position.x) or 0,
             tonumber(cmd.position.y) or 5,
             tonumber(cmd.position.z) or 0
           )
         elseif cmd.posX then
-          part.CFrame = CFrame.new(
+          cf = CFrame.new(
             tonumber(cmd.posX) or 0,
             tonumber(cmd.posY) or 5,
             tonumber(cmd.posZ) or 0
           )
         end
+        -- Apply Y rotation for WedgeParts (roof slopes)
+        if cmd.rotationY and tonumber(cmd.rotationY) ~= 0 then
+          cf = cf * CFrame.Angles(0, math.rad(tonumber(cmd.rotationY)), 0)
+        end
+        -- Cylinders need 90° Z rotation to stand upright
+        if shape == "Cylinder" then
+          cf = cf * CFrame.Angles(0, 0, math.rad(90))
+        end
+        part.CFrame = cf
 
         -- Color
         if cmd.color then
@@ -395,7 +423,7 @@ local function executeStructuredCommands(commands, commandId)
         -- Material
         if cmd.material then
           pcall(function()
-            part.Material = Enum.Material[cmd.material] or Enum.Material.SmoothPlastic
+            part.Material = Enum.Material[cmd.material] or Enum.Material.Concrete
           end)
         end
 
