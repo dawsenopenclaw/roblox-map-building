@@ -129,22 +129,37 @@ export default function LfgPage() {
   return (
     <div className="min-h-screen" style={{ background: 'rgb(15,18,30)' }}>
       <div className="mx-auto max-w-6xl px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        {/* Back + Header */}
+        <Link
+          href="/team"
+          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#D4AF37] transition-colors mb-4"
+        >
+          ← Back to Teams
+        </Link>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">Find a Group</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Find Builders</h1>
             <p className="mt-1 text-sm text-gray-400">
-              Team up with other builders. Create or join a group to collaborate.
+              Team up with other builders. Find your crew and start creating together.
             </p>
           </div>
-          <Link
-            href="/lfg/create"
-            className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-black transition-colors hover:opacity-90"
-            style={{ background: 'rgb(212,175,55)' }}
-          >
-            <Plus size={16} />
-            Create Post
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/team"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+            >
+              <Users size={14} />
+              My Teams
+            </Link>
+            <Link
+              href="/lfg/create"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-black transition-colors hover:opacity-90"
+              style={{ background: 'rgb(212,175,55)' }}
+            >
+              <Plus size={16} />
+              Create Post
+            </Link>
+          </div>
         </div>
 
         {/* Search bar */}

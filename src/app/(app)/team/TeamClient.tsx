@@ -225,6 +225,33 @@ export default function TeamClient() {
         </div>
       )}
 
+      {/* Quick actions bar */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <Link
+          href="/lfg"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 hover:bg-[#D4AF37]/20 transition-colors"
+        >
+          <Users className="w-3 h-3" />
+          Find Builders
+        </Link>
+        <Link
+          href="/editor"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 transition-colors"
+        >
+          <Code className="w-3 h-3" />
+          Open Editor
+        </Link>
+        {teams.length > 0 && (
+          <Link
+            href="/team/settings"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 transition-colors"
+          >
+            <Shield className="w-3 h-3" />
+            Manage Members
+          </Link>
+        )}
+      </div>
+
       {/* Create + Join forms */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         {/* Create Team */}
