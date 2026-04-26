@@ -23,9 +23,9 @@ type OperationType = 'mesh' | 'build' | 'texture'
 type TierKey = 'FREE' | 'HOBBY' | 'CREATOR' | 'STUDIO'
 
 const DAILY_LIMITS: Record<TierKey, Record<OperationType, number>> = {
-  FREE:    { mesh: 3,   build: 1,   texture: 5   },
-  HOBBY:   { mesh: 15,  build: 5,   texture: 30  },
-  CREATOR: { mesh: 50,  build: 15,  texture: 100 },
+  FREE:    { mesh: 5,   build: 5,   texture: 10  },  // Bumped from 1 build/day — users need enough to build habits
+  HOBBY:   { mesh: 20,  build: 15,  texture: 50  },
+  CREATOR: { mesh: 75,  build: 30,  texture: 150 },
   STUDIO:  { mesh: -1,  build: -1,  texture: -1  }, // -1 = unlimited
 }
 

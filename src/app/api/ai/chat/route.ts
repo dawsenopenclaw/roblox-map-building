@@ -55,6 +55,7 @@ import { getTierPromptModifier, getTierFromSubscription, type QualityTier } from
 import { findObjectBlueprints, findScriptPatterns, formatBlueprintsForPrompt, formatScriptPatternsForPrompt } from '@/lib/ai/object-library'
 import { recordToEli } from '@/lib/eli/build-intelligence'
 import { formatGraphPrompt, recordBuildSuccess, detectComponentsInCode } from '@/lib/eli/codegraph'
+import { buildFocusedPrompt } from '@/lib/ai/focused-prompt'
 import { runStagedPipeline } from '@/lib/ai/staged-pipeline'
 import {
   shopGui, inventoryGui, healthBarGui, hudGui, settingsGui,
@@ -3712,7 +3713,11 @@ async function freeModelTwoPass(
   // Inject CodeGraph knowledge — tells AI exactly which components to include
   const codeGraphContext = formatGraphPrompt(message)
 
-  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
+  // Inject focused prompt — category-specific example + relevant rules only
+  // This is the #1 quality lever: show the AI EXACTLY what to build for THIS request
+  const focusedContext = buildFocusedPrompt(message)
+
+  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + focusedContext + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
 
 RESPONSE FORMAT (follow EXACTLY):
 1. First, write 3-5 sentences describing what you're creating. Be specific about what a player would see. End with a suggestion for what to build next.
@@ -11982,9 +11987,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         if (!guard.allowed) {
           return NextResponse.json(
             {
-              error: guard.reason || 'You\'ve used all your tokens. Purchase more tokens to keep building.',
+              error: guard.reason || 'You\'ve hit your daily build limit! Upgrade your plan to keep creating:\n\n**Starter** ($10/mo) → 15 builds/day\n**Builder** ($25/mo) → 30 builds/day + priority AI\n**Creator** ($50/mo) → unlimited builds\n\nOr grab a token pack for instant access.',
               code: 'SPENDING_LIMIT',
-              upgradeUrl: '/tokens',
+              upgradeUrl: '/pricing',
               tokensUrl: '/tokens',
             },
             { status: 429 },

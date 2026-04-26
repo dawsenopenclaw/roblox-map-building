@@ -21,6 +21,11 @@ export interface CreatePartCommand {
   material: string
   anchored: boolean
   parentName: string
+  /** Part shape: 'Block' (default), 'Ball', 'Cylinder', 'Wedge' */
+  shape?: 'Block' | 'Ball' | 'Cylinder' | 'Wedge'
+  transparency?: number
+  /** CFrame rotation in degrees (Y-axis) for WedgeParts */
+  rotationY?: number
 }
 
 export interface CreateModelCommand {
@@ -335,18 +340,16 @@ const TEMPLATE_HELPER_PATTERNS = [
 ]
 
 const UNTRANSLATABLE_PATTERNS = [
-  /\bfor\b/,
+  // NOTE: `for` loops are UNROLLED above, so they're no longer untranslatable
+  // Only flag constructs that truly can't be represented as structured commands
   /\bwhile\b/,
   /\brepeat\b/,
   /\bfunction\b/,
   /\bif\b.*\bthen\b/,
-  /pcall\s*\(/,
   /require\s*\(/,
   /loadstring\s*\(/,
   /coroutine\./,
   /task\.(spawn|delay|wait)/,
-  /:\w+\(/,        // method calls like part:Destroy()
-  /\[\s*["']/,     // table indexing with string keys
 ]
 
 /** Returns true if the line is a known template boilerplate pattern
@@ -556,7 +559,55 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
   let hasUntranslatableCode = false
 
   // Strip single-line comments so they don't confuse the patterns
-  const lines = luauCode
+  let processedCode = luauCode
+
+  // ── LOOP UNROLLING: expand simple `for i=start,end do ... P()/W()/Cyl()/Ball() ... end` ──
+  // This converts loop-generated parts into individual commands the Creator Store plugin can handle.
+  // Only unrolls numeric for loops with <100 iterations (safety cap).
+  processedCode = processedCode.replace(
+    /for\s+(\w+)\s*=\s*(-?\d+)\s*,\s*(-?\d+)\s*(?:,\s*(-?\d+))?\s*do\s*\n([\s\S]*?)end/g,
+    (_match, varName: string, startStr: string, endStr: string, stepStr: string | undefined, body: string) => {
+      const start = parseInt(startStr)
+      const end = parseInt(endStr)
+      const step = stepStr ? parseInt(stepStr) : 1
+      if (step === 0 || Math.abs((end - start) / step) > 100) return _match // safety: skip huge/infinite loops
+      // Only unroll if body contains P(), W(), Cyl(), Ball(), or Light()
+      if (!/\b(P|W|Cyl|Ball|Light)\s*\(/.test(body)) return _match
+      const expanded: string[] = []
+      for (let i = start; step > 0 ? i <= end : i >= end; i += step) {
+        // Replace the loop variable in the body with the current value
+        const replaced = body.replace(new RegExp(`\\b${varName}\\b`, 'g'), String(i))
+        expanded.push(replaced)
+      }
+      return expanded.join('\n')
+    }
+  )
+
+  // Also unroll `for i, v in ipairs({...}) do` patterns with position tables
+  processedCode = processedCode.replace(
+    /for\s+(\w+)\s*,\s*(\w+)\s+in\s+ipairs\s*\(\s*\{([^}]+)\}\s*\)\s*do\s*\n([\s\S]*?)end/g,
+    (_match, iVar: string, vVar: string, tableContent: string, body: string) => {
+      // Parse table entries: {{x,z}, {x,z}, ...} or {val, val, ...}
+      const entries = tableContent.split(/\}\s*,\s*\{/).map(e => e.replace(/[{}]/g, '').trim())
+      if (entries.length > 100) return _match // safety cap
+      if (!/\b(P|W|Cyl|Ball|Light)\s*\(/.test(body)) return _match
+      const expanded: string[] = []
+      for (let idx = 0; idx < entries.length; idx++) {
+        let replaced = body.replace(new RegExp(`\\b${iVar}\\b`, 'g'), String(idx + 1))
+        // For table entries like "20,20", replace v[1] v[2] with actual values
+        const vals = entries[idx].split(',').map(s => s.trim())
+        replaced = replaced.replace(new RegExp(`${vVar}\\[1\\]`, 'g'), vals[0] || '0')
+        replaced = replaced.replace(new RegExp(`${vVar}\\[2\\]`, 'g'), vals[1] || '0')
+        replaced = replaced.replace(new RegExp(`${vVar}\\[3\\]`, 'g'), vals[2] || '0')
+        // Also handle pos[1], pos[2] style
+        replaced = replaced.replace(new RegExp(`\\b${vVar}\\b`, 'g'), vals[0] || '0')
+        expanded.push(replaced)
+      }
+      return expanded.join('\n')
+    }
+  )
+
+  const lines = processedCode
     .split('\n')
     .map(l => l.replace(/--.*$/, '').trimEnd())
     .filter(l => l.trim().length > 0)
@@ -708,10 +759,11 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
   const RE_BALL_SHORT = /(?:local\s+\w+\s*=\s*)?Ball\(\s*["']([^"']+)["']\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*["'](\w+)["']\s*,\s*(.+?)\s*\)/
 
   for (const line of lines) {
-    // WedgePart: W("name", sx,sy,sz, rx,ry,rz, "Mat", R,G,B)
+    // WedgePart: W("name", sx,sy,sz, rx,ry,rz, "Mat", R,G,B [,rotY])
     const wm = RE_W_SHORT.exec(line)
     if (wm) {
       const rgbM = wm[9].match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+      const rotYM = wm[9].match(/,\s*(-?\d+)\s*$/)
       commands.push({
         type: 'create_part',
         name: wm[1],
@@ -721,6 +773,8 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         material: wm[8],
         anchored: true,
         parentName: 'Workspace',
+        shape: 'Wedge',
+        rotationY: rotYM ? parseInt(rotYM[1]) : undefined,
       } as CreatePartCommand)
       continue
     }
@@ -738,6 +792,7 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         material: cm[7],
         anchored: true,
         parentName: 'Workspace',
+        shape: 'Cylinder',
       } as CreatePartCommand)
       continue
     }
@@ -755,8 +810,28 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         material: bm[6],
         anchored: true,
         parentName: 'Workspace',
+        shape: 'Ball',
       } as CreatePartCommand)
       continue
+    }
+  }
+
+  // Pass 1b3: detect Light() helper calls — Light(parentPart, brightness, range, R, G, B)
+  const RE_LIGHT = /Light\(\s*(\w+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/
+  for (const line of lines) {
+    const lm = RE_LIGHT.exec(line)
+    if (lm) {
+      commands.push({
+        type: 'create_light',
+        className: 'PointLight',
+        name: `${lm[1]}_light`,
+        parentName: lm[1],
+        properties: {
+          Brightness: parseFloat(lm[2]),
+          Range: parseFloat(lm[3]),
+          Color: { r: parseInt(lm[4]), g: parseInt(lm[5]), b: parseInt(lm[6]) },
+        },
+      } as CreateLightCommand)
     }
   }
 
