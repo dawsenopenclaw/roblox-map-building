@@ -4082,6 +4082,126 @@ end
       'Not versioning the DataStore key (add _v1 so you can reset if needed)',
     ],
   },
+
+  {
+    name: 'Mobile Optimization & StreamingEnabled (DevForum)',
+    keywords: ['mobile', 'optimize', 'performance', 'streaming', 'lag', 'fps', 'low end', 'phone', 'touch', 'tablet'],
+    snippet: `-- MOBILE OPTIMIZATION (DevForum + official Roblox docs)
+-- Part count: 15-20K safe for low-end mobile, 500K triangle budget
+-- Memory: keep under 1.3GB client (2GB phones exist)
+-- Each ParticleEmitter = 1 draw call regardless of particle count
+-- Per-zone: 40K triangles, 40 draw calls max
+
+-- STREAMING ENABLED (critical for large maps):
+-- Workspace.StreamingEnabled = true
+-- StreamingMinRadius = 64-128 (parts never removed even under pressure)
+-- StreamingTargetRadius = 128-192 for mobile (default 256)
+-- Lower values = less memory usage
+
+-- KEY TECHNIQUES:
+-- 1. Mesh Instancing: reuse same MeshId + material = engine batches
+-- 2. Distance Culling via CollectionService tags (remove beyond 300 studs)
+-- 3. Object Pooling: pre-create, hide at Y=-1000, reuse (never Destroy)
+-- 4. Client-side VFX: coins/effects via RemoteEvent (zero replication)
+-- 5. CollisionFidelity: Box for small, Hull for medium, Precise only large
+
+-- UI SAFE AREAS:
+-- ScreenGui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets (default)
+-- Excludes notch + Roblox top bar for interactive elements
+-- Use None for full-screen backgrounds only`,
+    pitfalls: [
+      'Transparent parts still consume full performance (transparency does NOT help)',
+      'CollisionFidelity Precise on small objects = memory hog (use Box)',
+      'Never preload entire Workspace with ContentProvider:PreloadAsync()',
+      'SurfaceGuis/BillboardGuis eat draw calls fast',
+      'Future lighting multiplies draw call costs vs ShadowMap on mobile',
+    ],
+  },
+
+  {
+    name: 'CFrame Math Patterns (DevForum)',
+    keywords: ['cframe', 'rotation', 'position', 'lookat', 'circular', 'spiral', 'angle', 'transform', 'orientation'],
+    snippet: `-- CFRAME MATH PATTERNS (DevForum comprehensive guides)
+
+-- CONSTRUCTORS:
+-- CFrame.new(x, y, z) — position only, default orientation
+-- CFrame.lookAt(position, target) — position + face target (PREFERRED)
+-- CFrame.Angles(rx, ry, rz) — rotation in RADIANS (use math.rad())
+-- CFrame.fromAxisAngle(axis, angle) — rotation around specific axis
+
+-- CRITICAL: CFrame.new(pos, lookAt) is DEPRECATED → use CFrame.lookAt()
+-- CRITICAL: CFrame.Angles() uses RADIANS not degrees
+
+-- KEY OPERATIONS:
+-- cf + Vector3 — shift position without changing orientation
+-- parent * child — combine CFrames (ORDER MATTERS: parent first)
+-- cf:Lerp(cf2, alpha) — interpolate (0-1)
+-- cf:Inverse() — invert transformation
+-- cf:PointToWorldSpace(v) — local → world
+-- cf:PointToObjectSpace(v) — world → local
+
+-- CIRCULAR PLACEMENT (most common pattern):
+local center, radius, count = Vector3.new(0,0,0), 20, 12
+for i = 0, count - 1 do
+  local angle = (i / count) * math.pi * 2
+  local x = center.X + radius * math.cos(angle)
+  local z = center.Z + radius * math.sin(angle)
+  part.CFrame = CFrame.lookAt(Vector3.new(x, center.Y, z), center)
+end
+
+-- SPIRAL: increment radius and Y per step
+-- ARC: use angle range (0 to math.pi) instead of full 2*pi`,
+    pitfalls: [
+      'CFrame.Angles uses RADIANS — math.rad(90) for 90 degrees, not just 90',
+      'CFrame multiply order: parent * child (NOT child * parent)',
+      'CFrame.new(pos, lookAt) is DEPRECATED — use CFrame.lookAt(pos, target)',
+      '180-degree rotation edge case (dot product near -1) needs special handling',
+    ],
+  },
+
+  {
+    name: 'Performance Optimization Checklist (DevForum)',
+    keywords: ['performance', 'optimize', 'lag', 'slow', 'fps', 'memory', 'microprofiler', 'heartbeat', 'pool'],
+    snippet: `-- PERFORMANCE OPTIMIZATION (DevForum + official docs)
+
+-- FRAME BUDGET: 16.67ms per frame for 60 FPS
+-- Debug: Ctrl+F2 (scene stats), Ctrl+F6 (MicroProfiler), Shift+F2 (draw calls)
+
+-- PRIORITY ORDER:
+-- 1. Enable StreamingEnabled for large worlds
+-- 2. Reduce draw calls via mesh instancing (same MeshId+material = 1 draw)
+-- 3. Anchor static parts, simplify CollisionFidelity
+-- 4. Throttle RunService callbacks, split expensive work across frames
+-- 5. Clean up connections (.Disconnect on remove)
+-- 6. NPC animations client-side only (distance culled)
+-- 7. Reduce shadows and light complexity
+-- 8. Minimize RemoteEvent firing (never every frame)
+
+-- OBJECT POOLING:
+local pool = {}
+for i = 1, 100 do
+  local p = template:Clone()
+  p.CFrame = CFrame.new(0, -1000, 0) -- hide below world
+  p.Anchored = true; p.Parent = workspace
+  table.insert(pool, p)
+end
+function getFromPool() return table.remove(pool) or template:Clone() end
+function returnToPool(p) p.CFrame = CFrame.new(0,-1000,0); table.insert(pool, p) end
+
+-- SERVER: 30 Hz tick. 10 NPCs pathfinding = 20% degradation.
+-- Sleep AI when no player within range. Pathfind every 0.5-1.5s NOT every frame.
+-- Network: 30 TPS, ~50kbps/player. Send only state changes.
+
+-- HUMANOID: disable unused states, use AnimationController for static NPCs
+-- TEXTURES: memory = pixel count not disk size. 512x512 max.`,
+    pitfalls: [
+      'Destroying pooled objects instead of repositioning (defeats the purpose)',
+      'Firing RemoteEvents every frame (network budget is 30 TPS)',
+      'Pathfinding every frame for NPCs (0.5-1.5s interval is sufficient)',
+      'Using Humanoid for NPCs that dont need to walk (AnimationController is lighter)',
+      'CollisionFidelity Precise on decorative objects (use Box or disable collision)',
+    ],
+  },
 ]
 
 // Merge DevForum knowledge into main array
