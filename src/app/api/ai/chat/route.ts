@@ -56,6 +56,7 @@ import { findObjectBlueprints, findScriptPatterns, formatBlueprintsForPrompt, fo
 import { recordToEli } from '@/lib/eli/build-intelligence'
 import { formatGraphPrompt, recordBuildSuccess, detectComponentsInCode } from '@/lib/eli/codegraph'
 import { buildFocusedPrompt } from '@/lib/ai/focused-prompt'
+import { shouldUseAsset, findMatchingAssets } from '@/lib/ai/asset-library'
 import { runStagedPipeline } from '@/lib/ai/staged-pipeline'
 import {
   shopGui, inventoryGui, healthBarGui, hudGui, settingsGui,
@@ -3752,6 +3753,43 @@ async function freeModelTwoPass(
   const pipelineElapsed = () => Date.now() - pipelineStart
   const isPipelineTimedOut = () => pipelineElapsed() > PIPELINE_DEADLINE_MS
   const logTiming = (stage: string) => console.log(`[Pipeline:${stage}] +${(pipelineElapsed() / 1000).toFixed(1)}s`)
+
+  // ── ASSET LIBRARY SHORTCUT: simple requests use real models instead of AI generation ──
+  // "add a tree" or "place a car" → insert a real Roblox model instantly
+  if (sessionId && !['script', 'ui', 'fullgame', 'gamesystem', 'multiscript'].includes(intent)) {
+    const assetMatch = shouldUseAsset(message)
+    if (assetMatch) {
+      console.log(`[AssetLibrary] Matched "${message}" → ${assetMatch.name} (ID: ${assetMatch.id})`)
+      try {
+        await sendCodeToStudio(sessionId, `-- Asset Library: Inserting "${assetMatch.name}"
+local IS = game:GetService("InsertService")
+local model = IS:LoadAsset(${assetMatch.id})
+if model then
+  local item = model:GetChildren()[1]
+  if item then
+    item.Parent = workspace
+    if item:IsA("Model") and item.PrimaryPart then
+      item:PivotTo(workspace.CurrentCamera.CFrame * CFrame.new(0, 0, -20))
+    elseif item:IsA("BasePart") then
+      item.Position = workspace.CurrentCamera.CFrame.Position + workspace.CurrentCamera.CFrame.LookVector * 20
+    end
+    game:GetService("Selection"):Set({item})
+  end
+  model:Destroy()
+end`)
+        return {
+          conversationText: `Placed a **${assetMatch.name}** from the asset library — a real Roblox model with ${assetMatch.partCount}+ parts. Much better quality than generated parts!\n\n*${assetMatch.description}*`,
+          luauCode: null,
+          executedInStudio: true,
+          suggestions: [`Customize the ${assetMatch.name}`, `Add more ${assetMatch.category}s`, 'Build something around it'],
+          model: 'asset-library',
+        }
+      } catch (err) {
+        console.warn('[AssetLibrary] Failed to send to Studio:', err)
+        // Fall through to normal AI generation
+      }
+    }
+  }
 
   // ── BUILD/SCRIPT INTENTS: Single-pass — generate description + code in ONE call ──
   const isScriptIntent = SCRIPT_INTENTS.has(intent) || SCRIPT_KEYWORDS.test(message)
