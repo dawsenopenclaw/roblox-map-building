@@ -21,37 +21,56 @@
 // ─── Shared color/style block injected into every template ──────────────────
 
 const GUI_STYLE_BLOCK = `
--- ═══ ForjeGames Premium UI Kit ═══
--- Industry-standard dark theme (never pure black — minimum 20,20,20)
-local BG = Color3.fromRGB(20, 20, 20)
-local BG_DEEP = Color3.fromRGB(12, 12, 14)
-local SURFACE = Color3.fromRGB(28, 28, 32)
-local CARD = Color3.fromRGB(32, 32, 38)
-local CARD_HOVER = Color3.fromRGB(42, 42, 50)
-local ELEVATED = Color3.fromRGB(48, 48, 56)
+-- ═══ ForjeGames Cartoon UI Kit ═══
+-- Bright, colorful, chunky — like Pet Simulator X / Adopt Me / Anime Defenders
+-- NOT dark dev panels. Kids want COLOR, BOLD text, THICK borders, BIG corners.
 
--- Accent colors
-local GOLD = Color3.fromRGB(212, 175, 55)
-local GOLD_BRIGHT = Color3.fromRGB(245, 215, 90)
-local GOLD_DIM = Color3.fromRGB(140, 115, 35)
-local GREEN = Color3.fromRGB(50, 200, 80)
-local GREEN_DIM = Color3.fromRGB(39, 93, 50)
-local RED = Color3.fromRGB(220, 65, 65)
-local RED_DIM = Color3.fromRGB(153, 59, 39)
-local BLUE = Color3.fromRGB(60, 130, 255)
-local BLUE_DIM = Color3.fromRGB(61, 100, 148)
-local PURPLE = Color3.fromRGB(140, 80, 255)
-local AMBER = Color3.fromRGB(205, 158, 67)
+-- ═══ PANEL COLORS (bright + gradient-ready) ═══
+local BG = Color3.fromRGB(30, 35, 50)            -- deep blue-gray overlay behind panels
+local BG_DEEP = Color3.fromRGB(20, 25, 40)
+local SURFACE = Color3.fromRGB(50, 140, 255)      -- main panel blue (like reference images)
+local SURFACE_DARK = Color3.fromRGB(35, 100, 200) -- darker shade for gradient
+local CARD = Color3.fromRGB(40, 120, 220)          -- item card blue
+local CARD_HOVER = Color3.fromRGB(60, 150, 255)    -- hover highlight
+local ELEVATED = Color3.fromRGB(70, 170, 255)      -- raised/selected state
 
--- Text
+-- Header bar (darker strip at top of each panel)
+local HEADER = Color3.fromRGB(30, 80, 170)
+local HEADER_DARK = Color3.fromRGB(20, 55, 130)
+
+-- ═══ ACCENT COLORS ═══
+local GOLD = Color3.fromRGB(255, 210, 50)         -- currency, important actions
+local GOLD_BRIGHT = Color3.fromRGB(255, 230, 100)
+local GOLD_DIM = Color3.fromRGB(200, 165, 40)
+local GREEN = Color3.fromRGB(80, 220, 100)         -- success, buy, confirm
+local GREEN_DARK = Color3.fromRGB(50, 160, 70)
+local RED = Color3.fromRGB(240, 70, 70)             -- danger, close, sell
+local RED_DARK = Color3.fromRGB(180, 45, 45)
+local BLUE = Color3.fromRGB(60, 150, 255)
+local BLUE_DARK = Color3.fromRGB(40, 100, 200)
+local PURPLE = Color3.fromRGB(160, 90, 255)         -- epic/rare
+local ORANGE = Color3.fromRGB(255, 160, 40)          -- legendary/warning
+local PINK = Color3.fromRGB(255, 100, 180)           -- special/mythic
+
+-- ═══ RARITY COLORS (standard Roblox convention) ═══
+local RARITY_COMMON = Color3.fromRGB(200, 200, 200)
+local RARITY_UNCOMMON = Color3.fromRGB(80, 220, 100)
+local RARITY_RARE = Color3.fromRGB(60, 150, 255)
+local RARITY_EPIC = Color3.fromRGB(160, 90, 255)
+local RARITY_LEGENDARY = Color3.fromRGB(255, 210, 50)
+local RARITY_MYTHIC = Color3.fromRGB(255, 70, 70)
+
+-- ═══ TEXT (white on colored backgrounds, with shadow) ═══
 local TEXT = Color3.fromRGB(255, 255, 255)
-local TEXT_SUB = Color3.fromRGB(180, 180, 190)
-local TEXT_MUTED = Color3.fromRGB(100, 100, 115)
-local TEXT_DIM = TEXT_MUTED -- alias
+local TEXT_SUB = Color3.fromRGB(220, 225, 240)
+local TEXT_MUTED = Color3.fromRGB(160, 170, 200)
+local TEXT_DIM = TEXT_MUTED
+local TEXT_SHADOW = Color3.fromRGB(0, 0, 0)  -- for TextStrokeColor3
 
--- Border
-local BORDER = Color3.fromRGB(55, 55, 65)
-local BORDER_ACTIVE = Color3.fromRGB(80, 80, 95)
+-- ═══ BORDER (thick, visible, colorful) ═══
+local BORDER = Color3.fromRGB(25, 60, 140)         -- dark blue border for panels
+local BORDER_LIGHT = Color3.fromRGB(100, 180, 255) -- inner highlight border
+local BORDER_ACTIVE = Color3.fromRGB(255, 210, 50) -- selected/active gold border
 
 -- Services
 local TweenService = game:GetService("TweenService")
@@ -59,52 +78,128 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- ═══ Animation presets (research-backed timings) ═══
-local TWEEN_FAST = TweenInfo.new(0.15, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-local TWEEN_NORMAL = TweenInfo.new(0.25, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-local TWEEN_OPEN = TweenInfo.new(0.3, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-local TWEEN_CLOSE = TweenInfo.new(0.2, Enum.EasingStyle.Exponential, Enum.EasingDirection.In)
-local TWEEN_POPUP = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-local TWEEN_BOUNCE = TweenInfo.new(0.4, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
-local TWEEN_PULSE = TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+-- ═══ Animation presets (snappy, playful) ═══
+local TWEEN_FAST = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TWEEN_NORMAL = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TWEEN_OPEN = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local TWEEN_CLOSE = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+local TWEEN_POPUP = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local TWEEN_BOUNCE = TweenInfo.new(0.5, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
+local TWEEN_PULSE = TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
 
 -- ═══ Reusable component helpers ═══
 local function addCorner(parent, radius)
-  local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, radius or 8) c.Parent = parent return c
+  local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, radius or 14) c.Parent = parent return c
 end
 local function addStroke(parent, color, thickness, transparency)
-  local s = Instance.new("UIStroke") s.Color = color or BORDER s.Thickness = thickness or 1
-  s.Transparency = transparency or 0.2 s.Parent = parent return s
+  local s = Instance.new("UIStroke") s.Color = color or BORDER s.Thickness = thickness or 3
+  s.Transparency = transparency or 0 s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+  s.Parent = parent return s
 end
 local function addPadding(parent, px)
   local p = Instance.new("UIPadding")
-  p.PaddingTop = UDim.new(0, px) p.PaddingBottom = UDim.new(0, px)
-  p.PaddingLeft = UDim.new(0, px) p.PaddingRight = UDim.new(0, px)
+  p.PaddingTop = UDim.new(0, px or 12) p.PaddingBottom = UDim.new(0, px or 12)
+  p.PaddingLeft = UDim.new(0, px or 12) p.PaddingRight = UDim.new(0, px or 12)
   p.Parent = parent return p
 end
 local function addGradient(parent, c1, c2, rotation)
   local g = Instance.new("UIGradient")
-  g.Color = ColorSequence.new(c1 or BG_DEEP, c2 or SURFACE)
+  g.Color = ColorSequence.new(c1 or SURFACE, c2 or SURFACE_DARK)
   g.Rotation = rotation or 90
   g.Parent = parent return g
 end
 
--- ═══ Close button with hover glow ═══
-local function makeCloseBtn(parent, callback)
+-- ═══ Header bar (colored strip at top of every panel) ═══
+local function makeHeader(parent, title, height)
+  local header = Instance.new("Frame")
+  header.Size = UDim2.new(1, 0, 0, height or 50)
+  header.BackgroundColor3 = HEADER
+  header.BorderSizePixel = 0
+  header.Parent = parent
+  addCorner(header, 14)
+  addGradient(header, HEADER, HEADER_DARK, 90)
+  -- Title text with stroke for readability
+  local label = Instance.new("TextLabel")
+  label.Size = UDim2.new(1, -60, 1, 0)
+  label.Position = UDim2.new(0, 16, 0, 0)
+  label.BackgroundTransparency = 1
+  label.Text = title or "PANEL"
+  label.TextColor3 = TEXT
+  label.Font = Enum.Font.FredokaOne
+  label.TextSize = 28
+  label.TextXAlignment = Enum.TextXAlignment.Left
+  label.TextStrokeTransparency = 0.5
+  label.TextStrokeColor3 = TEXT_SHADOW
+  label.Parent = header
+  return header
+end
+
+-- ═══ Big chunky button (cartoon style) ═══
+local function makeButton(parent, text, color, size, position)
   local btn = Instance.new("TextButton")
-  btn.Size = UDim2.new(0, 30, 0, 30)
-  btn.Position = UDim2.new(1, -38, 0, 8)
-  btn.BackgroundColor3 = CARD_HOVER
-  btn.BackgroundTransparency = 0.3
-  btn.Text = "X" btn.TextColor3 = TEXT_MUTED btn.Font = Enum.Font.GothamBold btn.TextSize = 16
+  btn.Size = size or UDim2.new(0.4, 0, 0, 48)
+  btn.Position = position or UDim2.new(0.3, 0, 0.85, 0)
+  btn.BackgroundColor3 = color or GREEN
+  btn.Text = text or "CLICK"
+  btn.TextColor3 = TEXT
+  btn.Font = Enum.Font.FredokaOne
+  btn.TextSize = 22
+  btn.TextStrokeTransparency = 0.5
+  btn.TextStrokeColor3 = TEXT_SHADOW
   btn.AutoButtonColor = false
+  btn.BorderSizePixel = 0
   btn.Parent = parent
-  addCorner(btn, 6)
+  addCorner(btn, 12)
+  addStroke(btn, Color3.fromRGB(
+    math.floor(color and color.R*255*0.6 or 30),
+    math.floor(color and color.G*255*0.6 or 100),
+    math.floor(color and color.B*255*0.6 or 50)
+  ), 3)
+  -- Bottom shadow (darker strip at bottom of button for 3D look)
+  local shadow = Instance.new("Frame")
+  shadow.Size = UDim2.new(1, 0, 0, 6)
+  shadow.Position = UDim2.new(0, 0, 1, -6)
+  shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+  shadow.BackgroundTransparency = 0.6
+  shadow.BorderSizePixel = 0
+  shadow.Parent = btn
+  addCorner(shadow, 12)
+  -- Hover: scale up + brighten
   btn.MouseEnter:Connect(function()
-    TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = RED, TextColor3 = TEXT, BackgroundTransparency = 0}):Play()
+    TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = Color3.fromRGB(
+      math.min(255, math.floor((color or GREEN).R*255 + 30)),
+      math.min(255, math.floor((color or GREEN).G*255 + 30)),
+      math.min(255, math.floor((color or GREEN).B*255 + 30))
+    )}):Play()
   end)
   btn.MouseLeave:Connect(function()
-    TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = CARD_HOVER, TextColor3 = TEXT_MUTED, BackgroundTransparency = 0.3}):Play()
+    TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = color or GREEN}):Play()
+  end)
+  return btn
+end
+
+-- ═══ Close button (red circle X — like reference images) ═══
+local function makeCloseBtn(parent, callback)
+  local btn = Instance.new("TextButton")
+  btn.Size = UDim2.new(0, 40, 0, 40)
+  btn.Position = UDim2.new(1, -48, 0, 5)
+  btn.BackgroundColor3 = RED
+  btn.Text = "X"
+  btn.TextColor3 = TEXT
+  btn.Font = Enum.Font.FredokaOne
+  btn.TextSize = 22
+  btn.TextStrokeTransparency = 0.5
+  btn.TextStrokeColor3 = TEXT_SHADOW
+  btn.AutoButtonColor = false
+  btn.BorderSizePixel = 0
+  btn.Parent = parent
+  addCorner(btn, 20) -- fully rounded circle
+  addStroke(btn, RED_DARK, 3)
+  btn.MouseEnter:Connect(function()
+    TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = Color3.fromRGB(255, 100, 100), Size = UDim2.new(0, 44, 0, 44)}):Play()
+  end)
+  btn.MouseLeave:Connect(function()
+    TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = RED, Size = UDim2.new(0, 40, 0, 40)}):Play()
   end)
   btn.MouseButton1Click:Connect(function()
     playSound(SFX.close, 0.3)

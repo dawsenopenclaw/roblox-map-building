@@ -4348,17 +4348,27 @@ THINK ABOUT HOW THE UI FEELS before writing code. Ask yourself:
 - Is there DEPTH? (gradient backgrounds, subtle shadows, layered panels)
 - Does it feel ALIVE? (gold shimmer on buttons, pulse on important elements)
 
-INDUSTRY-STANDARD DARK THEME (never pure black):
-  BG = (20,20,20) SURFACE = (28,28,32) CARD = (32,32,38) HOVER = (42,42,50)
-  GOLD = (212,175,55) TEXT = (255,255,255) MUTED = (100,100,115) BORDER = (55,55,65)
+CARTOON ROBLOX STYLE (bright, colorful, chunky — like the reference images):
+  Panel BG = bright blue (50,140,255) with gradient to darker (35,100,200)
+  Header bar = darker blue (30,80,170) strip at top of each panel
+  Cards/Slots = slightly darker blue (40,120,220) with 3px borders
+  Buttons = GREEN (80,220,100) for confirm, RED (240,70,70) for close/cancel
+  Currency = GOLD (255,210,50) for coins/important
+  Text = WHITE with TextStrokeTransparency=0.5 (text stroke for readability on colored BG)
+  Borders = THICK 3-4px dark blue (25,60,140) — NOT thin 1px
+  NEVER dark/gray backgrounds on panels. ALWAYS colorful.
 
 REQUIRED ON EVERY UI:
-- UICorner (8-12px) on ALL frames/buttons
-- UIStroke (1-2px, transparency 0.2) for borders
-- UIGradient on panel backgrounds (subtle gradient = depth)
-- TweenService: Exponential Out for menus (0.25s), Back Out for popups (0.35s)
-- Close button: X top-right, hover=RED, close=scale-down animation
+- UICorner (12-16px) on ALL frames/buttons — BIG rounded, not subtle
+- UIStroke (3-4px, solid color, ApplyStrokeMode=Border) — THICK visible borders
+- UIGradient on panel backgrounds (bright → darker version of same hue)
+- TweenService: Back Out for open (0.35s), Quad In for close (0.2s)
+- Close button: RED CIRCLE (not subtle X) with 3px border, top-right, hover=brighten
 - AutoButtonColor=false on ALL TextButtons (handle hover ourselves)
+- Font: FredokaOne for titles (28px), GothamBold for body (16-18px) — BOLD, playful
+- TextStrokeTransparency=0.5 on ALL text for readability on colored backgrounds
+- Header bar: darker colored strip at top of every panel with title text
+- Button shadows: dark strip at bottom of buttons for 3D raised look
 
 BUTTON FEEDBACK (the #1 thing that makes UI premium):
 - UIScale child on every button
