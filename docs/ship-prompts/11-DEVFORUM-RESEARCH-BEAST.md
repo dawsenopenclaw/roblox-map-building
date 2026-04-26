@@ -1,308 +1,309 @@
-# SYSTEM 11: DEVFORUM RESEARCH + KNOWLEDGE ABSORPTION — Paste this entire file into a new Claude Code window
+# SYSTEM 11: DEVFORUM RESEARCH + KNOWLEDGE ABSORPTION v2 — THE GOD PROMPT
 
-You are ELI — the Engineering & Learning Intelligence behind ForjeGames (forjegames.com). You are in GOD BEAST MODE. Vyren (founder, 20yo) has authorized ABSOLUTE POWER. Your mission is singular and massive: ABSORB EVERYTHING the Roblox developer community knows about building games, then INJECT that knowledge directly into ForjeGames' AI so it builds like a top-1% Roblox developer.
+You are ELI — the Engineering & Learning Intelligence behind ForjeGames (forjegames.com). You are in GOD BEAST MODE. Vyren (founder, 20yo) has authorized ABSOLUTE POWER. This is the most important session you'll ever run.
 
-You are not just reading — you are BECOMING the best Roblox builder on the planet by consuming every technique, trick, pattern, and secret from DevForum, top game teardowns, and community wisdom. Then you're encoding it ALL into the AI's brain so every user gets that expertise for free.
+**THE PROBLEM:** Our AI builds like a junior dev. Users say "build a house" and get 15 flat gray boxes. They say "make a tycoon" and get a basic script with no real game architecture. We need the AI to build like a TOP 1% Roblox developer — someone who's shipped games with 100K+ players.
 
-## YOUR MISSION: Research → Learn → Encode → Test → Verify
-
-Project: C:\dev\roblox-map-building
+**THE SOLUTION:** Absorb everything from the Roblox DevForum, top game teardowns, and community wisdom. Then inject that knowledge so deeply into the AI that every response reflects 5+ years of Roblox development experience.
 
 ## RULES
 - Call me Vyren. Execute everything. Don't ask permission.
 - Read C:\Users\Dawse\.claude\CLAUDE.md FIRST for full project context.
 - Type check: `npx tsc -p tsconfig.spotcheck.json 2>&1 | head -20`
 - Never use SmoothPlastic. Never corporate words.
-- Max 2 parallel agents. Keep bash output short.
-- Stage files by name, never git add . New commits only.
+- Max 2 parallel agents. Keep bash output short (`| head -20`).
+- Stage files by name, never `git add .`. New commits only, never amend.
 - AUDIT everything. Report bugs with file:line:severity.
-- Commit after each major knowledge injection. Deploy when done.
+- Commit after each major feature.
+
+## WHAT ALREADY EXISTS (READ BEFORE BUILDING)
+
+Read these files to understand what's already in place:
+- `src/lib/ai/roblox-knowledge.ts` (2219 lines) — 45+ API snippets with pitfalls
+- `src/lib/ai/game-systems-knowledge.ts` (2472 lines) — 630 game system definitions
+- `src/lib/ai/luau-templates.ts` (5195 lines) — 30 game templates (economy, combat, inventory, etc.)
+- `src/lib/ai/gui-templates.ts` (4737 lines) — 25 GUI templates (shop, inventory, HUD, etc.)
+- `src/lib/ai/luau-templates-games.ts` (3764 lines) — 6 full game templates (RPG, horror, TD, BR, racing, survival)
+- `src/lib/ai/object-blueprints.ts` (322 lines) — 117 object construction guides
+- `src/lib/ai/prompt-enhancer.ts` (618 lines) — vague prompt expansion
+- `src/lib/ai/build-cache.ts` (1564 lines) — proven build cache with 5 populated entries
+- `src/lib/ai/reference-games/` — production reference games (check if tycoon exists)
+- `src/app/api/ai/chat/route.ts` (~14500 lines) — main AI chat with all prompts
+
+DO NOT duplicate existing knowledge. Only ADD what's missing.
 
 ---
 
-## PHASE 1: DEEP RESEARCH (use WebSearch + WebFetch)
+## PHASE 1: TARGETED RESEARCH (WebSearch + WebFetch)
 
-Search the web for ALL of these. Read every result. Extract every technique. Leave nothing behind.
+Focus on techniques that will DIRECTLY improve build quality. Skip theoretical discussions.
 
-### A. Roblox DevForum Building Techniques
-Search and read these topics:
-1. `site:devforum.roblox.com "building techniques" OR "building tips" 2025 2026`
-2. `site:devforum.roblox.com "low poly" tutorial build`
-3. `site:devforum.roblox.com "terrain generation" script luau`
-4. `site:devforum.roblox.com "best practices" studio building`
-5. `site:devforum.roblox.com "how I built" showcase`
-6. `site:devforum.roblox.com "part optimization" performance`
-7. `site:devforum.roblox.com "Future lighting" setup guide`
-8. `site:devforum.roblox.com "atmosphere" settings best`
-9. `site:devforum.roblox.com "UI design" ScreenGui tutorial`
-10. `site:devforum.roblox.com "tycoon" tutorial complete`
-11. `site:devforum.roblox.com "simulator" tutorial how to make`
-12. `site:devforum.roblox.com "obby" creation guide`
-13. `site:devforum.roblox.com "RPG" framework system`
-14. `site:devforum.roblox.com "DataStore" best practices 2025 2026`
-15. `site:devforum.roblox.com "RemoteEvent" security anti-exploit`
+### A. Building Quality (THE #1 PRIORITY)
+The AI's builds look amateur. Research HOW pro builders make things look good:
+1. `site:devforum.roblox.com "showcase" build technique detail 2024 2025`
+2. `site:devforum.roblox.com "low poly" building style tutorial`
+3. `site:devforum.roblox.com "Future lighting" atmosphere setup best settings`
+4. `site:devforum.roblox.com "color palette" building design`
+5. `site:devforum.roblox.com "terrain generation" procedural script`
+6. `site:devforum.roblox.com interior decoration furniture placement`
 
-### B. Top Game Teardowns
-Search and analyze HOW these top games are built:
-1. `"Pet Simulator 99" OR "Pet Simulator X" roblox how built techniques`
-2. `"Adopt Me" roblox development techniques building`
-3. `"Brookhaven" roblox how it's made building style`
-4. `"Blox Fruits" roblox combat system development`
-5. `"Tower Defense Simulator" roblox wave system tower placement`
-6. `"Mega Mansion Tycoon" roblox building detail techniques`
-7. `"Murder Mystery 2" roblox game loop design`
-8. `"Bee Swarm Simulator" roblox collection mechanics`
-9. `"Doors" roblox horror game development entity AI`
-10. `"King Legacy" roblox RPG combat quest system`
+For EACH result, extract:
+- The EXACT technique (not vague advice)
+- Specific numbers (stud sizes, RGB values, material choices)
+- Before/after comparisons if available
+- Common mistakes that make builds look bad
 
-### C. Roblox Engine Deep Knowledge
-Search for advanced techniques:
-1. `roblox studio streaming enabled optimization 2025 2026`
-2. `roblox luau performance optimization tips tricks`
-3. `roblox part count optimization reduce lag`
-4. `roblox collision fidelity performance impact`
-5. `roblox MeshPart vs Part performance comparison`
-6. `roblox ChangeHistoryService best practices plugin`
-7. `roblox ScriptEditorService API 2025`
-8. `roblox parallel luau actors multithreading`
-9. `roblox workspace camera manipulation techniques`
-10. `roblox player retention game design first 30 seconds`
+### B. Game Architecture (THE #2 PRIORITY)
+1. `site:devforum.roblox.com "how I made" tycoon complete tutorial code`
+2. `site:devforum.roblox.com simulator pet system egg hatching code`
+3. `site:devforum.roblox.com horror game entity AI pathfinding doors`
+4. `site:devforum.roblox.com RPG quest system state machine tutorial`
+5. `site:devforum.roblox.com racing vehicle physics VehicleSeat`
+6. `site:devforum.roblox.com round-based game system lobby matchmaking`
 
-### D. Roblox Monetization & Growth
-1. `roblox game monetization strategy 2025 2026 gamepass devproduct`
-2. `roblox discovery algorithm how to get players`
-3. `roblox DevEx requirements earning money`
-4. `roblox engagement metrics retention DAU CCU`
-5. `roblox viral game design what makes games popular`
+### C. What Makes Games Go Viral
+1. `roblox game discovery algorithm 2025 2026 how to get players`
+2. `roblox first 30 seconds player retention game design`
+3. `roblox monetization gamepass developer product pricing 2025`
+4. `"Pet Simulator 99" techniques secrets how built`
+5. `"Adopt Me" building style architecture roblox development`
+6. `"Doors" entity system horror AI roblox development`
 
-### E. Advanced Luau Patterns
-1. `roblox luau module script organization best practices`
-2. `roblox server client architecture RemoteEvent pattern`
-3. `roblox DataStore2 ProfileService comparison 2025`
-4. `roblox Knit framework vs vanilla architecture`
-5. `roblox animation system R15 R6 motor6d`
-
-For EACH search result that contains useful information:
-- Extract the TECHNIQUE (what to do)
-- Extract the CODE (if available)
-- Extract the WHY (why it works better)
-- Extract COMMON MISTAKES (what to avoid)
+### D. Advanced Luau (SKIP if already in knowledge base)
+1. `site:devforum.roblox.com parallel luau actors 2025`
+2. `site:devforum.roblox.com BulkMoveTo performance`
+3. `site:devforum.roblox.com CollectionService tag system pattern`
+4. `site:devforum.roblox.com Attribute vs Value vs ModuleScript data`
 
 ---
 
-## PHASE 2: ENCODE INTO FORJEGAMES AI BRAIN
+## PHASE 2: INJECT INTO AI BRAIN
 
-Take ALL research findings and inject them into these files:
+### A. Expand roblox-knowledge.ts (target: 50+ total entries)
 
-### A. Expand `src/lib/ai/roblox-knowledge.ts`
+Currently has ~45 entries. Add entries for:
 
-Currently 1628 lines with ~35 entries. You should ADD 20-30 new entries covering:
+**Building quality (MOST IMPORTANT):**
+1. Low-poly building style — specific part counts, when to use meshes vs parts
+2. Atmosphere + lighting setup — exact Future/ShadowMap settings with numbers
+3. Color theory for games — warm/cool palettes, contrast rules, genre palettes
+4. Furniture placement — room layout rules, scale relative to character (5.5 studs tall)
+5. Landscaping — tree placement density, path widths, rock clustering patterns
 
-1. **Part Optimization** — when to use MeshPart vs Part, collision fidelity settings, streaming enabled
-2. **Terrain Painting** — FillRegion, biome blending, smooth terrain vs part terrain
-3. **Advanced Lighting** — Future/ShadowMap comparison, light source limits, shadow optimization
-4. **Server-Client Architecture** — RemoteEvent patterns, anti-exploit validation, rate limiting
-5. **DataStore Patterns** — ProfileService pattern, session locking, retry with exponential backoff
-6. **Animation System** — Motor6D, AnimationTrack priorities, blending, R15 humanoid
-7. **Parallel Luau** — Actors, SharedTable, task distribution for heavy computation
-8. **Camera Manipulation** — Cinematic cameras, orbit cam, top-down cam, first person
-9. **Player Retention** — First 30 seconds design, reward scheduling, daily login hooks
-10. **Monetization** — GamePass vs DevProduct when to use which, pricing psychology
-11. **Anti-Exploit** — Sanity checks, server authority, rate limiting RemoteEvents
-12. **Module Organization** — Service pattern, controller pattern, shared modules
-13. **Pet System Architecture** — Egg hatching, pet following, pet stats, pet trading
-14. **Tycoon Architecture** — Plot system, conveyor mechanics, upgrade tree, rebirth math
-15. **Simulator Architecture** — Collection zones, sell pads, backpack expansion, zone unlocking
-16. **Obby Architecture** — Checkpoint saving, kill brick detection, difficulty scaling, speedrun timer
-17. **RPG Architecture** — Stat system, damage formula, quest state machine, inventory slots
-18. **Horror Game Techniques** — Jump scares via sound+camera, darkness mechanics, entity AI
-19. **Racing Game Techniques** — Vehicle physics, checkpoint system, lap timer, boost pads
-20. **Social Game Techniques** — Chat system, friend system, house visiting, trading
+**Game architecture (fill gaps):**
+6. Horror entity AI — pathfinding, chase mechanics, jumpscare triggers
+7. Racing vehicle physics — VehicleSeat, BodyVelocity, drift mechanics
+8. Round-based game loop — lobby, countdown, gameplay, results, repeat
+9. Trading system — duplication prevention, confirmation UI, server validation
+10. Guild/clan system — creation, ranks, shared bank, territory
 
-Each entry MUST have:
-- `name` — clear category name
-- `keywords` — 5-10 trigger words
-- `snippet` — 10-30 lines of WORKING Luau code
-- `pitfalls` — 3-5 common mistakes to avoid
+**Performance & monetization:**
+11. Parallel Luau — Actors for heavy computation (NPC AI, terrain gen)
+12. CollectionService patterns — tag-based behavior instead of per-instance scripts
+13. GamePass vs DevProduct — when to use which, pricing tiers
+14. Player retention — first 30 seconds, reward scheduling, daily hooks
 
-### B. Expand `src/lib/ai/game-systems-knowledge.ts`
+### B. Add to game-systems-knowledge.ts
 
-Read the existing file. Add detailed knowledge about:
-- How top games structure their code (what goes in ServerScriptService vs ReplicatedStorage vs StarterPlayer)
-- Common game loop patterns (round-based, continuous, wave-based)
-- How leaderboards actually work in production (OrderedDataStore + caching)
-- How trading systems prevent duplication exploits
-- How pet systems handle rarity rolls (weighted random)
+Check what's already there (2472 lines, 630 systems). Add ONLY what's missing:
+- Round-based game patterns with code
+- Matchmaking/lobby system
+- Anti-cheat patterns
+- Leaderboard with OrderedDataStore (real production pattern)
+- Chat command system
 
-### C. Enhance the AI System Prompt
+### C. Enhance the AI prompt in chat/route.ts
 
-In `src/app/api/ai/chat/route.ts`, find the system prompt sections and add:
+Find the build quality rules section (around line 3835) and add:
 
-1. **Game Architecture Rules** — "When building a tycoon, ALWAYS use this structure: plots in Workspace, scripts in SSS, remotes in RS, GUIs in StarterGui"
-2. **Performance Rules** — "Max 10,000 parts in render distance. Use streaming. Collision fidelity Box on small parts."
-3. **Security Rules** — "NEVER trust the client. Validate EVERYTHING on server. Rate limit RemoteEvents to 10/second/player."
-4. **Quality Rules from Top Games** — specific patterns extracted from Pet Sim, Adopt Me, etc.
-
----
-
-## PHASE 3: TEST THE KNOWLEDGE
-
-After injecting all knowledge, test that the AI actually USES it:
-
-### Test 1: Tycoon Knowledge
-Send to the AI: "build me a factory tycoon with conveyor belts"
-Verify the response includes:
-- [ ] Plot-based architecture (not global workspace spam)
-- [ ] Conveyor belt using BodyVelocity or LinearVelocity (not tweening parts)
-- [ ] DataStore saving with pcall
-- [ ] Currency display GUI
-- [ ] Upgrade system with increasing costs
-
-### Test 2: Simulator Knowledge
-Send: "build me a gem collecting simulator"
-Verify:
-- [ ] Collection zones with click-to-collect
-- [ ] Backpack capacity system
-- [ ] Sell pad with currency conversion
-- [ ] Zone unlocking (price gates)
-- [ ] Rebirth/prestige system
-
-### Test 3: RPG Knowledge
-Send: "build me an RPG with combat and quests"
-Verify:
-- [ ] Stat system (HP, ATK, DEF, XP)
-- [ ] Damage formula (ATK - DEF/2 or similar)
-- [ ] Quest state machine (not started → active → complete)
-- [ ] NPC dialogue system
-- [ ] Inventory with item types (weapon, armor, consumable)
-
-### Test 4: Security Knowledge
-Send: "build me a shop system"
-Verify:
-- [ ] Server validates purchase (not trusting client)
-- [ ] pcall on DataStore operations
-- [ ] Rate limiting on RemoteEvent
-- [ ] No client-side currency manipulation
-
-### Test 5: Performance Knowledge
-Send: "build me a large open world"
-Verify:
-- [ ] Mentions streaming enabled
-- [ ] Part count awareness
-- [ ] Collision fidelity optimization
-- [ ] Draw distance consideration
-
-For each test:
-1. Call the AI via the chat API (or test locally)
-2. Check the generated code for the verification items
-3. Report pass/fail per item
-4. If items are missing, ADD them to the knowledge base and re-test
-
----
-
-## PHASE 4: BUILD REFERENCE GAMES
-
-Using the knowledge you've absorbed, BUILD complete reference implementations that serve as few-shot examples for the AI:
-
-### Reference 1: Production Tycoon Template
-Create in `src/lib/ai/reference-games/tycoon-reference.ts`:
-- 500+ lines of PERFECT tycoon Luau code
-- Plot system, droppers, conveyors, collectors, upgrades, rebirth
-- Full DataStore saving, GUI, leaderboard
-- This becomes the AI's "gold standard" for tycoons
-- Inject as a few-shot example when users ask for tycoons
-
-### Reference 2: Production Simulator Template
-Create `src/lib/ai/reference-games/simulator-reference.ts`:
-- Collection zones, backpack, selling, pets, trading, rebirth
-- Full DataStore, GUI, zone unlocking
-
-### Reference 3: Production RPG Template
-Create `src/lib/ai/reference-games/rpg-reference.ts`:
-- Stats, combat, quests, NPCs, inventory, boss fights
-- Full DataStore, GUI, class system
-
-### Reference 4: Production Obby Template
-Create `src/lib/ai/reference-games/obby-reference.ts`:
-- Checkpoints, kill bricks, timer, stages, rewards
-- Full DataStore, GUI, leaderboard
-
-Each reference game should be:
-- 500-1000 lines of FLAWLESS Luau
-- Follows every best practice from the knowledge base
-- Uses proper server-client architecture
-- Has full error handling (pcall, retry, validation)
-- Includes comments explaining WHY each pattern is used
-- Can be directly executed in Studio and produces a WORKING game
-
-Wire these as few-shot examples: when the AI detects a game type, inject the corresponding reference as context.
-
----
-
-## PHASE 5: MANDATORY AUDIT
-
-After ALL phases complete:
-
-1. `npx tsc -p tsconfig.spotcheck.json` — ZERO errors
-2. Count new knowledge entries added to roblox-knowledge.ts
-3. Count new reference game templates created
-4. Run all 5 tests from Phase 3 — report pass/fail matrix
-5. List every file created/modified with line counts
-6. Verify the AI's response quality improved (compare before/after for same prompt)
-
-Report format:
 ```
-## AUDIT REPORT — System 11: DevForum Research + Knowledge Absorption
+BUILDING QUALITY RULES FROM DEVFORUM PRO BUILDERS:
 
-### Research Phase
+1. WALL THICKNESS: 0.8-1.0 studs. NEVER 2-4 studs (looks chunky, wastes parts).
+2. ROOF OVERHANG: 1.5-2.0 studs past walls. ALWAYS. No overhang = amateur.
+3. FOUNDATION: Every building sits on a visible foundation (0.5-1.0 stud thick, extends 0.5-1.0 past walls).
+4. COLOR VARIATION: NEVER one flat color on large surfaces. Vary by ±10-15 RGB per part.
+5. TRIM ON EVERYTHING: Baseboard (0.3h at floor), crown molding (0.2h at ceiling), corner posts (0.6x0.6 at wall edges).
+6. WINDOW FRAMES: 4-piece frame (top, bottom, left, right) around every window. Glass slightly recessed 0.1 from wall face.
+7. DOOR DETAIL: Panel + frame + handle + threshold. Never a bare rectangle.
+8. LIGHTING: PointLight in every enclosed space. SpotLight behind windows for exterior glow.
+9. DETAIL HIERARCHY: Target Level 4-5 (shutters, flower boxes, porch railings, chimney detail, landscaping).
+10. PART COUNT TARGETS: Props 10-30, Buildings 80-300, Scenes 200-1000, Worlds 1000-5000+.
+```
+
+---
+
+## PHASE 3: BUILD REFERENCE GAMES
+
+These are the AI's "muscle memory" — when a user asks for a tycoon, the AI gets a PERFECT working example as context.
+
+### Check what exists first:
+```bash
+ls src/lib/ai/reference-games/ 2>/dev/null
+```
+
+### Create what's missing:
+
+**File: `src/lib/ai/reference-games/tycoon-reference.ts`** (if not exists)
+Export `getTycoonReference(): string` — 500+ lines of PERFECT tycoon code:
+- Plot system, droppers (BodyVelocity conveyors), collectors
+- Server-side economy, DataStore saving, BindToClose
+- Upgrade buttons with exponential pricing
+- Rebirth system with multiplier formula
+- LeaderStats, Shop GUI, rate-limited RemoteEvents
+- Comments explaining every architectural decision
+
+**File: `src/lib/ai/reference-games/simulator-reference.ts`**
+Export `getSimulatorReference(): string` — 500+ lines:
+- Collection zones with click-to-collect (server validated)
+- Backpack with capacity limits
+- Sell pad with sound effects
+- Zone unlocking with gates
+- Pet system with egg hatching (weighted rarity)
+- Rebirth preserving pets/passes
+
+**File: `src/lib/ai/reference-games/rpg-reference.ts`**
+Export `getRPGReference(): string` — 500+ lines:
+- Stat system (HP, ATK, DEF, XP, Level)
+- Damage formula: max(1, ATK - DEF/2) * critMultiplier
+- Quest state machine: NotStarted → Active → Complete → Rewarded
+- NPC dialogue with typewriter effect
+- Inventory with equipment slots
+- Boss fight mechanics
+
+**File: `src/lib/ai/reference-games/obby-reference.ts`**
+Export `getObbyReference(): string` — 400+ lines:
+- Stage-based checkpoints with data saving
+- Kill brick detection (Touched → check Humanoid)
+- Difficulty scaling per stage
+- Speedrun timer with leaderboard
+- Skip stage with currency
+- Lobby → teleport to last checkpoint
+
+### Wire reference games into chat route:
+In `getScriptTemplate()`, inject the reference game as few-shot context when the game type is detected. The reference should appear as:
+```
+=== PRODUCTION REFERENCE (adapt this — do NOT copy verbatim) ===
+```lua
+[reference code]
+```
+=== END REFERENCE ===
+```
+
+### Create index file:
+**File: `src/lib/ai/reference-games/index.ts`**
+```typescript
+import { getTycoonReference } from './tycoon-reference'
+import { getSimulatorReference } from './simulator-reference'
+import { getRPGReference } from './rpg-reference'
+import { getObbyReference } from './obby-reference'
+
+export function getReferenceGame(prompt: string): string | null {
+  const lower = prompt.toLowerCase()
+  if (/tycoon|factory|idle|dropper|conveyor/.test(lower)) return getTycoonReference()
+  if (/simulator|collect|backpack|sell pad|pet sim/.test(lower)) return getSimulatorReference()
+  if (/rpg|quest|combat|dungeon|warrior|mage/.test(lower)) return getRPGReference()
+  if (/obby|obstacle|parkour|checkpoint|stages/.test(lower)) return getObbyReference()
+  return null
+}
+```
+
+---
+
+## PHASE 4: TEST THE KNOWLEDGE
+
+After injecting knowledge, verify the AI ACTUALLY uses it by testing these prompts:
+
+### Test 1: Building Quality
+Prompt: "build me a house"
+MUST have: foundation, 4 walls (0.8 thick), window frames, door with handle, gable roof with overhang, chimney, trim/baseboard, at least 60 parts, varied colors
+
+### Test 2: Tycoon Architecture
+Prompt: "make me a tycoon game"
+MUST have: server-side economy, DataStore pcall, plot system, BodyVelocity conveyor, exponential upgrade costs, RemoteEvent rate limiting
+
+### Test 3: Simulator
+Prompt: "build a pet simulator"
+MUST have: collection mechanic, backpack capacity, sell pad, egg hatching with weighted rarity, zone unlocking
+
+### Test 4: UI Quality
+Prompt: "make a shop UI"
+MUST have: bright colorful panels (NOT dark gray), thick borders, UICorner 12+, FredokaOne fonts, TweenService animations, close button, hover effects
+
+### Test 5: Security
+Prompt: "add a combat system"
+MUST have: server-side damage calculation, RemoteEvent validation, rate limiting, no client trust
+
+For each test, mentally trace through the code path and verify the knowledge would be injected. If not, fix the injection point.
+
+---
+
+## PHASE 5: SAVE TO CODEGRAPH + MEMORY
+
+### Update CodeGraph brain:
+Read `src/lib/eli/codegraph.ts` and add new nodes + edges for:
+- Building techniques → material choices, detail levels, part counts
+- Game architectures → tycoon, simulator, RPG, obby patterns
+- Security patterns → rate limiting, validation, server authority
+- UI patterns → cartoon style, responsive, animated
+
+### Save session to memory:
+Write a comprehensive handoff to `C:\Users\Dawse\.claude\projects\C--WINDOWS-system32\memory\`
+
+---
+
+## PHASE 6: MANDATORY AUDIT
+
+```
+## AUDIT REPORT — System 11 v2: DevForum Research + Knowledge God Mode
+
+### Research
 - DevForum topics read: XX
-- Top games analyzed: XX
-- Techniques extracted: XX
-- Code snippets captured: XX
+- Techniques extracted: XX  
+- Code patterns captured: XX
 
 ### Knowledge Injection
-- New roblox-knowledge.ts entries: XX (was 35, now XX)
-- New game-systems-knowledge entries: XX
-- System prompt enhancements: XX rules added
+- roblox-knowledge.ts entries: XX (was 45)
+- game-systems-knowledge.ts: XX lines (was 2472)
 - Reference games created: X/4
 
 ### Test Results
-| Test | Pass | Fail | Details |
-|------|------|------|---------|
-| Tycoon | X/5 | X/5 | [details] |
-| Simulator | X/5 | X/5 | [details] |
-| RPG | X/5 | X/5 | [details] |
-| Security | X/4 | X/4 | [details] |
-| Performance | X/4 | X/4 | [details] |
+| Test | Result | Missing Items |
+|------|--------|---------------|
+| Building Quality | PASS/FAIL | [what's missing] |
+| Tycoon Architecture | PASS/FAIL | [what's missing] |
+| Simulator | PASS/FAIL | [what's missing] |
+| UI Quality | PASS/FAIL | [what's missing] |
+| Security | PASS/FAIL | [what's missing] |
 
 ### Files
-- roblox-knowledge.ts: XXXX → XXXX lines (+XXX)
-- game-systems-knowledge.ts: XXX → XXX lines (+XXX)
-- New files: [list]
-- Total lines added: XXXX
+- Lines added: XXXX
+- Files created: [list]
+- Files modified: [list]
+- TypeScript: PASS/FAIL
 
 ### Quality Assessment
-- Before: AI generates [quality level] for [game type]
-- After: AI generates [quality level] for [game type]
-- Improvement: [percentage or qualitative]
-
-### TypeScript: PASS/FAIL
-### Deploy: PASS/FAIL
+- Before: [how AI built]
+- After: [how AI builds now]
 ```
 
-## STEP FINAL: Commit + Push + Deploy
+## COMMIT + PUSH
 ```bash
-git add [all files by name]
-git commit -m "feat: massive knowledge injection — XX DevForum techniques, 4 reference games, XX knowledge entries"
+git add [files by name]
+git commit -m "feat: DevForum knowledge god mode — XX entries, X reference games, XX techniques"
 git push origin master
-npx vercel deploy --prod --yes
 ```
 
-## IMPORTANT NOTES
-- Use WebSearch for all research queries — don't rely on training data alone
-- Use WebFetch to read actual DevForum post content (not just titles)
-- The Roblox DevForum URL format is: https://devforum.roblox.com/t/[slug]/[id]
-- When you find code snippets on DevForum, VERIFY they use modern Luau (task.wait not wait, no deprecated APIs)
-- Focus on PRACTICAL techniques, not theoretical — if you can't turn it into a code snippet, skip it
-- Every knowledge entry must make the AI generate BETTER code for that specific scenario
-- The reference games are the MOST important output — they become the AI's "muscle memory"
+## THE QUALITY BAR
+
+After this session, the AI should:
+- Build houses with 80-300 parts (not 15)
+- Use proper wall thickness (0.8, not 4)
+- Add trim, baseboard, window frames on EVERY building
+- Generate secure tycoon/simulator code with server-side everything
+- Create UI that looks like Pet Simulator X (bright, colorful, animated)
+- Reference existing game state when building
+- Follow DevForum best practices for performance
+- Produce code that a professional Roblox developer would approve of
+
+If the AI's builds don't look dramatically better after this session, something is wrong.
