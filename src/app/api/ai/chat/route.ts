@@ -3107,7 +3107,7 @@ For INVENTORY: grid of slots with drag support (via InputBegan). Equipped sectio
 For MENUS: centered modal with title+subtitle, vertical button list, background blur effect.
 
 BUILD DECOMPOSITION — always break objects into components:
-- Pole: base+shaft+arm+shade+bulb+PointLight (6+parts). Tree: trunk+roots+branches+3-5 canopy spheres (8+parts). House: foundation+walls+roof WedgeParts+door+windows Glass+chimney+interior rooms+furniture+PointLights (25+parts). Car: body+hood+cabin+windshield+4 wheels+hubcaps+headlights+bumpers (15+parts).
+- Pole: base+shaft+arm+shade+bulb+PointLight (8+parts). Tree: trunk+roots+branches+3-5 canopy spheres (8+parts). House: foundation+walls+roof WedgeParts+door+windows Glass+chimney+interior rooms+furniture+PointLights (80+parts). Car: body+hood+cabin+windshield+4 wheels+hubcaps+headlights+bumpers (25+parts).
 
 SYSTEMS REFERENCE (use when requested):
 - Weapons: Tool+Handle+Activated→raycast/projectile+damage+cooldown+effects
@@ -4786,7 +4786,7 @@ You receive real-time data from the user's Roblox Studio:
 
 USE THIS DATA:
 1. Place new builds WHERE the camera is looking, not at random coordinates
-2. Match the materials/colors of nearby existing builds for visual consistency — if NEARBY OBJECTS show Brick/SmoothPlastic/Color3.fromRGB(180,160,140), use those same values
+2. Match the materials/colors of nearby existing builds for visual consistency — if nearby objects use SmoothPlastic, use Concrete instead. Match Color3 values like Color3.fromRGB(180,160,140) from nearby builds
 3. Reference what you can see: "I can see your tower at X,Z — I'll place this wall to connect them" or "Your shop is nearby so I'll match its brick material"
 4. If part count > 5000, auto-optimize: use fewer parts, suggest LOD, merge static geometry, warn the user
 5. If user has something selected, modification requests ("make it bigger", "change the color") apply to the selection — use Selection:Get() and modify by path
@@ -5797,7 +5797,7 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
         // Gemini first for strict retry too — Groq produces garbage code-only output
         const strictPrompt = isScriptIntent
           ? `You are a Roblox Luau script generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE.`
-          : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE. Use the P()/W()/Cyl()/Ball() helpers. Include ChangeHistoryService boilerplate. Minimum 60 parts for buildings. Use FOR LOOPS for repeated elements.`
+          : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE. Use the P()/W()/Cyl()/Ball() helpers. Include ChangeHistoryService boilerplate. Minimum 60 parts for buildings. Use FOR LOOPS for repeated elements. Never use SmoothPlastic.`
         const strictRetryResult = await callGemini(strictPrompt, effectiveInstruction, history.slice(-2), 16384)
         const strictRetry = strictRetryResult ? { result: strictRetryResult, index: 0 } : await raceNonNull(
           callGroq(strictPrompt, effectiveInstruction, history.slice(-2), 16384),
@@ -6967,7 +6967,7 @@ NEVER DO THIS:
 - NEVER forget Anchored = true — parts will fall through the floor
 - NEVER make walls paper-thin (0.01) — minimum 0.5 studs thick
 - NEVER skip the Model container — loose parts in workspace are messy
-- For buildings: aim for 30+ parts (houses 40+, castles 60+). For small objects (chair, lamp, door): 5-15 parts is fine. Match detail to the request size.
+- For buildings: aim for 80+ parts (houses 80-300, castles 150+). For small objects (chair, lamp, door): 5-15 parts is fine. Match detail to the request size.
 - NEVER use the same Color3 on every part — minimum 3 different colors per build
 
 HELPER FUNCTION — put this at the TOP of every build script:
@@ -7013,7 +7013,7 @@ for shelf = 0, 3 do
     local colors = {{180,40,40},{40,80,160},{40,140,60},{180,140,40},{120,40,120},{200,80,30},{30,100,100}}
     local c = colors[(book%7)+1]
     local h = 0.7+math.random()*0.5
-    P("book_"..shelf.."_"..book, 0.35,h,0.7, sp.X+7.2+book*0.5, sp.Y+1.8+shelf*1.4+h/2-0.35, sp.Z-9, "SmoothPlastic", Color3.fromRGB(c[1],c[2],c[3]), f)
+    P("book_"..shelf.."_"..book, 0.35,h,0.7, sp.X+7.2+book*0.5, sp.Y+1.8+shelf*1.4+h/2-0.35, sp.Z-9, "Fabric", Color3.fromRGB(c[1],c[2],c[3]), f)
   end
 end
 
@@ -7025,7 +7025,7 @@ ring.Shape = Enum.PartType.Cylinder
 for i = 0, 7 do
   local a = i/8*math.pi*2
   local cx, cz = sp.X+math.cos(a)*2.2, sp.Z+math.sin(a)*2.2
-  P("candle_"..i, 0.15,0.6,0.15, cx, cY+0.45, cz, "SmoothPlastic", Color3.fromRGB(255,250,230), f)
+  P("candle_"..i, 0.15,0.6,0.15, cx, cY+0.45, cz, "Concrete", Color3.fromRGB(255,250,230), f)
   local flame = P("flame_"..i, 0.2,0.35,0.2, cx, cY+0.95, cz, "Neon", Color3.fromRGB(255,180,50), f)
   local pl = Instance.new("PointLight"); pl.Brightness=0.6; pl.Range=10; pl.Color=Color3.fromRGB(255,200,120); pl.Parent=flame
 end
@@ -8297,10 +8297,10 @@ if not ok then warn("[ForjeAI] Weather: "..tostring(err)) end
 
 RAIN: pe.Texture="rbxassetid://6101261426" pe.Rate=400 pe.Lifetime=NumberRange.new(1.5,2.2) pe.Speed=NumberRange.new(80,120) pe.SpreadAngle=Vector2.new(8,8) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.06),NumberSequenceKeypoint.new(1,0.04)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(1,0.8)}) pe.Color=ColorSequence.new(Color3.fromRGB(180,200,225)) pe.LightEmission=0.05 pe.LightInfluence=0.9 pe.EmissionDirection=Enum.NormalId.Bottom pe.Parent=plate L.Brightness=0.8 L.ClockTime=12 local atmo=Instance.new("Atmosphere") atmo.Density=0.65 atmo.Haze=3 atmo.Color=Color3.fromRGB(160,165,175) atmo.Parent=L
   -- Add rain sound: local snd=Instance.new("Sound",ws) snd.SoundId="rbxassetid://9120500856" snd.Looped=true snd.Volume=0.6 snd:Play()
-  -- Add puddle shine: nearby ground Parts set Material=SmoothPlastic, Reflectance=0.3
+  -- Add puddle shine: nearby ground Parts set Material=Glass, Reflectance=0.3
 
 SNOW: pe.Rate=180 pe.Lifetime=NumberRange.new(3.5,6) pe.Speed=NumberRange.new(8,18) pe.SpreadAngle=Vector2.new(25,25) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(0.5,0.3),NumberSequenceKeypoint.new(1,0.05)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(0.8,0.1),NumberSequenceKeypoint.new(1,1)}) pe.Color=ColorSequence.new(Color3.fromRGB(240,245,255)) pe.LightEmission=0.3 pe.LightInfluence=0.8 pe.RotSpeed=NumberRange.new(-15,15) pe.EmissionDirection=Enum.NormalId.Bottom pe.Parent=plate L.Brightness=1.1 L.Ambient=Color3.fromRGB(200,210,225) local atmo=Instance.new("Atmosphere") atmo.Density=0.4 atmo.Haze=2 atmo.Color=Color3.fromRGB(230,235,245) atmo.Parent=L
-  -- Snow accumulation hint: add thin white Parts on top of horizontal surfaces (Transparency=0, SmoothPlastic, white)
+  -- Snow accumulation hint: add thin white Parts on top of horizontal surfaces (Transparency=0, Concrete, white)
 
 FOG: L.FogColor=Color3.fromRGB(180,185,190) L.FogStart=30 L.FogEnd=160 L.Brightness=0.9 plate.Position=Vector3.new(cp.X,3,cp.Z) pe.Texture="rbxassetid://31270182" pe.Rate=12 pe.Lifetime=NumberRange.new(12,20) pe.Speed=NumberRange.new(2,6) pe.SpreadAngle=Vector2.new(60,20) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(0.3,18),NumberSequenceKeypoint.new(0.7,22),NumberSequenceKeypoint.new(1,0)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(0.2,0.82),NumberSequenceKeypoint.new(0.8,0.82),NumberSequenceKeypoint.new(1,1)}) pe.Color=ColorSequence.new(Color3.fromRGB(200,205,210)) pe.RotSpeed=NumberRange.new(-2,2) pe.EmissionDirection=Enum.NormalId.Top pe.Parent=plate
   -- Gradual fog roll-in: use TweenService on Atmosphere.Density from 0 to 0.7 over 10 seconds
@@ -8441,7 +8441,7 @@ local ok,err=pcall(function()
   -- YOU MUST REPLACE THIS ENTIRE BLOCK with actual build code for the requested structure.
   -- NEVER leave placeholder comments. NEVER say "add your code here". Write ALL code inline.
   -- Every build MUST have: foundation + walls(vc variety) + windows(recessed) + roof(overhang)
-  --   + floor trim + base plants + interior lights + exterior details. Minimum 15 parts.
+  --   + floor trim + base plants + interior lights + exterior details. Minimum 40 parts for any build.
   -- Example structure for a SHOP (adapt material/color/size to the request):
 
   local bF=getFolder("Buildings")
@@ -14185,14 +14185,15 @@ light.Parent = p  -- parent to a Part, never set CFrame on light
 game:GetService("Selection"):Set({folder})
 if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
 
-MATERIALS: Brick, Cobblestone, Concrete, Glass, Granite, Grass, Metal, Marble, Neon, Pebble, Sand, Slate, SmoothPlastic, Wood, WoodPlanks
+MATERIALS: Brick, Cobblestone, Concrete, Glass, Granite, Grass, Metal, Marble, Neon, Pebble, Sand, Slate, Wood, WoodPlanks
+BANNED MATERIALS: SmoothPlastic, Plastic — NEVER use these on anything.
 COLORS: Use realistic muted tones — Color3.fromRGB(180,160,140) not Color3.fromRGB(255,0,0)
 SCALE: Character is 5.5 studs tall. Doors: 4×7 studs. Windows: 4×4. Rooms: 20×15 minimum.
-MINIMUM: 30 parts per build. Complex builds need 50-80+. Add PointLights inside Parts for atmosphere.`,
+MINIMUM: 40 parts per build. Complex builds need 80-150+. Add PointLights inside Parts for atmosphere.`,
       `Build: ${message}
 
 ONLY output a \`\`\`lua code block. Use the REQUIRED PATTERN from the system prompt.
-Use P() helper. Position relative to sp (camera). 20-40 parts. Muted colors.
+Include the full P()/W()/Cyl()/Ball()/vc()/Light() helper boilerplate at the top of your code. Position relative to sp (camera). 40-80 parts. Muted colors.
 Real proportions. 2-3 PointLights. Decompose into real components.
 Set m.PrimaryPart to the base part. No explanation.`,
       [],
