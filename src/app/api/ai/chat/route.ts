@@ -1250,22 +1250,27 @@ async function sendCodeToStudio(sessionId: string | null, code: string, teamId?:
       const n = ((cmd as { name?: string }).name || '').toLowerCase()
       const part = cmd as { shape?: string; material?: string; color?: { r: number; g: number; b: number }; size?: { x: number; y: number; z: number } }
 
-      // Trunks → Cylinder + Wood material + brown color
-      if (/trunk|pole|post|stem|stalk|pillar|column/i.test(n) && part.shape !== 'Cylinder') {
-        part.shape = 'Cylinder'
-        if (part.material === 'Concrete' || part.material === 'SmoothPlastic') part.material = 'Wood'
-        if (part.color && part.color.r > 150 && part.color.g > 150 && part.color.b > 150) {
-          part.color = { r: 90 + Math.floor(Math.random() * 20), g: 60 + Math.floor(Math.random() * 10), b: 30 }
-        }
+      // Trunks → Cylinder + Wood material + WARM brown color
+      if (/trunk|stem|stalk/i.test(n)) {
+        if (part.shape !== 'Cylinder') { part.shape = 'Cylinder'; shapeFixes++ }
+        // ALWAYS force Wood material and warm brown for tree trunks
+        part.material = 'Wood'
+        part.color = { r: 85 + Math.floor(Math.random() * 20), g: 55 + Math.floor(Math.random() * 15), b: 25 + Math.floor(Math.random() * 10) }
         shapeFixes++
       }
-      // Canopy/leaves/foliage → Ball + Grass material + green color
-      else if (/canopy|leaves|leaf|foliage|crown|bush|shrub|hedge|treetop/i.test(n) && part.shape !== 'Ball') {
-        part.shape = 'Ball'
-        if (part.material === 'Concrete' || part.material === 'SmoothPlastic' || part.material === 'Wood') part.material = 'Grass'
-        if (part.color && (part.color.r > 150 || (part.color.g < 80 && part.color.b < 80))) {
-          part.color = { r: 50 + Math.floor(Math.random() * 30), g: 100 + Math.floor(Math.random() * 40), b: 35 + Math.floor(Math.random() * 20) }
-        }
+      // Poles/posts/pillars → Cylinder (but keep their material/color)
+      else if (/pole|post|pillar|column/i.test(n) && part.shape !== 'Cylinder') {
+        part.shape = 'Cylinder'
+        if (part.material === 'Concrete' || part.material === 'SmoothPlastic') part.material = 'Metal'
+        shapeFixes++
+      }
+      // Canopy/leaves/foliage → Ball + Grass material + VIVID green color
+      else if (/canopy|leaves|leaf|foliage|crown|bush|shrub|hedge|treetop/i.test(n)) {
+        if (part.shape !== 'Ball') { part.shape = 'Ball'; shapeFixes++ }
+        // ALWAYS force Grass material for canopy
+        part.material = 'Grass'
+        // ALWAYS force vivid green — AI defaults to gray/dark which looks dead
+        part.color = { r: 50 + Math.floor(Math.random() * 25), g: 110 + Math.floor(Math.random() * 35), b: 35 + Math.floor(Math.random() * 18) }
         shapeFixes++
       }
       // Lamp bulbs/globes → Ball

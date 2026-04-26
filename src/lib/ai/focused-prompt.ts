@@ -110,19 +110,23 @@ const EXAMPLES: Record<string, string> = {
 -- Interior visible through windows: seats (2 Parts each), steering wheel (Cyl)
 -- VehicleSeat for driving (set MaxSpeed, TurnSpeed, Torque)`,
 
-  tree: `-- EXACT TREE PATTERN (DevForum technique — copy this EXACTLY):
--- Step 1: TRUNK = Cylinder, brown, Wood material
-Cyl("Trunk", 7, 1.2, 0,4,0, "Wood", 90,62,32)
--- Step 2: CANOPY = 3-5 overlapping Balls at different sizes/positions for full natural shape
-Ball("Canopy_Main", 8, 0,9,0, "Grass", 55,120,40)
-Ball("Canopy_Left", 6, -2.5,8,1, "Grass", 50,115,38)
-Ball("Canopy_Right", 5.5, 2,8.5,-1, "Grass", 60,125,42)
-Ball("Canopy_Top", 4, 0.5,11,0.5, "Grass", 52,118,36)
--- Step 3: OPTIONAL BRANCHES = smaller Cylinders angled outward
-Cyl("Branch1", 3, 0.4, -2,6,0, "Wood", 85,58,28)
-Cyl("Branch2", 2.5, 0.35, 1.5,5.5,1, "Wood", 88,60,30)
--- RESULT: Full, round, natural-looking tree. NEVER use flat Part blocks.
--- For forest: use a loop with randomized heights, canopy sizes, and vc() color variation`,
+  tree: `-- EXACT TREE PATTERN (DevForum technique — copy EXACTLY, do NOT modify shapes):
+-- TRUNK: tall brown Cylinder, Wood material
+Cyl("Trunk", 8, 1.5, 0,4.5,0, "Wood", 95,65,30)
+-- CANOPY: 4 LARGE overlapping green Balls that OVERLAP 30-40% to form one big round shape
+-- Main canopy is CENTERED directly above trunk, others overlap it closely
+Ball("Canopy1", 10, 0,11,0, "Grass", 60,130,45)
+Ball("Canopy2", 8, -2,10,1.5, "Grass", 55,120,40)
+Ball("Canopy3", 7, 2,10.5,-1, "Grass", 65,135,48)
+Ball("Canopy4", 6, 0,13,0, "Grass", 58,125,42)
+-- KEY RULES:
+-- Canopy Balls MUST be large (diameter 6-10) and OVERLAP each other
+-- All canopy Balls within 2-3 studs of each other horizontally
+-- Canopy center Y = trunk height + canopy radius (so they sit ON TOP of trunk)
+-- Colors: GREEN (R=50-70, G=115-140, B=35-50). NEVER gray/white/dark.
+-- Trunk: BROWN (R=85-100, G=55-70, B=25-35). NEVER gray.
+-- Material: Grass for canopy, Wood for trunk. NEVER Concrete or Metal.
+-- For a forest: loop with 5-10 trees, randomize trunk height (6-10), canopy size (8-12), position`,
 
   prop: `-- EXAMPLE PATTERN: Prop/small object (8-25 parts)
 -- Base/stand if applicable
