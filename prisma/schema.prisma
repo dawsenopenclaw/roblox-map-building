@@ -1433,13 +1433,28 @@ model LfgPost {
 
 // Community feed — public posting channel for finding people, sharing builds, chatting
 model FeedPost {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   userId    String
-  content   String   // the message (max 500 chars)
-  channel   String   @default("general") // general, looking-for-team, showcase, help
-  likes     Int      @default(0)
-  createdAt DateTime @default(now())
+  content   String      // the message (max 500 chars)
+  channel   String      @default("general") // general, looking-for-team, showcase, help
+  likes     Int         @default(0)
+  replyToId String?     // parent post ID for threading
+  replyTo   FeedPost?   @relation("FeedReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   FeedPost[]  @relation("FeedReplies")
+  replyCount Int        @default(0)
+  createdAt DateTime    @default(now())
 
   @@index([channel, createdAt])
   @@index([userId])
+  @@index([replyToId])
+}
+
+// Track who liked what (prevents double-likes)
+model FeedLike {
+  id     String @id @default(cuid())
+  postId String
+  userId String
+
+  @@unique([postId, userId])
+  @@index([postId])
 }
