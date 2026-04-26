@@ -2198,6 +2198,1051 @@ return ShopModule
       'Rebirth that resets too much (keep pets/passes or players quit)',
     ],
   },
+
+  // ── NEW KNOWLEDGE ENTRIES (System 11 — DevForum Research) ──────────────
+
+  {
+    name: 'Terrain Generation (Procedural)',
+    keywords: ['terrain', 'generate', 'biome', 'perlin', 'noise', 'landscape', 'mountain', 'island', 'world', 'procedural', 'heightmap'],
+    snippet: `-- PROCEDURAL TERRAIN GENERATION (DevForum best practices)
+-- Uses Perlin noise layers for height + biome selection
+local Terrain = workspace.Terrain
+local RESOLUTION = 4 -- voxel size in studs
+local SEED = math.random(1, 999999)
+
+-- Biome materials mapped by moisture + temperature
+local BIOMES = {
+  {material = Enum.Material.Grass, minHeight = 0, maxHeight = 40, moisture = 0.5},
+  {material = Enum.Material.Sand, minHeight = -2, maxHeight = 5, moisture = 0.1},
+  {material = Enum.Material.Snow, minHeight = 60, maxHeight = 120, moisture = 0.7},
+  {material = Enum.Material.Rock, minHeight = 40, maxHeight = 80, moisture = 0.3},
+  {material = Enum.Material.Mud, minHeight = 0, maxHeight = 15, moisture = 0.8},
+}
+
+local function getNoise(x: number, z: number, scale: number, offset: number): number
+  return math.noise(x / scale + offset, z / scale + offset, SEED) * 0.5 + 0.5
+end
+
+local function getHeight(x: number, z: number): number
+  -- Layer multiple octaves for natural-looking terrain
+  local h = getNoise(x, z, 100, 0) * 60    -- Base terrain
+  h += getNoise(x, z, 50, 100) * 20         -- Medium detail
+  h += getNoise(x, z, 25, 200) * 8          -- Fine detail
+  return h
+end
+
+local function getBiomeMaterial(height: number, x: number, z: number): Enum.Material
+  local moisture = getNoise(x, z, 80, 500)
+  if height > 60 then return Enum.Material.Snow end
+  if height > 40 then return Enum.Material.Rock end
+  if moisture < 0.3 then return Enum.Material.Sand end
+  if moisture > 0.7 then return Enum.Material.Mud end
+  return Enum.Material.Grass
+end
+
+-- Generate chunk (call per region, NOT all at once)
+local function generateChunk(chunkX: number, chunkZ: number, size: number)
+  for x = chunkX, chunkX + size, RESOLUTION do
+    for z = chunkZ, chunkZ + size, RESOLUTION do
+      local height = getHeight(x, z)
+      local material = getBiomeMaterial(height, x, z)
+      local region = Region3.new(
+        Vector3.new(x, 0, z),
+        Vector3.new(x + RESOLUTION, height, z + RESOLUTION)
+      ):ExpandToGrid(RESOLUTION)
+      Terrain:FillRegion(region, RESOLUTION, material)
+    end
+    task.wait() -- Yield per column to prevent lag spikes
+  end
+end
+
+-- Water plane
+Terrain:FillRegion(
+  Region3.new(Vector3.new(-500, -5, -500), Vector3.new(500, 3, 500)):ExpandToGrid(4),
+  4, Enum.Material.Water
+)`,
+    pitfalls: [
+      'Not yielding during generation — freezes the server for seconds',
+      'Using FillBlock instead of FillRegion — FillRegion is faster for large areas',
+      'Resolution below 4 studs — Roblox terrain minimum voxel size is 4',
+      'Generating all terrain at once — chunk it and yield between columns',
+      'Not using ExpandToGrid — region must align to terrain voxel grid',
+    ],
+  },
+
+  {
+    name: 'Advanced Lighting Setup',
+    keywords: ['lighting', 'atmosphere', 'future', 'shadowmap', 'bloom', 'colorcorrection', 'sun', 'fog', 'sky', 'day night', 'mood'],
+    snippet: `-- ADVANCED LIGHTING SETUP (DevForum + official Roblox guidance)
+-- Future vs ShadowMap: Future = PBR + realistic light sources, ShadowMap = cheaper shadows
+-- Use Future for showcases/horror. Use ShadowMap for mobile-first games.
+
+local Lighting = game:GetService("Lighting")
+
+-- PRESET: Warm Daytime (good default for most games)
+local function setupWarmDay()
+  Lighting.Technology = Enum.Technology.Future
+  Lighting.ClockTime = 14.5
+  Lighting.GeographicLatitude = 35
+  Lighting.Brightness = 2
+  Lighting.Ambient = Color3.fromRGB(40, 40, 50)
+  Lighting.OutdoorAmbient = Color3.fromRGB(130, 130, 140)
+  Lighting.EnvironmentDiffuseScale = 0.6
+  Lighting.EnvironmentSpecularScale = 0.4
+  Lighting.GlobalShadows = true
+  -- Atmosphere (adds depth + distance fog)
+  local atm = Instance.new("Atmosphere")
+  atm.Density = 0.3
+  atm.Offset = 0.25
+  atm.Color = Color3.fromRGB(199, 199, 210)
+  atm.Decay = Color3.fromRGB(106, 112, 125)
+  atm.Glare = 0.2
+  atm.Haze = 2
+  atm.Parent = Lighting
+  -- Color correction for vibrancy
+  local cc = Instance.new("ColorCorrectionEffect")
+  cc.Brightness = 0.02
+  cc.Contrast = 0.08
+  cc.Saturation = 0.15
+  cc.TintColor = Color3.fromRGB(255, 248, 240)
+  cc.Parent = Lighting
+end
+
+-- PRESET: Horror/Night
+local function setupHorror()
+  Lighting.Technology = Enum.Technology.Future
+  Lighting.ClockTime = 0.5
+  Lighting.Brightness = 0
+  Lighting.Ambient = Color3.fromRGB(10, 10, 15)
+  Lighting.OutdoorAmbient = Color3.fromRGB(15, 15, 25)
+  Lighting.EnvironmentDiffuseScale = 0
+  Lighting.EnvironmentSpecularScale = 0
+  local atm = Instance.new("Atmosphere")
+  atm.Density = 0.5
+  atm.Offset = 0
+  atm.Color = Color3.fromRGB(20, 20, 30)
+  atm.Decay = Color3.fromRGB(10, 10, 15)
+  atm.Glare = 0
+  atm.Haze = 8
+  atm.Parent = Lighting
+  -- Bloom for flashlight glow
+  local bloom = Instance.new("BloomEffect")
+  bloom.Intensity = 0.8
+  bloom.Size = 24
+  bloom.Threshold = 1.5
+  bloom.Parent = Lighting
+end
+
+-- PRESET: Sunset/Golden Hour
+local function setupSunset()
+  Lighting.Technology = Enum.Technology.Future
+  Lighting.ClockTime = 17.8
+  Lighting.Brightness = 2.5
+  Lighting.Ambient = Color3.fromRGB(60, 40, 30)
+  Lighting.OutdoorAmbient = Color3.fromRGB(180, 140, 100)
+  local atm = Instance.new("Atmosphere")
+  atm.Density = 0.35
+  atm.Offset = 0.5
+  atm.Color = Color3.fromRGB(255, 200, 140)
+  atm.Decay = Color3.fromRGB(255, 140, 60)
+  atm.Glare = 0.6
+  atm.Haze = 3
+  atm.Parent = Lighting
+end`,
+    pitfalls: [
+      'Setting EnvironmentDiffuseScale and EnvironmentSpecularScale to 0 kills all environment reflections',
+      'Future lighting on mobile = poor FPS. Use ShadowMap for mobile-first games.',
+      'Too much Bloom (Intensity > 1.5) makes everything look washed out',
+      'Forgetting Atmosphere — without it Future lighting looks flat and unrealistic',
+      'Using Fog properties (FogStart/FogEnd) with Atmosphere — they conflict. Pick one.',
+    ],
+  },
+
+  {
+    name: 'Tycoon Architecture',
+    keywords: ['tycoon', 'factory', 'dropper', 'conveyor', 'collector', 'plot', 'rebirth', 'upgrade', 'income', 'button', 'unlock'],
+    snippet: `-- TYCOON ARCHITECTURE (DevForum patterns from top games)
+-- Structure: Plots in Workspace, Scripts in SSS, Remotes in RS
+-- Each player gets a CLONED plot. Never share workspace objects.
+
+-- SERVER: Plot assignment
+local PlotTemplate = game.ServerStorage:WaitForChild("PlotTemplate")
+local Plots = workspace:WaitForChild("Plots")
+local playerPlots = {}
+
+game.Players.PlayerAdded:Connect(function(player)
+  local plot = PlotTemplate:Clone()
+  plot.Name = "Plot_" .. player.UserId
+  plot.Parent = Plots
+  playerPlots[player.UserId] = plot
+  -- Teleport player to their plot
+  local spawn = plot:FindFirstChild("SpawnPad")
+  if spawn then
+    player.CharacterAdded:Connect(function(char)
+      task.wait(0.1)
+      char:PivotTo(spawn.CFrame + Vector3.new(0, 5, 0))
+    end)
+  end
+end)
+
+game.Players.PlayerRemoving:Connect(function(player)
+  local plot = playerPlots[player.UserId]
+  if plot then plot:Destroy() end
+  playerPlots[player.UserId] = nil
+end)
+
+-- DROPPER: Spawns items on interval (server-side)
+local function setupDropper(dropper: Model, plot: Model)
+  local spawnPart = dropper:FindFirstChild("SpawnPoint")
+  local valuePerDrop = dropper:GetAttribute("Value") or 1
+  local interval = dropper:GetAttribute("Interval") or 2
+  task.spawn(function()
+    while plot.Parent do
+      local drop = Instance.new("Part")
+      drop.Size = Vector3.new(1, 1, 1)
+      drop.Material = Enum.Material.Metal
+      drop.BrickColor = BrickColor.new("Bright yellow")
+      drop.CFrame = spawnPart.CFrame
+      drop.Parent = plot:FindFirstChild("Drops")
+      drop:SetAttribute("Value", valuePerDrop)
+      game.Debris:AddItem(drop, 15) -- Auto-cleanup after 15s
+      task.wait(interval)
+    end
+  end)
+end
+
+-- COLLECTOR: Detects drops, adds money (server-side)
+local function setupCollector(collector: BasePart, player: Player)
+  collector.Touched:Connect(function(hit)
+    local value = hit:GetAttribute("Value")
+    if value then
+      -- Add to player's money (use leaderstats or DataStore)
+      local ls = player:FindFirstChild("leaderstats")
+      if ls and ls:FindFirstChild("Money") then
+        ls.Money.Value += value
+      end
+      hit:Destroy()
+    end
+  end)
+end
+
+-- UPGRADE BUTTONS: Increasing cost per level
+-- Cost formula: baseCost * multiplier ^ level
+local function getUpgradeCost(baseCost: number, level: number): number
+  return math.floor(baseCost * 1.5 ^ level)
+end`,
+    pitfalls: [
+      'Not cloning plots — all players editing same workspace objects',
+      'Client-side money tracking (exploitable — always server-side)',
+      'Not using Debris:AddItem on drops — they accumulate and lag the server',
+      'Linear upgrade costs (1.5^ or 2^ exponential feels much better)',
+      'Forgetting BindToClose to save tycoon progress on shutdown',
+    ],
+  },
+
+  {
+    name: 'Simulator Architecture',
+    keywords: ['simulator', 'collect', 'sell pad', 'backpack', 'zone', 'rebirth', 'prestige', 'grinding', 'gems', 'coins', 'mining'],
+    snippet: `-- SIMULATOR ARCHITECTURE (DevForum patterns)
+-- Core loop: Collect → Fill Backpack → Sell → Upgrade → Unlock Zone → Repeat
+
+-- SERVER: Player data module
+local PlayerData = {}
+local function getPlayerData(player: Player)
+  if not PlayerData[player.UserId] then
+    PlayerData[player.UserId] = {
+      backpack = 0,
+      backpackMax = 10,
+      coins = 0,
+      gems = 0,
+      rebirths = 0,
+      zone = 1,
+      multiplier = 1,
+    }
+  end
+  return PlayerData[player.UserId]
+end
+
+-- COLLECTION ZONE: Click/touch to collect
+local function setupCollectionZone(zone: Model, zoneLevel: number)
+  local collectParts = zone:FindFirstChild("Collectibles")
+  if not collectParts then return end
+  for _, part in collectParts:GetChildren() do
+    local cd = Instance.new("ClickDetector")
+    cd.MaxActivationDistance = 15
+    cd.Parent = part
+    cd.MouseClick:Connect(function(player)
+      local data = getPlayerData(player)
+      if data.backpack >= data.backpackMax then return end -- Full!
+      if data.zone < zoneLevel then return end -- Not unlocked
+      local value = zoneLevel * data.multiplier
+      data.backpack += value
+      -- Visual feedback: shrink and respawn
+      part.Transparency = 1
+      task.delay(3, function()
+        part.Transparency = 0
+      end)
+    end)
+  end
+end
+
+-- SELL PAD: Step on to sell backpack contents
+local function setupSellPad(pad: BasePart)
+  pad.Touched:Connect(function(hit)
+    local player = game.Players:GetPlayerFromCharacter(hit.Parent)
+    if not player then return end
+    local data = getPlayerData(player)
+    if data.backpack <= 0 then return end
+    local earned = data.backpack -- 1:1 conversion
+    data.coins += earned
+    data.backpack = 0
+    -- Fire client for sell animation
+    game.ReplicatedStorage.Remotes.SellEffect:FireClient(player, earned)
+  end)
+end
+
+-- ZONE UNLOCKING: Gate by coin cost
+local ZONE_PRICES = {0, 100, 500, 2500, 15000, 100000}
+
+-- REBIRTH: Reset coins/zones, keep pets, gain multiplier
+local function rebirth(player: Player)
+  local data = getPlayerData(player)
+  local rebirthCost = 100000 * (2 ^ data.rebirths) -- Exponential
+  if data.coins < rebirthCost then return end
+  data.rebirths += 1
+  data.multiplier = 1 + (data.rebirths * 0.5) -- +50% per rebirth
+  data.coins = 0
+  data.backpack = 0
+  data.zone = 1
+  -- Keep: pets, gamepasses, gems
+end`,
+    pitfalls: [
+      'Client-side backpack (exploitable — track on server)',
+      'No backpack capacity limit (infinite grinding = no sell pressure)',
+      'Linear zone pricing (exponential creates better progression curve)',
+      'Not rate-limiting collection clicks (macro/autoclicker exploit)',
+      'Rebirth that resets too much (keep pets/passes or players quit)',
+    ],
+  },
+
+  {
+    name: 'Pet System (Egg Hatching + Following)',
+    keywords: ['pet', 'egg', 'hatch', 'rarity', 'legendary', 'mythic', 'follow', 'equip', 'pet system', 'gacha', 'luck'],
+    snippet: `-- PET SYSTEM (DevForum patterns from Pet Simulator-style games)
+-- Weighted rarity roll + egg configuration + pet following
+
+-- CONFIG: Egg definitions (chances MUST sum to TotalChance)
+local EGG_CONFIG = {
+  StarterEgg = {
+    Price = 100,
+    Pets = {
+      {Name = "Dog", Rarity = "Common", Chance = 50},
+      {Name = "Cat", Rarity = "Common", Chance = 30},
+      {Name = "Fox", Rarity = "Rare", Chance = 15},
+      {Name = "Dragon", Rarity = "Legendary", Chance = 4},
+      {Name = "Phoenix", Rarity = "Mythic", Chance = 1},
+    },
+    TotalChance = 100,
+  },
+}
+
+-- WEIGHTED RANDOM: Rolls a pet from an egg
+local function rollPet(eggName: string, luckMultiplier: number?): (string, string)
+  local egg = EGG_CONFIG[eggName]
+  if not egg then return "Dog", "Common" end
+  local luck = luckMultiplier or 1
+  -- Luck boosts rare chances: multiply rare pet weights
+  local adjusted = {}
+  local total = 0
+  for _, pet in ipairs(egg.Pets) do
+    local weight = pet.Chance
+    if pet.Rarity ~= "Common" then
+      weight = weight * luck -- Luck boosts non-common
+    end
+    total += weight
+    table.insert(adjusted, {Name = pet.Name, Rarity = pet.Rarity, Weight = weight})
+  end
+  local roll = math.random() * total
+  for _, pet in ipairs(adjusted) do
+    roll -= pet.Weight
+    if roll <= 0 then
+      return pet.Name, pet.Rarity
+    end
+  end
+  return adjusted[1].Name, adjusted[1].Rarity -- Fallback
+end
+
+-- PET FOLLOWING: Attach pet model behind player
+local function equipPet(player: Player, petName: string)
+  local character = player.Character
+  if not character then return end
+  local hrp = character:FindFirstChild("HumanoidRootPart")
+  if not hrp then return end
+  -- Clone pet model
+  local petModel = game.ReplicatedStorage.Pets:FindFirstChild(petName)
+  if not petModel then return end
+  local pet = petModel:Clone()
+  pet.Name = "EquippedPet"
+  -- Remove old pet
+  local old = character:FindFirstChild("EquippedPet")
+  if old then old:Destroy() end
+  -- AlignPosition: follows player smoothly
+  local att0 = Instance.new("Attachment", pet.PrimaryPart)
+  local att1 = Instance.new("Attachment", hrp)
+  att1.Position = Vector3.new(2, 0, 3) -- Offset: right + behind
+  local align = Instance.new("AlignPosition")
+  align.Attachment0 = att0
+  align.Attachment1 = att1
+  align.MaxForce = 25000
+  align.Responsiveness = 15
+  align.Parent = pet.PrimaryPart
+  -- AlignOrientation: faces same direction as player
+  local ori = Instance.new("AlignOrientation")
+  ori.Attachment0 = att0
+  ori.Attachment1 = att1
+  ori.Responsiveness = 10
+  ori.Parent = pet.PrimaryPart
+  pet.Parent = character
+end`,
+    pitfalls: [
+      'Client-side rarity rolls (exploitable — ALWAYS roll on server)',
+      'Not using weighted random correctly — uniform random ignores rarity weights',
+      'Pet following with CFrame loop instead of AlignPosition (laggy, not physics-based)',
+      'No fallback in rarity roll — floating point precision can skip all pets',
+      'Luck multiplier on Common pets makes them MORE common (only boost rares)',
+    ],
+  },
+
+  {
+    name: 'Anti-Exploit (Server Validation)',
+    keywords: ['exploit', 'cheat', 'hack', 'validate', 'security', 'anti-cheat', 'rate limit', 'sanity', 'trust', 'fireserver'],
+    snippet: `-- ANTI-EXPLOIT PATTERNS (DevForum security best practices)
+-- Rule #1: NEVER trust the client. Validate EVERYTHING on server.
+
+-- RATE LIMITER: Prevent remote event spam
+local rateLimits = {} -- [userId] = {[remoteName] = lastFireTime}
+local RATE_LIMIT = 0.2 -- Minimum seconds between fires
+
+local function isRateLimited(player: Player, remoteName: string): boolean
+  local userId = player.UserId
+  if not rateLimits[userId] then
+    rateLimits[userId] = {}
+  end
+  local lastFire = rateLimits[userId][remoteName] or 0
+  if tick() - lastFire < RATE_LIMIT then
+    return true -- Too fast! Block it.
+  end
+  rateLimits[userId][remoteName] = tick()
+  return false
+end
+
+-- TYPE VALIDATOR: Check argument types before processing
+local function validateArgs(args: {any}, expected: {string}): boolean
+  if #args ~= #expected then return false end
+  for i, arg in ipairs(args) do
+    if typeof(arg) ~= expected[i] then return false end
+  end
+  return true
+end
+
+-- USAGE: Secure remote event handler
+local ShopRemote = game.ReplicatedStorage.Remotes.Purchase
+
+ShopRemote.OnServerEvent:Connect(function(player, itemId, quantity)
+  -- 1. Rate limit
+  if isRateLimited(player, "Purchase") then return end
+  -- 2. Type check
+  if typeof(itemId) ~= "string" then return end
+  if typeof(quantity) ~= "number" then return end
+  -- 3. Sanity check values
+  if quantity < 1 or quantity > 100 then return end
+  if not math.floor(quantity) == quantity then return end -- Must be integer
+  -- 4. Validate item exists
+  local item = ItemDatabase[itemId]
+  if not item then return end
+  -- 5. Server-side balance check (NEVER trust client balance)
+  local playerMoney = getServerMoney(player)
+  local totalCost = item.Price * quantity
+  if playerMoney < totalCost then return end
+  -- 6. Process purchase on server
+  deductMoney(player, totalCost)
+  addToInventory(player, itemId, quantity)
+end)
+
+-- CLEANUP on leave
+game.Players.PlayerRemoving:Connect(function(player)
+  rateLimits[player.UserId] = nil
+end)`,
+    pitfalls: [
+      'Trusting client-sent currency values (exploiter sends 999999 coins)',
+      'No rate limiting — exploiters can fire remotes 1000+ times/second',
+      'typeof() check only — also validate RANGES and CONTENTS',
+      'Forgetting to clean up rate limit tables on PlayerRemoving (memory leak)',
+      'Using RemoteFunction for purchases (client can hang the server — use RemoteEvent)',
+    ],
+  },
+
+  {
+    name: 'Camera Manipulation',
+    keywords: ['camera', 'orbit', 'cinematic', 'first person', 'cutscene', 'spectate', 'zoom', 'follow cam', 'top down', 'isometric'],
+    snippet: `-- CAMERA MANIPULATION (DevForum techniques)
+-- LOCAL SCRIPT ONLY — camera is client-side
+
+local RunService = game:GetService("RunService")
+local camera = workspace.CurrentCamera
+
+-- ORBIT CAMERA: Smooth rotation around a target
+local function orbitCamera(target: Vector3, radius: number, speed: number)
+  camera.CameraType = Enum.CameraType.Scriptable
+  local angle = 0
+  local conn
+  conn = RunService.RenderStepped:Connect(function(dt)
+    angle += speed * dt
+    local offset = Vector3.new(
+      math.cos(angle) * radius,
+      radius * 0.5,
+      math.sin(angle) * radius
+    )
+    camera.CFrame = CFrame.lookAt(target + offset, target)
+  end)
+  return conn -- Store to disconnect later
+end
+
+-- CINEMATIC: Smooth tween between points
+local TweenService = game:GetService("TweenService")
+local function cinematicMove(from: CFrame, to: CFrame, duration: number)
+  camera.CameraType = Enum.CameraType.Scriptable
+  camera.CFrame = from
+  local tween = TweenService:Create(camera, TweenInfo.new(
+    duration, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut
+  ), {CFrame = to})
+  tween:Play()
+  tween.Completed:Wait()
+end
+
+-- FIRST PERSON LOCK: Force camera into head
+local function lockFirstPerson()
+  local player = game.Players.LocalPlayer
+  player.CameraMode = Enum.CameraMode.LockFirstPerson
+  player.CameraMinZoomDistance = 0.5
+  player.CameraMaxZoomDistance = 0.5
+end
+
+-- RESTORE DEFAULT CAMERA
+local function restoreCamera()
+  camera.CameraType = Enum.CameraType.Custom
+  local player = game.Players.LocalPlayer
+  player.CameraMode = Enum.CameraMode.Classic
+  player.CameraMinZoomDistance = 0.5
+  player.CameraMaxZoomDistance = 128
+end
+
+-- TOP-DOWN / ISOMETRIC CAMERA
+local function topDownCamera(target: Vector3, height: number)
+  camera.CameraType = Enum.CameraType.Scriptable
+  local conn
+  conn = RunService.RenderStepped:Connect(function()
+    camera.CFrame = CFrame.lookAt(
+      target + Vector3.new(0, height, 0),
+      target
+    )
+  end)
+  return conn
+end`,
+    pitfalls: [
+      'Forgetting to set CameraType = Scriptable before manipulating (camera fights you)',
+      'Not restoring CameraType = Custom when done (player stuck in scriptable mode)',
+      'Using wait() instead of RenderStepped for camera updates (jittery)',
+      'Not disconnecting RenderStepped connections (memory leak + multiple cameras fighting)',
+      'Setting CFrame every frame without lerp (snaps instead of smooth movement)',
+    ],
+  },
+
+  {
+    name: 'Player Retention Design',
+    keywords: ['retention', 'onboarding', 'first time', 'tutorial', 'daily', 'reward', 'streak', 'hook', 'engagement', 'session'],
+    snippet: `-- PLAYER RETENTION (DevForum + 2025 Roblox Benchmark data)
+-- Median D1 retention on Roblox: ~4%. Top games: 25-40%.
+-- The first 30 seconds decide if a player stays or leaves.
+
+-- RULE 1: Instant reward within 10 seconds of joining
+game.Players.PlayerAdded:Connect(function(player)
+  player.CharacterAdded:Connect(function(char)
+    task.wait(1) -- Let them load in
+    -- Give immediate free item or power
+    local tool = game.ServerStorage.StarterSword:Clone()
+    tool.Parent = player.Backpack
+    -- Show welcome GUI with clear objective
+    game.ReplicatedStorage.Remotes.ShowObjective:FireClient(
+      player, "Defeat 3 slimes to earn your first reward!"
+    )
+  end)
+end)
+
+-- RULE 2: Mini-goal completable in 60 seconds
+-- Don't dump players into an empty world. Give them a TASK.
+-- Examples: "Collect 5 coins", "Reach the checkpoint", "Open your first egg"
+
+-- RULE 3: Daily login rewards (escalating)
+local DAILY_REWARDS = {
+  {day = 1, reward = "100 Coins"},
+  {day = 2, reward = "200 Coins"},
+  {day = 3, reward = "1 Free Egg"},
+  {day = 4, reward = "500 Coins"},
+  {day = 5, reward = "1 Rare Pet"},
+  {day = 6, reward = "1000 Coins"},
+  {day = 7, reward = "1 Legendary Egg"},
+}
+
+-- RULE 4: Session length hooks
+-- At 5 min: "You unlocked a bonus area!"
+-- At 15 min: "Streak bonus: 2x coins for 5 minutes"
+-- At 30 min: "Daily challenge complete — claim reward"
+
+-- RULE 5: Loss aversion (they LOSE something by leaving)
+-- Timed events: "Double XP ends in 10:00"
+-- Growing resources: "Your farm produces while you play"
+-- Social: "Your friend just beat your high score!"
+
+-- ANTI-PATTERNS (what kills retention):
+-- Long loading screens (>5 seconds = 30% bounce)
+-- No clear objective (player wanders, gets bored, leaves)
+-- Difficulty spike too early (die 3 times in first minute = quit)
+-- Pay-to-progress gates in first 10 minutes (feels unfair)`,
+    pitfalls: [
+      'No objective shown in first 10 seconds (players leave confused)',
+      'Tutorial that takes longer than 2 minutes (players skip or quit)',
+      'Punishing death too harshly early on (lose all progress = rage quit)',
+      'Loading screen longer than 5 seconds without progress indicator',
+      'Daily rewards that reset on miss (streaks should be forgiving — 1 day grace)',
+    ],
+  },
+
+  {
+    name: 'Module Organization (Service Pattern)',
+    keywords: ['module', 'service', 'organize', 'require', 'structure', 'controller', 'manager', 'singleton', 'clean code'],
+    snippet: `-- MODULE ORGANIZATION (DevForum best practices)
+-- Pattern: Each system is a ModuleScript returning a table of functions.
+-- Put shared modules in ReplicatedStorage/Modules/
+-- Put server-only modules in ServerStorage/Modules/
+
+-- ReplicatedStorage/Modules/CurrencyModule.lua (shared types + constants)
+local CurrencyModule = {}
+
+CurrencyModule.CURRENCIES = {
+  Coins = {icon = "rbxassetid://123", color = Color3.fromRGB(255, 215, 0)},
+  Gems = {icon = "rbxassetid://456", color = Color3.fromRGB(0, 200, 255)},
+}
+
+function CurrencyModule.Format(amount: number): string
+  if amount >= 1e9 then return string.format("%.1fB", amount / 1e9)
+  elseif amount >= 1e6 then return string.format("%.1fM", amount / 1e6)
+  elseif amount >= 1e3 then return string.format("%.1fK", amount / 1e3)
+  end
+  return tostring(math.floor(amount))
+end
+
+return CurrencyModule
+
+-- ServerStorage/Modules/DataService.lua (server-only)
+-- Pattern: Init once, expose functions, never expose raw DataStore
+local DataService = {}
+local cache = {} -- In-memory cache per player
+
+function DataService.Init()
+  -- Called once from main server script
+  game.Players.PlayerAdded:Connect(function(p)
+    DataService.Load(p)
+  end)
+  game.Players.PlayerRemoving:Connect(function(p)
+    DataService.Save(p)
+    cache[p.UserId] = nil
+  end)
+  game:BindToClose(function()
+    for _, player in game.Players:GetPlayers() do
+      DataService.Save(player)
+    end
+  end)
+end
+
+function DataService.Get(player: Player, key: string): any
+  return cache[player.UserId] and cache[player.UserId][key]
+end
+
+function DataService.Set(player: Player, key: string, value: any)
+  if cache[player.UserId] then
+    cache[player.UserId][key] = value
+  end
+end
+
+return DataService`,
+    pitfalls: [
+      'Using _G or shared for globals (breaks when load order changes — use require())',
+      'Circular dependencies between modules (A requires B which requires A — use events)',
+      'Not caching require() results (Roblox caches automatically but pattern matters)',
+      'Giant monolith scripts instead of modules (1000+ line scripts are unmaintainable)',
+      'Putting server logic in ReplicatedStorage (clients can read it — use ServerStorage)',
+    ],
+  },
+
+  {
+    name: 'Vehicle Physics (Constraint-Based)',
+    keywords: ['vehicle', 'car', 'drive', 'seat', 'vehicleseat', 'suspension', 'wheel', 'steering', 'race', 'speed', 'boost'],
+    snippet: `-- VEHICLE PHYSICS (DevForum raycast + constraint approach)
+-- Modern approach: CylindricalConstraint for wheels, Spring for suspension
+-- VehicleSeat for input, raycasts for ground detection
+
+local RunService = game:GetService("RunService")
+
+-- SIMPLE VEHICLE SETUP (VehicleSeat + constraints)
+local function setupVehicle(carModel: Model)
+  local body = carModel:FindFirstChild("Body")
+  local seat = carModel:FindFirstChild("VehicleSeat") :: VehicleSeat
+  if not body or not seat then return end
+
+  seat.MaxSpeed = 80
+  seat.Torque = 20
+  seat.TurnSpeed = 4
+
+  -- Boost pad detection
+  local boosted = false
+  body.Touched:Connect(function(hit)
+    if hit.Name == "BoostPad" and not boosted then
+      boosted = true
+      seat.MaxSpeed = 160
+      task.delay(3, function()
+        seat.MaxSpeed = 80
+        boosted = false
+      end)
+    end
+  end)
+end
+
+-- RAYCAST SUSPENSION (advanced — better than SpringConstraint for realism)
+local STIFFNESS = 2500
+local DAMPING = 250
+local REST_LENGTH = 2
+local WHEEL_RADIUS = 1.5
+
+local function getVelocityAtPoint(part: BasePart, worldPoint: Vector3): Vector3
+  return part.AssemblyLinearVelocity +
+    part.AssemblyAngularVelocity:Cross(worldPoint - part.Position)
+end
+
+local function updateSuspension(body: BasePart, wheelAttachment: Attachment, springForce: VectorForce)
+  local down = -wheelAttachment.WorldCFrame.UpVector
+  local start = wheelAttachment.WorldPosition
+  local params = RaycastParams.new()
+  params.FilterDescendantsInstances = {body.Parent}
+  params.RespectCanCollide = true
+
+  local result = workspace:Raycast(start, down * (REST_LENGTH + WHEEL_RADIUS), params)
+  if result then
+    local distance = result.Distance - WHEEL_RADIUS
+    local displacement = REST_LENGTH - distance
+    local velocity = getVelocityAtPoint(body, wheelAttachment.WorldPosition)
+    local vertSpeed = body.CFrame.UpVector:Dot(velocity)
+    local force = (STIFFNESS * displacement) - (DAMPING * vertSpeed)
+    springForce.Force = Vector3.new(0, math.max(force, 0), 0)
+  else
+    springForce.Force = Vector3.zero
+  end
+end
+
+-- CHECKPOINT SYSTEM (for racing)
+local function setupCheckpoints(checkpoints: Folder)
+  local playerProgress = {} -- [userId] = lastCheckpoint
+  for i, cp in ipairs(checkpoints:GetChildren()) do
+    cp.Touched:Connect(function(hit)
+      local player = game.Players:GetPlayerFromCharacter(hit.Parent)
+      if not player then return end
+      local last = playerProgress[player.UserId] or 0
+      if i == last + 1 then -- Must hit in order
+        playerProgress[player.UserId] = i
+        if i == #checkpoints:GetChildren() then
+          -- Lap complete!
+        end
+      end
+    end)
+  end
+end`,
+    pitfalls: [
+      'Using BodyVelocity for vehicles (deprecated — use VectorForce or LinearVelocity)',
+      'VehicleSeat MaxSpeed too high without suspension (car flips on bumps)',
+      'Not filtering the car model from raycasts (suspension detects own parts)',
+      'Checkpoints that can be skipped (always validate sequential order)',
+      'Client-side speed boosts (exploitable — validate on server)',
+    ],
+  },
+
+  {
+    name: 'DataStore with Session Locking (ProfileStore Pattern)',
+    keywords: ['profileservice', 'profilestore', 'session lock', 'save data', 'load data', 'data loss', 'autosave', 'bindtoclose'],
+    snippet: `-- SESSION-LOCKED DATASTORE (ProfileStore/ProfileService pattern)
+-- Prevents data duplication when player hops between servers fast.
+-- Use ProfileStore module for production. This shows the PATTERN.
+
+local DataStoreService = game:GetService("DataStoreService")
+local store = DataStoreService:GetDataStore("PlayerData_v2")
+local JOB_ID = game.JobId
+local AUTOSAVE_INTERVAL = 300 -- 5 minutes (ProfileStore default)
+local sessions = {} -- [userId] = {data, lastSave}
+
+local DEFAULT_DATA = {
+  Coins = 0, Gems = 0, Level = 1, XP = 0,
+  Inventory = {}, Pets = {}, Settings = {},
+}
+
+local function deepCopy(t)
+  if type(t) ~= "table" then return t end
+  local copy = {}
+  for k, v in pairs(t) do copy[k] = deepCopy(v) end
+  return copy
+end
+
+-- LOAD with session lock claim
+local function loadPlayer(player: Player)
+  local key = "Player_" .. player.UserId
+  local data
+  local success, err = pcall(function()
+    data = store:UpdateAsync(key, function(old)
+      if old == nil then
+        local new = deepCopy(DEFAULT_DATA)
+        new._sessionLock = JOB_ID
+        new._lockTime = os.time()
+        return new
+      end
+      -- Check if another server holds the lock
+      if old._sessionLock and old._sessionLock ~= JOB_ID then
+        local elapsed = os.time() - (old._lockTime or 0)
+        if elapsed < 1800 then -- 30 min lease
+          return nil -- Abort! Other server owns this data
+        end
+      end
+      old._sessionLock = JOB_ID
+      old._lockTime = os.time()
+      return old
+    end)
+  end)
+  if success and data then
+    sessions[player.UserId] = {data = data, lastSave = tick()}
+  else
+    warn("Failed to load data for", player.Name, err)
+    player:Kick("Data failed to load. Please rejoin.")
+  end
+end
+
+-- SAVE with session lock release
+local function savePlayer(player: Player, releasing: boolean)
+  local session = sessions[player.UserId]
+  if not session then return end
+  local key = "Player_" .. player.UserId
+  pcall(function()
+    store:UpdateAsync(key, function(old)
+      if old and old._sessionLock ~= JOB_ID then
+        return nil -- Another server claimed it — don't overwrite
+      end
+      local toSave = session.data
+      if releasing then
+        toSave._sessionLock = nil
+        toSave._lockTime = nil
+      else
+        toSave._lockTime = os.time()
+      end
+      return toSave
+    end)
+  end)
+  session.lastSave = tick()
+end
+
+-- AUTOSAVE loop
+task.spawn(function()
+  while true do
+    task.wait(AUTOSAVE_INTERVAL)
+    for _, player in game.Players:GetPlayers() do
+      savePlayer(player, false)
+    end
+  end
+end)
+
+game.Players.PlayerAdded:Connect(loadPlayer)
+game.Players.PlayerRemoving:Connect(function(p)
+  savePlayer(p, true)
+  sessions[p.UserId] = nil
+end)
+game:BindToClose(function()
+  for _, p in game.Players:GetPlayers() do
+    savePlayer(p, true)
+  end
+end)`,
+    pitfalls: [
+      'Using GetAsync + SetAsync (race condition — ALWAYS use UpdateAsync for locks)',
+      'No BindToClose (data lost when server shuts down)',
+      'Autosave interval too short (DataStore rate limits: 60+n*10 req/min)',
+      'Not kicking player when data fails to load (they play with default data and overwrite)',
+      'Forgetting to release session lock on PlayerRemoving (data stuck for 30 min)',
+    ],
+  },
+
+  {
+    name: 'Obby Architecture',
+    keywords: ['obby', 'obstacle', 'checkpoint', 'stage', 'kill brick', 'spawn', 'parkour', 'jump', 'difficulty'],
+    snippet: `-- OBBY ARCHITECTURE (DevForum patterns)
+-- Checkpoints save per-player. Kill bricks respawn at last checkpoint.
+
+local DataStoreService = game:GetService("DataStoreService")
+local stageStore = DataStoreService:GetDataStore("ObbyStages")
+local playerStages = {} -- [userId] = currentStage
+
+-- CHECKPOINT SYSTEM
+local Stages = workspace:WaitForChild("Stages") -- Folder of numbered stages
+
+game.Players.PlayerAdded:Connect(function(player)
+  -- Load saved stage
+  local success, stage = pcall(function()
+    return stageStore:GetAsync("Stage_" .. player.UserId)
+  end)
+  playerStages[player.UserId] = (success and stage) or 1
+
+  -- Create leaderstats
+  local ls = Instance.new("Folder")
+  ls.Name = "leaderstats"
+  ls.Parent = player
+  local stageVal = Instance.new("IntValue")
+  stageVal.Name = "Stage"
+  stageVal.Value = playerStages[player.UserId]
+  stageVal.Parent = ls
+
+  -- Spawn at saved stage
+  player.CharacterAdded:Connect(function(char)
+    task.wait(0.2)
+    local stagePart = Stages:FindFirstChild(tostring(playerStages[player.UserId]))
+    if stagePart then
+      char:PivotTo(stagePart.CFrame + Vector3.new(0, 5, 0))
+    end
+  end)
+end)
+
+-- CHECKPOINT TOUCHED
+for _, stage in Stages:GetChildren() do
+  local stageNum = tonumber(stage.Name)
+  if not stageNum then continue end
+  stage.Touched:Connect(function(hit)
+    local player = game.Players:GetPlayerFromCharacter(hit.Parent)
+    if not player then return end
+    local current = playerStages[player.UserId] or 1
+    if stageNum == current + 1 then -- Must be NEXT stage
+      playerStages[player.UserId] = stageNum
+      local ls = player:FindFirstChild("leaderstats")
+      if ls then ls.Stage.Value = stageNum end
+      -- Save periodically (not every checkpoint — batch saves)
+    end
+  end)
+end
+
+-- KILL BRICKS: Respawn at checkpoint
+local function setupKillBrick(part: BasePart)
+  part.Touched:Connect(function(hit)
+    local humanoid = hit.Parent:FindFirstChild("Humanoid") :: Humanoid?
+    if humanoid and humanoid.Health > 0 then
+      humanoid.Health = 0 -- Character respawns at checkpoint
+    end
+  end)
+end
+
+-- SPEEDRUN TIMER (client-side display, server-side validation)
+-- Start timer when player passes stage 1, stop at final stage
+-- Validate time server-side: if completionTime < minimumPossibleTime then reject`,
+    pitfalls: [
+      'Saving every single checkpoint touch (DataStore rate limited — batch saves)',
+      'Kill bricks that detect non-character parts (check for Humanoid first)',
+      'No sequential checkpoint validation (players can skip to end)',
+      'Client-side speedrun timer (exploitable — validate on server)',
+      'Difficulty that spikes too fast (ramp up gradually or players quit at stage 5)',
+    ],
+  },
+
+  {
+    name: 'RPG Combat & Quest System',
+    keywords: ['rpg', 'combat', 'quest', 'stats', 'damage', 'health', 'xp', 'level up', 'inventory', 'npc', 'boss', 'skill'],
+    snippet: `-- RPG ARCHITECTURE (DevForum patterns)
+-- Stats, damage formula, quest state machine, inventory
+
+-- STAT SYSTEM (server-side)
+local function createStats(player: Player)
+  return {
+    Level = 1, XP = 0, XPToLevel = 100,
+    HP = 100, MaxHP = 100,
+    ATK = 10, DEF = 5, SPD = 10,
+  }
+end
+
+-- DAMAGE FORMULA (balanced, accounts for DEF)
+local function calculateDamage(attackerATK: number, defenderDEF: number): number
+  local baseDamage = attackerATK - (defenderDEF * 0.4)
+  local variance = baseDamage * 0.15 -- +/- 15% random
+  local finalDamage = baseDamage + (math.random() * 2 - 1) * variance
+  return math.max(math.floor(finalDamage), 1) -- Minimum 1 damage
+end
+
+-- XP & LEVEL UP
+local function awardXP(playerData, amount: number)
+  playerData.XP += amount
+  while playerData.XP >= playerData.XPToLevel do
+    playerData.XP -= playerData.XPToLevel
+    playerData.Level += 1
+    playerData.XPToLevel = math.floor(100 * 1.3 ^ playerData.Level)
+    -- Stat gains per level
+    playerData.MaxHP += 10
+    playerData.HP = playerData.MaxHP
+    playerData.ATK += 2
+    playerData.DEF += 1
+  end
+end
+
+-- QUEST STATE MACHINE
+export type QuestState = "NotStarted" | "Active" | "TurnIn" | "Completed"
+local function createQuest(id: string, name: string, goal: number)
+  return {
+    Id = id, Name = name,
+    State = "NotStarted" :: QuestState,
+    Progress = 0, Goal = goal,
+    Rewards = {XP = 50, Coins = 100},
+  }
+end
+
+local function updateQuest(quest, progress: number)
+  if quest.State ~= "Active" then return end
+  quest.Progress = math.min(quest.Progress + progress, quest.Goal)
+  if quest.Progress >= quest.Goal then
+    quest.State = "TurnIn" -- Player must talk to NPC to complete
+  end
+end
+
+-- NPC DIALOGUE (simple branching)
+local DIALOGUES = {
+  QuestGiver1 = {
+    NotStarted = {
+      text = "The forest is overrun with slimes! Can you defeat 5?",
+      options = {
+        {label = "Accept", action = "StartQuest", questId = "slime_hunt"},
+        {label = "Not now", action = "Close"},
+      },
+    },
+    TurnIn = {
+      text = "You did it! Here is your reward.",
+      options = {{label = "Claim", action = "CompleteQuest", questId = "slime_hunt"}},
+    },
+  },
+}`,
+    pitfalls: [
+      'Client-side damage calculation (exploiter one-shots everything)',
+      'No damage variance (combat feels robotic without randomness)',
+      'XP formula that makes leveling take same time every level (should be exponential)',
+      'Quest progress tracked on client (exploiter completes instantly)',
+      'NPC dialogue without state check (player can turn in quest they never started)',
+    ],
+  },
 ]
 
 // Merge DevForum knowledge into main array
