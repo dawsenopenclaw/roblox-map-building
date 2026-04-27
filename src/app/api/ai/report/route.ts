@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
+import { deliverWebhook } from '@/lib/webhook-retry'
 
 const reportSchema = z.object({
   feedback: z.string().min(3).max(1000),
@@ -93,15 +94,18 @@ export async function POST(req: NextRequest) {
         footer: { text: `ForjeGames Bug Report${userId ? ` | ${userId}` : ''}` },
       }
 
-      await fetch(`https://discord.com/api/v10/channels/${BUG_CHANNEL_ID}/messages`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bot ${token}`,
-          'Content-Type': 'application/json',
-        },
+      const discordUrl = `https://discord.com/api/v10/channels/${BUG_CHANNEL_ID}/messages`
+      const result = await deliverWebhook({
+        url: discordUrl,
         body: JSON.stringify({ embeds: [embed] }),
+        headers: { Authorization: `Bot ${token}` },
+        source: 'discord',
       })
-      console.log(`[Report] Posted to Discord #beta-alpha-bugs: "${feedback.slice(0, 60)}"`)
+      if (result.success) {
+        console.log(`[Report] Posted to Discord #beta-alpha-bugs: "${feedback.slice(0, 60)}"`)
+      } else {
+        console.warn(`[Report] Discord delivery queued for retry id=${result.id}`)
+      }
     } catch (discordErr) {
       console.warn('[Report] Discord post failed:', discordErr instanceof Error ? discordErr.message : discordErr)
     }

@@ -320,10 +320,14 @@ export default clerkMiddleware(async (auth, req) => {
       return res
     }
 
+    // ── Request correlation ID — unique per request for debugging/support ──────
+    const requestId = request.headers.get('x-request-id') || crypto.randomUUID()
+
     // ── Inject x-pathname header so Server Component layouts can read the
     //    current path without relying on searchParams or unstable headers. ──────
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set('x-pathname', request.nextUrl.pathname)
+    requestHeaders.set('x-request-id', requestId)
 
     // ── 0. Maintenance mode (runs before geo and auth checks) ──────────────────
     const maintenanceActive = process.env.MAINTENANCE_MODE === 'true'
@@ -482,6 +486,8 @@ export default clerkMiddleware(async (auth, req) => {
     const res = NextResponse.next({ request: { headers: requestHeaders } })
     const corsHeaders = getCorsHeaders(request)
     Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v))
+    // Correlation ID — returned in every response for support ticket debugging
+    res.headers.set('x-request-id', requestId)
     return res
   } catch (err) {
     // ── Catch-all: middleware must never crash the app ─────────────────────────

@@ -47,7 +47,12 @@
     "src/components/PushNotificationManager.tsx",
     "src/app/api/notifications/subscribe/route.ts",
     "src/lib/content-moderation.ts",
-    "src/lib/content-moderation-words.ts"
+    "src/lib/content-moderation-words.ts",
+    "src/lib/webhook-retry.ts",
+    "src/app/api/admin/webhooks/route.ts",
+    "src/app/api/crons/webhook-retry/route.ts",
+    "src/app/api/ai/report/route.ts",
+    "src/app/api/ai/suggest/route.ts"
   ],
   "exclude": ["node_modules", ".next"]
 }

@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
+import { deliverWebhook } from '@/lib/webhook-retry'
 
 const suggestSchema = z.object({
   suggestion: z.string().min(3).max(500),
@@ -96,9 +97,9 @@ export async function POST(req: NextRequest) {
 
         const category = detectSuggestionCategory(ruleText)
         const SUGGESTIONS_CHANNEL = '1497113526437810258'
-        await fetch(`https://discord.com/api/v10/channels/${SUGGESTIONS_CHANNEL}/messages`, {
-          method: 'POST',
-          headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
+        const discordUrl = `https://discord.com/api/v10/channels/${SUGGESTIONS_CHANNEL}/messages`
+        await deliverWebhook({
+          url: discordUrl,
           body: JSON.stringify({
             embeds: [{
               title: 'Teach the AI — User Suggestion',
@@ -114,6 +115,8 @@ export async function POST(req: NextRequest) {
               footer: { text: 'ForjeGames AI Learning' },
             }],
           }),
+          headers: { Authorization: `Bot ${token}` },
+          source: 'discord',
         })
       } catch (discordErr) {
         console.warn('[Suggest] Discord post failed:', discordErr instanceof Error ? discordErr.message : discordErr)

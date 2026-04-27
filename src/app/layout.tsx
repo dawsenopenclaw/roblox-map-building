@@ -160,8 +160,12 @@ export default async function RootLayout({
   const locale = await getLocale()
   const messages = await getMessages()
 
+  // RTL support — Arabic, Hebrew, Urdu, Farsi, etc.
+  const RTL_LOCALES = new Set(['ar', 'he', 'ur', 'fa'])
+  const dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr'
+
   return (
-    <html lang={locale} className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+    <html lang={locale} dir={dir} className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
         {/* viewport + theme-color are emitted automatically via the Next.js
             `viewport` export above; no need to duplicate them here. */}

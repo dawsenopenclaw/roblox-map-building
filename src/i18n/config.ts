@@ -1,4 +1,4 @@
-export const locales = ['en', 'es', 'pt-BR', 'fr', 'de', 'ja', 'ko', 'zh-CN', 'ru', 'it'] as const
+export const locales = ['en', 'es', 'pt-BR', 'fr', 'de', 'ja', 'ko', 'zh-CN', 'ru', 'it', 'ar', 'tr', 'hi'] as const
 export type Locale = (typeof locales)[number]
 export const defaultLocale: Locale = 'en'
 
@@ -13,6 +13,9 @@ export const localeNames: Record<Locale, string> = {
   'zh-CN': '中文 (简体)',
   ru: 'Русский',
   it: 'Italiano',
+  ar: 'العربية',
+  tr: 'Türkçe',
+  hi: 'हिन्दी',
 }
 
 /**
@@ -31,7 +34,13 @@ export const localeFlags: Record<Locale, string> = {
   'zh-CN': '🇨🇳',
   ru: '🇷🇺',
   it: '🇮🇹',
+  ar: '🇸🇦',
+  tr: '🇹🇷',
+  hi: '🇮🇳',
 }
+
+/** RTL locales that require dir="rtl" on the html element */
+export const RTL_LOCALES = new Set<Locale>(['ar'])
 
 export const LOCALE_COOKIE_NAME = 'forje_locale'
 
