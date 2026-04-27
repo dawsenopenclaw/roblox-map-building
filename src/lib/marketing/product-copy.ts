@@ -313,7 +313,7 @@ const thumbnailStudio: ProductCopy = {
     },
     {
       q: 'Do you offer refunds?',
-      a: 'Yes. 14-day money-back on every paid plan, no questions asked.',
+      a: 'Yes. 3-day free trial on every paid plan, plus 30-day money-back guarantee, no questions asked.',
     },
   ],
   ctaBottom: {

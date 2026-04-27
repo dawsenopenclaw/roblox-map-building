@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { playCompletionSound } from '@/lib/sounds'
+import { captureClientEvent } from '@/lib/analytics-client'
 import {
   createCheckpoint as createCp,
   restoreCheckpoint as restoreCp,
@@ -1050,6 +1051,8 @@ export function useChat(options: UseChatOptions = {}) {
       if (!isAutoRetryRef.current) {
         retryCountRef.current = 0
         lastBuildPromptRef.current = trimmed
+        // ── Funnel: track build_sent for real user messages ──
+        try { captureClientEvent('build_sent', { ai_mode: aiMode, prompt_length: trimmed.length }) } catch { /* analytics never breaks the app */ }
       }
       isAutoRetryRef.current = false
 

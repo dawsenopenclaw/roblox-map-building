@@ -37,7 +37,7 @@ const PLANS = [
     tagline: '50K tokens + priority AI',
     highlight: true,
     badge: 'Recommended',
-    cta: 'Start 14-day trial',
+    cta: 'Start 3-day trial',
     features: [
       '50,000 AI tokens / mo',
       'Unlimited projects',
@@ -55,7 +55,7 @@ const PLANS = [
     period: '/mo',
     tagline: '200K tokens + team + API',
     highlight: false,
-    cta: 'Start 14-day trial',
+    cta: 'Start 3-day trial',
     features: [
       '200,000 AI tokens / mo',
       'Team collaboration',

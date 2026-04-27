@@ -24,6 +24,9 @@ export type AnalyticsEvent =
   | 'referral_link_shared' | 'referral_converted'
   | 'achievement_unlocked' | 'streak_milestone_reached'
   | 'search_performed' | 'error_encountered' | 'feature_discovery'
+  // ── Funnel events (signup → editor → build → pay) ──
+  | 'editor_opened' | 'build_sent' | 'build_success' | 'second_build'
+  | 'payment_started' | 'payment_completed'
 
 export interface UserContext {
   tier?: string

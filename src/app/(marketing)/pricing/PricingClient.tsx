@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import CustomPricingCalculator from '@/components/pricing/CustomPricingCalculator'
 import RobuxPayment from '@/components/billing/RobuxPayment'
+import { captureClientEvent } from '@/lib/analytics-client'
 
 // ---------------------------------------------------------------------------
 // Billing config — which price IDs are live
@@ -56,15 +57,13 @@ const EMPTY_CONFIG: BillingConfig = {
 // Data
 // ---------------------------------------------------------------------------
 
-// Tier prices — competitive with Rebirth ($8.99) and Lemonade ($20)
-// Target audience: Roblox creators 13-22. Price for pocket money / allowance.
-// Strategy: low entry ($9.99), value at $19.99, premium at $49.99
+// Tier prices — premium positioning (we're the only all-in-one platform)
+// 3-day free trial → convert fast, show value immediately
 const ANNUAL_TOTALS = {
-  STARTER: 83.88,    // $6.99/mo annual = $83.88/year
-  BUILDER: 119.88,   // $9.99/mo annual = $119.88/year
-  CREATOR: 191.88,   // $15.99/mo annual = $191.88/year
-  PRO: 419.88,       // $34.99/mo annual = $419.88/year
-  STUDIO:  599.88,   // $49.99/mo annual = $599.88/year
+  BUILDER: 240.00,   // $20/mo annual = $240/year (20% off)
+  CREATOR: 480.00,   // $40/mo annual = $480/year (20% off)
+  PRO: 1440.00,      // $120/mo annual = $1440/year (20% off)
+  STUDIO:  1920.00,  // $160/mo annual = $1920/year (20% off)
 }
 
 const TIERS = [
@@ -72,17 +71,17 @@ const TIERS = [
     key: 'BUILDER',
     name: 'Builder',
     icon: Hammer,
-    priceMonthly: 9.99,
-    priceYearly: 6.99,
+    priceMonthly: 25,
+    priceYearly: 20,
     yearlyTotal: ANNUAL_TOTALS.BUILDER,
-    tagline: 'Perfect for getting started',
+    tagline: 'For creators getting started',
     highlight: false,
     badge: null,
     cta: 'Start Building',
     ctaHref: '/sign-up?plan=builder',
     features: [
-      '10,000 tokens / month',
-      '30 builds per day',
+      '15,000 tokens / month',
+      '50 builds per day',
       'All AI build modes',
       'UI builder',
       'Game system templates',
@@ -94,22 +93,22 @@ const TIERS = [
     key: 'CREATOR',
     name: 'Creator',
     icon: Rocket,
-    priceMonthly: 19.99,
-    priceYearly: 15.99,
+    priceMonthly: 50,
+    priceYearly: 40,
     yearlyTotal: ANNUAL_TOTALS.CREATOR,
-    tagline: 'For creators who ship games',
+    tagline: 'For serious creators who ship',
     highlight: true,
     badge: 'Most Popular',
     cta: 'Get Creator',
     ctaHref: '/sign-up?plan=creator',
     features: [
-      '30,000 tokens / month',
+      '40,000 tokens / month',
       'Unlimited builds',
       'All Builder features',
       '3D mesh generation',
       'Image to map',
       'Voice input',
-      'Marketplace access',
+      'Marketplace access + selling',
       'Team collaboration (3)',
     ],
   },
@@ -117,12 +116,12 @@ const TIERS = [
     key: 'PRO',
     name: 'Pro',
     icon: Crown,
-    priceMonthly: 49.99,
-    priceYearly: 34.99,
+    priceMonthly: 150,
+    priceYearly: 120,
     yearlyTotal: ANNUAL_TOTALS.PRO,
-    tagline: 'For power users and teams',
+    tagline: 'For power users and small teams',
     highlight: false,
-    badge: 'Best Value',
+    badge: null,
     cta: 'Go Pro',
     ctaHref: '/sign-up?plan=pro',
     features: [
@@ -140,16 +139,16 @@ const TIERS = [
     key: 'STUDIO',
     name: 'Studio',
     icon: Building2,
-    priceMonthly: 99.99,
-    priceYearly: 49.99,
+    priceMonthly: 200,
+    priceYearly: 160,
     yearlyTotal: ANNUAL_TOTALS.STUDIO,
-    tagline: 'For studios & agencies',
+    tagline: 'For agencies & game studios',
     highlight: false,
     badge: null,
     cta: 'Get Studio',
     ctaHref: '/sign-up?plan=studio',
     features: [
-      '250,000 tokens / month',
+      '200,000 tokens / month',
       'Unlimited everything',
       'All Pro features',
       'Full API access + SDKs',
@@ -163,7 +162,7 @@ const TIERS = [
 
 // Feature matrix for comparison table (6 tiers)
 const COMPARE_FEATURES = [
-  { label: 'Tokens / month',     builder: '10,000',    creator: '30,000',    pro: '100,000',   studio: '250,000'   },
+  { label: 'Tokens / month',     builder: '15,000',    creator: '40,000',    pro: '100,000',   studio: '200,000'   },
   { label: 'Daily Builds',       builder: '30',        creator: 'Unlimited', pro: 'Unlimited', studio: 'Unlimited' },
   { label: 'Voice Commands',     builder: true,        creator: true,        pro: true,        studio: true        },
   { label: 'Image-to-Map',       builder: false,       creator: true,        pro: true,        studio: true        },
@@ -181,23 +180,23 @@ const TOKEN_PACKS = [
   {
     name: 'Boost',
     tokens: '5,000',
-    price: '$4.99',
+    price: '$10',
     badge: null,
     description: 'Quick top-up when you need it',
   },
   {
     name: 'Builder Pack',
-    tokens: '20,000',
-    price: '$14.99',
+    tokens: '25,000',
+    price: '$40',
     badge: 'Best Value',
-    description: 'Best price per token',
+    description: 'Best price per token — save 20%',
   },
   {
     name: 'Studio Pack',
-    tokens: '75,000',
-    price: '$39.99',
+    tokens: '100,000',
+    price: '$120',
     badge: 'Max Power',
-    description: 'For studios shipping at scale',
+    description: 'For studios shipping at scale — save 40%',
   },
 ]
 
@@ -208,7 +207,7 @@ const FAQ = [
   },
   {
     q: 'How does annual billing work?',
-    a: 'Annual billing charges you once per year at a 30% discount vs. monthly. Builder is billed at $83.88/yr ($6.99/mo), Creator at $191.88/yr ($15.99/mo), Pro at $419.88/yr ($34.99/mo). Switch billing cycles anytime from account settings.',
+    a: 'Annual billing charges you once per year at a 20% discount vs. monthly. Builder is billed at $240/yr ($20/mo), Creator at $480/yr ($40/mo), Studio at $1,920/yr ($160/mo). Switch billing cycles anytime from account settings.',
   },
   {
     q: 'Can I buy extra tokens without upgrading my plan?',
@@ -762,6 +761,8 @@ function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, p
   // Other paid tiers — checkout
   async function handleCheckout() {
     setLoading(true)
+    // ── Funnel: track payment_started ──
+    try { captureClientEvent('payment_started', { tier: tierKey, annual }) } catch { /* analytics never breaks the app */ }
     try {
       const result = await postCheckout({
         type: 'subscription',

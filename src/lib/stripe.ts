@@ -72,7 +72,7 @@ export async function createSubscriptionCheckoutSession({
       cancel_url: cancelUrl,
       subscription_data: {
         metadata: { userId },
-        trial_period_days: 14,
+        trial_period_days: 3,
       },
       automatic_tax: { enabled: true },
       customer_update: { address: 'auto' },
@@ -171,7 +171,7 @@ export async function createCustomPlanCheckoutSession({
       cancel_url: cancelUrl,
       subscription_data: {
         metadata: { userId, plan: 'custom', monthlyTokens: String(monthlyTokens) },
-        trial_period_days: 14,
+        trial_period_days: 3,
       },
       automatic_tax: { enabled: true },
       customer_update: { address: 'auto' },

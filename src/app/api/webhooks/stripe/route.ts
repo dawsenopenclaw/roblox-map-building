@@ -18,6 +18,7 @@ import {
 } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
 import { Prisma } from '@prisma/client'
+import { getPostHogClient } from '@/lib/posthog'
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -89,6 +90,25 @@ export async function POST(req: NextRequest) {
         // Only process fully paid sessions — free/coupon sessions can complete with payment_status 'no_payment_required'
         // but should not trigger token grants or donations unless money actually changed hands.
         const isPaid = session.payment_status === 'paid'
+
+        // ── Funnel: track payment_completed server-side ──
+        if (isPaid) {
+          try {
+            const posthog = getPostHogClient()
+            posthog?.capture({
+              distinctId: userId,
+              event: 'payment_completed',
+              properties: {
+                checkout_mode: session.mode,
+                amount_total: session.amount_total,
+                currency: session.currency,
+                tier: session.metadata?.tier,
+                type: session.metadata?.type,
+              },
+            })
+            // flushAt:1 in posthog config means events send immediately
+          } catch { /* analytics never breaks the app */ }
+        }
 
         // Subscription checkout completed — log it so missing webhook events are visible.
         // Tier activation is handled by customer.subscription.created/updated which Stripe

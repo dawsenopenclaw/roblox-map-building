@@ -26,7 +26,7 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import { EditorTopBar } from './components/EditorTopBar'
 import { WelcomeHero } from './components/WelcomeHero'
 import { LeftDrawer } from './components/LeftDrawer'
-import { OnboardingOverlay, useOnboardingOverlay } from './components/OnboardingOverlay'
+import { OnboardingOverlay, FirstBuildCelebration, useOnboardingOverlay, markFirstBuildComplete, isFirstBuildComplete } from './components/OnboardingOverlay'
 import ApiKeysModal from './panels/ApiKeysModal'
 import { BuildProgressDashboard } from '@/components/editor/BuildProgressDashboard'
 import { FirstBuildModal } from '@/components/editor/FirstBuildModal'
@@ -34,6 +34,7 @@ import { PostBuildShare } from '@/components/editor/PostBuildShare'
 import { UpgradeNudge } from '@/components/editor/UpgradeNudge'
 import ConsolePanel from '@/components/editor/ConsolePanel'
 import { SystemComposer } from '@/components/editor/SystemComposer'
+import { captureClientEvent } from '@/lib/analytics-client'
 
 // ─── Right Sidebar — AI Context Panel ────────────────────────────────────
 
@@ -265,12 +266,19 @@ function EditorInner() {
   const [consoleOpen, setConsoleOpen] = useState(false)
   const [consoleErrors, setConsoleErrors] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
+  const [showFirstBuildCelebration, setShowFirstBuildCelebration] = useState(false)
+  const buildCountRef = React.useRef(0)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // ── Funnel: track editor opened ──
+  useEffect(() => {
+    try { captureClientEvent('editor_opened') } catch { /* analytics never breaks the app */ }
   }, [])
 
   // ── Studio connection ──
@@ -309,6 +317,17 @@ function EditorInner() {
           setBuildJustSucceeded(true)
           setLastBuildPrompt(prompt)
           setShowShareBar(true)
+          // ── Funnel: track build success + second build ──
+          try {
+            buildCountRef.current += 1
+            captureClientEvent('build_success', {
+              prompt: prompt.slice(0, 100),
+              build_number: buildCountRef.current,
+            })
+            if (buildCountRef.current === 2) {
+              captureClientEvent('second_build')
+            }
+          } catch { /* analytics never breaks the app */ }
           fetch('/api/gamification/achievements/check', { method: 'POST' }).catch(() => {})
           fetch('/api/gamification/streak', {
             method: 'POST',
@@ -356,6 +375,26 @@ function EditorInner() {
       setSessions(loadSessions())
     }
   }, [chat.currentSessionId, chat.cloudSessions])
+
+  // ── First build celebration (no-Studio path) ──
+  // When Studio isn't connected, onBuildComplete doesn't fire, so watch for
+  // status messages that indicate code was generated successfully.
+  useEffect(() => {
+    if (showFirstBuildCelebration || isFirstBuildComplete()) return
+    const msgs = chat.messages
+    if (msgs.length < 2) return
+    // Look for a status message indicating code was generated
+    const hasCodeStatus = msgs.some(
+      (m: { role: string; content: string }) =>
+        m.role === 'status' &&
+        (m.content.includes('Built in Studio') || m.content.includes('Code ready'))
+    )
+    if (hasCodeStatus) {
+      markFirstBuildComplete()
+      // Small delay so the user sees the build first
+      setTimeout(() => setShowFirstBuildCelebration(true), 1500)
+    }
+  }, [chat.messages, showFirstBuildCelebration])
 
   // ── Keyboard shortcuts ──
   useEditorKeyboard({
@@ -888,10 +927,24 @@ function EditorInner() {
           onDone={dismissOnboarding}
           inputRef={chat.textareaRef}
           onPrefill={(prompt) => chat.setInput(prompt)}
+          onSendMessage={(prompt) => chat.sendMessage(prompt)}
           hasMessages={chat.messages.length > 0}
           studioConnected={studio.isConnected}
         />
       )}
+
+      <FirstBuildCelebration
+        visible={showFirstBuildCelebration}
+        onNextBuild={(prompt) => {
+          setShowFirstBuildCelebration(false)
+          if (prompt) {
+            setTimeout(() => chat.sendMessage(prompt), 300)
+          } else {
+            setTimeout(() => chat.textareaRef?.current?.focus(), 300)
+          }
+        }}
+        onDismiss={() => setShowFirstBuildCelebration(false)}
+      />
 
       <PostBuildShare
         visible={showShareBar}
