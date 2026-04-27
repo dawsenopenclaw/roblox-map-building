@@ -56,13 +56,15 @@ const EMPTY_CONFIG: BillingConfig = {
 // Data
 // ---------------------------------------------------------------------------
 
-// Tier prices: $10–$200 fixed, $10–$1000 custom (1M tokens), enterprise above
+// Tier prices — competitive with Rebirth ($8.99) and Lemonade ($20)
+// Target audience: Roblox creators 13-22. Price for pocket money / allowance.
+// Strategy: low entry ($9.99), value at $19.99, premium at $49.99
 const ANNUAL_TOTALS = {
-  STARTER: 96.00,    // $8/mo annual = $96/year
-  BUILDER: 240.00,   // $20/mo annual = $240/year
-  CREATOR: 480.00,   // $40/mo annual = $480/year
-  PRO: 1440.00,      // $120/mo annual = $1440/year
-  STUDIO:  1920.00,  // $160/mo annual = $1920/year
+  STARTER: 83.88,    // $6.99/mo annual = $83.88/year
+  BUILDER: 119.88,   // $9.99/mo annual = $119.88/year
+  CREATOR: 191.88,   // $15.99/mo annual = $191.88/year
+  PRO: 419.88,       // $34.99/mo annual = $419.88/year
+  STUDIO:  599.88,   // $49.99/mo annual = $599.88/year
 }
 
 const TIERS = [
@@ -70,129 +72,130 @@ const TIERS = [
     key: 'BUILDER',
     name: 'Builder',
     icon: Hammer,
-    priceMonthly: 25,
-    priceYearly: 20,
+    priceMonthly: 9.99,
+    priceYearly: 6.99,
     yearlyTotal: ANNUAL_TOTALS.BUILDER,
-    tagline: 'For creators getting started',
+    tagline: 'Perfect for getting started',
     highlight: false,
     badge: null,
-    cta: 'Get Builder',
+    cta: 'Start Building',
     ctaHref: '/sign-up?plan=builder',
     features: [
-      '15,000 tokens / month',
-      '50 builds per day',
-      'All base features',
+      '10,000 tokens / month',
+      '30 builds per day',
+      'All AI build modes',
       'UI builder',
       'Game system templates',
       'Script generation',
-      'Priority support',
+      'Studio plugin',
     ],
   },
   {
     key: 'CREATOR',
     name: 'Creator',
     icon: Rocket,
-    priceMonthly: 50,
-    priceYearly: 40,
+    priceMonthly: 19.99,
+    priceYearly: 15.99,
     yearlyTotal: ANNUAL_TOTALS.CREATOR,
-    tagline: 'For serious creators who ship',
+    tagline: 'For creators who ship games',
     highlight: true,
     badge: 'Most Popular',
     cta: 'Get Creator',
     ctaHref: '/sign-up?plan=creator',
     features: [
-      '40,000 tokens / month',
+      '30,000 tokens / month',
       'Unlimited builds',
       'All Builder features',
-      'Marketplace access + selling',
-      'Game DNA scanner',
-      'Team collaboration (3 members)',
-      'Full game orchestrator',
-      'Advanced analytics',
+      '3D mesh generation',
+      'Image to map',
+      'Voice input',
+      'Marketplace access',
+      'Team collaboration (3)',
     ],
   },
   {
     key: 'PRO',
     name: 'Pro',
     icon: Crown,
-    priceMonthly: 150,
-    priceYearly: 120,
+    priceMonthly: 49.99,
+    priceYearly: 34.99,
     yearlyTotal: ANNUAL_TOTALS.PRO,
-    tagline: 'For power users and small teams',
+    tagline: 'For power users and teams',
     highlight: false,
-    badge: null,
-    cta: 'Get Pro',
+    badge: 'Best Value',
+    cta: 'Go Pro',
     ctaHref: '/sign-up?plan=pro',
     features: [
       '100,000 tokens / month',
       'Unlimited everything',
       'All Creator features',
-      'Bulk 3D generation',
-      'Advanced analytics',
-      'Team collaboration (10 members)',
       'Priority AI queue',
-      'Custom AI training',
+      'Bulk 3D generation',
+      'Game DNA scanner',
+      'Team collaboration (10)',
+      'Advanced analytics',
     ],
   },
   {
     key: 'STUDIO',
     name: 'Studio',
     icon: Building2,
-    priceMonthly: 200,
-    priceYearly: 160,
+    priceMonthly: 99.99,
+    priceYearly: 49.99,
     yearlyTotal: ANNUAL_TOTALS.STUDIO,
-    tagline: 'For agencies & game studios',
+    tagline: 'For studios & agencies',
     highlight: false,
     badge: null,
     cta: 'Get Studio',
     ctaHref: '/sign-up?plan=studio',
     features: [
-      '200,000 tokens / month',
+      '250,000 tokens / month',
       'Unlimited everything',
       'All Pro features',
       'Full API access + SDKs',
       'White-label builds',
-      'Team collaboration (50 members)',
+      'Team collaboration (50)',
       'Dedicated support',
       'Custom integrations',
-      'SLA guarantee',
     ],
   },
 ] as const
 
 // Feature matrix for comparison table (6 tiers)
 const COMPARE_FEATURES = [
-  { label: 'Tokens / month',     builder: '15,000',    creator: '40,000',    pro: '100,000',   studio: '200,000'   },
-  { label: 'Daily Builds',       builder: '50',        creator: 'Unlimited', pro: 'Unlimited', studio: 'Unlimited' },
+  { label: 'Tokens / month',     builder: '10,000',    creator: '30,000',    pro: '100,000',   studio: '250,000'   },
+  { label: 'Daily Builds',       builder: '30',        creator: 'Unlimited', pro: 'Unlimited', studio: 'Unlimited' },
   { label: 'Voice Commands',     builder: true,        creator: true,        pro: true,        studio: true        },
-  { label: 'Image-to-Map',       builder: true,        creator: true,        pro: true,        studio: true        },
+  { label: 'Image-to-Map',       builder: false,       creator: true,        pro: true,        studio: true        },
   { label: 'Script Generation',  builder: true,        creator: true,        pro: true,        studio: true        },
-  { label: 'Game DNA',           builder: false,       creator: true,        pro: true,        studio: true        },
+  { label: '3D Mesh Generation', builder: false,       creator: true,        pro: true,        studio: true        },
+  { label: 'Game DNA Scanner',   builder: false,       creator: false,       pro: true,        studio: true        },
   { label: 'Marketplace',        builder: false,       creator: true,        pro: true,        studio: true        },
   { label: 'Team Members',       builder: 'Solo',      creator: '3',         pro: '10',        studio: '50'        },
+  { label: 'Priority AI Queue',  builder: false,       creator: false,       pro: true,        studio: true        },
   { label: 'API Access',         builder: false,       creator: false,       pro: false,       studio: true        },
-  { label: 'Support Level',      builder: 'Priority',  creator: 'Priority',  pro: 'Priority',  studio: 'Dedicated' },
+  { label: 'Support Level',      builder: 'Standard',  creator: 'Priority',  pro: 'Priority',  studio: 'Dedicated' },
 ]
 
 const TOKEN_PACKS = [
   {
-    name: 'Builder',
+    name: 'Boost',
     tokens: '5,000',
-    price: '$45',
+    price: '$4.99',
     badge: null,
-    description: 'Stock up and keep building',
+    description: 'Quick top-up when you need it',
   },
   {
-    name: 'Creator',
-    tokens: '15,000',
-    price: '$120',
+    name: 'Builder Pack',
+    tokens: '20,000',
+    price: '$14.99',
     badge: 'Best Value',
     description: 'Best price per token',
   },
   {
-    name: 'Pro',
-    tokens: '50,000',
-    price: '$350',
+    name: 'Studio Pack',
+    tokens: '75,000',
+    price: '$39.99',
     badge: 'Max Power',
     description: 'For studios shipping at scale',
   },
@@ -205,7 +208,7 @@ const FAQ = [
   },
   {
     q: 'How does annual billing work?',
-    a: 'Annual billing charges you once per year at a 20% discount vs. monthly. Starter is billed at $96/yr ($8/mo), Creator at $480/yr ($40/mo), Studio at $1,920/yr ($160/mo). Switch billing cycles anytime from account settings.',
+    a: 'Annual billing charges you once per year at a 30% discount vs. monthly. Builder is billed at $83.88/yr ($6.99/mo), Creator at $191.88/yr ($15.99/mo), Pro at $419.88/yr ($34.99/mo). Switch billing cycles anytime from account settings.',
   },
   {
     q: 'Can I buy extra tokens without upgrading my plan?',

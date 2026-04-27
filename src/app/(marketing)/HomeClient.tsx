@@ -650,7 +650,7 @@ function FinalCTA() {
           Your game is one prompt away.
         </h2>
         <p className="reveal text-sm mb-8" style={{ color: '#71717A' }}>
-          Try it free — plans start at $25/mo. No contracts, cancel anytime.
+          Try it free — plans start at $9.99/mo. No contracts, cancel anytime.
         </p>
         <div className="reveal max-w-xl mx-auto mb-6">
           <HeroPromptInput />
@@ -761,7 +761,7 @@ export default function HomeClient() {
               transition={{ duration: 0.5, delay: 0.85 }}
               style={{ color: '#52525B' }}
             >
-              14-day free trial &middot; Plans from $25/mo &middot; Works with Roblox Studio
+              14-day free trial &middot; Plans from $9.99/mo &middot; Works with Roblox Studio
             </motion.p>
 
             {/* Live stats strip */}
