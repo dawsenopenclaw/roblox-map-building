@@ -143,3 +143,4 @@ export function getPoolStatus(provider: string): {
     disabled: pool.filter(k => k.disabled).length,
   }
 }
+// 28 Gemini keys deployed 1777265517
