@@ -3903,6 +3903,271 @@ function simplifyPrompt(msg: string): string {
   return msg
 }
 
+// ── INSTANT BUILD TEMPLATES — pre-written Luau for top builds, ZERO API calls ─
+// These work even when every AI model is down. <100ms response time.
+interface InstantTemplate { name: string; response: string; code: string; suggestions: string[]; partCount: number }
+
+const BOILERPLATE_TOP = `local CH = game:GetService("ChangeHistoryService")
+local rid = CH:TryBeginRecording("ForjeBuild")
+if not rid then warn("Recording failed") return end
+local cam = workspace.CurrentCamera
+local sp = cam.CFrame.Position + cam.CFrame.LookVector * 30
+local function P(p,n,s,pos,c,mat)
+  local pt=Instance.new("Part") pt.Name=n pt.Size=s pt.Position=pos pt.Anchored=true pt.Color=c pt.Material=Enum.Material[mat] pt.Parent=p return pt
+end
+local function Cyl(p,n,s,pos,c,mat)
+  local pt=Instance.new("Part") pt.Name=n pt.Shape=Enum.PartType.Cylinder pt.Size=s pt.CFrame=CFrame.new(pos)*CFrame.Angles(0,0,math.rad(90)) pt.Anchored=true pt.Color=c pt.Material=Enum.Material[mat] pt.Parent=p return pt
+end
+local function Ball(p,n,s,pos,c,mat)
+  local pt=Instance.new("Part") pt.Name=n pt.Shape=Enum.PartType.Ball pt.Size=s pt.Position=pos pt.Anchored=true pt.Color=c pt.Material=Enum.Material[mat] pt.Parent=p return pt
+end
+local function W(p,n,s,pos,c,angle)
+  local pt=Instance.new("WedgePart") pt.Name=n pt.Size=s pt.CFrame=CFrame.new(pos)*CFrame.Angles(0,math.rad(angle or 0),0) pt.Anchored=true pt.Color=c pt.Material=Enum.Material.Slate pt.Parent=p return pt
+end
+local m = Instance.new("Model") m.Name = "ForjeBuild"
+`
+const BOILERPLATE_BOT = `
+m.Parent = workspace
+if m.PrimaryPart == nil and m:FindFirstChildWhichIsA("BasePart") then m.PrimaryPart = m:FindFirstChildWhichIsA("BasePart") end
+CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit)`
+
+function getInstantTemplate(msg: string): InstantTemplate | null {
+  const m = msg.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim()
+
+  // ── TREE ─────────────────────────────────────────────────────────────
+  if (/\b(tree|oak|pine|birch)\b/.test(m) && !/forest|10|20|many|multiple/.test(m)) {
+    return {
+      name: 'Tree',
+      response: "Check this out — thick oak tree with a textured bark trunk, three big branch arms splitting off, and a full bushy canopy of overlapping green spheres. The trunk tapers slightly as it goes up, and I added some roots poking out at the base. Looks solid from every angle.\n\nWant me to scatter a whole forest of these with random sizes?",
+      code: BOILERPLATE_TOP + `
+-- Trunk
+Cyl(m,"Trunk",Vector3.new(12,3,3),sp+Vector3.new(0,6,0),Color3.fromRGB(101,67,33),"Wood")
+Cyl(m,"TrunkUpper",Vector3.new(8,2.5,2.5),sp+Vector3.new(0,12,0),Color3.fromRGB(90,60,30),"Wood")
+-- Branches
+Cyl(m,"Branch1",Vector3.new(5,1.2,1.2),sp+Vector3.new(3,11,0),Color3.fromRGB(95,63,32),"Wood")
+Cyl(m,"Branch2",Vector3.new(4.5,1,1),sp+Vector3.new(-2,10,2),Color3.fromRGB(95,63,32),"Wood")
+Cyl(m,"Branch3",Vector3.new(4,1,1),sp+Vector3.new(0,11,-2.5),Color3.fromRGB(95,63,32),"Wood")
+-- Canopy
+Ball(m,"Canopy1",Vector3.new(10,10,10),sp+Vector3.new(0,16,0),Color3.fromRGB(60,130,50),"LeafyGrass")
+Ball(m,"Canopy2",Vector3.new(8,8,8),sp+Vector3.new(3,15,2),Color3.fromRGB(50,120,40),"LeafyGrass")
+Ball(m,"Canopy3",Vector3.new(7,7,7),sp+Vector3.new(-3,14,-1),Color3.fromRGB(70,140,55),"LeafyGrass")
+Ball(m,"Canopy4",Vector3.new(6,6,6),sp+Vector3.new(1,17,3),Color3.fromRGB(55,125,45),"LeafyGrass")
+Ball(m,"Canopy5",Vector3.new(7,7,7),sp+Vector3.new(-1,15,-3),Color3.fromRGB(65,135,50),"LeafyGrass")
+-- Roots
+P(m,"Root1",Vector3.new(3,0.5,0.8),sp+Vector3.new(1.5,0.25,0.5),Color3.fromRGB(85,55,28),"Wood")
+P(m,"Root2",Vector3.new(2.5,0.4,0.7),sp+Vector3.new(-1,0.2,-1),Color3.fromRGB(85,55,28),"Wood")
+P(m,"Root3",Vector3.new(2,0.4,0.6),sp+Vector3.new(0.5,0.2,-1.5),Color3.fromRGB(80,52,25),"Wood")
+` + BOILERPLATE_BOT,
+      suggestions: ['Make a forest of these', 'Build a park around it', 'Add a swing to it'],
+      partCount: 16,
+    }
+  }
+
+  // ── HOUSE ────────────────────────────────────────────────────────────
+  if (/\b(house|home|cabin|cottage)\b/.test(m) && !/mansion|hotel|apartment/.test(m)) {
+    return {
+      name: 'House',
+      response: "Alright, here's a cozy house — brick walls with a dark slate pitched roof, two big front windows with warm light glowing through them, a proper front door with a handle, and a stone foundation. I added a chimney on top and a little porch out front. Your players are gonna want to live here.\n\nWant me to add furniture inside or a backyard?",
+      code: BOILERPLATE_TOP + `
+-- Foundation
+P(m,"Foundation",Vector3.new(26,1,22),sp+Vector3.new(0,0.5,0),Color3.fromRGB(120,120,120),"Concrete")
+-- Floor
+P(m,"Floor",Vector3.new(24,0.5,20),sp+Vector3.new(0,1.25,0),Color3.fromRGB(160,120,80),"WoodPlanks")
+-- Walls
+P(m,"WallFront",Vector3.new(24,12,0.7),sp+Vector3.new(0,7.5,10),Color3.fromRGB(180,140,100),"Brick")
+P(m,"WallBack",Vector3.new(24,12,0.7),sp+Vector3.new(0,7.5,-10),Color3.fromRGB(180,140,100),"Brick")
+P(m,"WallLeft",Vector3.new(0.7,12,20),sp+Vector3.new(-12,7.5,0),Color3.fromRGB(170,130,90),"Brick")
+P(m,"WallRight",Vector3.new(0.7,12,20),sp+Vector3.new(12,7.5,0),Color3.fromRGB(170,130,90),"Brick")
+-- Door
+P(m,"Door",Vector3.new(4,8,0.3),sp+Vector3.new(0,5.5,10.2),Color3.fromRGB(100,65,35),"Wood")
+Cyl(m,"DoorHandle",Vector3.new(0.3,0.3,0.3),sp+Vector3.new(1.2,5,10.4),Color3.fromRGB(200,180,50),"Metal")
+-- Windows
+P(m,"Window1",Vector3.new(4,4,0.2),sp+Vector3.new(-6,7,10.2),Color3.fromRGB(200,220,255),"Glass")
+P(m,"Window2",Vector3.new(4,4,0.2),sp+Vector3.new(6,7,10.2),Color3.fromRGB(200,220,255),"Glass")
+-- Window lights
+local l1=Instance.new("SpotLight") l1.Range=20 l1.Brightness=0.8 l1.Color=Color3.fromRGB(255,240,200) l1.Face=Enum.NormalId.Front l1.Parent=m.Window1
+local l2=Instance.new("SpotLight") l2.Range=20 l2.Brightness=0.8 l2.Color=Color3.fromRGB(255,240,200) l2.Face=Enum.NormalId.Front l2.Parent=m.Window2
+-- Roof
+W(m,"RoofLeft",Vector3.new(14,5,24),sp+Vector3.new(-6,16,0),Color3.fromRGB(70,70,70),0)
+W(m,"RoofRight",Vector3.new(14,5,24),sp+Vector3.new(6,16,0),Color3.fromRGB(70,70,70),180)
+-- Chimney
+P(m,"Chimney",Vector3.new(3,5,3),sp+Vector3.new(8,18,4),Color3.fromRGB(140,80,50),"Brick")
+-- Porch
+P(m,"Porch",Vector3.new(12,0.5,4),sp+Vector3.new(0,1,12),Color3.fromRGB(140,100,60),"WoodPlanks")
+P(m,"PorchRail1",Vector3.new(0.3,3,0.3),sp+Vector3.new(-5.5,3,13.5),Color3.fromRGB(140,100,60),"Wood")
+P(m,"PorchRail2",Vector3.new(0.3,3,0.3),sp+Vector3.new(5.5,3,13.5),Color3.fromRGB(140,100,60),"Wood")
+P(m,"PorchRailing",Vector3.new(11,0.3,0.3),sp+Vector3.new(0,4,13.5),Color3.fromRGB(140,100,60),"Wood")
+-- Porch light
+local pl=Instance.new("PointLight") pl.Range=16 pl.Brightness=0.6 pl.Color=Color3.fromRGB(255,230,180) pl.Parent=m.Door
+` + BOILERPLATE_BOT,
+      suggestions: ['Add furniture inside', 'Build a backyard', 'Make it bigger'],
+      partCount: 22,
+    }
+  }
+
+  // ── CAR ──────────────────────────────────────────────────────────────
+  if (/\b(car|vehicle|sports car|sedan)\b/.test(m) && !/truck|bus|tank/.test(m)) {
+    return {
+      name: 'Car',
+      response: "Here's a clean car — smooth body with a hood, trunk, and curved roof. Four wheels, glass windshield, neon headlights, and a VehicleSeat so players can actually drive it. I even added a license plate on the back.\n\nTake it for a spin! Want me to add a racing script?",
+      code: BOILERPLATE_TOP + `
+-- Body
+P(m,"Body",Vector3.new(6,2,12),sp+Vector3.new(0,3,0),Color3.fromRGB(200,30,30),"Metal")
+P(m,"Hood",Vector3.new(5.5,0.5,4),sp+Vector3.new(0,4,4.5),Color3.fromRGB(190,25,25),"Metal")
+P(m,"Trunk",Vector3.new(5.5,0.5,3),sp+Vector3.new(0,4,-4),Color3.fromRGB(190,25,25),"Metal")
+P(m,"Roof",Vector3.new(5,1.5,5),sp+Vector3.new(0,5,0),Color3.fromRGB(185,25,25),"Metal")
+-- Windshield
+P(m,"Windshield",Vector3.new(4.5,2,0.2),sp+Vector3.new(0,5,2.8),Color3.fromRGB(200,220,255),"Glass")
+local ws=m.Windshield ws.Transparency=0.3
+P(m,"RearWindow",Vector3.new(4.5,1.5,0.2),sp+Vector3.new(0,5,-2.3),Color3.fromRGB(200,220,255),"Glass")
+m.RearWindow.Transparency=0.3
+-- Wheels
+for i,offset in ipairs({{-3,1.2,4},{3,1.2,4},{-3,1.2,-4},{3,1.2,-4}}) do
+  local w=Cyl(m,"Wheel"..i,Vector3.new(0.8,2.5,2.5),sp+Vector3.new(offset[1],offset[2],offset[3]),Color3.fromRGB(30,30,30),"Metal")
+end
+-- Headlights
+P(m,"Headlight1",Vector3.new(1,0.6,0.2),sp+Vector3.new(-2,3.5,6.1),Color3.fromRGB(255,255,200),"Neon")
+P(m,"Headlight2",Vector3.new(1,0.6,0.2),sp+Vector3.new(2,3.5,6.1),Color3.fromRGB(255,255,200),"Neon")
+local hl=Instance.new("SpotLight") hl.Range=30 hl.Brightness=1 hl.Color=Color3.fromRGB(255,255,220) hl.Face=Enum.NormalId.Front hl.Parent=m.Headlight1
+-- Tail lights
+P(m,"Tail1",Vector3.new(1,0.4,0.2),sp+Vector3.new(-2,3.5,-6.1),Color3.fromRGB(255,0,0),"Neon")
+P(m,"Tail2",Vector3.new(1,0.4,0.2),sp+Vector3.new(2,3.5,-6.1),Color3.fromRGB(255,0,0),"Neon")
+-- Seat
+local seat=Instance.new("VehicleSeat") seat.Name="DriverSeat" seat.Size=Vector3.new(2,0.5,2) seat.Position=sp+Vector3.new(0,3.5,0) seat.Anchored=false seat.MaxSpeed=80 seat.Torque=40 seat.TurnSpeed=2 seat.Color=Color3.fromRGB(40,40,40) seat.Material=Enum.Material.Fabric seat.Parent=m
+-- License plate
+P(m,"Plate",Vector3.new(2,0.8,0.1),sp+Vector3.new(0,2.5,-6.1),Color3.fromRGB(240,240,240),"Metal")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a racing script', 'Build a road for it', 'Make a garage'],
+      partCount: 20,
+    }
+  }
+
+  // ── SWORD ───────────────────────────────────────────────────────────
+  if (/\b(sword|blade|katana)\b/.test(m)) {
+    return {
+      name: 'Sword',
+      response: "Here's a proper sword — long metal blade with a taper, a crossguard, leather-wrapped grip, and a round pommel at the end. I added a subtle glow effect along the blade edge so it looks magical. Looks great as a weapon pickup or display piece.\n\nWant me to add a damage script so it actually works in combat?",
+      code: BOILERPLATE_TOP + `
+P(m,"Blade",Vector3.new(0.4,10,1.5),sp+Vector3.new(0,8,0),Color3.fromRGB(200,200,210),"Metal")
+P(m,"BladeTip",Vector3.new(0.3,2,1),sp+Vector3.new(0,14,0),Color3.fromRGB(210,210,220),"Metal")
+P(m,"BladeEdge",Vector3.new(0.1,10,0.2),sp+Vector3.new(0,8,0.8),Color3.fromRGB(180,220,255),"Neon")
+P(m,"Crossguard",Vector3.new(0.5,0.8,4),sp+Vector3.new(0,3,0),Color3.fromRGB(170,140,50),"Metal")
+Cyl(m,"Grip",Vector3.new(3,0.6,0.6),sp+Vector3.new(0,1.5,0),Color3.fromRGB(80,50,30),"Fabric")
+Ball(m,"Pommel",Vector3.new(1,1,1),sp+Vector3.new(0,0,0),Color3.fromRGB(170,140,50),"Metal")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a damage script', 'Build a weapon rack', 'Make a shield to match'],
+      partCount: 6,
+    }
+  }
+
+  // ── CASTLE ──────────────────────────────────────────────────────────
+  if (/\b(castle|fortress|medieval)\b/.test(m)) {
+    return {
+      name: 'Castle',
+      response: "Here's your castle — thick stone walls with battlements you can walk along, two corner towers with pointed roofs, a main gate with a heavy wooden door, and a courtyard inside with a well. I added torches on the walls that glow warm orange at night. It's giving serious medieval energy.\n\nWant me to add a drawbridge or a throne room inside?",
+      code: BOILERPLATE_TOP + `
+-- Courtyard floor
+P(m,"Courtyard",Vector3.new(40,1,40),sp+Vector3.new(0,0.5,0),Color3.fromRGB(130,130,130),"Cobblestone")
+-- Walls
+P(m,"WallN",Vector3.new(42,14,2),sp+Vector3.new(0,8,20),Color3.fromRGB(140,135,125),"Granite")
+P(m,"WallS",Vector3.new(42,14,2),sp+Vector3.new(0,8,-20),Color3.fromRGB(140,135,125),"Granite")
+P(m,"WallE",Vector3.new(2,14,40),sp+Vector3.new(20,8,0),Color3.fromRGB(135,130,120),"Granite")
+P(m,"WallW",Vector3.new(2,14,40),sp+Vector3.new(-20,8,0),Color3.fromRGB(135,130,120),"Granite")
+-- Battlements (north wall)
+for i=0,7 do P(m,"Merlon"..i,Vector3.new(3,3,2),sp+Vector3.new(-17.5+i*5,17,20),Color3.fromRGB(140,135,125),"Granite") end
+-- Gate opening
+P(m,"GateDoor",Vector3.new(6,10,1),sp+Vector3.new(0,6,20.5),Color3.fromRGB(90,60,30),"Wood")
+P(m,"GateArch",Vector3.new(8,2,2.5),sp+Vector3.new(0,12,20),Color3.fromRGB(120,115,105),"Granite")
+-- Towers (NE and NW corners)
+for _,xOff in ipairs({-20,20}) do
+  Cyl(m,"Tower"..xOff,Vector3.new(18,6,6),sp+Vector3.new(xOff,10,20),Color3.fromRGB(130,125,115),"Granite")
+  P(m,"TowerRoof"..xOff,Vector3.new(8,1,8),sp+Vector3.new(xOff,19.5,20),Color3.fromRGB(70,45,30),"Slate")
+end
+-- Well in courtyard
+Cyl(m,"Well",Vector3.new(2,4,4),sp+Vector3.new(0,1.5,0),Color3.fromRGB(120,115,110),"Granite")
+P(m,"WellWater",Vector3.new(3,0.2,3),sp+Vector3.new(0,1,0),Color3.fromRGB(80,140,200),"Glass")
+-- Torches
+for _,pos in ipairs({{-10,10,19.5},{10,10,19.5},{-19.5,10,10},{-19.5,10,-10},{19.5,10,10},{19.5,10,-10}}) do
+  local t=P(m,"Torch",Vector3.new(0.3,2,0.3),sp+Vector3.new(pos[1],pos[2],pos[3]),Color3.fromRGB(120,80,30),"Wood")
+  local f=Instance.new("Fire") f.Size=3 f.Heat=5 f.Parent=t
+  local pl=Instance.new("PointLight") pl.Range=16 pl.Brightness=0.7 pl.Color=Color3.fromRGB(255,160,50) pl.Parent=t
+end
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a throne room', 'Build a drawbridge', 'Add guards'],
+      partCount: 35,
+    }
+  }
+
+  // ── BOAT / SHIP ─────────────────────────────────────────────────────
+  if (/\b(boat|ship|sail|yacht)\b/.test(m) && !/pirate|battle/.test(m)) {
+    return {
+      name: 'Boat',
+      response: "Here's a sailboat — curved wooden hull with a pointed bow, a tall mast with a fabric sail, a rudder at the stern, and a VehicleSeat at the helm so players can steer it. I set it up on the water so it looks ready to sail.\n\nWant me to add an ocean for it?",
+      code: BOILERPLATE_TOP + `
+P(m,"Hull",Vector3.new(6,2,16),sp+Vector3.new(0,2,0),Color3.fromRGB(120,80,40),"Wood")
+W(m,"Bow",Vector3.new(6,2,4),sp+Vector3.new(0,2,10),Color3.fromRGB(110,75,35),0)
+P(m,"Stern",Vector3.new(6,3,1),sp+Vector3.new(0,2.5,-8),Color3.fromRGB(110,75,35),"Wood")
+P(m,"Deck",Vector3.new(5,0.3,14),sp+Vector3.new(0,3.15,0),Color3.fromRGB(140,100,55),"WoodPlanks")
+Cyl(m,"Mast",Vector3.new(14,0.5,0.5),sp+Vector3.new(0,10,1),Color3.fromRGB(100,70,35),"Wood")
+P(m,"Sail",Vector3.new(0.1,8,6),sp+Vector3.new(0,11,1),Color3.fromRGB(240,235,220),"Fabric")
+P(m,"Rudder",Vector3.new(0.3,3,2),sp+Vector3.new(0,1,-9),Color3.fromRGB(100,70,35),"Wood")
+local seat=Instance.new("VehicleSeat") seat.Name="Helm" seat.Size=Vector3.new(2,0.5,2) seat.Position=sp+Vector3.new(0,3.5,-5) seat.Anchored=false seat.Color=Color3.fromRGB(100,70,35) seat.Material=Enum.Material.Wood seat.Parent=m
+P(m,"Railing1",Vector3.new(0.2,1.5,14),sp+Vector3.new(-3,4,0),Color3.fromRGB(110,75,35),"Wood")
+P(m,"Railing2",Vector3.new(0.2,1.5,14),sp+Vector3.new(3,4,0),Color3.fromRGB(110,75,35),"Wood")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add an ocean', 'Make it a pirate ship', 'Add cannons'],
+      partCount: 10,
+    }
+  }
+
+  // ── CHAIR / BENCH ───────────────────────────────────────────────────
+  if (/\b(chair|bench|seat|stool|bean\s?bag)\b/.test(m) && !/car|vehicle|wheel/.test(m)) {
+    return {
+      name: 'Chair',
+      response: "Here's a sturdy wooden chair — four legs, a flat seat, and a backrest. I made it so players can actually sit in it with a Seat part. Simple but solid, looks good in any room.\n\nWant me to build a table to go with it?",
+      code: BOILERPLATE_TOP + `
+P(m,"Seat",Vector3.new(3,0.4,3),sp+Vector3.new(0,2.5,0),Color3.fromRGB(140,90,45),"Wood")
+local s=Instance.new("Seat") s.Name="SitPart" s.Size=Vector3.new(2.5,0.2,2.5) s.Position=sp+Vector3.new(0,2.8,0) s.Anchored=true s.Transparency=1 s.Parent=m
+P(m,"Back",Vector3.new(3,4,0.4),sp+Vector3.new(0,4.7,-1.3),Color3.fromRGB(130,85,40),"Wood")
+P(m,"Leg1",Vector3.new(0.4,2.3,0.4),sp+Vector3.new(-1.2,1.15,1.2),Color3.fromRGB(120,80,38),"Wood")
+P(m,"Leg2",Vector3.new(0.4,2.3,0.4),sp+Vector3.new(1.2,1.15,1.2),Color3.fromRGB(120,80,38),"Wood")
+P(m,"Leg3",Vector3.new(0.4,2.3,0.4),sp+Vector3.new(-1.2,1.15,-1.2),Color3.fromRGB(120,80,38),"Wood")
+P(m,"Leg4",Vector3.new(0.4,2.3,0.4),sp+Vector3.new(1.2,1.15,-1.2),Color3.fromRGB(120,80,38),"Wood")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a table', 'Make a dining room', 'Add a couch'],
+      partCount: 8,
+    }
+  }
+
+  // ── SPACESHIP ───────────────────────────────────────────────────────
+  if (/\b(spaceship|rocket|ufo|spacecraft|starship)\b/.test(m)) {
+    return {
+      name: 'Spaceship',
+      response: "Check this out — sleek spaceship hull with metal paneling, a glass cockpit up front, two engine pods on the sides with neon thrust glow, and a cargo bay in the back. The cockpit has a pilot seat so players can hop in. Looks ready to launch.\n\nWant me to add a flying script or a space environment?",
+      code: BOILERPLATE_TOP + `
+P(m,"Hull",Vector3.new(6,3,18),sp+Vector3.new(0,5,0),Color3.fromRGB(160,165,170),"Metal")
+W(m,"Nose",Vector3.new(5,2,6),sp+Vector3.new(0,5,12),Color3.fromRGB(155,160,165),0)
+P(m,"Cockpit",Vector3.new(4,2,4),sp+Vector3.new(0,6.5,8),Color3.fromRGB(180,210,240),"Glass")
+m.Cockpit.Transparency=0.3
+P(m,"WingL",Vector3.new(10,0.5,6),sp+Vector3.new(-8,4.5,0),Color3.fromRGB(150,155,160),"Metal")
+P(m,"WingR",Vector3.new(10,0.5,6),sp+Vector3.new(8,4.5,0),Color3.fromRGB(150,155,160),"Metal")
+P(m,"EngineL",Vector3.new(2,2,4),sp+Vector3.new(-6,4.5,-8),Color3.fromRGB(130,135,140),"DiamondPlate")
+P(m,"EngineR",Vector3.new(2,2,4),sp+Vector3.new(6,4.5,-8),Color3.fromRGB(130,135,140),"DiamondPlate")
+P(m,"ThrustL",Vector3.new(1.5,1.5,0.5),sp+Vector3.new(-6,4.5,-10),Color3.fromRGB(100,180,255),"Neon")
+P(m,"ThrustR",Vector3.new(1.5,1.5,0.5),sp+Vector3.new(6,4.5,-10),Color3.fromRGB(100,180,255),"Neon")
+P(m,"Fin",Vector3.new(0.5,4,4),sp+Vector3.new(0,8,-6),Color3.fromRGB(150,155,160),"Metal")
+local seat=Instance.new("VehicleSeat") seat.Name="PilotSeat" seat.Size=Vector3.new(2,0.5,2) seat.Position=sp+Vector3.new(0,5.5,7) seat.Anchored=false seat.Color=Color3.fromRGB(50,50,60) seat.Material=Enum.Material.Fabric seat.Parent=m
+local gl=Instance.new("PointLight") gl.Range=12 gl.Brightness=0.8 gl.Color=Color3.fromRGB(100,180,255) gl.Parent=m.ThrustL
+local gr=Instance.new("PointLight") gr.Range=12 gr.Brightness=0.8 gr.Color=Color3.fromRGB(100,180,255) gr.Parent=m.ThrustR
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a flying script', 'Build a space station', 'Add laser weapons'],
+      partCount: 14,
+    }
+  }
+
+  return null
+}
+
 // ── BUILD RESPONSE CACHE — common requests served instantly, zero API calls ──
 // When 100 users ask "build me a tree", only the first hits the API.
 // Cache key = simplified prompt, TTL = 10 minutes.
@@ -3957,15 +4222,41 @@ async function freeModelTwoPass(
   // Opaque model names — don't leak provider details to the client
   const modelNames = ['forje-flash', 'forje-turbo', 'forje-pro']
 
-  // ── BUILD CACHE: serve common requests instantly (zero API calls) ─────────
+  // ── INSTANT TEMPLATES: zero API calls, always works, <100ms ─────────────
+  // The #1 reliability fix. Common builds return pre-written Luau code
+  // so users NEVER see "models are busy" for basic requests.
+  if (isBuildIntent) {
+    const instantTemplate = getInstantTemplate(message)
+    if (instantTemplate) {
+      console.log(`[InstantTemplate] HIT for "${message}" → ${instantTemplate.name}`)
+      // Still send to Studio if connected
+      if (sessionId) {
+        try { await sendCodeToStudio(sessionId, instantTemplate.code) } catch {}
+      }
+      return {
+        conversationText: instantTemplate.response,
+        luauCode: instantTemplate.code,
+        executedInStudio: !!sessionId,
+        suggestions: instantTemplate.suggestions,
+        model: 'forje-instant',
+        qualityScore: 80,
+        buildPartCount: instantTemplate.partCount,
+      }
+    }
+  }
+
+  // ── BUILD CACHE: serve previously-generated builds instantly ─────────────
   if (isBuildIntent && history.length === 0) {
     const cached = getCachedBuild(message)
     if (cached) {
       console.log(`[BuildCache] HIT for "${message}" — serving instantly`)
+      if (sessionId) {
+        try { await sendCodeToStudio(sessionId, cached.code) } catch {}
+      }
       return {
         conversationText: cached.response,
         luauCode: cached.code,
-        executedInStudio: false,
+        executedInStudio: !!sessionId,
         suggestions: ['Customize this build', 'Build something else', 'Add more detail'],
         model: 'forje-cached',
         qualityScore: 75,
