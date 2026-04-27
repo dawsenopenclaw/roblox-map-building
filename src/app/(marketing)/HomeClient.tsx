@@ -272,7 +272,7 @@ function RotatingHeroText() {
       <span style={{ color: '#FAFAFA' }}>Forge your</span>
       <span
         aria-live="polite"
-        aria-label={`your ${currentWord}`}
+        aria-label={currentWord}
         style={{
           display: 'inline-block',
           position: 'relative',
@@ -656,7 +656,7 @@ function FinalCTA() {
           <HeroPromptInput />
         </div>
         <p className="reveal text-[12px]" style={{ color: '#3F3F46' }}>
-          No account needed &middot; Free forever &middot; Works with Roblox Studio
+          14-day free trial &middot; No credit card required &middot; Works with Roblox Studio
         </p>
       </div>
     </section>

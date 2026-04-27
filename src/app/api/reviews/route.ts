@@ -8,37 +8,45 @@ import { db } from '@/lib/db'
 // ────────────────────────────────────────────────────────────────────────────
 
 export async function GET() {
-  const reviews = await db.siteReview.findMany({
-    where: { approved: true },
-    orderBy: { createdAt: 'desc' },
-    take: 20,
-    select: {
-      id: true,
-      review: true,
-      stars: true,
-      createdAt: true,
-      user: {
-        select: {
-          name: true,
-          robloxAvatarUrl: true,
-          robloxDisplayName: true,
+  try {
+    const reviews = await db.siteReview.findMany({
+      where: { approved: true },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        review: true,
+        stars: true,
+        createdAt: true,
+        user: {
+          select: {
+            name: true,
+            robloxAvatarUrl: true,
+            robloxDisplayName: true,
+          },
         },
       },
-    },
-  })
+    })
 
-  const mapped = reviews.map(r => ({
-    id: r.id,
-    name: r.user.robloxDisplayName || r.user.name || 'Builder',
-    review: r.review,
-    stars: r.stars,
-    avatarUrl: r.user.robloxAvatarUrl || null,
-    createdAt: r.createdAt.toISOString(),
-  }))
+    const mapped = reviews.map(r => ({
+      id: r.id,
+      name: r.user.robloxDisplayName || r.user.name || 'Builder',
+      review: r.review,
+      stars: r.stars,
+      avatarUrl: r.user.robloxAvatarUrl || null,
+      createdAt: r.createdAt.toISOString(),
+    }))
 
-  return NextResponse.json(mapped, {
-    headers: { 'Cache-Control': 's-maxage=60, stale-while-revalidate=300' },
-  })
+    return NextResponse.json(mapped, {
+      headers: { 'Cache-Control': 's-maxage=60, stale-while-revalidate=300' },
+    })
+  } catch (err) {
+    console.warn('[Reviews] Failed to fetch reviews:', err instanceof Error ? err.message : err)
+    // Return empty array so the homepage marquee gracefully shows nothing instead of crashing
+    return NextResponse.json([], {
+      headers: { 'Cache-Control': 's-maxage=30, stale-while-revalidate=60' },
+    })
+  }
 }
 
 // ─── POST /api/reviews ─────────────────────────────────────────────────────
