@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
   <!-- ForjeGames Studio Plugin v1.0.0 -->
-  <!-- Built by build-plugin.js on 2026-04-26T01:05:50.498Z -->
+  <!-- Built by build-plugin.js on 2026-04-27T23:26:44.305Z -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -1868,6 +1868,57 @@ local function playCompletionSound()
 end
 
 -- ============================================================
+-- Workspace part counting — counts actual BaseParts for feedback
+-- ============================================================
+local function countWorkspaceParts()
+  local count = 0
+  pcall(function()
+    for _, desc in ipairs(workspace:GetDescendants()) do
+      if desc:IsA("BasePart") then
+        count = count + 1
+      end
+    end
+  end)
+  return count
+end
+
+-- Count only parts we created (fj_generated attribute)
+local function countForjeParts()
+  local count = 0
+  pcall(function()
+    for _, desc in ipairs(workspace:GetDescendants()) do
+      if desc:IsA("BasePart") and desc:GetAttribute("fj_generated") then
+        count = count + 1
+      end
+    end
+  end)
+  return count
+end
+
+-- ============================================================
+-- Build result reporter — POSTs real execution data to server
+-- Runs non-blocking via task.spawn so it never delays the plugin
+-- ============================================================
+local function reportBuildResult(commandId, success, partsBefore, partsAfter, errors, executionTimeMs, originalCode)
+  task.spawn(function()
+    pcall(function()
+      local resultData = {
+        sessionId = _sessionId,
+        commandId = commandId,
+        delta = {
+          partCountBefore = partsBefore,
+          partCountAfter = partsAfter,
+          errors = errors or {},
+          timestamp = os.time(),
+        },
+        originalCode = originalCode and tostring(originalCode):sub(1, 2000) or nil,
+      }
+      httpPost("/api/studio/build-result", resultData)
+    end)
+  end)
+end
+
+-- ============================================================
 -- Structured command value parser
 -- Converts typed value tables from JSON into Roblox datatypes
 -- ============================================================
@@ -1961,6 +2012,10 @@ end
 local function executeStructuredCommands(commands, commandId)
   if not commands or type(commands) ~= "table" then return 0, 0 end
 
+  -- Snapshot workspace BEFORE execution for real delta tracking
+  local partsBefore = countWorkspaceParts()
+  local startTime = tick()
+
   -- Scoped undo: wrap the entire AI build in a single ChangeHistory
   -- recording so the user can Ctrl+Z the whole batch without affecting
   -- their manual work. This is the #1 UX feature from Metain that no
@@ -1974,6 +2029,7 @@ local function executeStructuredCommands(commands, commandId)
   local createdByName = {}
   local successCount = 0
   local failCount = 0
+  local buildErrors = {}
 
   for _, cmd in ipairs(commands) do
     local cmdOk, cmdErr = pcall(function()
@@ -2894,7 +2950,9 @@ end)
       successCount = successCount + 1
     else
       failCount = failCount + 1
-      warn("[ForjeGames] Structured command error (" .. tostring(cmd.type) .. "): " .. tostring(cmdErr))
+      local errMsg = tostring(cmd.type) .. ": " .. tostring(cmdErr)
+      table.insert(buildErrors, errMsg)
+      warn("[ForjeGames] Structured command error (" .. errMsg .. ")")
     end
   end
 
@@ -2907,6 +2965,13 @@ end)
     end
   end)
 
+  -- Snapshot workspace AFTER execution — real delta, not command counts
+  local partsAfter = countWorkspaceParts()
+  local executionTimeMs = math.floor((tick() - startTime) * 1000)
+  local actualPartsCreated = partsAfter - partsBefore
+
+  print("[ForjeGames] Build result: " .. actualPartsCreated .. " parts created (" .. partsAfter .. " total), " .. executionTimeMs .. "ms, " .. #buildErrors .. " errors")
+
   -- Report execution result back to the server so the web app knows
   -- whether the build actually landed. Without this, the chat says
   -- "Built!" after queueing without knowing if anything happened.
@@ -2914,10 +2979,19 @@ end)
     Sync.queueChange("command_result", {
       commandId = commandId,
       success = failCount == 0 and successCount > 0,
-      partsCreated = successCount,
+      partsCreated = actualPartsCreated,
       partsFailed = failCount,
       totalCommands = #commands,
+      executionTimeMs = executionTimeMs,
+      partCountBefore = partsBefore,
+      partCountAfter = partsAfter,
+      errors = buildErrors,
     })
+
+    -- Also POST directly to build-result for the error learning system
+    if #buildErrors > 0 then
+      reportBuildResult(commandId, failCount == 0, partsBefore, partsAfter, buildErrors, executionTimeMs, nil)
+    end
   end
 
   return successCount, failCount
@@ -3095,6 +3169,10 @@ local function handleExecuteLuau(data, commandId)
 
       if allowLoadstring then
         print("[ForjeGames] Executing AI code (" .. #code .. " chars)")
+        -- Snapshot workspace BEFORE loadstring execution
+        local lsPartsBefore = countWorkspaceParts()
+        local lsStartTime = tick()
+
         -- Try loadstring first (fastest, runs inline)
         local loadOk, loadErr
         if loadstring then
@@ -3129,24 +3207,41 @@ local function handleExecuteLuau(data, commandId)
             loadErr = tempErr
           end
         end
+
+        -- Snapshot workspace AFTER — get REAL part count delta
+        local lsPartsAfter = countWorkspaceParts()
+        local lsExecTimeMs = math.floor((tick() - lsStartTime) * 1000)
+        local lsActualParts = lsPartsAfter - lsPartsBefore
+
         if loadOk then
+          print("[ForjeGames] Loadstring result: " .. lsActualParts .. " parts created (" .. lsPartsAfter .. " total), " .. lsExecTimeMs .. "ms")
           playCompletionSound()
           if commandId then
             Sync.queueChange("command_result", {
               commandId = commandId, success = true,
-              partsCreated = -1, partsFailed = 0, totalCommands = 1,
+              partsCreated = lsActualParts, partsFailed = 0, totalCommands = 1,
               method = "loadstring",
+              executionTimeMs = lsExecTimeMs,
+              partCountBefore = lsPartsBefore,
+              partCountAfter = lsPartsAfter,
             })
           end
         else
           warn("[ForjeGames] loadstring runtime error: " .. tostring(loadErr))
           notifyMessage("Script execution failed: " .. tostring(loadErr), "error")
           if commandId then
+            local errStr = tostring(loadErr)
             Sync.queueChange("command_result", {
               commandId = commandId, success = false,
-              partsCreated = 0, partsFailed = 1, totalCommands = 1,
-              error = tostring(loadErr), method = "loadstring",
+              partsCreated = lsActualParts, partsFailed = 1, totalCommands = 1,
+              error = errStr, method = "loadstring",
+              executionTimeMs = lsExecTimeMs,
+              partCountBefore = lsPartsBefore,
+              partCountAfter = lsPartsAfter,
+              errors = { errStr },
             })
+            -- Feed error into learning system
+            reportBuildResult(commandId, false, lsPartsBefore, lsPartsAfter, { errStr }, lsExecTimeMs, code)
           end
         end
       else

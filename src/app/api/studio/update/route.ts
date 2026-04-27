@@ -196,6 +196,31 @@ export async function POST(req: NextRequest) {
         const { pgStoreCommandResult } = await import('@/lib/studio-queue-pg')
         await pgStoreCommandResult(change.data.commandId as string, resultData)
       } catch { /* Postgres unavailable */ }
+
+      // Feed errors into the AI self-improvement engine
+      const errors = change.data.errors as string[] | undefined
+      if (errors && errors.length > 0 && !resultData.success) {
+        try {
+          const { learnFromStudioError } = await import('@/lib/ai/self-improve')
+          for (const err of errors.slice(0, 5)) {
+            await learnFromStudioError(err, resultData.error ?? 'unknown', null, null)
+          }
+        } catch {
+          // self-improve module unavailable — non-critical
+        }
+      }
+
+      // Log real build metrics for monitoring
+      const execTime = change.data.executionTimeMs as number | undefined
+      const partsBefore = change.data.partCountBefore as number | undefined
+      const partsAfter = change.data.partCountAfter as number | undefined
+      if (execTime !== undefined || partsBefore !== undefined) {
+        console.log(
+          `[studio/update] Build result: cmd=${change.data.commandId} success=${resultData.success} ` +
+          `parts=${resultData.partsCreated} (${partsBefore ?? '?'}→${partsAfter ?? '?'}) ` +
+          `time=${execTime ?? '?'}ms method=${resultData.method ?? 'structured'}`
+        )
+      }
     }
   }
 
