@@ -62,6 +62,11 @@ import { getRelevantScriptingKnowledge } from '@/lib/ai/devforum-scripting-knowl
 import { getRelevantGameDesign } from '@/lib/ai/game-design-knowledge'
 import { getRelevantUIKnowledge } from '@/lib/ai/ui-devforum-knowledge'
 import { getRelevantBuildingMastery } from '@/lib/ai/building-mastery-knowledge'
+import { getRelevantSoundKnowledge } from '@/lib/ai/sound-design-knowledge'
+import { getRelevantAnimationKnowledge } from '@/lib/ai/animation-knowledge'
+import { getRelevantNPCKnowledge } from '@/lib/ai/npc-knowledge'
+import { getRelevantMobileControlsKnowledge } from '@/lib/ai/mobile-controls-knowledge'
+import { getRelevantWaterKnowledge } from '@/lib/ai/water-mechanics-knowledge'
 import { runStagedPipeline } from '@/lib/ai/staged-pipeline'
 import {
   shopGui, inventoryGui, healthBarGui, hudGui, settingsGui,
@@ -3957,10 +3962,21 @@ end`)
   const uiKnowledge = /\b(gui|ui|shop|inventory|hud|menu|health|bar|settings|quest|dialog|notification|loading|trade|pet|rebirth|daily|minimap|screen|button|frame)\b/i.test(message) ? getRelevantUIKnowledge(message) : ''
   // Inject building mastery knowledge — exact construction techniques from DevForum
   const buildingMastery = getRelevantBuildingMastery(message)
+  // Sound, animation, NPC, mobile, water knowledge
+  const soundKnowledge = /\b(sound|audio|music|sfx|ambient|footstep|voice|hear|listen|volume|play\s?(a\s?)?sound|song|noise|echo|reverb|explosion|gunshot|whoosh|splash)\b/i.test(message)
+    ? getRelevantSoundKnowledge(message) : ''
+  const animKnowledge = /\b(animat|tween|motion|spin|rotate|bob|sway|cutscene|camera\s?(shake|move|pan)|door\s?(open|close)|elevator|platform\s?move|slide|fade|bounce|spring|easing|lerp|moving|animated)\b/i.test(message)
+    ? getRelevantAnimationKnowledge(message) : ''
+  const npcKnowledge = /\b(npc|enemy|enemies|mob|boss|monster|zombie|guard|villager|merchant|shopkeeper|quest\s?giver|follower|companion|patrol|wander|chase|pathfind|behavior|state\s?machine|dialogue|conversation|talk\s?to|spawn\s?(enemy|npc|mob|wave)|wave\s?system|attack\s?pattern|hostile|turret|sentry)\b/i.test(message)
+    ? getRelevantNPCKnowledge(message) : ''
+  const mobileKnowledge = /\b(mobile|phone|touch|tablet|joystick|swipe|pinch|tap|gesture|on\s?(my\s?)?(phone|mobile|tablet)|mobile\s?(controls?|button|ui|game)|small\s?screen|gamepad|console\s?controls?|cross\s?platform|safe\s?area|notch)\b/i.test(message)
+    ? getRelevantMobileControlsKnowledge(message) : ''
+  const waterKnowledge = /\b(water|swim|ocean|sea|lake|river|pond|pool|underwater|diving|boat|ship|sail|float|buoyan|drown|wave|waterfall|fountain|splash|fish|fishing|submarine|beach|shore|dock|pier|canal|stream|whirlpool|flood|swamp|marsh|lagoon|moat)\b/i.test(message)
+    ? getRelevantWaterKnowledge(message) : ''
   // Inject genre-specific game knowledge (horror elements, racing layout, etc.) — was missing from main path
   const gameKnowledge = buildGameKnowledgePrompt(message)
 
-  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + focusedContext + devforumKnowledge + scriptingKnowledge + gameDesignKnowledge + uiKnowledge + buildingMastery + gameKnowledge + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
+  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + focusedContext + devforumKnowledge + scriptingKnowledge + gameDesignKnowledge + uiKnowledge + buildingMastery + soundKnowledge + animKnowledge + npcKnowledge + mobileKnowledge + waterKnowledge + gameKnowledge + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
 
 RESPONSE FORMAT (follow EXACTLY):
 1. First, write 3-5 sentences describing what you're creating. Be specific about what a player would see. End with a suggestion for what to build next.
@@ -13743,13 +13759,26 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         const uiKnowledge = /\b(gui|ui|hud|menu|button|shop|inventory|health\s?bar|scoreboard|leaderboard|dialog|notification|toolbar|sidebar|panel|screen|frame|textlabel|textbutton|imagelabel|imagebutton|scrolling|billboardgui|surfacegui|on\s?(my\s?)?screen|display|show\s?(me|on|the)|pop\s?up|overlay|interface|prompt|tooltip|indicator|counter|timer|countdown|progress\s?bar|loading|lobby\s?screen|start\s?screen|death\s?screen|win\s?screen|game\s?over|main\s?menu|pause\s?menu|settings?\s?menu|options?\s?menu|title\s?screen|dashboard|stats?\s?(on|display)|lives?|coins?\s?(on|display|show|counter)|money\s?(on|display|show)|xp\s?(bar|display|show)|level\s?(display|indicator|show)|minimap|map\s?icon|waypoint|crosshair|reticle|hotbar|action\s?bar|ability\s?bar|skill\s?tree|talent|perk|upgrade\s?(menu|screen|ui)|crafting\s?(menu|screen|ui)|trading\s?(menu|screen|ui)|chat\s?(box|window|ui)|text\s?(box|input)|popup|modal|window|tab|slot|icon|badge|avatar\s?(frame|display)|profile|nameplate|overhead|floating\s?text|damage\s?number|kill\s?feed|announcement|banner|toast|alert|warning\s?(text|message)|error\s?(text|message)|loading\s?screen|splash|intro\s?screen|cutscene\s?ui|subtitle|caption|quest\s?(log|tracker|list)|mission\s?(tracker|log)|objective|checkpoint|reward\s?(screen|popup)|loot|chest\s?(ui|open)|backpack|toolbar|radial\s?menu|wheel\s?menu|dropdown|select|picker|slider|toggle|switch|checkbox|radio\s?button|input\s?field|search\s?bar|filter|sort|pagination|scroll|list|grid|card|tile|thumbnail|preview|gallery|carousel|tab\s?bar|navigation|breadcrumb|header|footer|status\s?bar|info\s?(box|panel|card)|detail|description|label|tag|chip|pill|divider|separator|border|outline|shadow|glow|highlight|focus|hover|click|tap|press|drag|swipe|pinch|zoom)\b/i.test(message)
           ? getRelevantUIKnowledge(message) : ''
         const buildingMastery = getRelevantBuildingMastery(message)
+        // Sound, animation, NPC knowledge — match on natural language
+        const soundKnowledge = /\b(sound|audio|music|sfx|ambient|footstep|voice|hear|listen|loud|quiet|volume|mute|play\s?(a\s?)?sound|song|tune|beat|rhythm|noise|echo|reverb|speaker|microphone|soundtrack|jingle|chime|alarm|siren|horn|explosion\s?sound|gunshot|sword\s?(clang|sound)|whoosh|splash|crunch|click\s?sound|beep|buzz|ring|whistle|roar|growl|scream|laugh|cry|moan|groan|thunder|rain\s?sound|wind\s?sound|fire\s?sound|water\s?sound|bird|cricket|wolf|ocean\s?sound|wave\s?sound|engine\s?sound|car\s?sound|helicopter\s?sound|airplane\s?sound|door\s?(creak|slam|open\s?sound)|glass\s?break|metal\s?clang|wood\s?crack|zombie\s?(moan|growl)|monster\s?sound|scary\s?sound|horror\s?sound|spooky)\b/i.test(message)
+          ? getRelevantSoundKnowledge(message) : ''
+        const animKnowledge = /\b(animat|tween|motion|move\s?(smooth|part)|spin|rotate|bob|sway|breathe|idle\s?anim|walk\s?anim|run\s?anim|attack\s?anim|dance|emote|cutscene|cinematic|camera\s?(shake|move|pan|zoom)|door\s?(open|close|swing)|elevator|platform\s?move|slide|fade\s?(in|out)|bounce|spring|elastic|easing|lerp|slerp|smooth\s?move|transition|keyframe|pose|rig|skeleton|motor6d|joint|hinge|piston|oscillate|pulse|glow\s?anim|flicker|wave|float|hover|orbit|swing|pendulum|escalator|conveyor|moving\s?(walkway|platform|wall|floor|object|part)|animated|wiggle|wobble|jiggle|shake|vibrate|tremble|shudder)\b/i.test(message)
+          ? getRelevantAnimationKnowledge(message) : ''
+        const npcKnowledge = /\b(npc|enemy|enemies|mob|mobs|boss|miniboss|monster|creature|zombie|skeleton|guard|villager|merchant|shopkeeper|quest\s?giver|follower|companion|pet\s?follow|ally|allies|patrol|wander|chase|pursue|aggro|deaggro|pathfind|navigate|waypoint|behavior\s?tree|state\s?machine|ai\s?(behavior|system|logic|brain)|dialogue|conversation|talk\s?to|interact\s?with\s?npc|spawn\s?(enemy|npc|mob|wave)|wave\s?system|horde|swarm|raid\s?boss|dungeon\s?mob|attack\s?pattern|idle\s?npc|friendly\s?npc|hostile|neutral|passive|aggressive|detect\s?player|line\s?of\s?sight|vision\s?cone|hear\s?player|alert|investigate|retreat|flee|heal\s?bot|support\s?npc|tank\s?npc|ranged\s?npc|melee\s?npc|archer|wizard\s?npc|knight\s?npc|soldier|bandit|pirate\s?npc|robot\s?enemy|drone\s?enemy|turret|sentry|civilian|crowd|population|townfolk|farmer\s?npc|fisher\s?npc|miner\s?npc|worker\s?npc|trainer|coach|teacher\s?npc)\b/i.test(message)
+          ? getRelevantNPCKnowledge(message) : ''
+        // Mobile controls — detect when user talks about phone, touch, mobile, tablet, controls
+        const mobileKnowledge = /\b(mobile|phone|touch|tablet|ipad|iphone|android|joystick|thumbstick|swipe|pinch|tap|gesture|finger|thumb|touch\s?screen|on\s?(my\s?)?(phone|mobile|tablet|ipad)|play\s?on\s?(phone|mobile)|mobile\s?(controls?|button|layout|ui|game|version|support|friendly|compatible|optimize)|small\s?screen|portable|handheld|controller\s?support|gamepad|console\s?(controls?|button|input)|cross\s?platform|multi\s?platform|device|screen\s?size|responsive|safe\s?area|notch)\b/i.test(message)
+          ? getRelevantMobileControlsKnowledge(message) : ''
+        // Water mechanics — detect when user talks about water, swimming, boats, oceans, rivers
+        const waterKnowledge = /\b(water|swim|ocean|sea|lake|river|pond|pool|underwater|diving|dive|boat|ship|sail|float|buoyan|drown|breath|oxygen|wave|tide|current|waterfall|fountain|splash|ripple|fish|fishing|submarine|sub|aqua|marine|beach|shore|coast|dock|pier|harbor|port|canal|stream|creek|brook|rapids|whirlpool|flood|rain\s?puddle|water\s?(park|slide|gun|balloon)|pirate\s?ship|canoe|kayak|raft|surfing|snorkel|scuba|coral|reef|seaweed|kelp|jellyfish|shark|whale|dolphin|octopus|crab|turtle|starfish|clam|oyster|treasure\s?chest\s?underwater|shipwreck|atlantis|mermaid|trident|harpoon|anchor|lighthouse|dam|reservoir|well|cistern|aqueduct|moat|swamp|marsh|bog|wetland|mangrove|bayou|lagoon|oasis|hot\s?spring|geyser|ice\s?lake|frozen\s?(lake|river|pond)|glacier)\b/i.test(message)
+          ? getRelevantWaterKnowledge(message) : ''
         // Build enhancer — inject contextual polish suggestions so AI knows to add detail
         const enhancements = getContextualEnhancements(intent, message, 4)
         const enhancerContext = enhancements.length > 0
           ? '\n\n[BUILD POLISH GUIDELINES — apply these automatically without being asked]\n' +
             enhancements.map(e => `• ${e.title}: ${e.prompt}`).join('\n')
           : ''
-        knowledgeBrain = [focusedContext, robloxContext, codeGraphContext, devforumKnowledge, scriptingKnowledge, gameDesignKnowledge, uiKnowledge, buildingMastery, enhancerContext]
+        knowledgeBrain = [focusedContext, robloxContext, codeGraphContext, devforumKnowledge, scriptingKnowledge, gameDesignKnowledge, uiKnowledge, buildingMastery, soundKnowledge, animKnowledge, npcKnowledge, mobileKnowledge, waterKnowledge, enhancerContext]
           .filter(Boolean).join('\n\n')
       }
 

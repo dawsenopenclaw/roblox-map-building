@@ -785,6 +785,615 @@ TOP GAME ARCHITECTURES:
 - ECS pattern: CollectionService tags as components. Systems iterate over tagged entities. Hybrid: Humanoid physics + ECS tags for game logic.
 - Network architecture: 30 TPS, ~50kbps per player. Only send state changes. Batch instance creation across frames. Use object registry (IDs not full objects).
 - Scale numbers: Adopt Me peak 1.6M concurrent. Roblox supports 30M+ concurrent overall.
+
+DIALOGUE AND NPC INTERACTION:
+- Typewriter text effect:
+  local function typewrite(label: TextLabel, text: string, speed: number?)
+    speed = speed or 0.03
+    label.Text = ""
+    for i = 1, #text do
+      label.Text = string.sub(text, 1, i)
+      task.wait(speed)
+    end
+  end
+- Dialogue tree data structure:
+  local DialogueTree = {
+    start = { text = "Hello traveler!", choices = {
+      {label = "Tell me about the quest", next = "quest_info"},
+      {label = "What do you sell?", next = "shop"},
+      {label = "Goodbye", next = nil}, -- nil = end conversation
+    }},
+    quest_info = { text = "The dragon terrorizes the village...", choices = {
+      {label = "I'll help!", next = "accept_quest", action = "giveQuest"},
+      {label = "Not interested", next = "start"},
+    }},
+  }
+- Choice buttons: create TextButtons dynamically per node. Clear old buttons before showing new choices. Use LayoutOrder for vertical stacking in UIListLayout.
+- Quest-state-aware dialogue: check player's quest data before selecting dialogue node.
+  local node = questData.hasQuest and "quest_progress" or "start"
+  if questData.completed then node = "post_quest" end
+- NPC memory: store last interaction in DataStore. NPCs greet returning players differently.
+- Proximity-triggered dialogue: use ProximityPrompt (HoldDuration=0, MaxActivationDistance=8). On Triggered, fire RemoteEvent to open dialogue UI on client.
+- Dialogue camera: tween camera to CFrame.lookAt(npcHead.Position + Vector3.new(0,1,4), npcHead.Position) during conversation.
+- Common mistake: not disabling character movement during dialogue — player walks away mid-conversation. Set Humanoid.WalkSpeed = 0 temporarily.
+- Common mistake: hardcoding dialogue in scripts — use ModuleScript tables for easy editing and localization.
+
+CRAFTING SYSTEM:
+- Recipe table structure:
+  local Recipes = {
+    WoodenSword = { ingredients = {Wood = 5, String = 2}, result = "WoodenSword", craftTime = 2, category = "Weapons" },
+    HealthPotion = { ingredients = {Herb = 3, Water = 1, Bottle = 1}, result = "HealthPotion", craftTime = 1.5, category = "Potions" },
+    IronHelmet = { ingredients = {IronBar = 4, Leather = 2}, result = "IronHelmet", craftTime = 4, category = "Armor" },
+  }
+- Ingredient validation (server):
+  function canCraft(player, recipeName)
+    local recipe = Recipes[recipeName]
+    if not recipe then return false end
+    local inv = getInventory(player)
+    for item, count in pairs(recipe.ingredients) do
+      if (inv[item] or 0) < count then return false end
+    end
+    return true
+  end
+- Crafting execution: deduct ingredients atomically (all or nothing). Use UpdateAsync for DataStore safety.
+- Workbench interaction: ProximityPrompt on workbench model. On Triggered, open crafting UI filtered by workbench type (e.g., Forge shows only metal recipes).
+- Crafting time: show progress bar on client. Server validates elapsed time before granting item. Don't trust client timer.
+- Recipe discovery: hidden recipes unlock when player first obtains a key ingredient. Store discovered recipes in player data.
+- Quality tiers: each craft has % chance for quality. math.random() < 0.05 = Legendary, < 0.15 = Epic, < 0.35 = Rare, else Common. Quality multiplies stats.
+- Common mistake: deducting ingredients before validating all are present — partial deduction on failure.
+- Common mistake: not rate-limiting craft requests — exploiters spam craft remote for duplication.
+
+FARMING AND CROP SYSTEM:
+- Plant-grow-harvest cycle:
+  local CropData = {
+    Wheat = { stages = 4, growTime = 60, sellPrice = 10, seedCost = 5 },
+    Carrot = { stages = 3, growTime = 45, sellPrice = 15, seedCost = 8 },
+    Pumpkin = { stages = 5, growTime = 120, sellPrice = 50, seedCost = 20 },
+  }
+- Growth stages with visual changes: swap MeshPart or resize part per stage.
+  local function updateCropVisual(plot, stage, maxStages)
+    local scale = 0.2 + (stage / maxStages) * 0.8 -- 20% to 100% size
+    plot.Crop:PivotTo(plot.Soil.CFrame * CFrame.new(0, scale * 2, 0))
+    plot.Crop.Size = Vector3.new(2, scale * 4, 2)
+    plot.Crop.Color = stage == maxStages and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(0, 180, 0)
+  end
+- Server-side growth timer: store plantedAt = os.time(). On heartbeat or interval check: local elapsed = os.time() - plantedAt. local stage = math.min(math.floor(elapsed / (growTime / stages)), stages).
+- Watering mechanic: crops grow 2x faster when watered. Store lastWatered timestamp. Water evaporates after 30-60 seconds. Visual: wet soil = darker BrickColor.
+- Seasons: cycle every 5-10 real minutes. Some crops only grow in certain seasons. Store currentSeason in IntValue, replicate to clients.
+- Soil types: Normal (1x speed), Fertile (1.5x), Magic (2x). Visual difference via Material (Mud, Ground, Neon).
+- Seed shop: NPC with ProximityPrompt. ScreenGui shop with Buy buttons. Server validates currency before granting seeds.
+- Harvest: ProximityPrompt on mature crop (stage == maxStages). Server adds item to inventory, resets plot.
+- Common mistake: trusting client for growth timing — server must be authority on crop stage.
+- Common mistake: not persisting crop state on server shutdown — save plot data to DataStore on BindToClose.
+
+FISHING MECHANIC:
+- Cast/wait/reel flow (state machine):
+  local FishingState = { Idle = "Idle", Casting = "Casting", Waiting = "Waiting", Hooked = "Hooked", Reeling = "Reeling" }
+  local state = FishingState.Idle
+  -- Click to cast → state = Casting → projectile animation → state = Waiting
+  -- Random wait 3-15 seconds → bobber dips → state = Hooked
+  -- Player clicks within 1.5s window → state = Reeling → catch success
+  -- If player misses window → fish escapes → state = Idle
+- Fish rarity table (weighted):
+  local FishTable = {
+    {name = "Sardine", weight = 40, value = 5},
+    {name = "Bass", weight = 25, value = 15},
+    {name = "Salmon", weight = 15, value = 30},
+    {name = "Swordfish", weight = 10, value = 75},
+    {name = "GoldenTrout", weight = 5, value = 200},
+    {name = "Legendary Kraken", weight = 1, value = 1000},
+  }
+  local function rollFish(baitBonus)
+    local totalWeight = 0
+    for _, f in FishTable do totalWeight += f.weight end
+    local roll = math.random() * totalWeight
+    local cumulative = 0
+    for _, f in FishTable do
+      cumulative += f.weight
+      if roll <= cumulative then return f end
+    end
+  end
+- Bait system: different baits modify weight table. Worm (+10% common), Shrimp (+20% rare), Golden Lure (+50% legendary chance).
+- Fishing rod tool: Tool with Handle. Activate = cast. Deactivate = reel. Attach line Beam from rod tip to bobber part.
+- Fishing zones: invisible Parts tagged "FishingZone" via CollectionService. Different zones have different fish tables. Check if bobber lands inside zone with GetPartBoundsInBox.
+- Catch log: server stores catches in player data. Client displays collection book (ImageLabels in ScrollingFrame). Track total caught, biggest catch, rarest catch.
+- Bobber visual: small Part with BodyPosition to float at water surface Y. On hook event: tween Y down 1 stud + splash ParticleEmitter burst (Emit(20)).
+- Common mistake: doing fish roll on client — exploiters always get legendary. Roll on server only.
+- Common mistake: no cooldown between casts — players spam-fish. Add 1-2 second cooldown after each attempt.
+
+MINING AND RESOURCE GATHERING:
+- Breakable ore nodes with HP:
+  local OreTypes = {
+    Stone = {hp = 50, drops = "Stone", xp = 5, respawnTime = 30},
+    Coal = {hp = 75, drops = "Coal", xp = 10, respawnTime = 45},
+    Iron = {hp = 100, drops = "IronOre", xp = 20, respawnTime = 60},
+    Gold = {hp = 150, drops = "GoldOre", xp = 40, respawnTime = 90},
+    Diamond = {hp = 250, drops = "Diamond", xp = 100, respawnTime = 180},
+  }
+- Mining interaction: Tool.Activated → fire RemoteEvent with target ore node. Server validates distance (<8 studs), deducts HP by pickaxe damage. On HP <= 0: grant drops, start respawn timer.
+- Visual feedback on hit: tween ore scale down 10% then back (0.1s). ParticleEmitter:Emit(5) for rock chunks. Play hit sound with pitch variation.
+- Ore respawn: set ore Transparency = 1, CanCollide = false. task.delay(respawnTime, function() restore ore end). Or use tween for fade-in effect.
+- Pickaxe upgrades: damage table {Wood=10, Stone=15, Iron=25, Gold=35, Diamond=50}. Some ores require minimum pickaxe tier (Diamond ore needs Iron+ pickaxe).
+- Cave generation: use procedural dungeon techniques (room + corridor) but with terrain. Fill cave interior with Terrain:FillBlock Air material. Place ore nodes at random positions on cave walls.
+- Smelting: furnace workbench. Input raw ore + fuel (Coal). Output ingot after smelt time. 1 Coal smelts 3 ores. Timer-based (server-side os.time()).
+- Drop animation: create small Part at ore position, apply upward + random horizontal velocity. BodyVelocity for 0.5s then switch to magnet toward player (AlignPosition).
+- Common mistake: not validating pickaxe tier on server — players mine diamond with wooden pick.
+- Common mistake: ore HP going negative — use math.max(0, hp - damage) and check <= 0.
+
+CHARACTER CUSTOMIZATION:
+- HumanoidDescription API (modern standard):
+  local desc = Instance.new("HumanoidDescription")
+  desc.Shirt = 0 -- ShirtTemplate asset ID
+  desc.Pants = 0 -- PantsTemplate asset ID
+  desc.HeadColor = Color3.fromRGB(255, 204, 153)
+  desc.TorsoColor = Color3.fromRGB(255, 204, 153)
+  desc.LeftArmColor = desc.TorsoColor
+  desc.RightArmColor = desc.TorsoColor
+  desc.LeftLegColor = desc.TorsoColor
+  desc.RightLegColor = desc.TorsoColor
+  desc.HatAccessory = "123456,789012" -- comma-separated asset IDs
+  desc.Face = 0 -- Face asset ID
+  humanoid:ApplyDescription(desc)
+- Reading current appearance: local desc = humanoid:GetAppliedDescription() or Players:GetHumanoidDescriptionFromUserId(userId).
+- Accessories: desc.HatAccessory, desc.HairAccessory, desc.FaceAccessory, desc.NeckAccessory, desc.ShouldersAccessory, desc.FrontAccessory, desc.BackAccessory, desc.WaistAccessory.
+- Body scaling: desc.HeadScale, desc.HeightScale, desc.WidthScale, desc.DepthScale, desc.BodyTypeScale, desc.ProportionScale. Range 0-1 for most.
+- Morph system: swap character model entirely. Clone morph model, set HumanoidRootPart CFrame to player position, use Humanoid:ReplaceBodyPartR15() for individual limbs.
+- R6/R15 detection: humanoid.RigType == Enum.HumanoidRigType.R6 or R15. R15 has more body parts (15 vs 6). Use RigType to decide which customization approach.
+- Clothing: Shirt and Pants instances in character. Set ShirtTemplate/PantsTemplate to asset URL. For custom: "rbxassetid://IDHERE".
+- Save outfit: serialize HumanoidDescription properties to table, store in DataStore. Load: create HumanoidDescription from saved table, ApplyDescription.
+- Common mistake: ApplyDescription on client — only works reliably on server.
+- Common mistake: not waiting for character to load — wrap in CharacterAdded and wait for Humanoid.
+
+TEAM AND PARTY SYSTEM:
+- Team creation (using Roblox Teams):
+  local team = Instance.new("Team")
+  team.Name = "Red Team"
+  team.TeamColor = BrickColor.new("Bright red")
+  team.AutoAssignable = false
+  team.Parent = game:GetService("Teams")
+  player.Team = team
+- Custom party system (friend groups, not Roblox Teams):
+  local Parties = {} -- {leaderId = {members = {userId1, userId2}, maxSize = 4}}
+  -- Invite: leader sends invite → target gets UI prompt → accept adds to party
+  -- Leave: remove from members table, notify all members
+  -- Disband: leader leaves → party dissolves, all members notified
+- Invite/accept/decline flow: RemoteEvent "PartyInvite" from leader. Server validates: leader has party, target not in party, party not full. Send RemoteEvent to target client showing invite UI with 30s timeout.
+- Shared XP: when any member earns XP, distribute portion to party. Formula: earner gets 100%, each other member gets 25%. Cap total bonus at 2x to prevent exploit.
+- Team chat: use TextChatService with TextChannel per party. Add members to channel on join, remove on leave. Or prefix messages with [Party] tag.
+- Party limits: 4 players default. Premium users get 6. Validate on server before accepting new member.
+- Leader system: leader can kick members, set party to public/private, transfer leadership. If leader disconnects, auto-promote longest-standing member.
+- Common mistake: not cleaning up party data on PlayerRemoving — ghost parties persist.
+- Common mistake: allowing self-invite or double-invite — validate sender ~= target and not already invited.
+
+PET SYSTEM ADVANCED:
+- Pet equipping (follow player):
+  -- Server: store equipped pet ID in player data
+  -- Client: spawn pet model, update position each frame
+  local function updatePetPosition(pet, character)
+    local targetCF = character.HumanoidRootPart.CFrame * CFrame.new(-3, 0, 3) -- offset left-behind
+    pet:PivotTo(pet:GetPivot():Lerp(targetCF, 0.1)) -- smooth follow
+  end
+  RunService.Heartbeat:Connect(function() updatePetPosition(equippedPet, character) end)
+- Pet as DATA not model (Adopt Me pattern): server stores pet stats only. Client creates visual model locally. Zero server replication cost for pet movement. Support 10-30 pets per player.
+- Pet stats: {name, species, level, xp, power, rarity, equipped, evolutionStage}. Power affects gameplay (bonus damage, speed, luck).
+- Pet evolution: at certain levels, pet evolves. Level 10 → Stage 2 (new mesh, +50% stats). Level 25 → Stage 3 (final form, +100% stats). Swap MeshPart and resize on evolution.
+- Pet fusion: combine 3 pets of same rarity → 1 pet of next rarity. Common+Common+Common = Rare. Server-side only. Destroy input pets, create output pet.
+- Pet trading: two-sided trade UI. Both players confirm. Server validates both own offered pets. Atomic swap in UpdateAsync. 30-second confirmation timer.
+- Pet index/Pokedex: table of all discoverable pets. Client UI: ScrollingFrame grid of ImageLabels. Undiscovered = silhouette (black ImageColor3). Track in player data: discoveredPets = {[petId] = true}.
+- Pet hatching: egg system. Buy/earn egg. Hatch animation (egg shakes, cracks, pet appears). Rarity roll on server at hatch time, NOT at egg acquisition.
+- Common mistake: spawning pet Humanoids — massive performance cost. Use simple Model with PrimaryPart, no Humanoid.
+- Common mistake: pet position on server — replicate to all clients = bandwidth waste. Client-only positioning.
+
+TOWER DEFENSE PATTERNS:
+- Tower placement on grid: use placement system grid snap. Towers can only be placed on designated build zones (check if snap position is inside zone Part).
+- Targeting modes:
+  local TargetModes = {
+    First = function(enemies, towerPos) -- target enemy furthest along path
+      table.sort(enemies, function(a,b) return a.pathProgress > b.pathProgress end)
+      return enemies[1]
+    end,
+    Last = function(enemies, towerPos)
+      table.sort(enemies, function(a,b) return a.pathProgress < b.pathProgress end)
+      return enemies[1]
+    end,
+    Strongest = function(enemies, towerPos)
+      table.sort(enemies, function(a,b) return a.hp > b.hp end)
+      return enemies[1]
+    end,
+    Nearest = function(enemies, towerPos)
+      table.sort(enemies, function(a,b)
+        return (a.position - towerPos).Magnitude < (b.position - towerPos).Magnitude
+      end)
+      return enemies[1]
+    end,
+  }
+- Tower range check: filter enemies within tower.Range studs using (enemy.Position - tower.Position).Magnitude <= tower.Range.
+- Tower upgrades: upgrade table per tower type. Each level increases damage, range, or fire rate. Cost scales: baseCost * 1.5^level. Max 5 levels typical.
+- Wave system:
+  local Waves = {
+    {enemies = {Goblin = 5}, spawnDelay = 1.5, waveDelay = 10},
+    {enemies = {Goblin = 8, Orc = 2}, spawnDelay = 1.2, waveDelay = 15},
+    {enemies = {Orc = 5, Troll = 1}, spawnDelay = 1.0, waveDelay = 20},
+  }
+  -- Between waves: countdown timer UI, "Next Wave" skip button
+- Path following: enemies follow ordered waypoint Parts. Move with CFrame lerp or Humanoid:MoveTo. pathProgress = waypointIndex + fraction between current/next waypoint.
+- Enemy reaches end: deduct player lives. Destroy enemy. If lives <= 0, game over.
+- Tower attack visual: Beam from tower to target for laser towers. Projectile Part for projectile towers. ParticleEmitter burst for AoE towers.
+- Common mistake: checking every enemy against every tower every frame — use spatial partitioning or limit checks to 10/frame.
+- Common mistake: not handling enemy death mid-targeting — tower shoots dead enemy. Always validate target.IsAlive before firing.
+
+BATTLE ROYALE MECHANICS:
+- Storm/zone shrink system:
+  local stormCircle = {center = Vector3.new(0, 0, 0), radius = 500, targetRadius = 50, shrinkDuration = 120}
+  -- Server shrinks zone over time:
+  local elapsed = os.clock() - shrinkStartTime
+  local t = math.clamp(elapsed / stormCircle.shrinkDuration, 0, 1)
+  local currentRadius = stormCircle.radius - (stormCircle.radius - stormCircle.targetRadius) * t
+  -- Damage players outside zone:
+  for _, player in Players:GetPlayers() do
+    local char = player.Character
+    if char and char.PrimaryPart then
+      local dist = (char.PrimaryPart.Position - stormCircle.center).Magnitude
+      if dist > currentRadius then
+        char.Humanoid:TakeDamage(5) -- storm damage per tick
+      end
+    end
+  end
+- Storm visual: transparent Cylinder part scaled to currentRadius * 2. Update Size and Position each frame on client. Purple/red color with low transparency (0.7).
+- Loot spawning: pre-place invisible LootSpawn parts at map locations. On game start, randomly assign loot from weighted table to each spawn. Not all spawns get loot (60-80% fill rate).
+- Air drop: every 60-90 seconds, spawn crate Part at random position inside current zone. BodyPosition to slowly descend. Contains high-tier loot. Visible beam/smoke trail to attract players.
+- Last-man-standing detection:
+  local alivePlayers = {}
+  Humanoid.Died:Connect(function() table.remove(alivePlayers, playerIndex) end)
+  if #alivePlayers == 1 then declareWinner(alivePlayers[1]) end
+  if #alivePlayers == 0 then declareDraw() end
+- Kill tracking: {kills = 0, assists = {}, damageDealt = {}}. Track damage source. Kill credit to last damager. Assist to anyone who dealt 30%+ of max HP.
+- Spectating: on death, set camera to follow killer or random alive player. Provide Next/Previous buttons to cycle. See SPECTATOR MODE section for full implementation.
+- Lobby → match flow: players queue in lobby place → TeleportService:ReserveServer for match → teleport party → match countdown → bus/drop phase → combat → results → teleport back to lobby.
+- Common mistake: storm damage on client — exploiters disable it. Always damage on server.
+- Common mistake: not handling disconnects — count disconnected players as eliminated.
+
+VEHICLE SYSTEM ADVANCED:
+- VehicleSeat properties: MaxSpeed (default 25), Torque (default 10), TurnSpeed (default 1), Steer (-1 to 1), Throttle (-1 to 1). Player auto-sits when touching seat if Disabled = false.
+- Basic car setup: VehicleSeat welded to body. 4 wheel Parts with HingeConstraints (motor mode). VehicleSeat.Throttle drives hinge AngularVelocity. VehicleSeat.Steer drives front wheel hinge angles.
+- Suspension with SpringConstraints:
+  -- For each wheel: SpringConstraint between body attachment and wheel attachment
+  spring.FreeLength = 3 -- natural length
+  spring.Stiffness = 500 -- spring force (higher = stiffer)
+  spring.Damping = 50 -- dampening (prevents bouncing)
+  -- Wheel needs CylindricalConstraint for rotation axis
+- Drift mechanic: detect high steer + speed. Reduce rear wheel friction (CustomPhysicalProperties with lower friction). Apply lateral BodyVelocity briefly. Visual: tire smoke ParticleEmitter, skid Sound.
+- Nitro/boost: on activation, multiply MaxSpeed by 2 for 3 seconds. Tween FOV wider (70→100) for speed feel. Exhaust flame ParticleEmitter. Cooldown 15-20 seconds.
+- Vehicle damage: track HP. Collisions above threshold speed deal damage proportional to impact velocity. Visual: swap mesh LODs or add crack decals at damage stages.
+- Fuel system: deplete fuel based on throttle usage. Empty = MaxSpeed drops to 0. Gas station ProximityPrompt to refuel. Display fuel gauge UI.
+- Garage/spawn: player selects vehicle from owned list. Clone from ServerStorage. Position at spawn pad. Weld VehicleSeat. Only one active vehicle per player (destroy old on new spawn).
+- Common mistake: wheels clipping through ground — SpringConstraint FreeLength too short or Stiffness too low.
+- Common mistake: vehicle flipping and being stuck — add FlipButton: detect if car upside down (UpVector.Y < 0), apply torque to right it.
+- Common mistake: multiple players in driver seat — check VehicleSeat.Occupant before allowing entry.
+
+DOOR AND LOCK SYSTEM:
+- Open/close with TweenService:
+  local doorCF = door.CFrame
+  local openCF = doorCF * CFrame.Angles(0, math.rad(90), 0) -- swing open 90 degrees
+  local function toggleDoor(open)
+    local goal = open and openCF or doorCF
+    TweenService:Create(door, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {CFrame = goal}):Play()
+  end
+- Hinge door: use HingeConstraint with ServoActuatorType. Set TargetAngle to 0 (closed) or 90 (open). AngularSpeed = 2. Hinge handles physics naturally.
+- Sliding door: PrismaticConstraint. Set TargetPosition to 0 (closed) or door width (open). Speed = 3.
+- Key/keycard requirement: server checks player inventory for required key item before allowing open. RemoteEvent: client requests open → server validates key → server tweens door → fires RemoteEvent to all clients for visual.
+- Locked states: {Unlocked, Locked, KeyRequired, LevelRequired}. Display different ProximityPrompt text per state. "Press E to Open" vs "Requires Gold Key" vs "Requires Level 10".
+- Proximity trigger: ProximityPrompt on door frame. HoldDuration = 0 for instant, 0.5 for weighted doors. MaxActivationDistance = 6-8.
+- Break-in mechanic: locked doors have breakHP. Melee attacks reduce breakHP. When 0, door opens permanently. Visual: door cracks/splinters at damage thresholds.
+- Auto-close: task.delay(5, function() if doorOpen then toggleDoor(false) end end). Reset timer if re-opened.
+- Common mistake: door collision during tween — set CanCollide = false during animation, restore after.
+- Common mistake: not anchoring doors — physics sends them flying on open. Anchored + CFrame tween is safest.
+
+ELEVATOR SYSTEM:
+- Multi-floor data:
+  local Floors = {
+    {name = "Ground Floor", height = 0},
+    {name = "Floor 1", height = 15},
+    {name = "Floor 2", height = 30},
+    {name = "Roof", height = 45},
+  }
+- Elevator movement: Anchored platform Part. TweenService to target floor height. Speed = 10 studs/second. Duration = math.abs(targetHeight - currentHeight) / speed.
+  TweenService:Create(platform, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
+    CFrame = CFrame.new(platform.Position.X, targetHeight, platform.Position.Z)
+  }):Play()
+- Player rides elevator: WeldConstraint between player HumanoidRootPart and platform while inside. Or use platform with CanCollide=true and rely on physics (less reliable).
+- Call buttons per floor: ProximityPrompt on button Part at each floor. On Triggered: fire RemoteEvent to server → server validates elevator not busy → tween to calling floor → open doors → wait 3s → close doors.
+- Floor indicator: SurfaceGui on wall with TextLabel showing current floor name. Update on arrival.
+- Door open/close: two door Parts that slide apart (PrismaticConstraint or CFrame tween). Open on arrival, close before departure. 3-second hold time.
+- Capacity limit: count players on platform using GetPartBoundsInBox. If >= maxCapacity (4-6), reject new passengers.
+- Common mistake: players falling through moving platform — WeldConstraint or Humanoid.SeatPart approach is more reliable than friction.
+- Common mistake: calling elevator while already moving — add isBusy flag, queue requests.
+
+TELEPORTER SYSTEM:
+- Pad-to-pad teleport:
+  local padA = workspace.TelepadA
+  local padB = workspace.TelepadB
+  padA.Touched:Connect(function(hit)
+    local humanoid = hit.Parent:FindFirstChildOfClass("Humanoid")
+    if humanoid and not debounce[humanoid] then
+      debounce[humanoid] = true
+      hit.Parent:PivotTo(padB.CFrame + Vector3.new(0, 3, 0))
+      task.delay(2, function() debounce[humanoid] = nil end) -- 2s cooldown
+    end
+  end)
+- Server-side teleport (recommended): Touched fires on server. Validate player owns character. Apply teleport. Prevents exploit where client fires fake Touched.
+- Portal visual effects: two Parts with ParticleEmitter (swirl texture, high RotSpeed). Beam connecting top/bottom of portal ring. PointLight with color matching portal theme.
+- Loading zone transition: fade screen to black on client (TweenService on Frame transparency 0→1). Teleport during black. Fade back in. Minimum 0.5s black screen to mask pop-in.
+- World-to-world (cross-place): use TeleportService:TeleportAsync(destinationPlaceId, {player}). See TELEPORTSERVICE section for full details.
+- Cooldown: 2-3 second debounce per player per teleporter. Store in table keyed by Player or Humanoid. Clean on PlayerRemoving.
+- Linked teleporters: store pairs in table. {padA = padB, padB = padA}. On touch padA → teleport to padB and vice versa.
+- Common mistake: infinite teleport loop — player lands on destination pad and immediately teleports back. Use debounce or offset landing position 3+ studs away from pad.
+- Common mistake: teleporting only HumanoidRootPart — use Model:PivotTo() to move entire character.
+
+STATUS EFFECT SYSTEM:
+- Buff/debuff data structure:
+  local StatusEffects = {
+    SpeedBoost = {stat = "WalkSpeed", modifier = 1.5, duration = 10, stackable = false, icon = "rbxassetid://111"},
+    Poison = {stat = "Health", dps = 5, duration = 8, stackable = true, maxStacks = 3, icon = "rbxassetid://222"},
+    Shield = {stat = "DamageReduction", modifier = 0.5, duration = 15, stackable = false, icon = "rbxassetid://333"},
+    Freeze = {stat = "WalkSpeed", modifier = 0, duration = 3, stackable = false, icon = "rbxassetid://444"},
+    Burn = {stat = "Health", dps = 3, duration = 6, stackable = true, maxStacks = 5, icon = "rbxassetid://555"},
+  }
+- Application (server):
+  function applyEffect(player, effectName)
+    local effect = StatusEffects[effectName]
+    local active = activeEffects[player]
+    if not effect.stackable and active[effectName] then
+      active[effectName].endTime = os.clock() + effect.duration -- refresh duration
+      return
+    end
+    local stacks = (active[effectName] and active[effectName].stacks or 0) + 1
+    if effect.maxStacks and stacks > effect.maxStacks then return end
+    active[effectName] = {endTime = os.clock() + effect.duration, stacks = stacks}
+    applyModifier(player, effect)
+  end
+- Duration tracking: server heartbeat loop checks os.clock() against endTime. Remove expired effects. Restore modified stats.
+- Stacking rules: non-stackable = refresh duration only. Stackable = increase intensity (e.g., Poison 5 dps * 3 stacks = 15 dps). Cap at maxStacks.
+- Visual indicators: client receives effect list via RemoteEvent. Display icon strip (horizontal UIListLayout). Show duration countdown text. Tint character with effect color (Highlight instance).
+- Cleanse/dispel: remove specific or all negative effects. cleanse(player, "Poison") removes Poison. dispelAll(player) clears all debuffs.
+- Common mistake: not removing effect modifiers when effect expires — permanent speed boost. Always restore original stat value.
+- Common mistake: applying effects on client — exploiters remove debuffs. Server authoritative.
+
+LOOT DROP SYSTEM:
+- Loot table with weighted rarity:
+  local LootTable = {
+    {item = "Coin", weight = 50, rarity = "Common"},
+    {item = "HealthPotion", weight = 25, rarity = "Uncommon"},
+    {item = "IronSword", weight = 12, rarity = "Rare"},
+    {item = "DiamondArmor", weight = 5, rarity = "Epic"},
+    {item = "DragonBlade", weight = 1, rarity = "Legendary"},
+  }
+  function rollLoot(table)
+    local total = 0
+    for _, entry in table do total += entry.weight end
+    local roll = math.random() * total
+    local cumulative = 0
+    for _, entry in table do
+      cumulative += entry.weight
+      if roll <= cumulative then return entry end
+    end
+  end
+- Drop animation: spawn Part at enemy death position. Apply upward BodyVelocity (0, 30, 0) for 0.2s. Part falls with gravity. Spin with BodyAngularVelocity.
+- Pickup radius: check distance each frame. If player within 3 studs, collect. Or use Touched event with 3-stud radius Part.
+- Auto-collect: magnet effect when player within 10 studs. AlignPosition toward player with RigidityEnabled = false, Responsiveness = 20.
+- Loot beams by rarity: Beam from item to sky. Color by rarity: white=Common, green=Uncommon, blue=Rare, purple=Epic, gold=Legendary. Height = 20 studs. Helps players spot drops.
+- Despawn timer: Debris:AddItem(lootPart, 60) — disappears after 60 seconds. Or fade out in last 10 seconds (tween Transparency).
+- Server authority: server determines drop contents. Client only displays visuals. Pickup validated on server (check item still exists, player close enough).
+- Common mistake: creating too many loot parts — object pool them. Re-use hidden parts from pool.
+- Common mistake: multiple players picking up same item — server removes item on first valid pickup, rejects subsequent attempts.
+
+BOSS FIGHT MECHANICS:
+- Phase transitions:
+  local BossPhases = {
+    {name = "Phase1", hpThreshold = 1.0, attackSpeed = 2.0, patterns = {"Slam", "Fireball"}},
+    {name = "Phase2", hpThreshold = 0.6, attackSpeed = 1.5, patterns = {"Slam", "Fireball", "Shockwave"}},
+    {name = "Phase3", hpThreshold = 0.3, attackSpeed = 1.0, patterns = {"Slam", "Fireball", "Shockwave", "Laser"}},
+  }
+  local function getCurrentPhase(boss)
+    local hpPercent = boss.Humanoid.Health / boss.Humanoid.MaxHealth
+    for i = #BossPhases, 1, -1 do
+      if hpPercent <= BossPhases[i].hpThreshold then return BossPhases[i] end
+    end
+    return BossPhases[1]
+  end
+- Phase transition events: screen flash, boss roar sound, brief invulnerability (1-2s), new attack animation plays, arena changes (lava rises, lights dim).
+- Attack patterns: cycle through phase's pattern list. Each pattern = coroutine. Slam: telegraph circle on ground (1.5s warning) → damage in area. Fireball: aim at random player → projectile. Shockwave: expanding ring of damage.
+- Arena boundaries: invisible wall Parts forming ring. Prevent players from leaving and boss from escaping. Remove on boss defeat.
+- Health bar UI: BillboardGui above boss OR ScreenGui bar at top of screen. Show boss name, HP bar (TweenSize on damage), phase indicator.
+- Enrage timer: 5-10 minutes. If boss not killed in time: damage increases 3x, attack speed doubles. Or: instant wipe. Display timer prominently.
+- Adds spawning: boss summons minion enemies at HP thresholds or on timer. Minions have low HP. Spawn from designated points around arena. Limit active adds to 5-8.
+- Loot distribution: on defeat, generate loot per player (not shared pool). Each player rolls independently. Higher damage contributors get bonus roll chance.
+- Common mistake: boss getting stuck on terrain — use large flat arena, anchor boss and move via CFrame/tween.
+- Common mistake: players cheesing boss from outside arena — validate damage sources are inside arena boundaries.
+
+EMOTE AND ANIMATION SYSTEM:
+- Emote wheel UI: circular arrangement of emote buttons. Open on key press (B or period). Close on selection or second press. 8 slots arranged in circle using trigonometry (cos/sin for position).
+- Playing animations:
+  local animator = humanoid:FindFirstChildOfClass("Animator")
+  local animTrack = animator:LoadAnimation(animationInstance)
+  animTrack.Priority = Enum.AnimationPriority.Action -- overrides movement anims
+  animTrack.Looped = false -- one-shot emote
+  animTrack:Play()
+  animTrack:GetMarkerReachedSignal("End"):Connect(function() animTrack:Stop() end)
+- Animation priorities (low to high): Core, Idle, Movement, Action, Action2, Action3, Action4. Emotes should be Action or higher.
+- Emote unlocking: store unlocked emotes in player data. Default emotes free. Premium emotes from shop/battle pass. Client requests emote play → server validates ownership → server fires RemoteEvent to all clients to play animation on that character.
+- Emote shop: ScreenGui with emote previews (ViewportFrame showing character performing emote). Buy with in-game currency or Robux (MarketplaceService:PromptPurchase).
+- Custom animations: upload via Roblox Animation Editor. Get asset ID. Create Animation instance: anim.AnimationId = "rbxassetid://IDHERE".
+- Cancel emote: on movement input (WASD/thumbstick), stop animation track. animTrack:Stop(0.2) with 0.2s fadeout.
+- Common mistake: emote keeps playing while walking — always stop emote on Humanoid.Running if speed > 0.
+- Common mistake: animation not showing for other players — must play on server or replicate via RemoteEvent. Client-only animations are local.
+
+SPECTATOR MODE:
+- Camera follow player:
+  local spectating = true
+  local targetPlayer = getAlivePlayer()
+  RunService.RenderStepped:Connect(function()
+    if spectating and targetPlayer and targetPlayer.Character then
+      local head = targetPlayer.Character:FindFirstChild("Head")
+      if head then
+        Camera.CameraType = Enum.CameraType.Custom
+        Camera.CameraSubject = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+      end
+    end
+  end)
+- Free cam mode: Camera.CameraType = Enum.CameraType.Scriptable. WASD moves camera. Mouse rotates. Shift = fast, Ctrl = slow. Clamp Y position to prevent going underground.
+- Player list: ScreenGui showing alive players. TextButton per player. Click to spectate that player. Highlight current target.
+- Next/previous controls: Q/E keys or arrow buttons. Cycle through alive player list. Wrap around at ends.
+  local currentIndex = 1
+  local function nextTarget()
+    currentIndex = currentIndex % #alivePlayers + 1
+    targetPlayer = alivePlayers[currentIndex]
+  end
+- UI overlay: show target player name, their HP, kill count. Semi-transparent bar at top. "SPECTATING: PlayerName" text.
+- Hide spectator from game: set spectator character Transparency = 1, CanCollide = false, or destroy character entirely. Spectators should be invisible and non-interactive.
+- Anti-ghosting: spectators should NOT be able to communicate live position info to alive teammates. Disable chat or add delay.
+- Common mistake: spectator camera persists after respawn — reset Camera.CameraType = Custom and CameraSubject = own Humanoid on respawn.
+- Common mistake: spectating dead players — filter target list to alive players only, update on death events.
+
+MODERATION SYSTEM:
+- Report UI: TextButton "Report Player" → modal with player list → select reason (dropdown: Cheating, Harassment, Inappropriate Name, Other) → optional text description → submit via RemoteEvent.
+- Server-side report handling: validate report data. Store in DataStore or HTTP POST to external service (Discord webhook, database). Rate limit: 1 report per player per 60 seconds.
+- Word filtering: TextService:FilterStringAsync(text, fromUserId). MANDATORY for all user-generated text. Returns TextFilterResult. Use :GetNonChatStringForBroadcastAsync() for public display.
+  local success, filtered = pcall(function()
+    return TextService:FilterStringAsync(text, player.UserId)
+  end)
+  if success then
+    local result = filtered:GetNonChatStringForBroadcastAsync()
+  end
+- Kick system: Admin fires RemoteEvent → server validates admin permission → target:Kick("Reason: " .. reason). Log kick to DataStore with timestamp, admin, reason.
+- Ban system: store banned UserIds in DataStore. On PlayerAdded: check if banned → if yes, Kick immediately with ban reason and duration.
+  local banData = BanStore:GetAsync("ban_" .. player.UserId)
+  if banData and (banData.permanent or os.time() < banData.expiry) then
+    player:Kick("You are banned. Reason: " .. banData.reason)
+  end
+- Temporary bans: store expiry timestamp. Check os.time() < expiry on join. Auto-unban when expired.
+- Appeal flow: external form (Google Form or website). Manual review by admin. Remove ban entry from DataStore.
+- Logging: record all moderation actions. {admin, target, action, reason, timestamp}. Critical for appeals and audit trails.
+- Common mistake: not filtering user text — violates Roblox TOS, game gets taken down.
+- Common mistake: ban by Username instead of UserId — usernames can change. Always use UserId.
+
+CROSS-SERVER COMMUNICATION:
+- MessagingService basics:
+  local MessagingService = game:GetService("MessagingService")
+  -- Publish:
+  MessagingService:PublishAsync("GlobalChat", {sender = player.Name, message = "Hello!"})
+  -- Subscribe:
+  MessagingService:SubscribeAsync("GlobalChat", function(data)
+    local payload = data.Data -- the table you published
+    local sent = data.Sent -- timestamp
+    -- broadcast to all players on this server
+  end)
+- Limits: 1KB max message size. 150 + 60*numPlayers publishes per minute. 5 + 2*numPlayers subscriptions.
+- Global announcements: admin publishes to "Announcement" topic. All servers subscribed. Display as banner UI on all clients.
+- Server-to-server data: publish player data when they teleport. Receiving server subscribes and applies data. Use for cross-server trading, global events, server-wide bosses.
+- Server list: each server publishes heartbeat to MemoryStoreService SortedMap every 30s. Include server JobId, player count, map name. Client reads list for server browser.
+- Global events: publish event state changes (boss spawned, event started). All servers react simultaneously. Synchronized countdown using os.time().
+- Common mistake: exceeding message size limit — serialize only essential data, not full player profiles.
+- Common mistake: not handling SubscribeAsync failures — wrap in pcall, retry after 5 seconds.
+- Common mistake: publishing every frame — rate limit to meaningful state changes only.
+
+LOADING SCREEN:
+- ContentProvider:PreloadAsync pattern:
+  local ContentProvider = game:GetService("ContentProvider")
+  local assets = workspace:GetDescendants() -- or specific folder
+  local total = #assets
+  local loaded = 0
+  ContentProvider:PreloadAsync(assets, function(assetId, status)
+    loaded += 1
+    loadingBar.Size = UDim2.new(loaded / total, 0, 1, 0)
+    percentText.Text = math.floor(loaded / total * 100) .. "%"
+  end)
+- Loading screen setup: ScreenGui with DisplayOrder = 999, IgnoreGuiInset = true, ResetOnSpawn = false. Cover entire screen with Frame. Add logo, progress bar, text.
+- Tips rotation: array of tip strings. Cycle every 5 seconds with fade transition.
+  local tips = {"Press E to interact", "Explore the cave for diamonds", "Join our Discord!"}
+  while loading do
+    tipLabel.Text = tips[math.random(#tips)]
+    task.wait(5)
+  end
+- Skip button: appear after minimum display time (3-5 seconds). On click: force-close loading screen even if not fully loaded.
+- Minimum display time: even if assets load instantly, show screen for 2-3 seconds so players see branding.
+  local startTime = os.clock()
+  -- ... preload assets ...
+  local elapsed = os.clock() - startTime
+  if elapsed < 3 then task.wait(3 - elapsed) end
+- Remove loading screen: TweenService transparency 0→1 over 0.5s, then Destroy.
+- ReplicatedFirst for early loading: place loading screen LocalScript in ReplicatedFirst. It runs before anything else loads. Call game:IsLoaded() or game.Loaded:Wait().
+- Common mistake: loading screen not covering Roblox default loading — set DisplayOrder high and IgnoreGuiInset = true.
+- Common mistake: PreloadAsync blocking forever on broken assets — set timeout, skip failed assets after 10s.
+
+SETTINGS AND OPTIONS MENU:
+- Volume sliders: UISlider or custom Frame + draggable button. Map position (0-1) to SoundGroup.Volume. Separate sliders: Master, Music, SFX, Voice.
+  local function onSliderChanged(value) -- value 0-1
+    SoundService.MusicGroup.Volume = value
+    saveSettings(player, "musicVolume", value)
+  end
+- Graphics quality: UserSettings().GameSettings.SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1 through QualityLevel10. Or Automatic. Show as dropdown or slider.
+- Keybinds: store custom keybinds in table. Default: {Sprint = Enum.KeyCode.LeftShift, Interact = Enum.KeyCode.E}. Allow rebinding: listen for next key press, assign to action.
+  local rebinding = nil
+  function startRebind(action)
+    rebinding = action
+    -- UI shows "Press any key..."
+  end
+  UserInputService.InputBegan:Connect(function(input)
+    if rebinding then
+      keybinds[rebinding] = input.KeyCode
+      rebinding = nil
+      saveSettings(player, "keybinds", keybinds)
+    end
+  end)
+- Sensitivity: mouse sensitivity multiplier. Apply to camera rotation delta. Range 0.1 to 3.0, default 1.0.
+- Save to DataStore: serialize settings table to JSON string. Save on change (debounced 2 seconds). Load on join.
+  local function saveSettings(player, key, value)
+    playerSettings[player][key] = value
+    -- debounce save to DataStore
+  end
+- Settings UI: tabbed interface (Audio, Video, Controls, Gameplay). Open with Escape or gear icon. Close saves automatically.
+- Toggle options: checkboxes for HUD visibility, damage numbers, screen shake, notifications. BoolValue stored per setting.
+- Common mistake: saving settings every slider tick — debounce saves, batch changes.
+- Common mistake: not loading settings on join — apply saved settings in PlayerAdded before gameplay starts.
+
+NOTIFICATION SYSTEM:
+- Toast notification pattern:
+  local function showNotification(text, duration, priority)
+    local frame = notifTemplate:Clone()
+    frame.TextLabel.Text = text
+    frame.Parent = notificationContainer -- ScreenGui with UIListLayout (vertical, bottom-up)
+    -- Slide in from right
+    frame.Position = UDim2.new(1, 0, 0, 0)
+    TweenService:Create(frame, TweenInfo.new(0.3), {Position = UDim2.new(0, 0, 0, 0)}):Play()
+    -- Auto-dismiss
+    task.delay(duration or 3, function()
+      TweenService:Create(frame, TweenInfo.new(0.3), {Position = UDim2.new(1, 0, 0, 0)}):Play()
+      task.wait(0.3)
+      frame:Destroy()
+    end)
+  end
+- Queue system: max 3 visible notifications. New ones push old ones up. If queue full, delay showing new notification until slot opens.
+  local activeNotifs = 0
+  local queue = {}
+  local function processQueue()
+    if #queue > 0 and activeNotifs < 3 then
+      activeNotifs += 1
+      local data = table.remove(queue, 1)
+      showNotification(data.text, data.duration)
+      -- on dismiss: activeNotifs -= 1; processQueue()
+    end
+  end
+- Priority levels: Low (info, tips), Medium (rewards, achievements), High (warnings, deaths), Critical (server messages, bans). Higher priority jumps queue.
+- Auto-dismiss timing: Low = 3s, Medium = 5s, High = 7s, Critical = requires manual dismiss (X button).
+- Click actions: optional callback on notification click. Navigate to shop, open inventory, etc.
+  if data.onClick then
+    frame.MouseButton1Click:Connect(data.onClick)
+  end
+- Notification types: Info (blue), Success (green), Warning (yellow), Error (red), Achievement (gold). Color-code the notification frame.
+- Sound per type: play short sound effect on notification appear. Different sounds for achievement vs warning.
+- Common mistake: notifications stacking infinitely — always limit visible count and queue overflow.
+- Common mistake: notifications persisting across deaths/respawns — clear all on character death if ResetOnSpawn.
 `
 
 // ── Section Tags for Matching ───────────────────────────────────────────────
