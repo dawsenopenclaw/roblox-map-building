@@ -3945,38 +3945,54 @@ end`)
   // The knowledge base has terrain, trees, water, roads, weather — all useful for builds
   const robloxContext = buildRobloxContext(message)
 
-  // Inject CodeGraph knowledge — tells AI exactly which components to include
-  const codeGraphContext = formatGraphPrompt(message)
+  // ── FREE-TIER KNOWLEDGE BRAIN (budget-safe, error-safe) ──────────────────────
+  const FREE_KNOWLEDGE_BUDGET = 24000 // Groq has 32K limit — leave room for prompt + response
+  const safeGetFree = (fn: () => string, name: string): string => {
+    try { return fn() } catch (e) {
+      console.warn(`[knowledge-free] ${name} failed:`, e instanceof Error ? e.message : e)
+      return ''
+    }
+  }
+  const msgLower = message.toLowerCase()
+  const freeMatchUI = /\b(gui|ui|shop|inventory|hud|menu|health|bar|settings|quest|dialog|notification|loading|screen|button|frame|on\s?(my\s?)?screen|display|show\s?(me|on|the)|popup|overlay|dashboard|minimap|crosshair|hotbar|toolbar)\b/i.test(msgLower)
+  const freeMatchSound = /\b(sound|audio|music|sfx|ambient|footstep|voice|hear|listen|volume|explosion|gunshot|whoosh|splash)\b/i.test(msgLower)
+  const freeMatchAnim = /\b(animat|tween|motion|spin|rotate|cutscene|camera\s?(shake|move|pan)|door\s?(open|close)|elevator|slide|fade|bounce|spring|easing|moving|animated)\b/i.test(msgLower)
+  const freeMatchNPC = /\b(npc|enemy|enemies|mob|boss|monster|zombie|guard|villager|merchant|shopkeeper|quest\s?giver|follower|patrol|wander|chase|pathfind|dialogue|conversation|talk\s?to|spawn\s?(enemy|npc|mob|wave)|hostile|turret)\b/i.test(msgLower)
+  const freeMatchMobile = /\b(mobile|phone|touch|tablet|joystick|swipe|pinch|tap|gesture|on\s?(my\s?)?(phone|mobile|tablet)|gamepad|console\s?controls?|cross\s?platform|safe\s?area)\b/i.test(msgLower)
+  const freeMatchWater = /\b(water|swim|ocean|sea|lake|river|pond|pool|underwater|diving|boat|ship|sail|float|buoyan|drown|wave|waterfall|fountain|splash|fish|fishing|submarine|beach|dock|moat|lagoon)\b/i.test(msgLower)
 
-  // Inject focused prompt — category-specific example + relevant rules only
-  // This is the #1 quality lever: show the AI EXACTLY what to build for THIS request
-  const focusedContext = buildFocusedPrompt(message)
-
-  // Inject DevForum building knowledge — matched to this specific request
-  const devforumKnowledge = getRelevantBuildingKnowledge(message)
-  // Inject DevForum scripting knowledge — code patterns for game systems
-  const scriptingKnowledge = getRelevantScriptingKnowledge(message)
-  // Inject game design knowledge — retention, monetization, genre-specific patterns
-  const gameDesignKnowledge = getRelevantGameDesign(message)
-  // Inject UI/GUI knowledge for UI-related requests
-  const uiKnowledge = /\b(gui|ui|shop|inventory|hud|menu|health|bar|settings|quest|dialog|notification|loading|trade|pet|rebirth|daily|minimap|screen|button|frame)\b/i.test(message) ? getRelevantUIKnowledge(message) : ''
-  // Inject building mastery knowledge — exact construction techniques from DevForum
-  const buildingMastery = getRelevantBuildingMastery(message)
-  // Sound, animation, NPC, mobile, water knowledge
-  const soundKnowledge = /\b(sound|audio|music|sfx|ambient|footstep|voice|hear|listen|volume|play\s?(a\s?)?sound|song|noise|echo|reverb|explosion|gunshot|whoosh|splash)\b/i.test(message)
-    ? getRelevantSoundKnowledge(message) : ''
-  const animKnowledge = /\b(animat|tween|motion|spin|rotate|bob|sway|cutscene|camera\s?(shake|move|pan)|door\s?(open|close)|elevator|platform\s?move|slide|fade|bounce|spring|easing|lerp|moving|animated)\b/i.test(message)
-    ? getRelevantAnimationKnowledge(message) : ''
-  const npcKnowledge = /\b(npc|enemy|enemies|mob|boss|monster|zombie|guard|villager|merchant|shopkeeper|quest\s?giver|follower|companion|patrol|wander|chase|pathfind|behavior|state\s?machine|dialogue|conversation|talk\s?to|spawn\s?(enemy|npc|mob|wave)|wave\s?system|attack\s?pattern|hostile|turret|sentry)\b/i.test(message)
-    ? getRelevantNPCKnowledge(message) : ''
-  const mobileKnowledge = /\b(mobile|phone|touch|tablet|joystick|swipe|pinch|tap|gesture|on\s?(my\s?)?(phone|mobile|tablet)|mobile\s?(controls?|button|ui|game)|small\s?screen|gamepad|console\s?controls?|cross\s?platform|safe\s?area|notch)\b/i.test(message)
-    ? getRelevantMobileControlsKnowledge(message) : ''
-  const waterKnowledge = /\b(water|swim|ocean|sea|lake|river|pond|pool|underwater|diving|boat|ship|sail|float|buoyan|drown|wave|waterfall|fountain|splash|fish|fishing|submarine|beach|shore|dock|pier|canal|stream|whirlpool|flood|swamp|marsh|lagoon|moat)\b/i.test(message)
-    ? getRelevantWaterKnowledge(message) : ''
-  // Inject genre-specific game knowledge (horror elements, racing layout, etc.) — was missing from main path
+  const freeSources: Array<{ name: string; get: () => string }> = [
+    { name: 'roblox', get: () => buildRobloxContext(message) },
+    { name: 'codegraph', get: () => formatGraphPrompt(message) },
+    { name: 'focused', get: () => buildFocusedPrompt(message) },
+    { name: 'devforum', get: () => getRelevantBuildingKnowledge(message) },
+    { name: 'scripting', get: () => getRelevantScriptingKnowledge(message) },
+    { name: 'gamedesign', get: () => getRelevantGameDesign(message) },
+    { name: 'mastery', get: () => getRelevantBuildingMastery(message) },
+    ...(freeMatchUI ? [{ name: 'ui', get: () => getRelevantUIKnowledge(message) }] : []),
+    ...(freeMatchSound ? [{ name: 'sound', get: () => getRelevantSoundKnowledge(message) }] : []),
+    ...(freeMatchAnim ? [{ name: 'animation', get: () => getRelevantAnimationKnowledge(message) }] : []),
+    ...(freeMatchNPC ? [{ name: 'npc', get: () => getRelevantNPCKnowledge(message) }] : []),
+    ...(freeMatchMobile ? [{ name: 'mobile', get: () => getRelevantMobileControlsKnowledge(message) }] : []),
+    ...(freeMatchWater ? [{ name: 'water', get: () => getRelevantWaterKnowledge(message) }] : []),
+  ]
+  const freeParts: string[] = []
+  let freeTotalChars = 0
+  for (const source of freeSources) {
+    const text = safeGetFree(source.get, source.name)
+    if (!text) continue
+    if (freeTotalChars + text.length > FREE_KNOWLEDGE_BUDGET) {
+      const remaining = FREE_KNOWLEDGE_BUDGET - freeTotalChars
+      if (remaining > 500) freeParts.push(text.slice(0, remaining) + '\n[...truncated]')
+      break
+    }
+    freeParts.push(text)
+    freeTotalChars += text.length
+  }
+  const freeKnowledgeBrain = freeParts.join('\n\n')
   const gameKnowledge = buildGameKnowledgePrompt(message)
 
-  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + focusedContext + devforumKnowledge + scriptingKnowledge + gameDesignKnowledge + uiKnowledge + buildingMastery + soundKnowledge + animKnowledge + npcKnowledge + mobileKnowledge + waterKnowledge + gameKnowledge + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
+  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + gameKnowledge + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
 
 RESPONSE FORMAT (follow EXACTLY):
 1. First, write 3-5 sentences describing what you're creating. Be specific about what a player would see. End with a suggestion for what to build next.
@@ -13746,40 +13762,72 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const recentContext = [...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')
       const gameKnowledge = buildGameKnowledgePrompt(recentContext)
 
-      // ── KNOWLEDGE BRAIN INJECTION (all tiers) ──────────────────────────────────
+      // ── KNOWLEDGE BRAIN INJECTION (all tiers, production-hardened) ─────────────
+      // Token budget: ~32K chars ≈ 8K tokens. Prioritized by relevance.
+      // Error-safe: if any getter throws, we skip it and keep going.
+      const KNOWLEDGE_CHAR_BUDGET = 32000
       let knowledgeBrain = ''
       if (isBuildingIntent) {
-        const focusedContext = buildFocusedPrompt(message)
-        const robloxContext = buildRobloxContext(message)
-        const codeGraphContext = formatGraphPrompt(message)
-        const devforumKnowledge = getRelevantBuildingKnowledge(message)
-        const scriptingKnowledge = getRelevantScriptingKnowledge(message)
-        const gameDesignKnowledge = getRelevantGameDesign(message)
-        // Natural language UI detection — understand what players actually say, not just technical terms
-        const uiKnowledge = /\b(gui|ui|hud|menu|button|shop|inventory|health\s?bar|scoreboard|leaderboard|dialog|notification|toolbar|sidebar|panel|screen|frame|textlabel|textbutton|imagelabel|imagebutton|scrolling|billboardgui|surfacegui|on\s?(my\s?)?screen|display|show\s?(me|on|the)|pop\s?up|overlay|interface|prompt|tooltip|indicator|counter|timer|countdown|progress\s?bar|loading|lobby\s?screen|start\s?screen|death\s?screen|win\s?screen|game\s?over|main\s?menu|pause\s?menu|settings?\s?menu|options?\s?menu|title\s?screen|dashboard|stats?\s?(on|display)|lives?|coins?\s?(on|display|show|counter)|money\s?(on|display|show)|xp\s?(bar|display|show)|level\s?(display|indicator|show)|minimap|map\s?icon|waypoint|crosshair|reticle|hotbar|action\s?bar|ability\s?bar|skill\s?tree|talent|perk|upgrade\s?(menu|screen|ui)|crafting\s?(menu|screen|ui)|trading\s?(menu|screen|ui)|chat\s?(box|window|ui)|text\s?(box|input)|popup|modal|window|tab|slot|icon|badge|avatar\s?(frame|display)|profile|nameplate|overhead|floating\s?text|damage\s?number|kill\s?feed|announcement|banner|toast|alert|warning\s?(text|message)|error\s?(text|message)|loading\s?screen|splash|intro\s?screen|cutscene\s?ui|subtitle|caption|quest\s?(log|tracker|list)|mission\s?(tracker|log)|objective|checkpoint|reward\s?(screen|popup)|loot|chest\s?(ui|open)|backpack|toolbar|radial\s?menu|wheel\s?menu|dropdown|select|picker|slider|toggle|switch|checkbox|radio\s?button|input\s?field|search\s?bar|filter|sort|pagination|scroll|list|grid|card|tile|thumbnail|preview|gallery|carousel|tab\s?bar|navigation|breadcrumb|header|footer|status\s?bar|info\s?(box|panel|card)|detail|description|label|tag|chip|pill|divider|separator|border|outline|shadow|glow|highlight|focus|hover|click|tap|press|drag|swipe|pinch|zoom)\b/i.test(message)
-          ? getRelevantUIKnowledge(message) : ''
-        const buildingMastery = getRelevantBuildingMastery(message)
-        // Sound, animation, NPC knowledge — match on natural language
-        const soundKnowledge = /\b(sound|audio|music|sfx|ambient|footstep|voice|hear|listen|loud|quiet|volume|mute|play\s?(a\s?)?sound|song|tune|beat|rhythm|noise|echo|reverb|speaker|microphone|soundtrack|jingle|chime|alarm|siren|horn|explosion\s?sound|gunshot|sword\s?(clang|sound)|whoosh|splash|crunch|click\s?sound|beep|buzz|ring|whistle|roar|growl|scream|laugh|cry|moan|groan|thunder|rain\s?sound|wind\s?sound|fire\s?sound|water\s?sound|bird|cricket|wolf|ocean\s?sound|wave\s?sound|engine\s?sound|car\s?sound|helicopter\s?sound|airplane\s?sound|door\s?(creak|slam|open\s?sound)|glass\s?break|metal\s?clang|wood\s?crack|zombie\s?(moan|growl)|monster\s?sound|scary\s?sound|horror\s?sound|spooky)\b/i.test(message)
-          ? getRelevantSoundKnowledge(message) : ''
-        const animKnowledge = /\b(animat|tween|motion|move\s?(smooth|part)|spin|rotate|bob|sway|breathe|idle\s?anim|walk\s?anim|run\s?anim|attack\s?anim|dance|emote|cutscene|cinematic|camera\s?(shake|move|pan|zoom)|door\s?(open|close|swing)|elevator|platform\s?move|slide|fade\s?(in|out)|bounce|spring|elastic|easing|lerp|slerp|smooth\s?move|transition|keyframe|pose|rig|skeleton|motor6d|joint|hinge|piston|oscillate|pulse|glow\s?anim|flicker|wave|float|hover|orbit|swing|pendulum|escalator|conveyor|moving\s?(walkway|platform|wall|floor|object|part)|animated|wiggle|wobble|jiggle|shake|vibrate|tremble|shudder)\b/i.test(message)
-          ? getRelevantAnimationKnowledge(message) : ''
-        const npcKnowledge = /\b(npc|enemy|enemies|mob|mobs|boss|miniboss|monster|creature|zombie|skeleton|guard|villager|merchant|shopkeeper|quest\s?giver|follower|companion|pet\s?follow|ally|allies|patrol|wander|chase|pursue|aggro|deaggro|pathfind|navigate|waypoint|behavior\s?tree|state\s?machine|ai\s?(behavior|system|logic|brain)|dialogue|conversation|talk\s?to|interact\s?with\s?npc|spawn\s?(enemy|npc|mob|wave)|wave\s?system|horde|swarm|raid\s?boss|dungeon\s?mob|attack\s?pattern|idle\s?npc|friendly\s?npc|hostile|neutral|passive|aggressive|detect\s?player|line\s?of\s?sight|vision\s?cone|hear\s?player|alert|investigate|retreat|flee|heal\s?bot|support\s?npc|tank\s?npc|ranged\s?npc|melee\s?npc|archer|wizard\s?npc|knight\s?npc|soldier|bandit|pirate\s?npc|robot\s?enemy|drone\s?enemy|turret|sentry|civilian|crowd|population|townfolk|farmer\s?npc|fisher\s?npc|miner\s?npc|worker\s?npc|trainer|coach|teacher\s?npc)\b/i.test(message)
-          ? getRelevantNPCKnowledge(message) : ''
-        // Mobile controls — detect when user talks about phone, touch, mobile, tablet, controls
-        const mobileKnowledge = /\b(mobile|phone|touch|tablet|ipad|iphone|android|joystick|thumbstick|swipe|pinch|tap|gesture|finger|thumb|touch\s?screen|on\s?(my\s?)?(phone|mobile|tablet|ipad)|play\s?on\s?(phone|mobile)|mobile\s?(controls?|button|layout|ui|game|version|support|friendly|compatible|optimize)|small\s?screen|portable|handheld|controller\s?support|gamepad|console\s?(controls?|button|input)|cross\s?platform|multi\s?platform|device|screen\s?size|responsive|safe\s?area|notch)\b/i.test(message)
-          ? getRelevantMobileControlsKnowledge(message) : ''
-        // Water mechanics — detect when user talks about water, swimming, boats, oceans, rivers
-        const waterKnowledge = /\b(water|swim|ocean|sea|lake|river|pond|pool|underwater|diving|dive|boat|ship|sail|float|buoyan|drown|breath|oxygen|wave|tide|current|waterfall|fountain|splash|ripple|fish|fishing|submarine|sub|aqua|marine|beach|shore|coast|dock|pier|harbor|port|canal|stream|creek|brook|rapids|whirlpool|flood|rain\s?puddle|water\s?(park|slide|gun|balloon)|pirate\s?ship|canoe|kayak|raft|surfing|snorkel|scuba|coral|reef|seaweed|kelp|jellyfish|shark|whale|dolphin|octopus|crab|turtle|starfish|clam|oyster|treasure\s?chest\s?underwater|shipwreck|atlantis|mermaid|trident|harpoon|anchor|lighthouse|dam|reservoir|well|cistern|aqueduct|moat|swamp|marsh|bog|wetland|mangrove|bayou|lagoon|oasis|hot\s?spring|geyser|ice\s?lake|frozen\s?(lake|river|pond)|glacier)\b/i.test(message)
-          ? getRelevantWaterKnowledge(message) : ''
-        // Build enhancer — inject contextual polish suggestions so AI knows to add detail
-        const enhancements = getContextualEnhancements(intent, message, 4)
-        const enhancerContext = enhancements.length > 0
-          ? '\n\n[BUILD POLISH GUIDELINES — apply these automatically without being asked]\n' +
-            enhancements.map(e => `• ${e.title}: ${e.prompt}`).join('\n')
-          : ''
-        knowledgeBrain = [focusedContext, robloxContext, codeGraphContext, devforumKnowledge, scriptingKnowledge, gameDesignKnowledge, uiKnowledge, buildingMastery, soundKnowledge, animKnowledge, npcKnowledge, mobileKnowledge, waterKnowledge, enhancerContext]
-          .filter(Boolean).join('\n\n')
+        const safeGet = (fn: () => string, name: string): string => {
+          try { return fn() } catch (e) {
+            console.warn(`[knowledge] ${name} failed:`, e instanceof Error ? e.message : e)
+            return ''
+          }
+        }
+        // Pre-compiled regex matchers for natural language detection
+        const msg = message.toLowerCase()
+        const matchUI = /\b(gui|ui|hud|menu|button|shop|inventory|health\s?bar|scoreboard|leaderboard|dialog|notification|screen|frame|on\s?(my\s?)?screen|display|show\s?(me|on|the)|pop\s?up|overlay|interface|prompt|tooltip|counter|timer|countdown|progress\s?bar|loading|lobby\s?screen|start\s?screen|death\s?screen|win\s?screen|game\s?over|main\s?menu|pause\s?menu|settings?\s?menu|title\s?screen|dashboard|stats?\s?(on|display)|coins?\s?(on|display|show|counter)|money\s?(on|display|show)|xp\s?(bar|display|show)|level\s?(display|show)|minimap|crosshair|hotbar|action\s?bar|ability\s?bar|skill\s?tree|upgrade\s?(menu|screen|ui)|crafting\s?(menu|screen|ui)|trading\s?(menu|screen|ui)|chat\s?(box|window)|popup|modal|tab|slot|icon|badge|nameplate|overhead|floating\s?text|damage\s?number|kill\s?feed|announcement|banner|toast|alert|loading\s?screen|quest\s?(log|tracker|list)|mission\s?(tracker|log)|objective|reward\s?(screen|popup)|loot|backpack|toolbar|dropdown|slider|toggle|scroll|navigation)\b/i.test(msg)
+        const matchSound = /\b(sound|audio|music|sfx|ambient|footstep|voice|hear|listen|volume|play\s?(a\s?)?sound|song|noise|echo|reverb|explosion|gunshot|whoosh|splash|thunder|rain\s?sound|wind\s?sound|engine\s?sound|horror\s?sound|scary\s?sound)\b/i.test(msg)
+        const matchAnim = /\b(animat|tween|motion|spin|rotate|bob|sway|cutscene|cinematic|camera\s?(shake|move|pan)|door\s?(open|close)|elevator|platform\s?move|slide|fade|bounce|spring|easing|lerp|moving|animated|motor6d|keyframe)\b/i.test(msg)
+        const matchNPC = /\b(npc|enemy|enemies|mob|boss|monster|creature|zombie|guard|villager|merchant|shopkeeper|quest\s?giver|follower|companion|patrol|wander|chase|pathfind|behavior|state\s?machine|dialogue|conversation|talk\s?to|spawn\s?(enemy|npc|mob|wave)|wave\s?system|attack\s?pattern|hostile|turret|sentry)\b/i.test(msg)
+        const matchMobile = /\b(mobile|phone|touch|tablet|joystick|swipe|pinch|tap|gesture|on\s?(my\s?)?(phone|mobile|tablet)|mobile\s?(controls?|button|ui|game)|small\s?screen|gamepad|console\s?controls?|cross\s?platform|safe\s?area)\b/i.test(msg)
+        const matchWater = /\b(water|swim|ocean|sea|lake|river|pond|pool|underwater|diving|boat|ship|sail|float|buoyan|drown|wave|waterfall|fountain|splash|fish|fishing|submarine|beach|shore|dock|canal|stream|moat|swamp|lagoon)\b/i.test(msg)
+
+        // Priority-ordered knowledge sources: core first, specialized last
+        const sources: Array<{ name: string; get: () => string }> = [
+          { name: 'focused', get: () => buildFocusedPrompt(message) },
+          { name: 'roblox', get: () => buildRobloxContext(message) },
+          { name: 'codegraph', get: () => formatGraphPrompt(message) },
+          { name: 'devforum', get: () => getRelevantBuildingKnowledge(message) },
+          { name: 'scripting', get: () => getRelevantScriptingKnowledge(message) },
+          { name: 'gamedesign', get: () => getRelevantGameDesign(message) },
+          { name: 'mastery', get: () => getRelevantBuildingMastery(message) },
+          // Conditional sources — only fetch if keywords match
+          ...(matchUI ? [{ name: 'ui', get: () => getRelevantUIKnowledge(message) }] : []),
+          ...(matchSound ? [{ name: 'sound', get: () => getRelevantSoundKnowledge(message) }] : []),
+          ...(matchAnim ? [{ name: 'animation', get: () => getRelevantAnimationKnowledge(message) }] : []),
+          ...(matchNPC ? [{ name: 'npc', get: () => getRelevantNPCKnowledge(message) }] : []),
+          ...(matchMobile ? [{ name: 'mobile', get: () => getRelevantMobileControlsKnowledge(message) }] : []),
+          ...(matchWater ? [{ name: 'water', get: () => getRelevantWaterKnowledge(message) }] : []),
+        ]
+
+        // Budget-aware injection: stop adding when we hit the char limit
+        const parts: string[] = []
+        let totalChars = 0
+        for (const source of sources) {
+          const text = safeGet(source.get, source.name)
+          if (!text) continue
+          if (totalChars + text.length > KNOWLEDGE_CHAR_BUDGET) {
+            // Truncate last source to fit remaining budget
+            const remaining = KNOWLEDGE_CHAR_BUDGET - totalChars
+            if (remaining > 500) parts.push(text.slice(0, remaining) + '\n[...truncated for context budget]')
+            break
+          }
+          parts.push(text)
+          totalChars += text.length
+        }
+
+        // Build enhancer — inject contextual polish suggestions
+        const enhancements = safeGet(() => {
+          const e = getContextualEnhancements(intent, message, 4)
+          return e.length > 0
+            ? '\n\n[BUILD POLISH GUIDELINES — apply these automatically without being asked]\n' +
+              e.map(x => `• ${x.title}: ${x.prompt}`).join('\n')
+            : ''
+        }, 'enhancer')
+        if (enhancements) parts.push(enhancements)
+
+        knowledgeBrain = parts.join('\n\n')
       }
 
       let enhancedPlanContext = ''
