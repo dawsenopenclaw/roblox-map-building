@@ -210,10 +210,10 @@ function highlightLuau(code: string): React.ReactNode[] {
   }
 
   const colorMap: Record<Span['type'], string> = {
-    keyword: '#D4AF37',
-    string: '#4ADE80',
-    comment: 'rgba(255,255,255,0.28)',
-    number: '#67E8F9',
+    keyword: '#F0C850',
+    string: '#6EE7B7',
+    comment: 'rgba(255,255,255,0.35)',
+    number: '#7DD3FC',
   }
 
   const nodes: React.ReactNode[] = []
@@ -1154,6 +1154,9 @@ function LuauCodeBlock({
   const codeBlockMobile = useIsMobile()
   const [copied, setCopied] = useState(false)
   const [sent, setSent] = useState(false)
+  const lineCount = code.split('\n').length
+  const isLongCode = lineCount > (codeBlockMobile ? 15 : 25)
+  const [expanded, setExpanded] = useState(!isLongCode)
 
   const handleCopy = async () => {
     copyToClipboard(code)
@@ -1171,90 +1174,161 @@ function LuauCodeBlock({
   return (
     <div
       style={{
-        marginTop: 10,
-        marginBottom: 4,
-        borderRadius: 10,
-        background: 'rgba(0,0,0,0.45)',
-        border: '1px solid rgba(255,255,255,0.07)',
+        marginTop: 12,
+        marginBottom: 6,
+        borderRadius: 12,
+        background: 'rgba(0,0,0,0.5)',
+        border: '1px solid rgba(255,255,255,0.08)',
         overflow: 'hidden',
       }}
     >
+      {/* Header bar */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '5px 10px',
-          borderBottom: '1px solid rgba(255,255,255,0.05)',
-          background: 'rgba(255,255,255,0.02)',
+          padding: '6px 14px',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
         }}
       >
-        <span
-          style={{
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
             fontSize: 10,
-            color: 'rgba(212,175,55,0.5)',
+            color: 'rgba(212,175,55,0.6)',
             fontFamily: "'JetBrains Mono', monospace",
             letterSpacing: '0.05em',
             textTransform: 'uppercase' as const,
-          }}
-        >
-          Luau
-        </span>
-        <div style={{ display: 'flex', gap: 5 }}>
+            fontWeight: 600,
+          }}>
+            Luau
+          </span>
+          <span style={{
+            fontSize: 10,
+            color: 'rgba(255,255,255,0.25)',
+            fontFamily: "'JetBrains Mono', monospace",
+          }}>
+            {lineCount} lines
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
           {studioConnected && onSendToStudio && (
             <button
               onClick={handleRun}
               style={{
-                fontSize: 10,
-                padding: '2px 8px',
-                borderRadius: 5,
+                fontSize: 11,
+                padding: '3px 10px',
+                borderRadius: 6,
                 border: sent ? '1px solid rgba(74,222,128,0.4)' : '1px solid rgba(212,175,55,0.3)',
-                background: sent ? 'rgba(74,222,128,0.1)' : 'rgba(212,175,55,0.1)',
-                color: sent ? 'rgba(74,222,128,0.85)' : 'rgba(212,175,55,0.85)',
+                background: sent ? 'rgba(74,222,128,0.12)' : 'rgba(212,175,55,0.1)',
+                color: sent ? '#4ADE80' : 'rgba(212,175,55,0.9)',
                 cursor: 'pointer',
                 fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                fontWeight: 600,
                 transition: 'all 0.15s',
               }}
             >
-              {sent ? 'Sent!' : 'Run in Studio'}
+              {sent ? '✓ Sent' : '▶ Run in Studio'}
             </button>
           )}
           <button
             onClick={handleCopy}
             style={{
-              fontSize: 10,
-              padding: '2px 8px',
-              borderRadius: 5,
+              fontSize: 11,
+              padding: '3px 10px',
+              borderRadius: 6,
               border: '1px solid rgba(255,255,255,0.1)',
-              background: copied ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.04)',
-              color: copied ? 'rgba(74,222,128,0.8)' : 'rgba(255,255,255,0.35)',
+              background: copied ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.04)',
+              color: copied ? '#4ADE80' : 'rgba(255,255,255,0.4)',
               cursor: 'pointer',
               fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+              fontWeight: 500,
               transition: 'all 0.15s',
             }}
           >
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? '✓ Copied' : 'Copy'}
           </button>
         </div>
       </div>
-      <pre
-        style={{
-          margin: 0,
-          padding: '10px 12px',
-          fontSize: 12,
-          lineHeight: 1.6,
-          color: 'rgba(255,255,255,0.72)',
-          overflowX: 'auto',
-          maxHeight: codeBlockMobile ? 180 : 320,
-          overflowY: 'auto',
-          whiteSpace: 'pre',
-          scrollbarWidth: 'thin',
-          scrollbarColor: 'rgba(255,255,255,0.08) transparent',
-          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-        }}
-      >
-        <code>{highlightLuau(code)}</code>
-      </pre>
+      {/* Code content with line numbers */}
+      <div style={{ position: 'relative' }}>
+        <pre
+          style={{
+            margin: 0,
+            padding: 0,
+            fontSize: codeBlockMobile ? 11 : 12.5,
+            lineHeight: 1.65,
+            color: 'rgba(255,255,255,0.78)',
+            overflowX: 'auto',
+            maxHeight: expanded ? (codeBlockMobile ? 400 : 600) : (codeBlockMobile ? 160 : 240),
+            overflowY: 'auto',
+            whiteSpace: 'pre',
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(212,175,55,0.15) transparent',
+            fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+            display: 'flex',
+            transition: 'max-height 0.3s ease-out',
+          }}
+        >
+          {/* Line numbers gutter */}
+          <span
+            aria-hidden="true"
+            style={{
+              display: 'block',
+              padding: '12px 0',
+              paddingRight: 12,
+              paddingLeft: 14,
+              textAlign: 'right',
+              color: 'rgba(255,255,255,0.15)',
+              userSelect: 'none',
+              borderRight: '1px solid rgba(255,255,255,0.05)',
+              fontSize: codeBlockMobile ? 10 : 11,
+              lineHeight: 1.65,
+              fontFamily: "'JetBrains Mono', monospace",
+              flexShrink: 0,
+              minWidth: lineCount > 99 ? 44 : 32,
+            }}
+          >
+            {code.split('\n').map((_, i) => (
+              <React.Fragment key={i}>{i + 1}{'\n'}</React.Fragment>
+            ))}
+          </span>
+          <code style={{ display: 'block', padding: '12px 16px', flex: 1, minWidth: 0 }}>
+            {highlightLuau(code)}
+          </code>
+        </pre>
+        {/* Expand/collapse for long code */}
+        {isLongCode && (
+          <button
+            onClick={() => setExpanded(v => !v)}
+            style={{
+              position: expanded ? 'relative' : 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              width: '100%',
+              padding: '8px 0',
+              border: 'none',
+              background: expanded
+                ? 'rgba(255,255,255,0.02)'
+                : 'linear-gradient(transparent, rgba(0,0,0,0.8) 40%)',
+              borderTop: expanded ? '1px solid rgba(255,255,255,0.05)' : 'none',
+              color: 'rgba(212,175,55,0.7)',
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              zIndex: 2,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#D4AF37' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(212,175,55,0.7)' }}
+          >
+            {expanded ? `▲ Collapse (${lineCount} lines)` : `▼ Show all ${lineCount} lines`}
+          </button>
+        )}
+      </div>
       <CodeFeedbackButtons code={code} prompt={prompt} />
     </div>
   )
@@ -1262,9 +1336,8 @@ function LuauCodeBlock({
 
 // ─── Content renderer: splits prose and fenced code blocks ───────────────────
 
-/** Lightweight markdown renderer — handles bold, italic, inline code, lists, headers */
+/** Lightweight markdown renderer — handles bold, italic, inline code, lists, headers, hr */
 function MarkdownText({ text }: { text: string }) {
-  // Process line by line for block-level elements, then inline formatting
   const lines = text.split('\n')
   const elements: React.ReactNode[] = []
   let key = 0
@@ -1272,30 +1345,37 @@ function MarkdownText({ text }: { text: string }) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
 
+    // Horizontal rule
+    if (/^[-*_]{3,}\s*$/.test(line)) {
+      elements.push(<div key={key++} style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '12px 0' }} />)
+      continue
+    }
+
     // Headers
     const h3 = line.match(/^###\s+(.+)/)
     if (h3) {
-      elements.push(<div key={key++} style={{ fontSize: 14, fontWeight: 700, color: '#D4AF37', margin: '10px 0 4px' }}>{formatInline(h3[1])}</div>)
+      elements.push(<div key={key++} style={{ fontSize: 14.5, fontWeight: 700, color: '#E8C74A', margin: '14px 0 6px', letterSpacing: '-0.01em' }}>{formatInline(h3[1])}</div>)
       continue
     }
     const h2 = line.match(/^##\s+(.+)/)
     if (h2) {
-      elements.push(<div key={key++} style={{ fontSize: 15, fontWeight: 700, color: '#D4AF37', margin: '12px 0 4px' }}>{formatInline(h2[1])}</div>)
+      elements.push(<div key={key++} style={{ fontSize: 15.5, fontWeight: 700, color: '#E8C74A', margin: '16px 0 6px', letterSpacing: '-0.01em' }}>{formatInline(h2[1])}</div>)
       continue
     }
     const h1 = line.match(/^#\s+(.+)/)
     if (h1) {
-      elements.push(<div key={key++} style={{ fontSize: 16, fontWeight: 700, color: '#D4AF37', margin: '14px 0 6px' }}>{formatInline(h1[1])}</div>)
+      elements.push(<div key={key++} style={{ fontSize: 17, fontWeight: 700, color: '#E8C74A', margin: '18px 0 8px', letterSpacing: '-0.02em' }}>{formatInline(h1[1])}</div>)
       continue
     }
 
-    // Bullet list items
-    const bullet = line.match(/^[\s]*[-*•]\s+(.+)/)
+    // Bullet list items (supports indentation)
+    const bullet = line.match(/^([\s]*)([-*•])\s+(.+)/)
     if (bullet) {
+      const indent = Math.floor((bullet[1].length || 0) / 2)
       elements.push(
-        <div key={key++} style={{ display: 'flex', gap: 8, paddingLeft: 4, margin: '2px 0' }}>
-          <span style={{ color: '#D4AF37', fontSize: 10, marginTop: 5, flexShrink: 0 }}>●</span>
-          <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{formatInline(bullet[1])}</span>
+        <div key={key++} style={{ display: 'flex', gap: 10, paddingLeft: 4 + indent * 16, margin: '3px 0' }}>
+          <span style={{ color: indent > 0 ? 'rgba(212,175,55,0.4)' : 'rgba(212,175,55,0.65)', fontSize: indent > 0 ? 6 : 7, marginTop: 7, flexShrink: 0 }}>{indent > 0 ? '○' : '●'}</span>
+          <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.7 }}>{formatInline(bullet[3])}</span>
         </div>
       )
       continue
@@ -1305,23 +1385,34 @@ function MarkdownText({ text }: { text: string }) {
     const numbered = line.match(/^[\s]*(\d+)[.)]\s+(.+)/)
     if (numbered) {
       elements.push(
-        <div key={key++} style={{ display: 'flex', gap: 8, paddingLeft: 4, margin: '2px 0' }}>
-          <span style={{ color: 'rgba(212,175,55,0.7)', fontSize: 12, fontWeight: 600, flexShrink: 0, minWidth: 16, textAlign: 'right' }}>{numbered[1]}.</span>
-          <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{formatInline(numbered[2])}</span>
+        <div key={key++} style={{ display: 'flex', gap: 10, paddingLeft: 4, margin: '3px 0' }}>
+          <span style={{ color: 'rgba(212,175,55,0.6)', fontSize: 13, fontWeight: 600, flexShrink: 0, minWidth: 18, textAlign: 'right' }}>{numbered[1]}.</span>
+          <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.7 }}>{formatInline(numbered[2])}</span>
         </div>
       )
       continue
     }
 
-    // Empty lines → small gap
-    if (!line.trim()) {
-      elements.push(<div key={key++} style={{ height: 6 }} />)
+    // Blockquote
+    const blockquote = line.match(/^>\s+(.+)/)
+    if (blockquote) {
+      elements.push(
+        <div key={key++} style={{ borderLeft: '3px solid rgba(212,175,55,0.3)', paddingLeft: 14, margin: '6px 0', color: 'rgba(255,255,255,0.7)', fontStyle: 'italic' }}>
+          {formatInline(blockquote[1])}
+        </div>
+      )
       continue
     }
 
-    // Regular text with inline formatting
+    // Empty lines → paragraph gap
+    if (!line.trim()) {
+      elements.push(<div key={key++} style={{ height: 8 }} />)
+      continue
+    }
+
+    // Regular text
     elements.push(
-      <span key={key++} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', display: 'block' }}>
+      <span key={key++} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', display: 'block', lineHeight: 1.7 }}>
         {formatInline(line)}
       </span>
     )
@@ -1363,21 +1454,22 @@ function formatInline(text: string): React.ReactNode {
     } else if (match.startsWith('`')) {
       parts.push(
         <code key={key++} style={{
-          background: 'rgba(212,175,55,0.1)',
-          border: '1px solid rgba(212,175,55,0.15)',
-          borderRadius: 4,
-          padding: '1px 5px',
-          fontSize: '0.88em',
-          fontFamily: 'var(--font-geist-mono, monospace)',
-          color: '#D4AF37',
+          background: 'rgba(212,175,55,0.08)',
+          border: '1px solid rgba(212,175,55,0.12)',
+          borderRadius: 5,
+          padding: '2px 6px',
+          fontSize: '0.87em',
+          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+          color: '#E8C74A',
+          letterSpacing: '-0.01em',
         }}>
           {match.slice(1, -1)}
         </code>
       )
     } else if (match.startsWith('**')) {
-      parts.push(<strong key={key++} style={{ fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>{match.slice(2, -2)}</strong>)
+      parts.push(<strong key={key++} style={{ fontWeight: 650, color: 'rgba(255,255,255,0.97)' }}>{match.slice(2, -2)}</strong>)
     } else if (match.startsWith('*')) {
-      parts.push(<em key={key++} style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.8)' }}>{match.slice(1, -1)}</em>)
+      parts.push(<em key={key++} style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.75)' }}>{match.slice(1, -1)}</em>)
     }
     last = m.index + m[0].length
   }
@@ -2541,7 +2633,7 @@ function MessageBubbleImpl({
                 boxShadow: '0 4px 16px rgba(212,175,55,0.06), 0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,230,160,0.06)',
               }}
             >
-              <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.95)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontWeight: 500 }}>
+              <p style={{ margin: 0, fontSize: 14.5, color: 'rgba(255,255,255,0.97)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontWeight: 500, letterSpacing: '-0.01em' }}>
                 {displayContent}
               </p>
             </div>
@@ -2563,50 +2655,50 @@ function MessageBubbleImpl({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Avatar with enhanced glow */}
+      {/* Avatar */}
       <div
         style={{
-          width: 34,
-          height: 34,
-          borderRadius: 11,
-          background: 'linear-gradient(135deg, #D4AF37 0%, #C49B2F 50%, #B8962E 100%)',
+          width: 36,
+          height: 36,
+          borderRadius: 12,
+          background: 'linear-gradient(135deg, #E8C74A 0%, #D4AF37 40%, #B8962E 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
           marginTop: 2,
           boxShadow: msg.streaming
-            ? '0 0 16px rgba(212,175,55,0.35), 0 0 32px rgba(212,175,55,0.12), inset 0 1px 0 rgba(255,230,160,0.3)'
-            : '0 2px 10px rgba(0,0,0,0.3), 0 0 8px rgba(212,175,55,0.06), inset 0 1px 0 rgba(255,230,160,0.2)',
-          transition: 'box-shadow 0.3s ease',
+            ? '0 0 20px rgba(212,175,55,0.3), 0 0 40px rgba(212,175,55,0.08)'
+            : '0 2px 8px rgba(0,0,0,0.25), 0 0 12px rgba(212,175,55,0.05)',
+          transition: 'box-shadow 0.4s ease',
         }}
       >
-        <svg width="15" height="15" viewBox="0 0 12 12" fill="#030712">
+        <svg width="16" height="16" viewBox="0 0 12 12" fill="#0a0a0a">
           <path d="M6 1L7.5 4.5H11L8 6.5l1 3.5L6 8l-3 2 1-3.5-3-2h3.5L6 1z"/>
         </svg>
       </div>
       <div
         style={{
-          maxWidth: '85%',
-          padding: '16px 22px',
+          maxWidth: '88%',
+          padding: '18px 24px',
           borderRadius: '20px 20px 20px 6px',
           background: msg.streaming
-            ? 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.025) 100%)'
-            : 'linear-gradient(135deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.02) 100%)',
+            ? 'linear-gradient(135deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.025) 100%)'
+            : 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)',
           border: newFlash
-            ? '1px solid rgba(212,175,55,0.35)'
+            ? '1px solid rgba(212,175,55,0.3)'
             : msg.streaming
-              ? '1px solid rgba(255,255,255,0.06)'
-              : '1px solid rgba(255,255,255,0.04)',
-          backdropFilter: 'blur(20px) saturate(1.1)',
-          WebkitBackdropFilter: 'blur(20px) saturate(1.1)',
+              ? '1px solid rgba(255,255,255,0.07)'
+              : '1px solid rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(20px) saturate(1.15)',
+          WebkitBackdropFilter: 'blur(20px) saturate(1.15)',
           position: 'relative',
           overflow: 'hidden',
           animation: 'bubbleReveal 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards',
           transition: 'border-color 0.4s ease-out, background 0.3s ease-out',
           boxShadow: newFlash
-            ? '0 0 24px rgba(212,175,55,0.12), inset 0 1px 0 rgba(255,255,255,0.05)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.04)',
+            ? '0 0 24px rgba(212,175,55,0.1), 0 2px 12px rgba(0,0,0,0.12)'
+            : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.04)',
         }}
       >
         {/* Streaming shimmer overlay — only visible while streaming */}
@@ -2638,11 +2730,14 @@ function MessageBubbleImpl({
             }}
           />
         )}
-        <div style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', lineHeight: 1.6 }}>
+        <div style={{ margin: 0, fontSize: 14.5, color: 'rgba(255,255,255,0.92)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', lineHeight: 1.7, letterSpacing: '-0.01em' }}>
           {msg.streaming
             ? (msg.content
                 ? <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{stripCodeBlocksForDisplay(msg.content)}</span>
-                : <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Generating code — this may take a moment for complex builds<TypingDots /></span>
+                : <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Generating</span>
+                    <TypingDots />
+                  </div>
               )
             : <RenderMessageContent content={msg.content} onSendToStudio={onSendToStudio} studioConnected={studioConnected} prompt={userPrompt} />
           }
@@ -2655,14 +2750,15 @@ function MessageBubbleImpl({
         {!msg.streaming && msg.timestamp && (
           <span style={{
             display: 'block',
-            fontSize: 10,
-            color: 'rgba(255,255,255,0.2)',
+            fontSize: 11,
+            color: 'rgba(255,255,255,0.25)',
             fontFamily: 'var(--font-geist-mono, monospace)',
-            marginTop: 4,
+            marginTop: 8,
+            letterSpacing: '0.02em',
           }}>
             {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            {msg.model && msg.role === 'assistant' && ` · ${msg.model}`}
-            {msg.tokensUsed && msg.role === 'assistant' ? ` · ${msg.tokensUsed} tokens` : ''}
+            {msg.model && msg.role === 'assistant' && <span style={{ color: 'rgba(212,175,55,0.3)' }}> · {msg.model}</span>}
+            {msg.tokensUsed && msg.role === 'assistant' ? <span style={{ color: 'rgba(255,255,255,0.18)' }}> · {msg.tokensUsed.toLocaleString()} tokens</span> : ''}
           </span>
         )}
         {/* Feedback buttons — on EVERY assistant message (code or not) */}
@@ -4821,9 +4917,9 @@ export function ChatPanel({
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 20,
-          padding: hasMessages ? '24px 20px' : '0',
-          maxWidth: 720,
+          gap: 24,
+          padding: hasMessages ? '28px 24px' : '0',
+          maxWidth: 780,
           margin: '0 auto',
           width: '100%',
           minHeight: '100%',
@@ -5130,20 +5226,23 @@ export function ChatPanel({
             display: 'flex',
             flexDirection: 'column',
             gap: 0,
-            background: 'rgba(15,18,35,0.6)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 20,
-            padding: '12px 16px',
-            transition: 'border-color 0.2s ease-out',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
+            background: 'rgba(12,14,28,0.75)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 22,
+            padding: '14px 18px',
+            transition: 'border-color 0.25s ease-out, box-shadow 0.25s ease-out',
+            backdropFilter: 'blur(20px) saturate(1.2)',
+            WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
             position: 'relative',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.15)',
           }}
           onFocusCapture={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)'
+            e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)'
+            e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.2), 0 0 0 1px rgba(212,175,55,0.08)'
           }}
           onBlurCapture={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
+            e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.15)'
           }}
         >
           {/* Attached image preview */}
