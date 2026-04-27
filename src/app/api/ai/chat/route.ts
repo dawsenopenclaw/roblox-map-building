@@ -3843,6 +3843,19 @@ function isCodeQualityOk(code: string): boolean {
 
 // Two-pass free model pipeline: conversation + code generation
 // UPGRADED: races both models in parallel for faster responses
+// Simplify overly technical/robotic prompts into natural language
+function simplifyPrompt(msg: string): string {
+  // If it starts with "Create a detailed..." or numbered specs, strip it down
+  if (/^(Create|Generate|Build|Make|Insert|Add)\s+(a\s+)?(detailed|new|complete)\s+/i.test(msg) && msg.length > 200) {
+    // Extract the core subject
+    const subjectMatch = msg.match(/\b(tree|house|castle|car|boat|ship|building|tower|bridge|park|shop|store|restaurant|hospital|school|church|temple|farm|barn|factory|warehouse|mansion|cabin|cottage|villa|apartment|hotel|airport|stadium|arena|lighthouse|windmill|fort|fortress|dungeon|cave|island|mountain|volcano|waterfall|fountain|garden|maze|labyrinth|spaceship|rocket|robot|mech|tank|helicopter|airplane|train|subway|bus|bike|motorcycle|skateboard|surfboard|sword|axe|bow|shield|helmet|armor|throne|chair|table|desk|bed|couch|lamp|bookshelf|piano|guitar|drum|tv|computer|phone|clock|mirror|painting|statue|trophy|crown|ring|wand|staff|portal|gate|door|window|fence|wall|roof|floor|stair|ladder|elevator|escalator|pool|pond|lake|river|ocean|beach|desert|forest|jungle|swamp|tundra|village|town|city|kingdom|empire|realm|world|map|lobby|spawn|baseplate|obby|tycoon|simulator)\b/i)
+    if (subjectMatch) {
+      return `build me a ${subjectMatch[1].toLowerCase()}`
+    }
+  }
+  return msg
+}
+
 async function freeModelTwoPass(
   message: string,
   intent: string,
@@ -3858,6 +3871,13 @@ async function freeModelTwoPass(
   qualityScore?: number
   buildPartCount?: number
 } | null> {
+  // Simplify overly verbose/technical prompts — keep original for logging
+  const originalMessage = message
+  message = simplifyPrompt(message)
+  if (message !== originalMessage) {
+    console.log(`[SimplifyPrompt] "${originalMessage.slice(0, 60)}..." → "${message}"`)
+  }
+
   const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace'].includes(intent)
   // Opaque model names — don't leak provider details to the client
   const modelNames = ['forje-flash', 'forje-turbo', 'forje-pro']
@@ -5937,6 +5957,8 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     let conversationText = ''
     let model = 'gemini-2.5-flash'
     let finalVerificationScore = 0
+    let retried = false
+    let qualityRetried = false
 
     // ── SMART PLANNING: ask clarifying questions for vague/first-time prompts ──
     // Makes the AI feel personal — understands what users want before building.
@@ -6391,6 +6413,36 @@ ${effectiveInstruction}`
         }
       }
 
+      // ── QUALITY FLOOR: auto-retry if score is below 40 ──────────────────
+      if (luauCode && finalVerificationScore < 40 && finalVerificationScore > 0 && !qualityRetried && !isScriptIntent && !isPipelineTimedOut()) {
+        qualityRetried = true
+        console.warn(`[QualityFloor] Score ${finalVerificationScore} < 40 — retrying with extra detail instructions`)
+        try {
+          const qualityRetryPrompt = `${message}\n\nIMPORTANT: Make sure to include at least 15 parts with varied materials and colors. Build the complete structure, not just a baseplate. Use P()/W()/Cyl()/Ball() helpers. Add interior details, exterior trim, varied Color3.fromRGB values, PointLights, and landscaping.`
+          const qualityRetryRace = await raceNonNull(
+            callGemini(enrichedCodePrompt, qualityRetryPrompt, [], 16384),
+            callGroq(enrichedCodePrompt, qualityRetryPrompt, [], 16384),
+            callOpenRouterChat(enrichedCodePrompt, qualityRetryPrompt, [], 16384),
+          )
+          if (qualityRetryRace) {
+            const qRetryCode = extractLuauCode(qualityRetryRace.result)
+            if (qRetryCode && qRetryCode.length > luauCode.length) {
+              luauCode = qRetryCode
+              model = model + '+quality-retry'
+              console.log(`[QualityFloor] Retry produced better code (${qRetryCode.length} chars vs original)`)
+              // Re-score the retried code
+              try {
+                const reScore = await verifyLuauCode(qRetryCode)
+                finalVerificationScore = Math.max(finalVerificationScore, reScore.score)
+                console.log(`[QualityFloor] New score: ${reScore.score}`)
+              } catch { /* non-blocking */ }
+            }
+          }
+        } catch (qrErr) {
+          console.warn('[QualityFloor] Retry failed:', qrErr instanceof Error ? qrErr.message : qrErr)
+        }
+      }
+
       // ── COMPLETENESS AUDIT: verify AI actually built what it described ──
       logTiming('pre-audit')
       if (luauCode && conversationText && !isPipelineTimedOut()) {
@@ -6554,6 +6606,38 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
           }
         } catch (orErr) {
           console.warn('[OpenRouterFallback] Failed:', orErr instanceof Error ? orErr.message : orErr)
+        }
+      }
+
+      // Auto-retry once on failure — wait for rate limits to cool
+      if (!luauCode && !retried && !isPipelineTimedOut()) {
+        retried = true
+        console.log('[AutoRetry] All models failed, waiting 8s for rate limit reset...')
+        await new Promise(r => setTimeout(r, 8000))
+        // Simplify prompt for retry
+        const simpleRetryPrompt = message.length > 100
+          ? message.slice(0, 100) + ' (simplified for retry)'
+          : message
+        try {
+          const retryMessages = [
+            ...history.slice(-2).map(h => ({ role: h.role as 'user' | 'assistant', content: h.content })),
+            { role: 'user' as const, content: simpleRetryPrompt },
+          ]
+          const { callAI } = await import('@/lib/ai/provider')
+          const retryResult = await callAI(lightPrompt, retryMessages, {
+            maxTokens: 8192,
+            temperature: 0.3,
+          })
+          if (retryResult) {
+            const retryCode = extractLuauCode(retryResult)
+            if (retryCode && retryCode.length > 50) {
+              luauCode = retryCode
+              model = 'auto-retry'
+              conversationText = retryResult.replace(/```[\s\S]*$/g, '').trim() || 'Here you go — built it on the retry!'
+            }
+          }
+        } catch (retryErr) {
+          console.warn('[AutoRetry] Retry also failed:', retryErr instanceof Error ? retryErr.message : retryErr)
         }
       }
 
@@ -12698,7 +12782,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // Strip the internal [AUTO-RETRY attempt N/M] prefix that the client injects —
   // the AI should see only the clean original prompt.
-  const message = parsed.data.message.trim().replace(/^\[AUTO-RETRY attempt \d+\/\d+\]\s*/, '')
+  let message = parsed.data.message.trim().replace(/^\[AUTO-RETRY attempt \d+\/\d+\]\s*/, '')
   if (!message) {
     return NextResponse.json({ error: 'Message cannot be empty.' }, { status: 400 })
   }
@@ -12716,6 +12800,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch {
     // Moderation failure must never block — log and continue
     console.warn('[chat] Content moderation threw unexpectedly — allowing through')
+  }
+
+  // Simplify overly verbose prompts in the main POST path (paid models too)
+  const originalPostMessage = message
+  message = simplifyPrompt(message)
+  if (message !== originalPostMessage) {
+    console.log(`[SimplifyPrompt:POST] "${originalPostMessage.slice(0, 60)}..." → "${message}"`)
   }
 
   const wantsStream = parsed.data.stream === true
