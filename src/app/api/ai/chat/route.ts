@@ -3845,14 +3845,58 @@ function isCodeQualityOk(code: string): boolean {
 // UPGRADED: races both models in parallel for faster responses
 // Simplify overly technical/robotic prompts into natural language
 function simplifyPrompt(msg: string): string {
-  // If it starts with "Create a detailed..." or numbered specs, strip it down
-  if (/^(Create|Generate|Build|Make|Insert|Add)\s+(a\s+)?(detailed|new|complete)\s+/i.test(msg) && msg.length > 200) {
-    // Extract the core subject
-    const subjectMatch = msg.match(/\b(tree|house|castle|car|boat|ship|building|tower|bridge|park|shop|store|restaurant|hospital|school|church|temple|farm|barn|factory|warehouse|mansion|cabin|cottage|villa|apartment|hotel|airport|stadium|arena|lighthouse|windmill|fort|fortress|dungeon|cave|island|mountain|volcano|waterfall|fountain|garden|maze|labyrinth|spaceship|rocket|robot|mech|tank|helicopter|airplane|train|subway|bus|bike|motorcycle|skateboard|surfboard|sword|axe|bow|shield|helmet|armor|throne|chair|table|desk|bed|couch|lamp|bookshelf|piano|guitar|drum|tv|computer|phone|clock|mirror|painting|statue|trophy|crown|ring|wand|staff|portal|gate|door|window|fence|wall|roof|floor|stair|ladder|elevator|escalator|pool|pond|lake|river|ocean|beach|desert|forest|jungle|swamp|tundra|village|town|city|kingdom|empire|realm|world|map|lobby|spawn|baseplate|obby|tycoon|simulator)\b/i)
-    if (subjectMatch) {
-      return `build me a ${subjectMatch[1].toLowerCase()}`
+  // Short prompts are fine as-is
+  if (msg.length < 150) return msg
+
+  // Detect robotic spec-style prompts and simplify them
+  const isRobotic = /^(Create|Generate|Build|Make|Insert|Add|Design|Construct|Produce|Render)\s+(a\s+)?(detailed|new|complete|custom|unique|realistic|stylized|professional|advanced|complex|simple|basic|full|entire|whole)\s+/i.test(msg)
+  const hasNumberedSteps = /\d+\.\s+(Create|Add|Insert|Set|Place|Build|Make|Position|Configure|Attach|Include)/i.test(msg)
+  const hasSpecFormat = /\b(specifications?|properties|parameters|following|checklist|step-by-step)\s*:/i.test(msg)
+
+  if (!isRobotic && !hasNumberedSteps && !hasSpecFormat) return msg
+
+  // Extract what they actually want built — grab descriptive words before the spec list
+  const firstLine = msg.split(/\n|(?:\d+\.)/)[0].trim()
+
+  // Try to extract the core thing being built with any adjectives
+  const coreMatch = firstLine.match(/(?:Create|Generate|Build|Make|Insert|Add|Design|Construct)\s+(?:a\s+)?(?:detailed\s+|new\s+|complete\s+|custom\s+|realistic\s+)?(?:Roblox\s+)?(.+?)(?:\s+(?:with|that|which|using|containing|including|at|in|for|named|model|part)\b)/i)
+  if (coreMatch) {
+    const subject = coreMatch[1].trim().toLowerCase()
+      .replace(/\b(detailed|roblox|studio|model|instance|object|asset)\b/gi, '')
+      .trim()
+    if (subject.length > 2 && subject.length < 60) {
+      // Preserve useful modifiers from the rest of the prompt
+      const modifiers: string[] = []
+      if (/\bbouncy?\b/i.test(msg)) modifiers.push('bouncy')
+      if (/\bsit\b/i.test(msg)) modifiers.push('you can sit in')
+      if (/\binteract/i.test(msg)) modifiers.push('interactive')
+      if (/\bglow|neon|light/i.test(msg)) modifiers.push('with lights')
+      if (/\bscript|functional|work/i.test(msg)) modifiers.push('that actually works')
+      if (/\banimate|move|spin|rotate/i.test(msg)) modifiers.push('animated')
+      if (/\bopen|close|door/i.test(msg) && !/door/.test(subject)) modifiers.push('with opening doors')
+      if (/\bwater|swim|float/i.test(msg) && !/water|pool|lake|ocean/.test(subject)) modifiers.push('with water')
+      if (/\bsound|music|audio/i.test(msg)) modifiers.push('with sounds')
+      if (/\bgui|ui|screen|button/i.test(msg)) modifiers.push('with a GUI')
+      if (/\bhorror|scary|creepy/i.test(msg)) modifiers.push('horror-themed')
+      if (/\bfuturistic|sci-?fi|space/i.test(msg) && !/space/.test(subject)) modifiers.push('futuristic')
+      if (/\bmedieval|castle|fantasy/i.test(msg) && !/castle/.test(subject)) modifiers.push('medieval')
+      if (/\bmodern|contemporary/i.test(msg)) modifiers.push('modern')
+      if (/\bjapanese|asian|oriental/i.test(msg)) modifiers.push('Japanese-style')
+      if (/\btropical|beach|island/i.test(msg) && !/beach|island/.test(subject)) modifiers.push('tropical')
+      if (/\babandoned|ruined|broken/i.test(msg)) modifiers.push('abandoned')
+      if (/\blarge|big|huge|massive|giant/i.test(msg)) modifiers.push('big')
+      if (/\bsmall|tiny|mini/i.test(msg)) modifiers.push('small')
+      const mod = modifiers.length > 0 ? ' ' + modifiers.join(', ') : ''
+      return `build me a ${subject}${mod}`
     }
   }
+
+  // Fallback: just extract any recognizable subject from the whole text
+  const anySubject = msg.match(/\b(tree|oak|pine|palm|willow|birch|house|home|cabin|cottage|mansion|villa|apartment|penthouse|castle|fortress|fort|keep|tower|watchtower|clock\s?tower|bell\s?tower|lighthouse|windmill|bridge|arch|overpass|car|truck|van|suv|bus|taxi|ambulance|fire\s?truck|police\s?car|tank|jeep|monster\s?truck|boat|ship|yacht|canoe|kayak|sailboat|submarine|pirate\s?ship|airplane|jet|helicopter|rocket|spaceship|ufo|blimp|train|subway|monorail|trolley|bike|motorcycle|scooter|skateboard|hoverboard|go-?kart|shop|store|cafe|restaurant|bakery|bar|pub|diner|mall|market|grocery|pharmacy|gas\s?station|bank|atm|hotel|motel|inn|hospital|clinic|school|library|museum|church|temple|mosque|synagogue|cathedral|chapel|shrine|gym|arena|stadium|theater|cinema|park|playground|garden|farm|barn|silo|stable|ranch|mine|quarry|factory|warehouse|hangar|garage|bunker|shelter|prison|jail|police\s?station|fire\s?station|post\s?office|office|skyscraper|apartment\s?building|condo|city|town|village|camp|tent|campfire|igloo|treehouse|pillow\s?fort|blanket\s?fort|pool|hot\s?tub|jacuzzi|fountain|well|pond|lake|river|waterfall|dam|dock|pier|harbor|port|beach|island|volcano|mountain|cliff|cave|tunnel|mine\s?shaft|sewer|catacomb|dungeon|labyrinth|maze|road|highway|intersection|parking\s?lot|sidewalk|path|trail|fence|gate|wall|arch|column|pillar|staircase|spiral\s?stair|ladder|elevator|escalator|ramp|chair|couch|sofa|loveseat|bean\s?bag|recliner|throne|bench|stool|table|desk|counter|shelf|bookshelf|cabinet|dresser|wardrobe|closet|bed|bunk\s?bed|crib|hammock|lamp|chandelier|lantern|torch|campfire|fireplace|firepit|furnace|oven|stove|fridge|microwave|sink|bathtub|shower|toilet|mirror|tv|computer|monitor|laptop|phone|tablet|radio|speaker|piano|guitar|drum|violin|harp|sword|axe|hammer|pickaxe|shovel|bow|crossbow|gun|rifle|shotgun|pistol|cannon|catapult|trebuchet|shield|armor|helmet|crown|tiara|ring|necklace|amulet|wand|staff|trident|spear|lance|dagger|knife|scythe|hook|trophy|medal|statue|monument|obelisk|totem|scarecrow|snowman|robot|mech|drone|turret|satellite|antenna|radar|windmill|solar\s?panel|generator|engine|wheel|gear|lever|button|switch|door|window|chimney|balcony|porch|deck|patio|gazebo|pergola|awning|tent|umbrella|parasol|flag|banner|sign|billboard|streetlight|traffic\s?light|stop\s?sign|fire\s?hydrant|mailbox|trash\s?can|dumpster|bench|picnic\s?table|swing|slide|seesaw|merry-?go-?round|trampoline|roller\s?coaster|ferris\s?wheel|carousel|bumper\s?car|go-?kart\s?track|race\s?track|obstacle\s?course|obby|tycoon|simulator|rpg|fps|battle\s?royale|lobby|spawn|hub|shop\s?gui|inventory|leaderboard|baseplate|terrain|world|map|biome|forest|jungle|desert|tundra|swamp|ocean|space\s?station|moon\s?base|alien|portal|teleporter|chest|crate|barrel|box|basket|pot|vase|jar|bottle|cup|mug|plate|bowl|candle|clock|painting|picture\s?frame|rug|carpet|curtain|pillow|blanket|towel|plant|flower|bush|hedge|vine|cactus|mushroom|coral|seaweed|rock|boulder|crystal|gem|diamond|gold\s?bar|coin|key|lock|chain|rope|ladder|bridge|platform|floating\s?island|cloud|rainbow|star|moon|sun|planet|asteroid|comet|meteor|black\s?hole|galaxy|nebula|constellation)\b/i)
+  if (anySubject) {
+    return `build me a ${anySubject[1].toLowerCase()}`
+  }
+
   return msg
 }
 
@@ -4027,8 +4071,18 @@ HOW TO TALK:
 - NEVER use slang: "yo", "bro", "ngl", "lowkey", "sick", "dope", "fire", "bussin", "no cap"
 - DO use: "Alright", "Check this out", "Here's the plan", "One more thing", "Trust me on this"
 
-BAD RESPONSE: "Create a detailed Roblox tree model with the following specifications: 1. Create a new Model named 'OakTree_01'. 2. Add a trunk part..."
-GOOD RESPONSE: "Alright, here's a solid oak tree — thick brown trunk with bark texture tapering up, then a big bushy canopy made of layered green spheres so it actually looks full. I threw in some roots poking out at the base and a few branches sticking out the sides. Want me to make a whole forest? I can scatter 20 of these with random sizes."
+BAD (NEVER do this): "Create a detailed Roblox tree model with the following specifications: 1. Create a new Model named 'OakTree_01'. 2. Add a trunk part..."
+GOOD: "Alright, here's a solid oak tree — thick bark trunk, big bushy canopy of layered green spheres, roots poking out at the base. Want me to scatter a whole forest?"
+
+More examples of the RIGHT energy for ANY build:
+- Castle → "Thick stone walls with battlements, two corner towers, main gate with a drawbridge, and a courtyard. Torches glow at night. Want a moat?"
+- Car → "Clean sports car — low body, four wheels, VehicleSeat so players can drive it, neon headlights, glass windshield. Take it for a spin!"
+- Sword → "Metal blade with a slight taper, crossguard, leather grip, and a glow effect on the edge. Want a damage script?"
+- Shop → "Glass display windows, front door with ProximityPrompt, shelves with items, cash register at the counter, and a hanging sign outside."
+- Boat → "Wooden hull, mast with a fabric sail, VehicleSeat at the helm, buoyancy so it floats. Toss it in the water!"
+- Robot → "Chunky metal body, cylinder arms, glowing visor eyes, antenna on top. It has a bobbing idle animation so it feels alive."
+- Military base → "Chain-link fence, guard checkpoint, barracks, vehicle depot with a tank, helipad, command center with antennas."
+- Obby → "10 stages from easy jumps to spinning platforms and wall jumps. Every stage has a checkpoint. Celebration at the finish!"
 
 THEN output the COMPLETE Luau code inside \`\`\`lua fences.
 
@@ -7262,10 +7316,25 @@ BAD (flat, boring, listing materials):
 GOOD (atmospheric, game-dev focused, makes the dev excited):
 "Alright here's your house — warm brick walls with a dark slate pitched roof that overhangs just enough to cast a shadow on the porch. Two big windows on the front so you can see the warm PointLight glow from outside at night. I gave it a proper front door with a gold knob and a welcome mat. Inside there's a living room with a couch facing a fireplace, a kitchen counter with stools, and a bedroom upstairs. The chimney has a subtle smoke effect. Your players are going to want to live here."
 
-MORE GOOD EXAMPLES for common requests:
-User: "build me a tree" → "Check this out — thick oak tree with a gnarly bark trunk, three big branch arms, and a full canopy of overlapping green spheres. Looks solid from every angle. Want me to scatter a whole forest of these?"
-User: "make a trampoline" → "Here's a bouncy trampoline — metal frame legs, springy blue fabric mat, and I wired it up so you actually BOUNCE when you land on it. Try it out and let me know how high you want to go."
-User: "build a house" → "Alright, cozy two-story house coming up — brick walls, dark roof with overhang, front porch with a warm light. Inside: living room, kitchen, bedroom upstairs. Your players are gonna want to live here. Want me to add a backyard?"
+MORE GOOD EXAMPLES — memorize this energy for ALL build types:
+User: "build me a tree" → "Check this out — thick oak tree with gnarly bark trunk, three big branch arms, and a full canopy of overlapping green spheres. Looks solid from every angle. Want me to scatter a whole forest?"
+User: "make a trampoline" → "Here's a bouncy trampoline — metal frame legs, springy blue fabric mat, wired up so you actually BOUNCE when you land on it. Try it out!"
+User: "build a house" → "Alright, cozy two-story house — brick walls, dark roof with overhang, front porch with a warm light. Inside: living room, kitchen, bedroom upstairs. Your players are gonna want to live here."
+User: "build a castle" → "Here's your castle — thick stone walls with battlements you can walk along, two corner towers with spiral stairs inside, a main gate with a working drawbridge, and a courtyard with a well. I gave it torches that glow at night. Want me to add a moat?"
+User: "make a car" → "Here's a clean sports car — low body, four cylinder wheels with actual VehicleSeats so players can drive it. Neon headlights, glass windshield, even a license plate on the back. Take it for a spin!"
+User: "build a shop" → "Alright, here's a storefront — glass display windows showing the goods, a front door with a ProximityPrompt so players can enter, shelves with items inside, and a counter with a cash register. I threw in an awning and a hanging sign outside."
+User: "make a sword" → "Here's a proper sword — long metal blade with a slight taper, crossguard, leather-wrapped grip, and a pommel. I added a subtle glow effect on the blade edge. Want me to add a damage script so it actually works in combat?"
+User: "build a boat" → "Nice little sailboat here — wooden hull with a pointed bow, a mast with a fabric sail, a VehicleSeat at the helm, and I set up the buoyancy so it actually floats on water. Toss it in the ocean and let's see how it handles."
+User: "make a spaceship" → "Check this out — sleek hull with metal paneling, a glass cockpit up front, two engine pods on the sides with neon thrust glow, and an interior with a pilot seat, console, and cargo bay. It looks ready to launch."
+User: "build an obby" → "Here's a 10-stage obby — starts easy with simple jumps, gets harder with kill bricks, spinning platforms, and wall jumps. Every stage has a checkpoint so players don't rage quit. The finish line has a celebration effect."
+User: "make a tycoon" → "Here's your tycoon layout — spawn pad, dropper that generates cash every 2 seconds, conveyor belt carrying it to a collector, and upgrade buttons that unlock as you earn. I set up the whole economy so it actually works."
+User: "build a restaurant" → "Cozy restaurant with a brick exterior, neon OPEN sign, and a big window so players can see inside. Inside: booths along the wall, a kitchen behind the counter with an oven and fridge, and warm pendant lights hanging from the ceiling."
+User: "make a gun" → "Here's a blaster — metal body with a grip, barrel, and trigger guard. I added a muzzle flash particle effect and a PointLight that flashes when you fire. Want me to add the shooting script?"
+User: "build a park" → "Nice little park — walking paths through green grass, a few benches under trees, a fountain in the center with a water particle effect, flower beds along the edges, and street lamps that turn on at night."
+User: "make a robot" → "Here's a chunky robot — boxy metal body, cylinder arms with ball-joint shoulders, glowing visor eyes, and antenna on top. I gave it a slight idle bobbing animation so it feels alive."
+User: "build a prison" → "Here's the prison — reinforced concrete walls, guard towers at the corners with spotlights, rows of cells with barred doors, an exercise yard, and a cafeteria. The searchlights sweep back and forth."
+User: "make a bed" → "Here's a comfy bed — wooden frame with posts, a mattress pad, a pillow, and a blanket draped over with some wrinkles. I put a bedside table with a lamp next to it. Small details make it feel real."
+User: "build me a military base" → "Here's a military compound — chain-link perimeter fence with barbed wire, a guard checkpoint at the entrance, two barracks buildings, a vehicle depot with a tank and jeep, a helipad, and a command center with antenna arrays on the roof."
 
 DESCRIBE THESE THINGS (pick 3-5 per build):
 - What mood/atmosphere it creates (cozy, eerie, epic, playful)
