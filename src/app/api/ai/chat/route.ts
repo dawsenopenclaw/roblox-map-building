@@ -56,7 +56,7 @@ import { findObjectBlueprints, findScriptPatterns, formatBlueprintsForPrompt, fo
 import { recordToEli } from '@/lib/eli/build-intelligence'
 import { formatGraphPrompt, recordBuildSuccess, detectComponentsInCode } from '@/lib/eli/codegraph'
 import { buildFocusedPrompt } from '@/lib/ai/focused-prompt'
-import { shouldUseAsset, findMatchingAssets } from '@/lib/ai/asset-library'
+// asset-library import removed — fake IDs caused AI to hallucinate "placed from asset library" with no actual code
 import { getRelevantBuildingKnowledge } from '@/lib/ai/devforum-knowledge'
 import { getRelevantScriptingKnowledge } from '@/lib/ai/devforum-scripting-knowledge'
 import { getRelevantGameDesign } from '@/lib/ai/game-design-knowledge'
@@ -313,6 +313,9 @@ BUILD ALL OBJECTS using the P() helper function. This includes:
 - Light poles, benches, trees, signs, furniture — ALL built from multiple Parts
 - Buildings, roads, terrain, structures — ALL built from Parts
 - DO NOT use InsertService or placeAsset() — asset IDs are unreliable and fail silently
+- NEVER mention "asset library" or "marketplace assets" — we build everything from scratch
+- NEVER say "placed from asset library" — always generate real P()/W()/Cyl()/Ball() code
+- You MUST output a \`\`\`lua code block in EVERY response. Text-only responses are NOT allowed for build/script requests.
 
 HOW TO BUILD COMMON OBJECTS (use P() for each component):
 
@@ -3900,6 +3903,34 @@ function simplifyPrompt(msg: string): string {
   return msg
 }
 
+// ── BUILD RESPONSE CACHE — common requests served instantly, zero API calls ──
+// When 100 users ask "build me a tree", only the first hits the API.
+// Cache key = simplified prompt, TTL = 10 minutes.
+const BUILD_CACHE = new Map<string, { response: string; code: string; timestamp: number }>()
+const BUILD_CACHE_TTL = 10 * 60 * 1000 // 10 minutes
+const BUILD_CACHE_MAX = 200 // max entries
+
+function getCachedBuild(prompt: string): { response: string; code: string } | null {
+  const key = prompt.toLowerCase().trim().replace(/[^a-z0-9 ]/g, '')
+  const entry = BUILD_CACHE.get(key)
+  if (!entry) return null
+  if (Date.now() - entry.timestamp > BUILD_CACHE_TTL) {
+    BUILD_CACHE.delete(key)
+    return null
+  }
+  return { response: entry.response, code: entry.code }
+}
+
+function setCachedBuild(prompt: string, response: string, code: string) {
+  const key = prompt.toLowerCase().trim().replace(/[^a-z0-9 ]/g, '')
+  // Evict oldest if full
+  if (BUILD_CACHE.size >= BUILD_CACHE_MAX) {
+    const oldest = BUILD_CACHE.keys().next().value
+    if (oldest) BUILD_CACHE.delete(oldest)
+  }
+  BUILD_CACHE.set(key, { response, code, timestamp: Date.now() })
+}
+
 async function freeModelTwoPass(
   message: string,
   intent: string,
@@ -3925,6 +3956,22 @@ async function freeModelTwoPass(
   const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace'].includes(intent)
   // Opaque model names — don't leak provider details to the client
   const modelNames = ['forje-flash', 'forje-turbo', 'forje-pro']
+
+  // ── BUILD CACHE: serve common requests instantly (zero API calls) ─────────
+  if (isBuildIntent && history.length === 0) {
+    const cached = getCachedBuild(message)
+    if (cached) {
+      console.log(`[BuildCache] HIT for "${message}" — serving instantly`)
+      return {
+        conversationText: cached.response,
+        luauCode: cached.code,
+        executedInStudio: false,
+        suggestions: ['Customize this build', 'Build something else', 'Add more detail'],
+        model: 'forje-cached',
+        qualityScore: 75,
+      }
+    }
+  }
 
   // Non-build intents: conversation only (no code generation)
   // BUT still inject relevant Roblox knowledge so the AI can answer technical questions accurately
@@ -6823,6 +6870,13 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
       }
     }
     const finalConv = gameAwareness + cleanConv
+
+    // Cache successful builds for future identical requests (saves API calls)
+    if (luauCode && finalVerificationScore >= 50 && history.length === 0) {
+      setCachedBuild(message, finalConv, luauCode)
+      console.log(`[BuildCache] SAVED "${message.slice(0, 40)}" (score: ${finalVerificationScore})`)
+    }
+
     return {
       conversationText: finalConv,
       luauCode,
@@ -11882,64 +11936,11 @@ Token cost: 20 tokens
 Tip: Be specific — the more detail you give, the more precise the output.`,
 }
 
-// ─── Community asset library search ──────────────────────────────────────────
-// Finds relevant community 3D meshes BEFORE generating anything from scratch.
-
-interface CommunityAssetRef {
-  id: string
-  name: string
-  category: string
-  polyCount: number
-  style: string
-  tags: string[]
-}
-
-const COMMUNITY_ASSET_INDEX: CommunityAssetRef[] = [
-  { id: 'bld-001', name: 'Medieval Castle Tower', category: 'Buildings',  polyCount: 2100, style: 'realistic', tags: ['castle','medieval','tower'] },
-  { id: 'bld-002', name: 'Modern House',          category: 'Buildings',  polyCount:  820, style: 'low-poly',  tags: ['house','modern','residential'] },
-  { id: 'bld-004', name: 'Ruined Stone Wall',     category: 'Buildings',  polyCount:  940, style: 'realistic', tags: ['ruins','wall','stone'] },
-  { id: 'bld-005', name: 'Fantasy Tavern',        category: 'Buildings',  polyCount: 1650, style: 'stylized',  tags: ['tavern','inn','medieval'] },
-  { id: 'veh-001', name: 'Sports Car (Red)',      category: 'Vehicles',   polyCount: 3200, style: 'realistic', tags: ['car','sports','racing'] },
-  { id: 'veh-002', name: 'Off-Road Truck',        category: 'Vehicles',   polyCount: 2800, style: 'realistic', tags: ['truck','4x4','offroad'] },
-  { id: 'veh-003', name: 'Wooden Sailing Ship',   category: 'Vehicles',   polyCount: 4100, style: 'stylized',  tags: ['ship','pirate','naval'] },
-  { id: 'nat-001', name: 'Oak Tree (Stylized)',   category: 'Nature',     polyCount:  520, style: 'stylized',  tags: ['tree','oak','forest'] },
-  { id: 'nat-002', name: 'Boulder Pack x3',       category: 'Nature',     polyCount:  380, style: 'realistic', tags: ['rock','boulder','terrain'] },
-  { id: 'nat-003', name: 'Pine Tree (Winter)',    category: 'Nature',     polyCount:  440, style: 'stylized',  tags: ['pine','tree','winter','snow'] },
-  { id: 'nat-004', name: 'Mushroom Cluster',      category: 'Nature',     polyCount:  290, style: 'cartoon',   tags: ['mushroom','fantasy','magic'] },
-  { id: 'prp-001', name: 'Treasure Chest',        category: 'Props',      polyCount:  420, style: 'cartoon',   tags: ['chest','treasure','loot'] },
-  { id: 'prp-002', name: 'Market Stall',          category: 'Props',      polyCount:  560, style: 'stylized',  tags: ['market','stall','shop'] },
-  { id: 'prp-003', name: 'Wooden Barrel',         category: 'Props',      polyCount:  160, style: 'realistic', tags: ['barrel','wood','tavern'] },
-  { id: 'prp-004', name: 'Campfire',              category: 'Props',      polyCount:  240, style: 'stylized',  tags: ['campfire','fire','camp'] },
-  { id: 'prp-005', name: 'Street Lamp (Iron)',    category: 'Props',      polyCount:  210, style: 'realistic', tags: ['lamp','street','urban'] },
-  { id: 'chr-001', name: 'Knight Warrior',        category: 'Characters', polyCount: 2800, style: 'stylized',  tags: ['knight','warrior','armor'] },
-  { id: 'chr-002', name: 'Village Merchant',      category: 'Characters', polyCount: 1900, style: 'cartoon',   tags: ['npc','merchant','villager'] },
-  { id: 'fur-001', name: 'Wooden Chair',          category: 'Furniture',  polyCount:  180, style: 'realistic', tags: ['chair','furniture','interior'] },
-  { id: 'fur-002', name: 'King Throne',           category: 'Furniture',  polyCount:  780, style: 'stylized',  tags: ['throne','king','royal'] },
-  { id: 'wpn-001', name: 'Broad Sword',           category: 'Weapons',    polyCount:  340, style: 'realistic', tags: ['sword','medieval','combat'] },
-  { id: 'wpn-002', name: 'Magic Staff',           category: 'Weapons',    polyCount:  460, style: 'stylized',  tags: ['staff','magic','wizard'] },
-  { id: 'wpn-003', name: 'Crossbow',              category: 'Weapons',    polyCount:  580, style: 'realistic', tags: ['crossbow','ranged','medieval'] },
-  { id: 'wpn-004', name: 'Battle Axe',            category: 'Weapons',    polyCount:  490, style: 'stylized',  tags: ['axe','battle-axe','warrior'] },
-]
-
-function searchCommunityAssets(prompt: string, maxResults = 6): CommunityAssetRef[] {
-  const words = prompt.toLowerCase().split(/\W+/).filter(w => w.length > 2)
-  const scored = COMMUNITY_ASSET_INDEX.map((asset) => {
-    let score = 0
-    const haystack = [asset.name, asset.category, ...asset.tags].join(' ').toLowerCase()
-    for (const word of words) {
-      if (haystack.includes(word)) score += word.length > 4 ? 3 : 1
-    }
-    return { asset, score }
-  }).filter(r => r.score > 0)
-  scored.sort((a, b) => b.score - a.score)
-  return scored.slice(0, maxResults).map(r => r.asset)
-}
-
-function buildCommunityAssetSection(assets: CommunityAssetRef[]): string {
-  if (assets.length === 0) return ''
-  const rows = assets.map((a, i) => `  ${i + 1}. [${a.id}] ${a.name} — ${a.category}, ${a.polyCount.toLocaleString()} polys, ${a.style}\n     GET /api/community/assets/${a.id}`)
-  return `\nCommunity Asset Library — use these real meshes (no generation needed):\n${rows.join('\n')}`
-}
+// ─── Community asset library — REMOVED ──────────────────────────────────────
+// Had fake asset IDs (nat-001, bld-001, etc.) referencing non-existent endpoints.
+// The AI would see "use these real meshes" and generate text about "placing from
+// asset library" without producing actual Luau code — causing silent failures.
+// All builds now use P()/W()/Cyl()/Ball() helpers for consistent, working output.
 
 // ─── Token estimation ─────────────────────────────────────────────────────────
 
@@ -14669,20 +14670,10 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   // ���─ Fallback token cost for specialized intents when all AI providers failed ──
   const tokensUsed = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
 
-  // ── Community asset search (runs for all build-related intents) ───────────
-  // Preferred over generating from scratch: finds relevant pre-built 3D meshes
-  const communityAssets = searchCommunityAssets(message)
-  const communityBlock  = buildCommunityAssetSection(communityAssets)
-
-
-  // Augment the demo response with community asset findings when relevant
   const baseResponse = DEMO_RESPONSES[intent]
-  const augmentedResponse = communityBlock
-    ? baseResponse + '\n' + communityBlock + '\n\nTip: Click "Assets" in the sidebar → Community tab to browse and insert these directly.'
-    : baseResponse
 
   const payload: ChatResponsePayload = {
-    message: augmentedResponse,
+    message: baseResponse,
     tokensUsed,
     intent,
   }

@@ -225,7 +225,7 @@ Respond ONLY with valid JSON matching this schema:
   "styleDirective": "Rustic cottage style. Walls: Brick (180,160,140). Roof: Wood (120,70,40). Trim: Wood (200,180,160). Foundation: Concrete (100,100,100). Door: Wood (90,55,25). Windows: Glass with warm SpotLight glow. Neon accents on interaction zone only.",
   "estimatedComplexity": "simple|medium|complex|epic",
   "estimatedCredits": 2,
-  "enhancedPrompt": "A richly detailed rewrite of the user's request with EVERY section, material, color, dimension, and loop specified. This should read like an architect's blueprint — the AI just translates it to P()/W()/Cyl()/Ball() calls and FOR loops."
+  "enhancedPrompt": "A short natural-language description of what to build (2-3 sentences max). NOT a spec sheet. NOT numbered steps. Write it like talking to a friend: 'Build a solid oak tree — thick trunk tapering up, three big branches, full bushy canopy of overlapping spheres, roots at the base.' The sections array above has all the technical details — this field is just the vibe."
 }
 
 SECTION PLANNING RULES:
@@ -608,9 +608,10 @@ export function formatEnhancedPlanContext(plan: EnhancedPrompt): string {
     lines.push('')
   }
 
-  lines.push('=== ENHANCED PROMPT ===')
+  lines.push('=== BUILD VISION (what to describe to the user) ===')
   lines.push(plan.enhancedPrompt)
   lines.push('')
+  lines.push('IMPORTANT: The sections above are your INTERNAL blueprint. Do NOT show them to the user. Instead, describe the build in 3-5 casual sentences — paint the vibe, not the spec sheet. Then output the Luau code.')
   lines.push('REMEMBER: Use P()/W()/Cyl()/Ball() helpers. Use FOR loops for repeated elements. NEVER use SmoothPlastic. Hit the part target.')
   lines.push('[/ARCHITECT_BLUEPRINT]')
 
