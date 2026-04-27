@@ -87,6 +87,7 @@ import { logScriptError, markErrorFixed, buildFixContext } from '@/lib/ai/error-
 import { reviewCode } from '@/lib/ai/code-reviewer'
 import { classifyComplexity } from '@/lib/ai/script-pipeline'
 import { getContextualEnhancements } from '@/lib/ai/build-enhancer'
+import { saveBuildContext, getBuildContext, isModificationRequest, formatModificationPrompt } from '@/lib/ai/build-context'
 import { getStudioMechanicsKnowledge } from '@/lib/ai/studio-mechanics'
 import { moderateContent, getModerationMessage, MODERATION_SUGGESTIONS } from '@/lib/content-moderation'
 
@@ -4265,6 +4266,31 @@ async function freeModelTwoPass(
     }
   }
 
+  // ── INSTANT CACHE: 20 pre-built common items, zero AI cost ─────────────
+  if (isBuildIntent) {
+    try {
+      const { findCachedBuild: findInstantCached } = await import('@/lib/ai/instant-cache')
+      const instantCached = findInstantCached(message)
+      if (instantCached) {
+        console.log(`[InstantCache] HIT for "${message}" → ${instantCached.prompt} (${instantCached.partCount} parts)`)
+        if (sessionId) {
+          try { await sendCodeToStudio(sessionId, instantCached.luauCode) } catch {}
+        }
+        return {
+          conversationText: instantCached.conversationText,
+          luauCode: instantCached.luauCode,
+          executedInStudio: !!sessionId,
+          suggestions: ['Change the colors', 'Make it bigger', 'Add more detail'],
+          model: 'instant-cache',
+          qualityScore: 85,
+          buildPartCount: instantCached.partCount,
+        }
+      }
+    } catch (icErr) {
+      console.warn('[InstantCache] Non-blocking:', icErr instanceof Error ? icErr.message : icErr)
+    }
+  }
+
   // Non-build intents: conversation only (no code generation)
   // BUT still inject relevant Roblox knowledge so the AI can answer technical questions accurately
   if (!isBuildIntent) {
@@ -5912,11 +5938,26 @@ This is a GAME SYSTEM request — prioritize SCRIPTS over PARTS. The user wants 
       ? `\n\nIMPORTANT — USER WANTS INTERIOR: Ignore the "exterior-first" default. This build MUST have:\n- Hollow interior with rooms (use thin 0.8-thick walls, NOT solid shells)\n- Furniture appropriate to each room type (bed, table, chairs, etc.)\n- Interior PointLights in every room\n- Doors between rooms with ProximityPrompt\n- Windows with Glass + frames from INSIDE view too\nSpend 50% of parts on exterior, 50% on interior. Target 150-300+ parts for a furnished building.\n`
       : ''
     // ── MODIFY INTENT: edit existing builds, don't rebuild ──
+    // Upgrade to modify intent if our heuristic detects modification language
+    // even when the intent detector classified it as 'building'
+    const isModifyByHeuristic = isModificationRequest(message)
+    if (isModifyByHeuristic && intent === 'building') {
+      console.log(`[BuildContext] Heuristic detected modification request, upgrading intent building→modify`)
+      intent = 'modify'
+    }
     const isModifyIntent = intent === 'modify'
+
+    // Fetch previous build context for modification requests
+    const buildCtx = (isModifyIntent && sessionId) ? await getBuildContext(sessionId) : null
+    const buildContextPrompt = (buildCtx && isModifyIntent) ? formatModificationPrompt(buildCtx, message) : ''
+    if (buildCtx && isModifyIntent) {
+      console.log(`[BuildContext] Injecting previous build context (${buildCtx.partCount} parts, "${buildCtx.lastPrompt.slice(0, 50)}")`)
+    }
+
     const modifyOverride = isModifyIntent ? `
 CRITICAL — THIS IS A MODIFY/EDIT REQUEST, NOT A NEW BUILD.
 The user wants to CHANGE something that ALREADY EXISTS in their Studio workspace.
-
+${buildContextPrompt || `
 DO NOT create a new Model or new build from scratch.
 DO NOT use the P()/W()/Cyl()/Ball() helpers or ChangeHistoryService recording.
 
@@ -5924,7 +5965,7 @@ Instead, generate a script that:
 1. FINDS the existing object: local target = workspace:FindFirstChild("ForjeAI_Build", true) or game.Selection:Get()[1]
 2. MODIFIES it in place using :GetDescendants() to iterate parts
 3. Changes ONLY what the user asked for (color, size, position, material, etc.)
-
+`}
 COMMON MODIFY PATTERNS:
   "make it bigger/smaller" → scale all parts: for _,p in target:GetDescendants() do if p:IsA("BasePart") then p.Size = p.Size * 1.5 end end
   "change color to red" → for _,p in target:GetDescendants() do if p:IsA("BasePart") then p.Color = Color3.fromRGB(200,40,40) end end
@@ -7038,6 +7079,36 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
       } catch (ampErr) {
         console.warn('[BuildAmplifier] Non-blocking error:', ampErr instanceof Error ? ampErr.message : ampErr)
       }
+    }
+
+    // ── QUALITY GATE: auto-fix common AI mistakes before Studio ──────
+    if (luauCode && !isScriptIntent) {
+      try {
+        const { runQualityGate } = await import('@/lib/ai/build-quality-gate')
+        const gateResult = runQualityGate(luauCode, intent)
+        luauCode = gateResult.code
+        if (gateResult.fixes.length > 0) {
+          console.log(`[QualityGate] Applied ${gateResult.fixes.length} fixes: ${gateResult.fixes.join(', ')}`)
+        }
+        if (!gateResult.passedGate) {
+          console.warn(`[QualityGate] Build FAILED gate — only ${gateResult.partCount} parts`)
+        }
+      } catch (gateErr) {
+        console.warn('[QualityGate] Non-blocking error:', gateErr instanceof Error ? gateErr.message : gateErr)
+      }
+    }
+
+    // ── SAVE BUILD CONTEXT for future modification requests ──
+    if (luauCode && sessionId && !isScriptIntent) {
+      const ctxPartCount = countPartsInCode(luauCode)
+      saveBuildContext(sessionId, {
+        lastCode: luauCode,
+        lastPrompt: message,
+        buildCenter: 'camera forward 30 studs',
+        partCount: ctxPartCount,
+        timestamp: Date.now(),
+      })
+      console.log(`[BuildContext] Saved context for session ${sessionId} (${ctxPartCount} parts)`)
     }
 
     // Auto-execute in Studio + error recovery loop

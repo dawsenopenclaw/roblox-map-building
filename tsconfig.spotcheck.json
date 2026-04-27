@@ -53,7 +53,9 @@
     "src/app/api/admin/webhooks/route.ts",
     "src/app/api/crons/webhook-retry/route.ts",
     "src/app/api/ai/report/route.ts",
-    "src/app/api/ai/suggest/route.ts"
+    "src/app/api/ai/suggest/route.ts",
+    "src/lib/ai/build-quality-gate.ts",
+    "src/lib/ai/instant-cache.ts"
   ],
   "exclude": ["node_modules", ".next"]
 }
