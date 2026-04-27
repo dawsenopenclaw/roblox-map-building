@@ -13669,6 +13669,22 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const recentContext = [...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')
       const gameKnowledge = buildGameKnowledgePrompt(recentContext)
 
+      // ── KNOWLEDGE BRAIN INJECTION (all tiers) ──────────────────────────────────
+      let knowledgeBrain = ''
+      if (isBuildingIntent) {
+        const focusedContext = buildFocusedPrompt(message)
+        const robloxContext = buildRobloxContext(message)
+        const codeGraphContext = formatGraphPrompt(message)
+        const devforumKnowledge = getRelevantBuildingKnowledge(message)
+        const scriptingKnowledge = getRelevantScriptingKnowledge(message)
+        const gameDesignKnowledge = getRelevantGameDesign(message)
+        const uiKnowledge = /\b(gui|ui|hud|menu|button|shop|inventory|health\s?bar|scoreboard|leaderboard|dialog|notification|toolbar|sidebar|panel|screen|frame|textlabel|textbutton|imagelabel|imagebutton|scrolling|billboardgui|surfacegui)\b/i.test(message)
+          ? getRelevantUIKnowledge(message) : ''
+        const buildingMastery = getRelevantBuildingMastery(message)
+        knowledgeBrain = [focusedContext, robloxContext, codeGraphContext, devforumKnowledge, scriptingKnowledge, gameDesignKnowledge, uiKnowledge, buildingMastery]
+          .filter(Boolean).join('\n\n')
+      }
+
       let enhancedPlanContext = ''
       if (wantsEnhance && isBuildingIntent) {
         try {
@@ -13682,7 +13698,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const systemPrompt = await enrichWithExperienceMemory(
         await buildRAGSystemPrompt(
           (isBuildingIntent
-            ? await getSpecializedPrompt(message) + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+            ? await getSpecializedPrompt(message) + gameKnowledge + knowledgeBrain + cameraContext + multiStepContext + enhancedPlanContext
             : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
           message,
         ),
