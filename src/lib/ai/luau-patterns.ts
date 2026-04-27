@@ -2429,6 +2429,1582 @@ local value = workspace
 // ALL PATTERNS COMBINED
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MODULE ARCHITECTURE PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const MODULE_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Singleton Module Pattern',
+    category: 'architecture',
+    keywords: ['module', 'modulescript', 'singleton', 'service', 'require', 'architecture'],
+    code: `-- Singleton: module table IS the instance (runs once, cached by require)
+local PlayerManager = {}
+
+local players: {[number]: PlayerData} = {}
+local initialized = false
+
+export type PlayerData = {
+  UserId: number,
+  Coins: number,
+  Level: number,
+}
+
+function PlayerManager:Init()
+  if initialized then return end
+  initialized = true
+  game:GetService("Players").PlayerAdded:Connect(function(p)
+    self:_onPlayerAdded(p)
+  end)
+end
+
+function PlayerManager:GetData(userId: number): PlayerData?
+  return players[userId]
+end
+
+function PlayerManager:_onPlayerAdded(player: Player)
+  players[player.UserId] = { UserId = player.UserId, Coins = 0, Level = 1 }
+end
+
+return PlayerManager`,
+  },
+  {
+    name: 'Factory Module Pattern',
+    category: 'architecture',
+    keywords: ['module', 'factory', 'create', 'constructor', 'class'],
+    code: `-- Factory: module returns a constructor, each call creates a new instance
+local Weapon = {}
+Weapon.__index = Weapon
+
+export type Weapon = typeof(setmetatable({} :: {
+  Name: string,
+  Damage: number,
+  FireRate: number,
+  _ammo: number,
+}, Weapon))
+
+function Weapon.new(name: string, damage: number, fireRate: number): Weapon
+  return setmetatable({
+    Name = name,
+    Damage = damage,
+    FireRate = fireRate,
+    _ammo = 30,
+  }, Weapon)
+end
+
+function Weapon.Fire(self: Weapon): boolean
+  if self._ammo <= 0 then return false end
+  self._ammo -= 1
+  return true
+end
+
+function Weapon.Reload(self: Weapon)
+  self._ammo = 30
+end
+
+return Weapon`,
+  },
+  {
+    name: 'Module Init Pattern (Avoid Circular Deps)',
+    category: 'architecture',
+    keywords: ['module', 'init', 'initialize', 'circular', 'dependency', 'require'],
+    code: `-- Use :Init() to break circular dependencies between modules
+-- Controller requires modules at top, but defers cross-references to Init()
+local CombatSystem = {}
+local InventorySystem  -- forward declaration, no require yet
+
+function CombatSystem:Init(modules)
+  InventorySystem = modules.InventorySystem  -- set reference at init time
+end
+
+function CombatSystem:Attack(player: Player, target: Player)
+  local weapon = InventorySystem:GetEquippedWeapon(player)
+  if not weapon then return end
+  -- attack logic using weapon
+end
+
+return CombatSystem
+
+-- In your boot script (ServerScriptService):
+-- local modules = {
+--   CombatSystem = require(ServerStorage.Modules.CombatSystem),
+--   InventorySystem = require(ServerStorage.Modules.InventorySystem),
+-- }
+-- for _, mod in modules do if mod.Init then mod:Init(modules) end end`,
+  },
+  {
+    name: 'Module Placement Guide',
+    category: 'architecture',
+    keywords: ['module', 'where', 'replicatedstorage', 'serverstorage', 'serverscriptservice', 'folder', 'organization'],
+    code: `-- WHERE TO PUT MODULES IN ROBLOX:
+--
+-- ServerScriptService/       -- Server Scripts that auto-run
+--   GameBootstrap.server.lua -- Boot script: requires & inits all server modules
+--
+-- ServerStorage/Modules/     -- Server-only modules (INVISIBLE to client)
+--   DataManager.lua          -- DataStore logic, admin commands
+--   AntiCheat.lua            -- Validation, exploit detection
+--   EconomySystem.lua        -- Currency math, trade validation
+--
+-- ReplicatedStorage/Shared/  -- Modules accessible by BOTH server & client
+--   Types.lua                -- Shared type definitions
+--   Constants.lua            -- Shared config values
+--   Signal.lua               -- Custom signal class
+--   MathUtil.lua             -- Pure utility functions
+--   RemoteNames.lua          -- Single source of truth for remote names
+--
+-- ReplicatedStorage/Client/  -- Client modules (also visible to server)
+--   UIController.lua
+--   CameraController.lua
+--
+-- ReplicatedFirst/           -- Loads BEFORE everything else
+--   LoadingScreen.lua        -- Show loading UI immediately
+--
+-- SECURITY RULES:
+-- ServerStorage = client CANNOT see or access
+-- ReplicatedStorage = client CAN see (never put secrets here)
+-- ServerScriptService = server scripts auto-run, client cannot see
+-- StarterPlayerScripts = per-player LocalScripts`,
+  },
+  {
+    name: 'Require Caching Behavior',
+    category: 'architecture',
+    keywords: ['require', 'cache', 'module', 'runs once', 'performance'],
+    code: `-- REQUIRE BEHAVIOR: ModuleScripts run ONCE, result is cached
+-- Multiple require() calls return the SAME table reference
+
+-- ModuleScript "Config"
+local Config = {
+  MaxPlayers = 10,
+  RoundTime = 120,
+}
+return Config
+
+-- Script A:
+local config = require(ReplicatedStorage.Config)
+config.MaxPlayers = 20  -- MUTATES the shared table
+
+-- Script B:
+local config = require(ReplicatedStorage.Config)
+print(config.MaxPlayers) --> 20 (sees Script A mutation!)
+
+-- BEST PRACTICE: Use table.freeze for config modules
+local Config = table.freeze({
+  MaxPlayers = 10,
+  RoundTime = 120,
+})
+return Config
+-- Now any mutation attempt errors immediately`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OOP & METATABLE PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const OOP_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Standard OOP Class (Metatable)',
+    category: 'oop',
+    keywords: ['class', 'oop', 'metatable', '__index', 'new', 'constructor', 'object'],
+    code: `--!strict
+local Enemy = {}
+Enemy.__index = Enemy
+
+type self = {
+  Name: string,
+  Health: number,
+  MaxHealth: number,
+  Damage: number,
+  Speed: number,
+}
+
+export type Enemy = typeof(setmetatable({} :: self, Enemy))
+
+function Enemy.new(name: string, health: number, damage: number): Enemy
+  return setmetatable({
+    Name = name,
+    Health = health,
+    MaxHealth = health,
+    Damage = damage,
+    Speed = 16,
+  } :: self, Enemy)
+end
+
+function Enemy.TakeDamage(self: Enemy, amount: number)
+  self.Health = math.max(0, self.Health - amount)
+end
+
+function Enemy.IsAlive(self: Enemy): boolean
+  return self.Health > 0
+end
+
+function Enemy.Heal(self: Enemy, amount: number)
+  self.Health = math.min(self.MaxHealth, self.Health + amount)
+end
+
+return Enemy`,
+  },
+  {
+    name: 'OOP Inheritance via Metatables',
+    category: 'oop',
+    keywords: ['class', 'inheritance', 'extends', 'super', 'parent', 'child', 'metatable'],
+    code: `--!strict
+-- BASE CLASS
+local Character = {}
+Character.__index = Character
+
+export type Character = typeof(setmetatable({} :: {
+  Name: string,
+  Health: number,
+  Speed: number,
+}, Character))
+
+function Character.new(name: string, health: number): Character
+  return setmetatable({
+    Name = name,
+    Health = health,
+    Speed = 16,
+  }, Character)
+end
+
+function Character.TakeDamage(self: Character, amount: number)
+  self.Health = math.max(0, self.Health - amount)
+end
+
+-- CHILD CLASS
+local Warrior = {}
+Warrior.__index = Warrior
+setmetatable(Warrior, { __index = Character }) -- inherit methods
+
+export type Warrior = typeof(setmetatable({} :: {
+  Name: string,
+  Health: number,
+  Speed: number,
+  Armor: number,
+  Rage: number,
+}, Warrior))
+
+function Warrior.new(name: string): Warrior
+  local self = Character.new(name, 200) :: any
+  self.Armor = 50
+  self.Rage = 0
+  return setmetatable(self, Warrior)
+end
+
+function Warrior.TakeDamage(self: Warrior, amount: number)
+  local reduced = math.max(0, amount - self.Armor)
+  self.Health = math.max(0, self.Health - reduced)
+  self.Rage = math.min(100, self.Rage + 10)
+end
+
+return Warrior`,
+  },
+  {
+    name: 'All Metamethods Reference',
+    category: 'oop',
+    keywords: ['metatable', 'metamethod', '__index', '__newindex', '__call', '__tostring', '__add', '__eq', '__len', '__iter'],
+    code: `-- COMMON METAMETHODS:
+-- __index      = Fires when accessing a MISSING key
+--               table: set __index to another table for inheritance
+--               function: __index(self, key) -> value
+-- __newindex   = Fires when setting a NEW key (not existing)
+--               function: __newindex(self, key, value)
+-- __call       = Makes table callable like a function: myTable()
+-- __tostring   = Custom string output: tostring(myTable)
+-- __len        = Custom # operator: #myTable
+-- __add        = Custom + operator
+-- __sub        = Custom - operator
+-- __mul        = Custom * operator
+-- __div        = Custom / operator
+-- __mod        = Custom % operator
+-- __pow        = Custom ^ operator
+-- __unm        = Custom unary - operator
+-- __eq         = Custom == comparison
+-- __lt         = Custom < comparison
+-- __le         = Custom <= comparison
+-- __concat     = Custom .. operator
+-- __iter       = Custom for-in iteration
+-- __metatable  = Locks metatable: getmetatable() returns this value
+
+-- EXAMPLE: Vector2 class with operator overloads
+local Vec2 = {}
+Vec2.__index = Vec2
+Vec2.__add = function(a, b) return Vec2.new(a.X + b.X, a.Y + b.Y) end
+Vec2.__sub = function(a, b) return Vec2.new(a.X - b.X, a.Y - b.Y) end
+Vec2.__mul = function(a, b)
+  if type(b) == "number" then return Vec2.new(a.X * b, a.Y * b) end
+  return Vec2.new(a.X * b.X, a.Y * b.Y)
+end
+Vec2.__tostring = function(v) return "("..v.X..", "..v.Y..")" end
+Vec2.__eq = function(a, b) return a.X == b.X and a.Y == b.Y end
+Vec2.__len = function(v) return math.sqrt(v.X^2 + v.Y^2) end
+
+function Vec2.new(x: number, y: number)
+  return setmetatable({ X = x, Y = y }, Vec2)
+end`,
+  },
+  {
+    name: 'Closure-Based Class (No Metatables)',
+    category: 'oop',
+    keywords: ['class', 'closure', 'no metatable', 'private', 'encapsulation'],
+    code: `-- Alternative: closure-based class with TRUE private state
+local function createTimer(duration: number)
+  local timeElapsed = 0  -- truly private, no way to access from outside
+  local running = false
+  local callbacks: {() -> ()} = {}
+
+  local self = {}
+
+  function self:Start()
+    if running then return end
+    running = true
+    task.spawn(function()
+      while running and timeElapsed < duration do
+        task.wait(1)
+        timeElapsed += 1
+      end
+      if timeElapsed >= duration then
+        for _, cb in callbacks do cb() end
+      end
+    end)
+  end
+
+  function self:Stop()
+    running = false
+  end
+
+  function self:GetTimeRemaining(): number
+    return math.max(0, duration - timeElapsed)
+  end
+
+  function self:OnComplete(callback: () -> ())
+    table.insert(callbacks, callback)
+  end
+
+  return self
+end
+
+return { new = createTimer }`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LUAU TYPE SYSTEM PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TYPE_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Luau Type Annotations Complete',
+    category: 'types',
+    keywords: ['type', 'annotation', 'strict', 'luau', 'typing', 'typed'],
+    code: `--!strict
+-- PRIMITIVES
+local name: string = "Player1"
+local health: number = 100
+local alive: boolean = true
+local part: Part = Instance.new("Part")
+
+-- NULLABLE (suffix with ?)
+local target: Player? = nil
+local hitPart: BasePart? = workspace:FindFirstChild("HitBox") :: BasePart?
+
+-- FUNCTION TYPES
+local greet: (name: string) -> string = function(n)
+  return "Hello "..n
+end
+local transform: (Vector3, CFrame) -> (Vector3, Vector3) = function(pos, cf)
+  return cf:PointToWorldSpace(pos), cf.LookVector
+end
+local noReturn: (string) -> () = function(msg) print(msg) end
+local variadic: (...number) -> number = function(...)
+  local sum = 0
+  for _, v in {...} do sum += v end
+  return sum
+end
+
+-- ARRAYS & DICTIONARIES
+local items: {string} = {"Sword", "Shield", "Potion"}
+local scores: {[Player]: number} = {}
+local grid: {{number}} = {{1,2},{3,4}}
+
+-- TYPE ALIASES
+type Inventory = {
+  Items: {string},
+  Gold: number,
+  Capacity: number,
+}
+
+-- UNION TYPES
+type Result = "success" | "failure" | "pending"
+type Numeric = number | Vector3
+
+-- EXPORT TYPES (from ModuleScripts)
+export type WeaponConfig = {
+  Name: string,
+  Damage: number,
+  Range: number,
+  FireRate: number?,       -- optional field
+  ProjectileSpeed: number?,
+}`,
+  },
+  {
+    name: 'Type Narrowing & Refinement',
+    category: 'types',
+    keywords: ['type', 'narrowing', 'refinement', 'guard', 'isa', 'typeof', 'assert'],
+    code: `--!strict
+-- IF-CHECK NARROWS NULLABLE
+local target: Player? = game.Players:FindFirstChild("Vyren") :: Player?
+if target then
+  print(target.Name) -- type is now Player, not Player?
+end
+
+-- EARLY RETURN NARROWS
+local function process(part: BasePart?)
+  if not part then return end
+  -- part is now BasePart (non-nil) from here on
+  print(part.Position)
+end
+
+-- ASSERT NARROWS
+local player: Player? = game.Players.LocalPlayer
+assert(player, "No local player!")
+print(player.Name) -- narrowed to Player
+
+-- ISA() NARROWS INSTANCE TYPE
+local obj: Instance = workspace:FindFirstChild("Something") :: Instance
+if obj:IsA("BasePart") then
+  print(obj.Size)     -- knows it is BasePart
+  print(obj.Position) -- full autocomplete
+end
+
+-- TYPEOF() NARROWS
+local value: unknown = "hello"
+if typeof(value) == "string" then
+  print(string.upper(value)) -- knows it is string
+elseif typeof(value) == "number" then
+  print(value + 1)           -- knows it is number
+end
+
+-- TYPECAST WITH ::
+local bodyColors = Instance.new("BodyColors");
+(bodyColors :: any).HeadColor3 = Color3.new(1, 0, 0)
+
+-- INLINE TABLE CAST
+local data = {
+  Kills = {} :: {[Player]: number},
+  Deaths = {} :: {[Player]: number},
+}`,
+  },
+  {
+    name: 'Typed OOP Class Pattern',
+    category: 'types',
+    keywords: ['type', 'class', 'oop', 'export type', 'metatable', 'typed class'],
+    code: `--!strict
+local Vehicle = {}
+Vehicle.__index = Vehicle
+
+type VehicleFields = {
+  Model: Model,
+  Speed: number,
+  MaxSpeed: number,
+  Driver: Player?,
+}
+
+export type Vehicle = typeof(setmetatable({} :: VehicleFields, Vehicle))
+
+function Vehicle.new(model: Model, maxSpeed: number): Vehicle
+  return setmetatable({
+    Model = model,
+    Speed = 0,
+    MaxSpeed = maxSpeed,
+    Driver = nil,
+  } :: VehicleFields, Vehicle)
+end
+
+function Vehicle.Accelerate(self: Vehicle, dt: number)
+  self.Speed = math.min(self.MaxSpeed, self.Speed + 20 * dt)
+end
+
+function Vehicle.Brake(self: Vehicle, dt: number)
+  self.Speed = math.max(0, self.Speed - 40 * dt)
+end
+
+-- USING THE TYPE FROM ANOTHER MODULE:
+-- local Vehicle = require(path.to.Vehicle)
+-- type Vehicle = Vehicle.Vehicle
+-- local car: Vehicle = Vehicle.new(workspace.Car, 100)`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ASYNC & PROMISE PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ASYNC_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Task Library Complete Reference',
+    category: 'async',
+    keywords: ['task', 'spawn', 'defer', 'delay', 'wait', 'cancel', 'async', 'thread'],
+    code: `-- task.spawn(func, ...args) -- Run IMMEDIATELY in new thread
+-- Use when: calling yielding functions without blocking current code
+task.spawn(function()
+  local data = DataStore:GetAsync("key") -- yields but does not block caller
+  print("Got data:", data)
+end)
+
+-- Passing args directly (more efficient than closure):
+task.spawn(print, "Hello", "World") --> Hello World (immediate)
+
+-- task.defer(func, ...args) -- Run AFTER current thread completes
+-- Use when: scheduling work that should not interrupt current execution
+print("A")
+task.defer(print, "C") -- queued for next resumption cycle
+print("B")
+--> A, B, C
+
+-- task.delay(seconds, func, ...args) -- Run after N seconds on next Heartbeat
+-- Use when: scheduling future work with specific timing
+task.delay(5, function()
+  print("5 seconds have passed!")
+end)
+-- Can pass os.clock() to measure actual elapsed time:
+task.delay(2, function(scheduledTime)
+  print("Actual delay:", os.clock() - scheduledTime)
+end, os.clock())
+
+-- task.wait(seconds?) -- Yield current thread, resume after N seconds
+-- Returns actual elapsed time. Default 0 = next Heartbeat.
+local elapsed = task.wait(1) --> ~1.016 (slightly over due to frame timing)
+-- Equivalent to: RunService.Heartbeat:Wait()
+
+-- task.cancel(thread) -- Cancel a spawned/deferred thread
+local thread = task.delay(10, function()
+  print("This will never run")
+end)
+task.cancel(thread)
+
+-- task.desynchronize() -- Switch to parallel execution (Parallel Luau)
+-- task.synchronize()  -- Switch back to serial execution`,
+  },
+  {
+    name: 'Promise Pattern (evaera library)',
+    category: 'async',
+    keywords: ['promise', 'async', 'then', 'catch', 'chain', 'error handling'],
+    code: `-- Promise library by evaera (most popular async pattern in Roblox)
+-- Install: get from GitHub evaera/roblox-lua-promise
+local Promise = require(ReplicatedStorage.Packages.Promise)
+
+-- BASIC: Wrap yielding call in a Promise
+local function fetchPlayerData(userId: number)
+  return Promise.new(function(resolve, reject)
+    local ok, data = pcall(DataStore.GetAsync, DataStore, "user_"..userId)
+    if ok then resolve(data) else reject(data) end
+  end)
+end
+
+-- CHAINING: Transform data through pipeline
+fetchPlayerData(12345)
+  :andThen(function(data)
+    return processData(data)  -- can return another Promise
+  end)
+  :andThen(function(processed)
+    applyToPlayer(processed)
+  end)
+  :catch(function(err)
+    warn("Failed:", tostring(err))
+  end)
+
+-- CANCELLATION: Clean up resources if cancelled
+local function tweenPromise(obj, info, props)
+  return Promise.new(function(resolve, reject, onCancel)
+    local tween = TweenService:Create(obj, info, props)
+    onCancel(function()
+      tween:Cancel()  -- cleanup on cancel
+    end)
+    tween.Completed:Connect(resolve)
+    tween:Play()
+  end)
+end
+
+-- PARALLEL: Wait for multiple promises
+Promise.all({
+  fetchPlayerData(111),
+  fetchPlayerData(222),
+  fetchPlayerData(333),
+}):andThen(function(results)
+  print("All 3 loaded:", results)
+end)
+
+-- RACE: First to resolve wins
+Promise.race({
+  fetchPlayerData(111),
+  Promise.delay(5):andThen(function() error("Timeout") end),
+}):catch(function(err) warn(err) end)`,
+  },
+  {
+    name: 'Coroutine Patterns',
+    category: 'async',
+    keywords: ['coroutine', 'thread', 'yield', 'resume', 'wrap', 'async'],
+    code: `-- coroutine.create + coroutine.resume (manual control)
+local co = coroutine.create(function(x)
+  print("Step 1:", x)
+  local y = coroutine.yield("paused")
+  print("Step 2:", y)
+  return "done"
+end)
+local ok, val = coroutine.resume(co, 10) --> Step 1: 10, val = "paused"
+local ok2, val2 = coroutine.resume(co, 20) --> Step 2: 20, val2 = "done"
+
+-- coroutine.wrap (simpler, returns a function)
+local next = coroutine.wrap(function()
+  for i = 1, 5 do
+    coroutine.yield(i)
+  end
+end)
+print(next()) --> 1
+print(next()) --> 2
+
+-- PREFER task.spawn OVER raw coroutines for Roblox:
+-- task.spawn integrates with the scheduler (errors show in output)
+-- raw coroutines swallow errors silently unless you check pcall
+
+-- PATTERN: Iterator using coroutines
+local function range(start: number, stop: number, step: number?)
+  return coroutine.wrap(function()
+    local s = step or 1
+    for i = start, stop, s do
+      coroutine.yield(i)
+    end
+  end)
+end
+for i in range(1, 10, 2) do print(i) end --> 1, 3, 5, 7, 9`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SIGNAL & EVENT PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SIGNAL_PATTERNS: LuauPattern[] = [
+  {
+    name: 'GoodSignal Custom Event Class',
+    category: 'events',
+    keywords: ['signal', 'event', 'goodsignal', 'custom event', 'fire', 'connect', 'bindable'],
+    code: `-- GoodSignal by stravant -- the gold standard custom Signal for Roblox
+-- Batch yield-safe, coroutine-pooled, 2x faster than alternatives
+-- Full source: gist.github.com/stravant/b75a322e0919d60dde8a0316d1f09d2f
+
+local Signal = require(ReplicatedStorage.Packages.Signal) -- or GoodSignal
+
+-- CREATE
+local onDamage = Signal.new()
+
+-- CONNECT (returns connection object)
+local conn = onDamage:Connect(function(target, amount)
+  print(target.Name, "took", amount, "damage")
+end)
+
+-- ONCE (auto-disconnects after first fire)
+onDamage:Once(function(target, amount)
+  print("First hit:", amount)
+end)
+
+-- FIRE (triggers all connected handlers)
+onDamage:Fire(targetPlayer, 25)
+
+-- WAIT (yields until next fire, returns args)
+local target, amount = onDamage:Wait()
+
+-- DISCONNECT single connection
+conn:Disconnect()
+
+-- DISCONNECT ALL
+onDamage:DisconnectAll()
+
+-- DESTROY (cleanup, no reuse)
+onDamage:Destroy()
+
+-- WHEN TO USE SIGNAL vs BINDABLEEVENT:
+-- Signal: in-module communication, no Instance overhead, faster, typed
+-- BindableEvent: when you need an Instance-based event in the tree
+-- BindableEvent: cross-script without shared require
+-- RemoteEvent: client-server communication ONLY`,
+  },
+  {
+    name: 'Event Bus Pattern',
+    category: 'events',
+    keywords: ['event bus', 'pub sub', 'publish', 'subscribe', 'observer', 'decouple'],
+    code: `-- Global Event Bus: decouple systems that don't need direct references
+local Signal = require(ReplicatedStorage.Packages.Signal)
+
+local EventBus = {}
+local events: {[string]: typeof(Signal.new())} = {}
+
+function EventBus:Subscribe(eventName: string, handler: (...any) -> ())
+  if not events[eventName] then
+    events[eventName] = Signal.new()
+  end
+  return events[eventName]:Connect(handler)
+end
+
+function EventBus:Publish(eventName: string, ...: any)
+  if events[eventName] then
+    events[eventName]:Fire(...)
+  end
+end
+
+function EventBus:Clear(eventName: string)
+  if events[eventName] then
+    events[eventName]:DisconnectAll()
+    events[eventName] = nil
+  end
+end
+
+return EventBus
+
+-- Usage from ANY module:
+-- EventBus:Publish("PlayerScored", player, 100)
+-- local conn = EventBus:Subscribe("PlayerScored", function(player, pts)
+--   print(player.Name, "scored", pts)
+-- end)`,
+  },
+  {
+    name: 'Connection Cleanup & Memory Leak Prevention',
+    category: 'events',
+    keywords: ['memory leak', 'disconnect', 'cleanup', 'janitor', 'maid', 'connection', 'destroy'],
+    code: `-- MEMORY LEAK CAUSE: Connections prevent garbage collection!
+-- If a closure references a Part, and is connected to that Part event,
+-- GC cannot detect the cycle (connection list is C++ side).
+
+-- RULE 1: Always :Disconnect() or :Destroy() when done
+local conn = part.Touched:Connect(function(hit) print(hit) end)
+conn:Disconnect() -- breaks the reference cycle
+
+-- RULE 2: :Destroy() disconnects ALL connections on an Instance + children
+part:Destroy() -- implicitly disconnects everything
+
+-- RULE 3: Use Janitor for complex cleanup
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local jani = Janitor.new()
+
+-- Add connections
+jani:Add(part.Touched:Connect(function(hit) end))
+
+-- Add instances (destroyed on cleanup)
+jani:Add(Instance.new("Part", workspace), "Destroy")
+
+-- Add custom cleanup functions
+jani:Add(function() print("Cleaned up!") end)
+
+-- Link to instance lifecycle (auto-cleanup when instance destroyed)
+jani:LinkToInstance(part)
+
+-- Manual cleanup
+jani:Cleanup()   -- reusable after
+jani:Destroy()   -- one-time, no reuse
+
+-- RULE 4: Self-disconnecting one-shot connections
+local conn2
+conn2 = event:Connect(function(...)
+  conn2:Disconnect()
+  -- handle once
+end)
+
+-- RULE 5: Server leaks matter MORE than client (sessions are longer)
+-- Debris:AddItem(part, 5) -- destroys part after 5 seconds (handles cleanup)`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE MACHINE PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const STATE_MACHINE_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Finite State Machine (Table-Based)',
+    category: 'state-machine',
+    keywords: ['state machine', 'fsm', 'state', 'transition', 'npc', 'ai', 'finite'],
+    code: `-- Table-driven FSM: define states and valid transitions as data
+local Signal = require(ReplicatedStorage.Packages.Signal)
+
+local StateMachine = {}
+StateMachine.__index = StateMachine
+
+function StateMachine.new(initialState: string, transitions: {[string]: {[string]: string}})
+  local self = setmetatable({
+    current = initialState,
+    transitions = transitions,
+    onStateChanged = Signal.new(),
+    _enterCallbacks = {} :: {[string]: (string) -> ()},
+    _exitCallbacks = {} :: {[string]: (string) -> ()},
+  }, StateMachine)
+  return self
+end
+
+function StateMachine:GetState(): string
+  return self.current
+end
+
+function StateMachine:Transition(action: string): boolean
+  local stateTransitions = self.transitions[self.current]
+  if not stateTransitions then return false end
+  local nextState = stateTransitions[action]
+  if not nextState then return false end
+
+  local prevState = self.current
+  if self._exitCallbacks[prevState] then
+    self._exitCallbacks[prevState](nextState)
+  end
+  self.current = nextState
+  if self._enterCallbacks[nextState] then
+    self._enterCallbacks[nextState](prevState)
+  end
+  self.onStateChanged:Fire(prevState, nextState)
+  return true
+end
+
+function StateMachine:OnEnter(state: string, callback: (fromState: string) -> ())
+  self._enterCallbacks[state] = callback
+end
+
+function StateMachine:OnExit(state: string, callback: (toState: string) -> ())
+  self._exitCallbacks[state] = callback
+end
+
+-- USAGE:
+-- local npcFSM = StateMachine.new("Idle", {
+--   Idle    = { PlayerNear = "Chase",  TakeDamage = "Flee"  },
+--   Chase   = { ReachPlayer = "Attack", LosePlayer = "Idle" },
+--   Attack  = { PlayerDead = "Idle",   TakeDamage = "Flee"  },
+--   Flee    = { Safe = "Idle",         Cornered = "Attack"  },
+-- })
+-- npcFSM:OnEnter("Chase", function() startPathfinding() end)
+-- npcFSM:OnExit("Chase", function() stopPathfinding() end)`,
+  },
+  {
+    name: 'NPC AI State Machine',
+    category: 'state-machine',
+    keywords: ['npc', 'ai', 'state', 'patrol', 'chase', 'attack', 'idle', 'enemy'],
+    code: `-- Practical NPC AI using heartbeat + state machine
+local RunService = game:GetService("RunService")
+
+type NPCState = "Idle" | "Patrol" | "Chase" | "Attack" | "Dead"
+
+local NPC = {}
+NPC.__index = NPC
+
+function NPC.new(model: Model)
+  local humanoid = model:FindFirstChildOfClass("Humanoid")
+  local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
+  return setmetatable({
+    Model = model,
+    Humanoid = humanoid,
+    Root = root,
+    State = "Patrol" :: NPCState,
+    Target = nil :: Player?,
+    PatrolPoints = {} :: {Vector3},
+    PatrolIndex = 1,
+    AggroRange = 40,
+    AttackRange = 5,
+    AttackCooldown = 0,
+  }, NPC)
+end
+
+function NPC:Update(dt: number)
+  if self.State == "Dead" then return end
+
+  if self.State == "Patrol" then
+    self:_patrol(dt)
+    local target = self:_findNearestPlayer()
+    if target then
+      self.Target = target
+      self.State = "Chase"
+    end
+  elseif self.State == "Chase" then
+    if not self.Target or not self.Target.Character then
+      self.State = "Patrol"
+      return
+    end
+    local dist = (self.Root.Position - self.Target.Character.HumanoidRootPart.Position).Magnitude
+    if dist <= self.AttackRange then
+      self.State = "Attack"
+    elseif dist > self.AggroRange then
+      self.Target = nil
+      self.State = "Patrol"
+    else
+      self.Humanoid:MoveTo(self.Target.Character.HumanoidRootPart.Position)
+    end
+  elseif self.State == "Attack" then
+    self.AttackCooldown -= dt
+    if self.AttackCooldown <= 0 then
+      self:_doAttack()
+      self.AttackCooldown = 1.5
+    end
+    if not self.Target or not self.Target.Character then
+      self.State = "Patrol"
+    end
+  end
+end`,
+  },
+  {
+    name: 'Modular State with Enter/Exit/Update',
+    category: 'state-machine',
+    keywords: ['state', 'enter', 'exit', 'update', 'modular', 'lifecycle', 'base state'],
+    code: `-- Modular FSM: each state is its own module with Enter/Update/Exit
+-- BaseState.lua
+local BaseState = {}
+BaseState.__index = BaseState
+
+function BaseState.new(machine)
+  return setmetatable({ Machine = machine }, BaseState)
+end
+
+function BaseState:Enter(previousState: string, data: any?) end
+function BaseState:Update(dt: number) end
+function BaseState:Exit(nextState: string) end
+function BaseState:CanTransition(toState: string): boolean return true end
+
+return BaseState
+
+-- IdleState.lua
+local BaseState = require(script.Parent.Parent.BaseState)
+local IdleState = setmetatable({}, BaseState)
+IdleState.__index = IdleState
+
+function IdleState.new(machine)
+  local self = BaseState.new(machine)
+  return setmetatable(self, IdleState)
+end
+
+function IdleState:Enter(prev, data)
+  print("Entered Idle from", prev)
+  -- play idle animation, etc.
+end
+
+function IdleState:Update(dt)
+  -- check for transitions
+  if self:detectPlayer() then
+    self.Machine:Transition("Chase")
+  end
+end
+
+function IdleState:Exit(next)
+  -- stop idle animation
+end
+
+return IdleState`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TWEEN & ANIMATION PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TWEEN_PATTERNS: LuauPattern[] = [
+  {
+    name: 'TweenService Complete Reference',
+    category: 'tween',
+    keywords: ['tween', 'tweenservice', 'animate', 'interpolate', 'easing', 'tweeninfo'],
+    code: `local TweenService = game:GetService("TweenService")
+
+-- TweenInfo.new(time, easingStyle, easingDirection, repeatCount, reverses, delayTime)
+-- time:           seconds (default 1)
+-- easingStyle:    Linear|Quad|Cubic|Quart|Quint|Sine|Exponential|Circular|Elastic|Back|Bounce
+-- easingDirection: In|Out|InOut (default Out)
+-- repeatCount:    -1 = infinite, 0 = play once (default 0)
+-- reverses:       play backwards after forward (default false)
+-- delayTime:      seconds before starting (default 0)
+
+-- BASIC TWEEN
+local info = TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local tween = TweenService:Create(part, info, {
+  Position = Vector3.new(0, 20, 0),
+  Transparency = 0.5,
+})
+tween:Play()
+
+-- WAIT FOR COMPLETION
+tween.Completed:Wait()
+print("Tween done!")
+
+-- CHAIN TWEENS (sequential)
+local function chainTweens(obj: Instance, tweenList: {{Info: TweenInfo, Props: {[string]: any}}})
+  task.spawn(function()
+    for _, t in tweenList do
+      local tw = TweenService:Create(obj, t.Info, t.Props)
+      tw:Play()
+      tw.Completed:Wait()
+    end
+  end)
+end
+
+-- TWEEN METHODS:
+-- tween:Play()   -- start or resume
+-- tween:Pause()  -- suspend (resume with Play)
+-- tween:Cancel() -- stop and reset to original values
+
+-- TWEENABLE TYPES: number, boolean, CFrame, Color3, UDim, UDim2, Vector2, Vector3, Rect, EnumItem
+
+-- TWEEN MODEL (tween PrimaryPart CFrame, model follows)
+local model = workspace.MyModel
+local goal = {CFrame = CFrame.new(0, 10, 0)}
+local modelTween = TweenService:Create(model.PrimaryPart, info, goal)
+modelTween:Play()
+
+-- UI TWEEN
+local frame = script.Parent.Frame
+TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+  Position = UDim2.fromScale(0.5, 0.5),
+  Size = UDim2.fromScale(0.4, 0.3),
+}):Play()`,
+  },
+  {
+    name: 'Spring Animation Module',
+    category: 'tween',
+    keywords: ['spring', 'spr', 'bounce', 'physics', 'smooth', 'animation', 'damping'],
+    code: `-- Spring-based animation: more natural feel than TweenService
+-- Popular libraries: spr, SpringService, Quantum
+-- Springs have: damping ratio, frequency, target value
+
+-- MANUAL SPRING (no library needed):
+local Spring = {}
+Spring.__index = Spring
+
+function Spring.new(initial: number, damping: number, frequency: number)
+  return setmetatable({
+    Position = initial,
+    Velocity = 0,
+    Target = initial,
+    Damping = damping,     -- 0 = no damping, 1 = critical, >1 = overdamped
+    Frequency = frequency, -- oscillations per second
+  }, Spring)
+end
+
+function Spring:SetTarget(target: number)
+  self.Target = target
+end
+
+function Spring:Update(dt: number): number
+  local d = self.Damping
+  local f = self.Frequency * 2 * math.pi
+  local x = self.Position - self.Target
+  local v = self.Velocity
+  local decay = math.exp(-d * f * dt)
+  if d < 1 then -- underdamped (bouncy)
+    local fd = f * math.sqrt(1 - d * d)
+    local c = (v + d * f * x) / fd
+    self.Position = self.Target + decay * (x * math.cos(fd * dt) + c * math.sin(fd * dt))
+    self.Velocity = self.Target + decay * ((c * fd - d * f * x) * math.cos(fd * dt) - (x * fd + d * f * c) * math.sin(fd * dt)) - self.Target
+  else -- critically damped or overdamped
+    self.Position = self.Target + decay * (x + (v + f * x) * dt)
+    self.Velocity = decay * (v - (v + f * x) * f * dt)
+  end
+  return self.Position
+end
+
+-- Usage with RunService:
+-- local spring = Spring.new(0, 0.5, 8) -- bouncy
+-- spring:SetTarget(100)
+-- RunService.Heartbeat:Connect(function(dt)
+--   local val = spring:Update(dt)
+--   frame.Position = UDim2.fromOffset(val, 0)
+-- end)`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RAYCASTING PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const RAYCAST_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Raycasting Complete Reference',
+    category: 'raycast',
+    keywords: ['raycast', 'ray', 'hit detection', 'line of sight', 'workspace raycast'],
+    code: `-- workspace:Raycast(origin: Vector3, direction: Vector3, params?: RaycastParams): RaycastResult?
+-- Direction magnitude = ray LENGTH (max 15,000 studs)
+
+local Workspace = game:GetService("Workspace")
+
+-- SETUP RAYCAST PARAMS (modern API)
+local params = RaycastParams.new()
+params.ExcludeInstances = {character}  -- exclude specific instances
+params.IncludeInstances = nil          -- nil = include everything
+params.IgnoreWater = true
+params.CollisionGroup = "Default"
+params.RespectCanCollide = false  -- true = skip CanCollide=false parts
+-- Note: ExcludeInstances takes priority over IncludeInstances
+
+-- PERFORM RAYCAST
+local origin = character.HumanoidRootPart.Position
+local direction = character.HumanoidRootPart.CFrame.LookVector * 100
+local result = Workspace:Raycast(origin, direction, params)
+
+-- RESULT PROPERTIES
+if result then
+  result.Instance   -- BasePart or Terrain cell that was hit
+  result.Position   -- Vector3: exact intersection point
+  result.Normal     -- Vector3: surface normal at hit point
+  result.Distance   -- number: distance from origin to hit
+  result.Material   -- Enum.Material: material at intersection
+end`,
+  },
+  {
+    name: 'Shapecast (Sphere, Block, Shape)',
+    category: 'raycast',
+    keywords: ['spherecast', 'blockcast', 'shapecast', 'collision', 'sweep', 'overlap'],
+    code: `-- SPHERECAST: Cast a sphere along a direction (thick raycast)
+-- workspace:Spherecast(position, radius, direction, params?)
+-- radius max: 256 studs, direction max: 1024 studs
+local sphereResult = workspace:Spherecast(
+  Vector3.new(0, 50, 0), -- start position
+  5,                      -- radius in studs
+  Vector3.new(0, -50, 0), -- direction + distance
+  params                   -- same RaycastParams
+)
+
+-- BLOCKCAST: Cast a box along a direction
+-- workspace:Blockcast(cframe, size, direction, params?)
+-- size max: 512 studs per axis
+local blockResult = workspace:Blockcast(
+  CFrame.new(0, 50, 0),       -- start position + orientation
+  Vector3.new(4, 2, 4),        -- box size
+  Vector3.new(0, -50, 0),      -- direction + distance
+  params
+)
+
+-- SHAPECAST: Cast using an existing part shape
+-- workspace:Shapecast(part, direction, params?)
+local shapeResult = workspace:Shapecast(
+  workspace.HitboxPart,        -- part defines shape
+  Vector3.new(0, 0, -20),      -- direction + distance
+  params
+)
+
+-- ALL return RaycastResult? (same properties as Raycast)
+-- NOTE: Does NOT detect parts that ALREADY overlap the initial shape
+
+-- COMMON USES:
+-- Ground detection: Spherecast(charPos, 2, Vector3.new(0, -10, 0))
+-- Wall check:       Blockcast(charCF, Vector3.new(3,5,3), moveDir * 5)
+-- Hitbox:           Shapecast(swordHitbox, swingDirection * 5)
+-- Projectile:       Spherecast(bulletPos, bulletRadius, velocity * dt)`,
+  },
+  {
+    name: 'Ground Detection & Wall Check',
+    category: 'raycast',
+    keywords: ['ground', 'floor', 'wall', 'check', 'grounded', 'raycast', 'jump'],
+    code: `-- GROUND DETECTION (is player on the ground?)
+local function isGrounded(character: Model): (boolean, RaycastResult?)
+  local root = character:FindFirstChild("HumanoidRootPart") :: BasePart
+  if not root then return false, nil end
+  local params = RaycastParams.new()
+  params.ExcludeInstances = {character}
+  local result = workspace:Raycast(
+    root.Position,
+    Vector3.new(0, -4, 0), -- slightly more than half character height
+    params
+  )
+  return result ~= nil, result
+end
+
+-- WALL CHECK (is there a wall in front?)
+local function wallAhead(character: Model, distance: number): boolean
+  local root = character:FindFirstChild("HumanoidRootPart") :: BasePart
+  if not root then return false end
+  local params = RaycastParams.new()
+  params.ExcludeInstances = {character}
+  local result = workspace:Raycast(
+    root.Position,
+    root.CFrame.LookVector * distance,
+    params
+  )
+  return result ~= nil
+end
+
+-- LINE OF SIGHT (can NPC see player?)
+local function hasLineOfSight(fromPos: Vector3, toPos: Vector3, ignore: {Instance}): boolean
+  local params = RaycastParams.new()
+  params.ExcludeInstances = ignore
+  local dir = toPos - fromPos
+  local result = workspace:Raycast(fromPos, dir, params)
+  return result == nil or result.Distance >= dir.Magnitude - 1
+end`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INPUT HANDLING PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const INPUT_PATTERNS: LuauPattern[] = [
+  {
+    name: 'UserInputService Input Handling',
+    category: 'input',
+    keywords: ['input', 'keyboard', 'mouse', 'userinputservice', 'keybind', 'click', 'key'],
+    code: `local UIS = game:GetService("UserInputService")
+
+-- KEYBOARD INPUT
+UIS.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+  if gameProcessed then return end -- ignore if typing in chat, etc.
+  if input.KeyCode == Enum.KeyCode.E then
+    print("E pressed -- interact!")
+  elseif input.KeyCode == Enum.KeyCode.LeftShift then
+    print("Sprint started")
+  end
+end)
+
+UIS.InputEnded:Connect(function(input: InputObject, gameProcessed: boolean)
+  if input.KeyCode == Enum.KeyCode.LeftShift then
+    print("Sprint ended")
+  end
+end)
+
+-- CHECK IF KEY IS HELD
+if UIS:IsKeyDown(Enum.KeyCode.W) then
+  print("W is currently held")
+end
+
+-- MOUSE INPUT
+UIS.InputBegan:Connect(function(input, gp)
+  if gp then return end
+  if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    print("Left click at:", UIS:GetMouseLocation())
+  elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+    print("Right click")
+  end
+end)
+
+-- TOUCH INPUT (mobile)
+UIS.TouchStarted:Connect(function(touch: InputObject, gp: boolean)
+  print("Touch at:", touch.Position)
+end)
+
+-- GAMEPAD INPUT
+UIS.InputBegan:Connect(function(input, gp)
+  if input.UserInputType == Enum.UserInputType.Gamepad1 then
+    if input.KeyCode == Enum.KeyCode.ButtonA then
+      print("A button pressed")
+    end
+  end
+end)`,
+  },
+  {
+    name: 'ContextActionService (Context-Aware Input)',
+    category: 'input',
+    keywords: ['contextaction', 'bind', 'action', 'mobile button', 'context', 'unbind', 'touch'],
+    code: `local CAS = game:GetService("ContextActionService")
+
+-- BIND ACTION (key + auto mobile button)
+-- BindAction(actionName, handler, createTouchButton, ...inputTypes)
+local ACTION_RELOAD = "Reload"
+
+local function onReload(actionName: string, inputState: Enum.UserInputState, inputObj: InputObject)
+  if inputState ~= Enum.UserInputState.Begin then
+    return Enum.ContextActionResult.Pass  -- let other handlers try
+  end
+  print("Reloading!")
+  return Enum.ContextActionResult.Sink  -- consume input
+end
+
+-- Bind when tool equipped, unbind when unequipped
+tool.Equipped:Connect(function()
+  CAS:BindAction(ACTION_RELOAD, onReload, true, Enum.KeyCode.R)
+end)
+tool.Unequipped:Connect(function()
+  CAS:UnbindAction(ACTION_RELOAD)
+end)
+
+-- PRIORITY BINDING (higher number = checked first)
+CAS:BindActionAtPriority("Throw", onThrow, false, 2, Enum.KeyCode.Z)
+CAS:BindActionAtPriority("Eat", onEat, false, 1, Enum.KeyCode.Z)
+-- Z pressed -> Throw checked first (priority 2), if it returns Pass -> Eat runs
+
+-- CUSTOMIZE TOUCH BUTTON
+CAS:SetImage(ACTION_RELOAD, "rbxassetid://123456")
+CAS:SetTitle(ACTION_RELOAD, "R")
+CAS:SetPosition(ACTION_RELOAD, UDim2.new(0.7, 0, 0.5, 0))
+
+-- WHEN TO USE UIS vs CAS:
+-- UIS: Raw input detection, mouse position, keyboard state, input type detection
+-- CAS: Action-based input that changes with game context (equip/unequip, vehicle)
+-- CAS: Automatic mobile button support
+-- CAS: Priority stacking (multiple handlers on same key)`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STRING & SERIALIZATION PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const STRING_SERIAL_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Luau String Pattern Reference',
+    category: 'string',
+    keywords: ['string', 'pattern', 'match', 'find', 'gsub', 'gmatch', 'regex', 'text'],
+    code: `-- LUAU PATTERNS (NOT regex -- simpler, no alternation or backrefs)
+
+-- CHARACTER CLASSES:
+-- %a = letters       %A = non-letters
+-- %d = digits        %D = non-digits
+-- %l = lowercase     %L = non-lowercase
+-- %u = uppercase     %U = non-uppercase
+-- %w = alphanumeric  %W = non-alphanumeric
+-- %s = whitespace    %S = non-whitespace
+-- %p = punctuation   %P = non-punctuation
+-- %c = control chars %x = hexadecimal
+-- .  = any character
+
+-- QUANTIFIERS:
+-- +  = 1 or more (greedy)
+-- *  = 0 or more (greedy)
+-- -  = 0 or more (lazy/minimal)
+-- ?  = 0 or 1
+
+-- ANCHORS:
+-- ^  = start of string
+-- $  = end of string
+
+-- SETS:
+-- [abc]  = any of a, b, c
+-- [a-z]  = range a to z
+-- [^abc] = anything except a, b, c
+
+-- MAGIC CHARS (escape with %): $ % ^ * ( ) . [ ] + - ?
+
+-- string.match(str, pattern): first match or nil
+local num = string.match("Score: 42", "%d+") --> "42"
+local a, b = string.match("x=10, y=20", "x=(%d+), y=(%d+)") --> "10", "20"
+
+-- string.find(str, pattern, init?, plain?): start, end positions
+local s, e = string.find("Hello World", "World") --> 7, 11
+
+-- string.gsub(str, pattern, replacement, maxN?)
+local clean = string.gsub("a1b2c3", "%d", "") --> "abc"
+local swapped = string.gsub("2025-04-25", "(%d+)-(%d+)-(%d+)", "%3/%2/%1") --> "25/04/2025"
+
+-- string.gmatch(str, pattern): iterator over all matches
+for word in string.gmatch("Hello World Foo", "%w+") do
+  print(word) --> Hello, World, Foo
+end
+
+-- COMMON PATTERNS:
+-- "^%s*(.-)%s*$"     -- trim whitespace
+-- "%d+"              -- integer
+-- "%d+%.?%d*"        -- decimal number
+-- "[%w_]+"           -- identifier
+-- "%b()"             -- balanced parentheses`,
+  },
+  {
+    name: 'JSON & Data Serialization',
+    category: 'string',
+    keywords: ['json', 'encode', 'decode', 'serialize', 'httpservice', 'data', 'buffer'],
+    code: `local HttpService = game:GetService("HttpService")
+
+-- JSON ENCODE (table -> string)
+local data = { Name = "Vyren", Level = 42, Items = {"Sword", "Shield"} }
+local jsonStr = HttpService:JSONEncode(data)
+--> {"Name":"Vyren","Level":42,"Items":["Sword","Shield"]}
+
+-- JSON DECODE (string -> table)
+local parsed = HttpService:JSONDecode(jsonStr)
+print(parsed.Name) --> "Vyren"
+
+-- BUFFER: Compact binary data (faster than tables for large datasets)
+-- buffer.create(size): zero-initialized buffer of N bytes
+-- Read/Write: i8, u8, i16, u16, i32, u32, f32, f64
+local buf = buffer.create(12) -- 12 bytes = 3 floats
+buffer.writef32(buf, 0, 1.5)  -- write float at offset 0
+buffer.writef32(buf, 4, 2.5)  -- write float at offset 4
+buffer.writef32(buf, 8, 3.5)  -- write float at offset 8
+local x = buffer.readf32(buf, 0) --> 1.5
+
+-- BUFFER FOR NETWORK: Send compact position data
+local function encodePositions(positions: {Vector3}): buffer
+  local buf = buffer.create(#positions * 12)
+  for i, pos in positions do
+    local offset = (i - 1) * 12
+    buffer.writef32(buf, offset, pos.X)
+    buffer.writef32(buf, offset + 4, pos.Y)
+    buffer.writef32(buf, offset + 8, pos.Z)
+  end
+  return buf
+end
+
+-- buffer.fromstring(str) / buffer.tostring(buf)
+-- buffer.copy(dst, dstOff, src, srcOff?, count?)
+-- buffer.len(buf) returns size in bytes
+
+-- BUFFER SUPPORTED BY: RemoteEvents, DataStore, MemoryStore,
+--   MessagingService, TeleportService, HttpService`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TABLE & PERFORMANCE PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TABLE_PERF_PATTERNS: LuauPattern[] = [
+  {
+    name: 'Table Operations Reference',
+    category: 'tables',
+    keywords: ['table', 'array', 'dictionary', 'insert', 'remove', 'find', 'sort', 'freeze', 'clone'],
+    code: `-- TABLE CREATION
+local arr = {1, 2, 3, 4, 5}                    -- array (integer keys)
+local dict = {name = "Vyren", level = 42}       -- dictionary (string keys)
+local preallocated = table.create(1000)          -- pre-allocate 1000 slots (FASTER)
+local filled = table.create(100, 0)              -- 100 slots, all initialized to 0
+
+-- TABLE METHODS
+table.insert(arr, 6)                -- append to end: {1,2,3,4,5,6}
+table.insert(arr, 1, 0)            -- insert at index 1: {0,1,2,3,4,5,6}
+table.remove(arr, 1)               -- remove at index 1, shifts down
+local last = table.remove(arr)     -- remove and return last element (fastest)
+local idx = table.find(arr, 3)     -- find value, returns index or nil
+table.sort(arr)                     -- sort in-place (ascending)
+table.sort(arr, function(a, b) return a > b end) -- custom sort
+
+-- IMMUTABILITY
+local config = table.freeze({
+  MaxHP = 100,
+  SpawnTime = 5,
+  Nested = table.freeze({ X = 1 }), -- freeze nested tables too!
+})
+-- config.MaxHP = 200  --> ERROR: attempt to modify frozen table
+local isFrozen = table.isfrozen(config) --> true
+
+-- CLONING
+local copy = table.clone(arr)       -- SHALLOW copy (nested tables share refs!)
+-- For deep clone:
+local function deepClone(t)
+  local clone = table.clone(t)
+  for k, v in clone do
+    if type(v) == "table" then
+      clone[k] = deepClone(v)
+    end
+  end
+  return clone
+end
+
+-- table.move(src, srcStart, srcEnd, destStart, dest?)
+-- table.pack(...) -> table with .n field
+-- table.unpack(t, i?, j?)
+
+-- ITERATION:
+-- for i, v in ipairs(arr)  -> arrays only, stops at first nil
+-- for k, v in pairs(dict)  -> all keys (unordered for dicts)
+-- for k, v in dict do       -> generalized iteration (Luau, same as pairs)
+-- for i, v in arr do        -> generalized iteration (Luau, same as ipairs)`,
+  },
+  {
+    name: 'Performance Optimization Tips',
+    category: 'tables',
+    keywords: ['performance', 'optimize', 'fast', 'lag', 'fps', 'micro', 'cache', 'pool'],
+    code: `-- INSTANCE POOLING: Reuse instead of Create/Destroy
+local POOL_SIZE = 200
+local BulletPool = table.create(POOL_SIZE)
+local bulletTemplate = Instance.new("Part")
+bulletTemplate.Size = Vector3.new(0.2, 0.2, 2)
+bulletTemplate.Anchored = true
+bulletTemplate.CanCollide = false
+
+for i = 1, POOL_SIZE do
+  BulletPool[i] = bulletTemplate:Clone()
+end
+
+local function getBullet(): Part?
+  return table.remove(BulletPool)
+end
+
+local function returnBullet(bullet: Part)
+  bullet.Parent = nil
+  table.insert(BulletPool, bullet)
+end
+
+-- PARENT LAST: Set properties BEFORE parenting to workspace
+local part = Instance.new("Part")
+part.Size = Vector3.new(5, 5, 5)
+part.Position = Vector3.new(0, 10, 0)
+part.Anchored = true
+part.Material = Enum.Material.Concrete
+part.BrickColor = BrickColor.new("Medium stone grey")
+part.Parent = workspace -- LAST! Avoids redundant replication and physics updates
+
+-- CACHE SERVICE CALLS at top of script
+local RunService = game:GetService("RunService")
+
+-- AVOID FIND IN HOT LOOPS
+local target = workspace:FindFirstChild("Target") -- cache outside loop
+RunService.Heartbeat:Connect(function(dt)
+  -- Use target directly, not FindFirstChild every frame
+end)
+
+-- REMOVE PRINT IN PRODUCTION (causes FPS drops in hot loops)
+
+-- PRE-ALLOCATE TABLES when you know approximate size
+local results = table.create(100)`,
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CHAT SYSTEM PATTERNS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CHAT_PATTERNS: LuauPattern[] = [
+  {
+    name: 'TextChatService Setup & Custom Commands',
+    category: 'chat',
+    keywords: ['chat', 'textchatservice', 'message', 'command', 'filter', 'bubble', 'channel'],
+    code: `-- TextChatService is THE chat system (legacy Chat is deprecated)
+local TextChatService = game:GetService("TextChatService")
+
+-- RECEIVE MESSAGES (client-side)
+local channels = TextChatService:WaitForChild("TextChannels")
+local general = channels:WaitForChild("RBXGeneral")
+
+general.MessageReceived:Connect(function(msg: TextChatMessage)
+  local sender = msg.TextSource -- nil for system messages
+  local text = msg.Text          -- already filtered automatically
+  if sender then
+    print(sender.Name..": "..text)
+  end
+end)
+
+-- CUSTOM MESSAGE DECORATION (client-side callback)
+TextChatService.OnIncomingMessage = function(message: TextChatMessage)
+  local props = Instance.new("TextChatMessageProperties")
+  if message.TextSource then
+    local player = game.Players:GetPlayerByUserId(message.TextSource.UserId)
+    if player and player:GetAttribute("VIP") then
+      props.PrefixText = "[VIP] "..message.PrefixText
+    end
+  end
+  return props
+end
+
+-- CUSTOM CHAT COMMAND (TextChatCommand instance)
+local spawnCmd = Instance.new("TextChatCommand")
+spawnCmd.Name = "SpawnCommand"
+spawnCmd.PrimaryAlias = "/spawn"
+spawnCmd.SecondaryAlias = "/tp"
+spawnCmd.Parent = TextChatService
+spawnCmd.Triggered:Connect(function(source: TextSource, unfilteredText: string)
+  local args = string.split(unfilteredText, " ")
+  print(source.Name, "wants to spawn at:", args[2])
+end)
+
+-- SEND MESSAGE PROGRAMMATICALLY (client LocalScript)
+general:SendAsync("Hello from code!")
+
+-- NPC BUBBLE CHAT (server-side)
+TextChatService:DisplayBubble(npcModel, "Welcome, adventurer!")
+
+-- DEFAULT COMMANDS: /clear, /e emote, /mute, /unmute, /whisper, /team, /help
+-- DEFAULT CHANNELS: RBXGeneral, RBXSystem, RBXTeam[Color], RBXWhisper`,
+  },
+]
+
 const ALL_PATTERNS: LuauPattern[] = [
   ...DATA_PATTERNS,
   ...NETWORKING_PATTERNS,
@@ -2454,6 +4030,18 @@ const ALL_PATTERNS: LuauPattern[] = [
   ...TERRAIN_PATTERNS,
   ...LIFECYCLE_PATTERNS,
   ...ERROR_PATTERNS,
+  ...MODULE_PATTERNS,
+  ...OOP_PATTERNS,
+  ...TYPE_PATTERNS,
+  ...ASYNC_PATTERNS,
+  ...SIGNAL_PATTERNS,
+  ...STATE_MACHINE_PATTERNS,
+  ...TWEEN_PATTERNS,
+  ...RAYCAST_PATTERNS,
+  ...INPUT_PATTERNS,
+  ...STRING_SERIAL_PATTERNS,
+  ...TABLE_PERF_PATTERNS,
+  ...CHAT_PATTERNS,
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
