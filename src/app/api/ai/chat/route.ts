@@ -6561,7 +6561,7 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
       if (!luauCode) {
         console.warn('[SinglePass] ALL models failed to generate code for:', message.slice(0, 50))
         model = 'failed'
-        conversationText = `I wasn't able to generate "${message}" right now — all AI models are exhausted or rate-limited. Here's what you can do:\n\n1. **Wait 1-2 minutes and try again** — rate limits reset quickly\n2. **Simplify your prompt** — try "build a house" instead of a complex request\n3. **Try Script mode** — switch to Script mode in the mode selector\n\nThis usually fixes itself within a few minutes. Sorry about the wait!`
+        conversationText = `Hey, all the AI models are busy right now — give it a minute and try again. Rate limits reset fast.\n\nIf it keeps happening, try a shorter prompt like "build a tree" or "make a house". The simpler the better.\n\n[FOLLOWUP]\n- Try my prompt again\n- Build me something simple\n- What else can you do?\n\n[SUGGESTIONS]\n- Build me a tree\n- Make a house\n- Help me plan a game`
       }
     }
 
@@ -14755,7 +14755,7 @@ Set m.PrimaryPart to the base part. No explanation.`,
     }
 
     // Final fallback — be honest, no fake templates
-    const failMsg = `I wasn't able to generate "${message.slice(0, 60)}" — all AI models are currently unavailable. Please try again in a moment. I'm logging this so I can improve.`
+    const failMsg = `All the AI models are busy right now — try again in a minute, rate limits reset fast. If it keeps happening, try a shorter prompt.\n\n[FOLLOWUP]\n- Try my prompt again\n- Build me something simple\n- What can you make?\n\n[SUGGESTIONS]\n- Build me a tree\n- Make a house\n- Help me plan a game`
     // Record the failure for learning
     void learnFromFailure(message, '', 0, ['All models failed to respond'], detectCategory(message)).catch(() => {})
     if (wantsStream) {
