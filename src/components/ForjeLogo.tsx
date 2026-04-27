@@ -2,11 +2,13 @@
  * ForjeLogo — Reusable logo components for site-wide consistency.
  *
  * Wordmark: "ForjeGames" italic bold — gold "Forje" + white "Games"
+ * ImageLogo: New brand logo PNG from /logo.png
  * Icon: "FG" compact mark for favicons, small spaces
  * Loading: Wordmark with left-to-right reveal animation
  */
 
 import React from 'react'
+import Image from 'next/image'
 
 // ─── Shared style ────────────────────────────────────────────────────────────
 
@@ -21,6 +23,32 @@ const baseStyle: React.CSSProperties = {
   alignItems: 'baseline',
 }
 
+// ─── Image Logo ──────────────────────────────────────────────────────────────
+
+interface ForjeImageLogoProps {
+  /** Height in pixels — width auto-calculated from aspect ratio */
+  height?: number
+  /** Additional className */
+  className?: string
+}
+
+/** Brand logo image — use where image logos are preferred over text wordmark */
+export function ForjeImageLogo({ height = 32, className }: ForjeImageLogoProps) {
+  // Original image is 1536x1024 → aspect ratio 1.5:1
+  const width = Math.round(height * 1.5)
+  return (
+    <Image
+      src="/logo.png"
+      alt="ForjeGames"
+      width={width}
+      height={height}
+      className={className}
+      priority
+      style={{ objectFit: 'contain' }}
+    />
+  )
+}
+
 // ─── Wordmark ────────────────────────────────────────────────────────────────
 
 interface ForjeLogoProps {
@@ -30,9 +58,15 @@ interface ForjeLogoProps {
   className?: string
   /** Additional inline style */
   style?: React.CSSProperties
+  /** Use image logo instead of text wordmark */
+  useImage?: boolean
 }
 
-export function ForjeLogo({ size = 20, className, style }: ForjeLogoProps) {
+export function ForjeLogo({ size = 20, className, style, useImage }: ForjeLogoProps) {
+  if (useImage) {
+    return <ForjeImageLogo height={size} className={className} />
+  }
+
   return (
     <span
       className={className}

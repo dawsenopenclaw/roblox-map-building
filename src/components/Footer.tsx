@@ -141,7 +141,7 @@ export default function Footer() {
               className="inline-block focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] rounded"
               aria-label="ForjeGames home"
             >
-              <ForjeLogo size={24} />
+              <ForjeLogo size={28} useImage />
             </Link>
             <p className="text-[#8B95B0] text-sm mt-2 max-w-xs leading-relaxed">
               Your game. Forjed by AI.
