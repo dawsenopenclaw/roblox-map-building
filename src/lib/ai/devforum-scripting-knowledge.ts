@@ -1654,6 +1654,243 @@ const SCRIPTING_SECTIONS: ScriptingSection[] = [
       'server design', 'game design pattern',
     ],
     startMarker: 'TOP GAME ARCHITECTURES:',
+    endMarker: 'DIALOGUE AND NPC INTERACTION:',
+  },
+  {
+    name: 'dialogue_npc',
+    keywords: [
+      'dialogue', 'dialog', 'npc talk', 'conversation', 'typewriter',
+      'dialogue tree', 'choice', 'quest dialogue', 'talk to npc',
+      'npc interaction', 'speech bubble', 'chat npc',
+    ],
+    startMarker: 'DIALOGUE AND NPC INTERACTION:',
+    endMarker: 'CRAFTING SYSTEM:',
+  },
+  {
+    name: 'crafting',
+    keywords: [
+      'craft', 'crafting', 'recipe', 'ingredient', 'workbench',
+      'forge', 'smelt', 'combine', 'create item', 'crafting table',
+      'crafting system', 'recipe book',
+    ],
+    startMarker: 'CRAFTING SYSTEM:',
+    endMarker: 'FARMING AND CROP SYSTEM:',
+  },
+  {
+    name: 'farming',
+    keywords: [
+      'farm', 'farming', 'crop', 'plant', 'harvest', 'grow',
+      'seed', 'water', 'soil', 'garden', 'agriculture',
+      'wheat', 'carrot', 'season',
+    ],
+    startMarker: 'FARMING AND CROP SYSTEM:',
+    endMarker: 'FISHING MECHANIC:',
+  },
+  {
+    name: 'fishing',
+    keywords: [
+      'fish', 'fishing', 'cast', 'reel', 'bobber', 'bait',
+      'fishing rod', 'catch', 'fishing zone', 'fish rarity',
+      'fishing game', 'angler',
+    ],
+    startMarker: 'FISHING MECHANIC:',
+    endMarker: 'MINING AND RESOURCE GATHERING:',
+  },
+  {
+    name: 'mining',
+    keywords: [
+      'mine', 'mining', 'ore', 'pickaxe', 'resource', 'gather',
+      'dig', 'cave', 'smelt', 'mineral', 'stone', 'iron ore',
+      'gold ore', 'diamond', 'resource gathering',
+    ],
+    startMarker: 'MINING AND RESOURCE GATHERING:',
+    endMarker: 'CHARACTER CUSTOMIZATION:',
+  },
+  {
+    name: 'character_customization',
+    keywords: [
+      'customization', 'customize', 'avatar', 'outfit', 'clothing',
+      'accessory', 'morph', 'humanoid description', 'body color',
+      'shirt', 'pants', 'hair', 'face', 'skin color', 'wardrobe',
+    ],
+    startMarker: 'CHARACTER CUSTOMIZATION:',
+    endMarker: 'TEAM AND PARTY SYSTEM:',
+  },
+  {
+    name: 'team_party',
+    keywords: [
+      'team', 'party', 'group', 'squad', 'invite', 'team system',
+      'party system', 'shared xp', 'team chat', 'co-op',
+      'multiplayer team', 'party invite',
+    ],
+    startMarker: 'TEAM AND PARTY SYSTEM:',
+    endMarker: 'PET SYSTEM ADVANCED:',
+  },
+  {
+    name: 'pet_system',
+    keywords: [
+      'pet', 'pets', 'pet follow', 'pet equip', 'pet evolution',
+      'pet fusion', 'pet trade', 'pet index', 'hatch', 'egg',
+      'companion', 'pet stats', 'pokedex',
+    ],
+    startMarker: 'PET SYSTEM ADVANCED:',
+    endMarker: 'TOWER DEFENSE PATTERNS:',
+  },
+  {
+    name: 'tower_defense',
+    keywords: [
+      'tower defense', 'td', 'tower', 'wave', 'targeting',
+      'tower placement', 'tower upgrade', 'path follow', 'creep',
+      'tower defense game', 'enemy wave', 'turret',
+    ],
+    startMarker: 'TOWER DEFENSE PATTERNS:',
+    endMarker: 'BATTLE ROYALE MECHANICS:',
+  },
+  {
+    name: 'battle_royale',
+    keywords: [
+      'battle royale', 'br', 'storm', 'zone', 'shrink', 'loot spawn',
+      'last man standing', 'air drop', 'fortnite', 'kill tracking',
+      'battle royale game', 'zone shrink',
+    ],
+    startMarker: 'BATTLE ROYALE MECHANICS:',
+    endMarker: 'VEHICLE SYSTEM ADVANCED:',
+  },
+  {
+    name: 'vehicle_advanced',
+    keywords: [
+      'vehicle', 'car', 'drive', 'vehicle seat', 'suspension',
+      'drift', 'nitro', 'fuel', 'garage', 'racing', 'motorcycle',
+      'truck', 'boat', 'vehicle system',
+    ],
+    startMarker: 'VEHICLE SYSTEM ADVANCED:',
+    endMarker: 'DOOR AND LOCK SYSTEM:',
+  },
+  {
+    name: 'door_lock',
+    keywords: [
+      'door', 'lock', 'key', 'keycard', 'open door', 'close door',
+      'locked door', 'hinge', 'sliding door', 'gate', 'unlock',
+      'break in', 'door system',
+    ],
+    startMarker: 'DOOR AND LOCK SYSTEM:',
+    endMarker: 'ELEVATOR SYSTEM:',
+  },
+  {
+    name: 'elevator',
+    keywords: [
+      'elevator', 'lift', 'floor', 'multi floor', 'platform',
+      'elevator system', 'call button', 'floor indicator',
+    ],
+    startMarker: 'ELEVATOR SYSTEM:',
+    endMarker: 'TELEPORTER SYSTEM:',
+  },
+  {
+    name: 'teleporter',
+    keywords: [
+      'teleporter', 'teleport pad', 'portal', 'warp', 'warp pad',
+      'teleport zone', 'loading zone', 'fast travel', 'portal effect',
+    ],
+    startMarker: 'TELEPORTER SYSTEM:',
+    endMarker: 'STATUS EFFECT SYSTEM:',
+  },
+  {
+    name: 'status_effects',
+    keywords: [
+      'status effect', 'buff', 'debuff', 'poison', 'burn', 'freeze',
+      'speed boost', 'shield', 'dot', 'damage over time', 'stun',
+      'slow', 'cleanse', 'dispel', 'status',
+    ],
+    startMarker: 'STATUS EFFECT SYSTEM:',
+    endMarker: 'LOOT DROP SYSTEM:',
+  },
+  {
+    name: 'loot_drops',
+    keywords: [
+      'loot', 'drop', 'loot table', 'rarity', 'item drop', 'pickup',
+      'loot beam', 'auto collect', 'weighted random', 'drop rate',
+      'loot system', 'enemy drop',
+    ],
+    startMarker: 'LOOT DROP SYSTEM:',
+    endMarker: 'BOSS FIGHT MECHANICS:',
+  },
+  {
+    name: 'boss_fight',
+    keywords: [
+      'boss', 'boss fight', 'boss battle', 'phase', 'attack pattern',
+      'health bar', 'enrage', 'arena', 'boss mechanic', 'raid boss',
+      'miniboss', 'boss spawn',
+    ],
+    startMarker: 'BOSS FIGHT MECHANICS:',
+    endMarker: 'EMOTE AND ANIMATION SYSTEM:',
+  },
+  {
+    name: 'emote_animation',
+    keywords: [
+      'emote', 'animation', 'dance', 'emote wheel', 'custom animation',
+      'animation priority', 'play animation', 'animator', 'pose',
+      'gesture', 'taunt', 'celebration',
+    ],
+    startMarker: 'EMOTE AND ANIMATION SYSTEM:',
+    endMarker: 'SPECTATOR MODE:',
+  },
+  {
+    name: 'spectator',
+    keywords: [
+      'spectate', 'spectator', 'watch', 'camera follow', 'free cam',
+      'death cam', 'observer', 'spectator mode', 'replay',
+    ],
+    startMarker: 'SPECTATOR MODE:',
+    endMarker: 'MODERATION SYSTEM:',
+  },
+  {
+    name: 'moderation',
+    keywords: [
+      'moderation', 'moderate', 'report', 'filter', 'word filter',
+      'kick player', 'ban player', 'mute', 'chat filter',
+      'text filter', 'appeal', 'abuse',
+    ],
+    startMarker: 'MODERATION SYSTEM:',
+    endMarker: 'CROSS-SERVER COMMUNICATION:',
+  },
+  {
+    name: 'cross_server',
+    keywords: [
+      'cross server', 'messaging service', 'global', 'server to server',
+      'global chat', 'global event', 'server list', 'broadcast',
+      'publish', 'subscribe', 'cross-server',
+    ],
+    startMarker: 'CROSS-SERVER COMMUNICATION:',
+    endMarker: 'LOADING SCREEN:',
+  },
+  {
+    name: 'loading_screen',
+    keywords: [
+      'loading', 'loading screen', 'preload', 'content provider',
+      'progress bar', 'splash screen', 'tips', 'load assets',
+      'replicated first', 'loading bar',
+    ],
+    startMarker: 'LOADING SCREEN:',
+    endMarker: 'SETTINGS AND OPTIONS MENU:',
+  },
+  {
+    name: 'settings_menu',
+    keywords: [
+      'settings', 'options', 'volume', 'graphics', 'keybind',
+      'sensitivity', 'slider', 'toggle', 'options menu',
+      'controls', 'rebind', 'preferences',
+    ],
+    startMarker: 'SETTINGS AND OPTIONS MENU:',
+    endMarker: 'NOTIFICATION SYSTEM:',
+  },
+  {
+    name: 'notifications',
+    keywords: [
+      'notification', 'toast', 'alert', 'popup', 'notify',
+      'notification queue', 'in-game notification', 'announcement',
+      'message popup', 'reward notification',
+    ],
+    startMarker: 'NOTIFICATION SYSTEM:',
     endMarker: '(END)',
   },
 ]
