@@ -3954,8 +3954,10 @@ end`)
   const uiKnowledge = /\b(gui|ui|shop|inventory|hud|menu|health|bar|settings|quest|dialog|notification|loading|trade|pet|rebirth|daily|minimap|screen|button|frame)\b/i.test(message) ? getRelevantUIKnowledge(message) : ''
   // Inject building mastery knowledge — exact construction techniques from DevForum
   const buildingMastery = getRelevantBuildingMastery(message)
+  // Inject genre-specific game knowledge (horror elements, racing layout, etc.) — was missing from main path
+  const gameKnowledge = buildGameKnowledgePrompt(message)
 
-  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + focusedContext + devforumKnowledge + scriptingKnowledge + gameDesignKnowledge + uiKnowledge + buildingMastery + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
+  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + robloxContext + codeGraphContext + focusedContext + devforumKnowledge + scriptingKnowledge + gameDesignKnowledge + uiKnowledge + buildingMastery + gameKnowledge + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code that WILL execute in Roblox Studio.
 
 RESPONSE FORMAT (follow EXACTLY):
 1. First, write 3-5 sentences describing what you're creating. Be specific about what a player would see. End with a suggestion for what to build next.
@@ -5093,6 +5095,22 @@ USE THIS DATA:
           return economySystem({ currencies: ['Coins'], startingCash: 500, shopItems: [{ name: 'Espresso Machine', price: 1000 }, { name: 'Display Case', price: 500 }, { name: 'Outdoor Seating', price: 300 }] })
             + `\n-- CAFE ADAPTATION: Player owns and manages a cafe.\n-- Customer NPCs walk in, sit down, order from menu (SurfaceGui).\n-- Player prepares drinks/food at stations (click sequence minigame).\n-- Serve customers before patience timer runs out. Tips based on speed.\n-- Upgrade: better equipment, more seats, menu items, decoration.\n-- Hire NPC workers to auto-serve. Compete on daily leaderboard.`
 
+        // ── GUI-explicit requests (check FIRST — prevents system templates shadowing GUI templates) ──
+        // When user explicitly says "gui", "ui", "screen", "menu" alongside a keyword, prefer GUI template
+        const wantsGui = /\b(gui|ui|screen|menu|interface|panel|display|hud)\b/.test(lower)
+        if (wantsGui) {
+          if (/\b(inventory|backpack|items|slots|equip|bag|storage)\b/.test(lower))
+            return inventoryGui()
+          if (/\b(pet|egg|hatch|pet inventory|pet collection)\b/.test(lower))
+            return petInventoryGui()
+          if (/\b(leaderboard|ranking|top players|scoreboard)\b/.test(lower))
+            return leaderboardGui()
+          if (/\b(trade|trading|exchange|swap items)\b/.test(lower))
+            return tradeGui()
+          if (/\b(daily|reward|login bonus|daily reward|streak)\b/.test(lower))
+            return dailyRewardGui()
+        }
+
         // ── Game mechanics ──
         if (/\b(economy|currency|coins|cash|shop system|buy system|purchase|money system)\b/.test(lower))
           return economySystem({ currencies: ['Coins'], startingCash: 100, shopItems: [{ name: 'Speed Boost', price: 200 }, { name: 'Double Jump', price: 500 }, { name: 'Gravity Coil', price: 1000 }] })
@@ -5228,8 +5246,20 @@ USE THIS DATA:
       : ''
 
     // Production reference game injection — complete game architectures from DevForum patterns
+    // Smart slice: find last complete section boundary (double newline before "-- ") to avoid mid-code truncation
+    const MAX_REF_CHARS = 6000
+    let refSlice = referenceGameCode ? referenceGameCode.slice(0, MAX_REF_CHARS) : ''
+    if (referenceGameCode && referenceGameCode.length > MAX_REF_CHARS) {
+      // Find last clean break point (section header or end of function)
+      const lastSection = refSlice.lastIndexOf('\n-- ')
+      const lastEnd = refSlice.lastIndexOf('\nend\n')
+      const cutPoint = Math.max(lastSection, lastEnd)
+      if (cutPoint > MAX_REF_CHARS * 0.6) { // Only if we keep at least 60% of content
+        refSlice = refSlice.slice(0, cutPoint)
+      }
+    }
     const referenceGameContext = referenceGameCode
-      ? `\n\n=== PRODUCTION REFERENCE GAME (adapt this architecture — do NOT copy verbatim) ===\nThis is a COMPLETE, PRODUCTION-QUALITY game built using DevForum best practices. Study its architecture: server authority, DataStore patterns, RemoteEvent security, state machines. Adapt the patterns to fit the user's specific request.\n\`\`\`lua\n${referenceGameCode.slice(0, 6000)}\n\`\`\`\n=== END PRODUCTION REFERENCE ===`
+      ? `\n\n=== PRODUCTION REFERENCE GAME (adapt this architecture — do NOT copy verbatim) ===\nThis is a COMPLETE, PRODUCTION-QUALITY game built using DevForum best practices. Study its architecture: server authority, DataStore patterns, RemoteEvent security, state machines. Adapt the patterns to fit the user's specific request.\n\`\`\`lua\n${refSlice}\n\`\`\`\n=== END PRODUCTION REFERENCE ===`
       : ''
 
     // For fullgame intent, force a single executable world-building Luau script
