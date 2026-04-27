@@ -15,6 +15,7 @@ import { buildRAGSystemPrompt } from './rag'
 import { findSpecialist, applySpecialist, getSpecialistRAGCategories } from './specialists/router'
 import { callOpenRouter, selectBestModel, estimateBuildComplexity } from './openrouter'
 import { isPaidModelsEnabled } from '@/lib/spending-guard'
+import { getNextKey, reportRateLimit } from './key-rotator'
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system'
@@ -52,7 +53,8 @@ async function callGemini(
   messages: AIMessage[],
   opts: AICallOptions = {},
 ): Promise<string | null> {
-  const key = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
+  // Use key rotator for multi-key support (15 RPM per key, 10 keys = 150 RPM)
+  const key = getNextKey('GEMINI') || process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
   if (!key) return null
 
   const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7, jsonMode = false } = opts
@@ -75,6 +77,8 @@ async function callGemini(
     },
   }
 
+  type GeminiRes = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       const res = await fetch(
@@ -86,17 +90,34 @@ async function callGemini(
           signal: AbortSignal.timeout(60_000),
         },
       )
-      if (res.status === 429 && attempt < MAX_RETRIES) {
-        const delay = RETRY_DELAYS[attempt] ?? 10000
-        console.warn(`[ai-provider/gemini] 429 rate limited — retrying in ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`)
-        await sleep(delay)
-        continue
+      if (res.status === 429) {
+        reportRateLimit('GEMINI', key, 60000) // Cool this key for 60s
+        if (attempt < MAX_RETRIES) {
+          // Try a different key on retry
+          const nextKey = getNextKey('GEMINI')
+          if (nextKey && nextKey !== key) {
+            console.warn(`[ai-provider/gemini] 429 — rotating to next key (attempt ${attempt + 1}/${MAX_RETRIES})`)
+            // Rebuild the URL with the new key and retry immediately
+            const retryRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${nextKey}`,
+              { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(60_000) },
+            )
+            if (retryRes.ok) {
+              const retryData = (await retryRes.json()) as GeminiRes
+              return retryData.candidates?.[0]?.content?.parts?.[0]?.text ?? null
+            }
+            if (retryRes.status === 429) reportRateLimit('GEMINI', nextKey, 60000)
+          }
+          const delay = RETRY_DELAYS[attempt] ?? 10000
+          console.warn(`[ai-provider/gemini] 429 — waiting ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`)
+          await sleep(delay)
+          continue
+        }
       }
       if (!res.ok) {
         console.error('[ai-provider/gemini] HTTP', res.status, await res.text().catch(() => ''))
         return null
       }
-      type GeminiRes = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
       const data = await res.json() as GeminiRes
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? null
       if (!text) {
@@ -120,7 +141,7 @@ async function callGroq(
   messages: AIMessage[],
   opts: AICallOptions = {},
 ): Promise<string | null> {
-  const key = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_MAIN
+  const key = getNextKey('GROQ') || process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_MAIN
   if (!key) return null
 
   const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
@@ -149,7 +170,9 @@ async function callGroq(
         }),
         signal: AbortSignal.timeout(60_000),
       })
-      if (res.status === 429 && attempt < MAX_RETRIES) {
+      if (res.status === 429) {
+        reportRateLimit('GROQ', key, 60000)
+        if (attempt >= MAX_RETRIES) break
         const delay = RETRY_DELAYS[attempt] ?? 10000
         console.warn(`[ai-provider/groq] 429 rate limited — retrying in ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`)
         await sleep(delay)
