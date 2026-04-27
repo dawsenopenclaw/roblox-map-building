@@ -87,6 +87,7 @@ import { logScriptError, markErrorFixed, buildFixContext } from '@/lib/ai/error-
 import { reviewCode } from '@/lib/ai/code-reviewer'
 import { classifyComplexity } from '@/lib/ai/script-pipeline'
 import { getContextualEnhancements } from '@/lib/ai/build-enhancer'
+import { getStudioMechanicsKnowledge } from '@/lib/ai/studio-mechanics'
 import { moderateContent, getModerationMessage, MODERATION_SUGGESTIONS } from '@/lib/content-moderation'
 
 // ─── Auto-log conversation to DB (fire-and-forget) ──────────────────────────
@@ -4366,7 +4367,8 @@ async function freeModelTwoPass(
   const freeKnowledgeBrain = freeParts.join('\n\n')
   const gameKnowledge = buildGameKnowledgePrompt(message)
 
-  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
+  const studioMechanics = getStudioMechanicsKnowledge()
+  const codePrompt = studioMechanics + specialistPrefix + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
 
 HOW TO TALK:
 - Talk like a real person. "Alright, check this out —" not "Create a detailed Roblox tree model with the following specifications:"
@@ -4484,6 +4486,16 @@ CALL FORMAT CHEATSHEET:
   P("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Glass", 180,215,240, 0.4) -- transparent
   W("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Material", R,G,B)         -- wedge/roof
   W("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Material", R,G,B, 180)  -- flipped wedge (opposite roof slope)
+
+PLACEMENT MATH FORMULAS:
+- Place B on top of A: B.y = A.y + A.Size.Y/2 + B.Size.Y/2
+- Place B at edge of A: B.z = A.z + A.Size.Z/2 - B.Size.Z/2
+- 4 walls on 20x20 floor: N=(0,h/2+0.5,9.6) S=(0,h/2+0.5,-9.6) E=(9.6,h/2+0.5,0,rot90) W=(-9.6,h/2+0.5,0,rot90)
+- Door opening: split wall into LEFT section + RIGHT section + HEADER above gap. Door=4Wx7H.
+- Window opening: split wall into LEFT + RIGHT + HEADER + SILL + GLASS. Frame=0.3 thick around glass.
+- Gable roof: left WedgePart + right WedgePart(rotY=180). Height = halfWidth x tan(pitch)
+- Stairs loop: for i=0,N-1: P("step"..i, 5,1,1.5, 0, i+0.5, -i*1.5, "Concrete", 180,180,180)
+- Tree: Cyl trunk(2x8x2) + 3 Ball canopy(10,7,7) overlapping at top + 2-3 root wedges at base
 
 ═══ CORE ROBLOX KNOWLEDGE (always apply) ═══
 CHARACTER SCALE: R15 character = 5 studs tall. 1 stud = 0.28 meters. All furniture/doors/rooms scale from this.
