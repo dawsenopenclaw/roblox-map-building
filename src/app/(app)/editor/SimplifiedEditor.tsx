@@ -562,7 +562,7 @@ function EditorInner() {
               />
               {/* Floating input bar on welcome screen — cyberglass */}
               <div style={{ padding: isMobile ? '0 12px 16px' : '0 20px 24px', background: 'transparent', position: 'relative', zIndex: 2 }}>
-                <div style={{ maxWidth: 680, margin: '0 auto' }}>
+                <div style={{ maxWidth: 780, margin: '0 auto' }}>
                   <div
                     style={{
                       display: 'flex', gap: 8, alignItems: 'flex-end',
@@ -672,7 +672,7 @@ function EditorInner() {
               </div>
 
               {/* System Composer — visual game system picker */}
-              <div style={{ padding: '0 20px 24px', maxWidth: 680, margin: '0 auto', width: '100%' }}>
+              <div style={{ padding: '0 20px 24px', maxWidth: 780, margin: '0 auto', width: '100%' }}>
                 <SystemComposer
                   onGenerate={(prompt) => {
                     if (studio.isConnected && studio.sessionId) {

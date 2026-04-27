@@ -1879,6 +1879,7 @@ function MessageBubbleImpl({
   onSelectBuildOption?: (optionPrompt: string) => void
   onSend?: (msg: string) => void
 }) {
+  const isMobile = useIsMobile()
   const [hovered, setHovered] = useState(false)
   const [copied, setCopied] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -2498,7 +2499,7 @@ function MessageBubbleImpl({
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
-        <div style={{ maxWidth: '80%', position: 'relative' }}>
+        <div style={{ maxWidth: isMobile ? '88%' : '75%', position: 'relative' }}>
           {/* Pencil edit button — appears on hover, only when not editing */}
           {!editing && onEditAndResend && (
             <button
@@ -2679,8 +2680,8 @@ function MessageBubbleImpl({
       </div>
       <div
         style={{
-          maxWidth: '88%',
-          padding: '18px 24px',
+          maxWidth: isMobile ? '92%' : '90%',
+          padding: isMobile ? '14px 16px' : '18px 24px',
           borderRadius: '20px 20px 20px 6px',
           background: msg.streaming
             ? 'linear-gradient(135deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.025) 100%)'
@@ -4918,8 +4919,8 @@ export function ChatPanel({
           display: 'flex',
           flexDirection: 'column',
           gap: 24,
-          padding: hasMessages ? '28px 24px' : '0',
-          maxWidth: 780,
+          padding: hasMessages ? (isMobile ? '20px 16px' : '28px 32px') : '0',
+          maxWidth: isMobile ? '100%' : 860,
           margin: '0 auto',
           width: '100%',
           minHeight: '100%',
@@ -5014,8 +5015,8 @@ export function ChatPanel({
       <div
         style={{
           flexShrink: 0,
-          padding: isMobile ? '10px 12px calc(16px + env(safe-area-inset-bottom, 0px))' : '12px 20px 20px',
-          maxWidth: 720,
+          padding: isMobile ? '10px 12px calc(16px + env(safe-area-inset-bottom, 0px))' : '14px 32px 24px',
+          maxWidth: isMobile ? '100%' : 860,
           margin: '0 auto',
           width: '100%',
           display: 'flex',

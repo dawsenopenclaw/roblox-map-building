@@ -288,7 +288,7 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
         display: 'grid',
         gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
         gap: 14,
-        maxWidth: 720,
+        maxWidth: 780,
         width: '100%',
         position: 'relative',
         zIndex: 1,
@@ -364,7 +364,7 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
 
       {/* ─── Try These Prompts ─── */}
       <div style={{
-        maxWidth: 720,
+        maxWidth: 780,
         width: '100%',
         position: 'relative',
         zIndex: 1,
