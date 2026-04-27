@@ -81,6 +81,7 @@ import { validateBuild } from '@/lib/ai/build-validator'
 import { logScriptError, markErrorFixed, buildFixContext } from '@/lib/ai/error-learning'
 import { reviewCode } from '@/lib/ai/code-reviewer'
 import { classifyComplexity } from '@/lib/ai/script-pipeline'
+import { getContextualEnhancements } from '@/lib/ai/build-enhancer'
 
 // ─── Auto-log conversation to DB (fire-and-forget) ──────────────────────────
 // Persists every user→assistant exchange so admin can review beta tester chats.
@@ -3856,8 +3857,10 @@ async function freeModelTwoPass(
   const modelNames = ['forje-flash', 'forje-turbo', 'forje-pro']
 
   // Non-build intents: conversation only (no code generation)
+  // BUT still inject relevant Roblox knowledge so the AI can answer technical questions accurately
   if (!isBuildIntent) {
-    const convPrompt = CONVERSATION_PROMPT + (cameraContext ? '\n\n' + cameraContext : '')
+    const conversationKnowledge = buildRobloxContext(message) + getRelevantScriptingKnowledge(message)
+    const convPrompt = CONVERSATION_PROMPT + (conversationKnowledge ? `\n\n=== ROBLOX TECHNICAL KNOWLEDGE (use to answer questions accurately) ===\n${conversationKnowledge}\n=== END KNOWLEDGE ===` : '') + (cameraContext ? '\n\n' + cameraContext : '')
     const convRace = await raceNonNull(
       callGroq(convPrompt, message, history, 1024),
       callAnthropicChat(convPrompt, message, history, 1024),
@@ -4052,6 +4055,20 @@ CALL FORMAT CHEATSHEET:
   P("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Glass", 180,215,240, 0.4) -- transparent
   W("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Material", R,G,B)         -- wedge/roof
   W("name", sizeX,sizeY,sizeZ, posX,posY,posZ, "Material", R,G,B, 180)  -- flipped wedge (opposite roof slope)
+
+═══ CORE ROBLOX KNOWLEDGE (always apply) ═══
+CHARACTER SCALE: R15 character = 5 studs tall. 1 stud = 0.28 meters. All furniture/doors/rooms scale from this.
+DOOR: 4.6W x 6.7H studs. WINDOW: 3W x 3H at 6 studs up. ROOM HEIGHT: 10-12 studs. HALLWAY: 6-8 wide.
+WALL: 0.8-1.0 studs thick (NEVER 2-4). ROOF: 1.5-2.0 stud overhang ALWAYS. FOUNDATION: 0.5-1.0 thick under every building.
+TABLE: top at 3 studs. CHAIR: seat at 2.5. COUNTER: 3 high. BED: 2.5 frame + 0.8 mattress. BOOKSHELF: 6 high.
+TREES: multi-part (trunk cylinder + 2-4 canopy spheres/balls), 10-20 studs tall, clusters of 3-5 (not grid).
+PATHS: 4-6 studs wide, Cobblestone/Slate, edge stones 0.3 tall on each side.
+LAMP POST: base + pole + arm + housing + glass + PointLight = 6 parts minimum.
+COLOR: NEVER one flat color. Vary ±10-15 RGB per section. Max 3 variations per material.
+GENRE PALETTES: Medieval=Brown(139,90,43)+Stone(158,148,136) | Modern=White(240,240,240)+Blue(65,145,220) | Fantasy=Purple(130,80,180)+Gold(212,175,55) | Horror=Dark(50,50,55)+Rust(139,0,0) | Tropical=Sand(237,221,175)+Ocean(0,150,200)
+MATERIALS (NEVER use SmoothPlastic): Concrete, Brick, Cobblestone, Wood, WoodPlanks, Slate, Granite, Marble, Metal, DiamondPlate, Glass, Neon, Fabric, Grass, Sand, Ice, Snow, Mud, Limestone, Basalt, CrackedLava, Foil, CorrodedMetal
+LIGHTING: PointLight in EVERY room (warm=255,220,180, cold=200,220,255). Torch=Neon part+Fire+PointLight. Street lamp=PointLight in housing.
+DETAIL HIERARCHY: 1=shape only, 2=openings, 3=materials, 4=trim/frames, 5=furniture/props/lights. ALWAYS aim for level 4-5.
   Cyl("name", height, diameter, posX,posY,posZ, "Material", R,G,B)         -- cylinder
   Ball("name", diameter, posX,posY,posZ, "Material", R,G,B)                -- sphere
   Light(parentPart, brightness, range, R,G,B)                              -- point light
@@ -5211,11 +5228,24 @@ USE THIS DATA:
       return null
     }
 
-    const scriptTemplate = isScriptIntent ? getScriptTemplate(message) : null
+    // ── Smart BUILD vs UI Detection ──────────────────────────────────────────
+    // Determine if user wants a 3D in-game build OR an on-screen UI/GUI
+    const lowerMessage = message.toLowerCase()
+    const guiSignals = /\b(gui|ui|screen|menu|interface|panel|hud|button|frame|screengui|surfacegui|billboardgui|textlabel|textbutton|imagelabel)\b/.test(lowerMessage)
+    const buildSignals = /\b(build|create|make|place|spawn|generate|add|put)\b/.test(lowerMessage) && /\b(house|tree|castle|car|shop|store|building|room|wall|floor|roof|chair|table|furniture|lamp|fence|road|path|bridge|statue|fountain|tower|gate|barn|cabin|mansion|warehouse|dock|boat|ship|tent|camp|throne|well|windmill|lighthouse|church|temple|pyramid|arena|stadium|park|garden)\b/.test(lowerMessage)
+    const isGuiRequest = guiSignals && !buildSignals
+    const is3DBuildRequest = buildSignals && !guiSignals
+    // If both or neither: use isScriptIntent as tiebreaker
+    const wantsUI = isGuiRequest || (guiSignals && isScriptIntent)
+    const wants3D = is3DBuildRequest || (!guiSignals && !isScriptIntent)
+
+    // Templates and references fire for ALL build intents now (not just script)
+    // This means "build me a tycoon" gets the tycoon template as reference even for 3D builds
+    const scriptTemplate = getScriptTemplate(message)
     const fullGameTemplate = fullGameDetection?.templateCode || null
 
-    // Reference game injection — production-quality examples for detected game genres
-    const referenceGameCode = isScriptIntent ? getReferenceGame(message) : null
+    // Reference game injection — fires for ALL intents that match a game genre
+    const referenceGameCode = getReferenceGame(message)
 
     // GUI TEMPLATES: If we have a perfect premium template (from gui-templates.ts),
     // use it DIRECTLY — don't let the AI rewrite it into garbage.
@@ -5750,16 +5780,17 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       return true
     }
 
-    // Inject working template reference for script intents (capped)
-    if (templateReference && isScriptIntent && canAddEnrichment(templateReference)) {
+    // Inject working template reference for ALL build intents (not just scripts)
+    // "build me a tycoon" should get tycoon code patterns even as a 3D build request
+    if (templateReference && canAddEnrichment(templateReference)) {
       enrichedCodePrompt += templateReference
-      console.log('[ScriptTemplate] Injected working template reference for script intent')
+      console.log(`[Template] Injected template reference (${isScriptIntent ? 'script' : 'build'} intent)`)
     }
 
-    // Inject production reference game for detected game genres (tycoon, simulator, RPG, obby)
-    if (referenceGameContext && isScriptIntent && canAddEnrichment(referenceGameContext)) {
+    // Inject production reference game for ALL detected game genres
+    if (referenceGameContext && canAddEnrichment(referenceGameContext)) {
       enrichedCodePrompt += referenceGameContext
-      console.log('[ReferenceGame] Injected production reference game architecture')
+      console.log(`[ReferenceGame] Injected production reference game (${isScriptIntent ? 'script' : 'build'} intent)`)
     }
 
     if (isScriptIntent) {
@@ -13708,10 +13739,17 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         const devforumKnowledge = getRelevantBuildingKnowledge(message)
         const scriptingKnowledge = getRelevantScriptingKnowledge(message)
         const gameDesignKnowledge = getRelevantGameDesign(message)
-        const uiKnowledge = /\b(gui|ui|hud|menu|button|shop|inventory|health\s?bar|scoreboard|leaderboard|dialog|notification|toolbar|sidebar|panel|screen|frame|textlabel|textbutton|imagelabel|imagebutton|scrolling|billboardgui|surfacegui)\b/i.test(message)
+        // Natural language UI detection — understand what players actually say, not just technical terms
+        const uiKnowledge = /\b(gui|ui|hud|menu|button|shop|inventory|health\s?bar|scoreboard|leaderboard|dialog|notification|toolbar|sidebar|panel|screen|frame|textlabel|textbutton|imagelabel|imagebutton|scrolling|billboardgui|surfacegui|on\s?(my\s?)?screen|display|show\s?(me|on|the)|pop\s?up|overlay|interface|prompt|tooltip|indicator|counter|timer|countdown|progress\s?bar|loading|lobby\s?screen|start\s?screen|death\s?screen|win\s?screen|game\s?over|main\s?menu|pause\s?menu|settings?\s?menu|options?\s?menu|title\s?screen|dashboard|stats?\s?(on|display)|lives?|coins?\s?(on|display|show|counter)|money\s?(on|display|show)|xp\s?(bar|display|show)|level\s?(display|indicator|show)|minimap|map\s?icon|waypoint|crosshair|reticle|hotbar|action\s?bar|ability\s?bar|skill\s?tree|talent|perk|upgrade\s?(menu|screen|ui)|crafting\s?(menu|screen|ui)|trading\s?(menu|screen|ui)|chat\s?(box|window|ui)|text\s?(box|input)|popup|modal|window|tab|slot|icon|badge|avatar\s?(frame|display)|profile|nameplate|overhead|floating\s?text|damage\s?number|kill\s?feed|announcement|banner|toast|alert|warning\s?(text|message)|error\s?(text|message)|loading\s?screen|splash|intro\s?screen|cutscene\s?ui|subtitle|caption|quest\s?(log|tracker|list)|mission\s?(tracker|log)|objective|checkpoint|reward\s?(screen|popup)|loot|chest\s?(ui|open)|backpack|toolbar|radial\s?menu|wheel\s?menu|dropdown|select|picker|slider|toggle|switch|checkbox|radio\s?button|input\s?field|search\s?bar|filter|sort|pagination|scroll|list|grid|card|tile|thumbnail|preview|gallery|carousel|tab\s?bar|navigation|breadcrumb|header|footer|status\s?bar|info\s?(box|panel|card)|detail|description|label|tag|chip|pill|divider|separator|border|outline|shadow|glow|highlight|focus|hover|click|tap|press|drag|swipe|pinch|zoom)\b/i.test(message)
           ? getRelevantUIKnowledge(message) : ''
         const buildingMastery = getRelevantBuildingMastery(message)
-        knowledgeBrain = [focusedContext, robloxContext, codeGraphContext, devforumKnowledge, scriptingKnowledge, gameDesignKnowledge, uiKnowledge, buildingMastery]
+        // Build enhancer — inject contextual polish suggestions so AI knows to add detail
+        const enhancements = getContextualEnhancements(intent, message, 4)
+        const enhancerContext = enhancements.length > 0
+          ? '\n\n[BUILD POLISH GUIDELINES — apply these automatically without being asked]\n' +
+            enhancements.map(e => `• ${e.title}: ${e.prompt}`).join('\n')
+          : ''
+        knowledgeBrain = [focusedContext, robloxContext, codeGraphContext, devforumKnowledge, scriptingKnowledge, gameDesignKnowledge, uiKnowledge, buildingMastery, enhancerContext]
           .filter(Boolean).join('\n\n')
       }
 
