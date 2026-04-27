@@ -4234,6 +4234,14 @@ async function freeModelTwoPass(
       // Still send to Studio if connected
       if (sessionId) {
         try { await sendCodeToStudio(sessionId, instantTemplate.code) } catch {}
+        // Save build context so user can modify this template
+        saveBuildContext(sessionId, {
+          lastCode: instantTemplate.code,
+          lastPrompt: message,
+          buildCenter: 'camera forward 30 studs',
+          partCount: instantTemplate.partCount,
+          timestamp: Date.now(),
+        })
       }
       return {
         conversationText: instantTemplate.response,
@@ -4254,6 +4262,14 @@ async function freeModelTwoPass(
       console.log(`[BuildCache] HIT for "${message}" — serving instantly`)
       if (sessionId) {
         try { await sendCodeToStudio(sessionId, cached.code) } catch {}
+        // Save build context so user can modify this cached build
+        saveBuildContext(sessionId, {
+          lastCode: cached.code,
+          lastPrompt: message,
+          buildCenter: 'camera forward 30 studs',
+          partCount: countPartsInCode(cached.code),
+          timestamp: Date.now(),
+        })
       }
       return {
         conversationText: cached.response,
