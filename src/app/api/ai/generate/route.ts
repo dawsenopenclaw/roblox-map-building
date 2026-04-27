@@ -16,6 +16,7 @@ import { requireTier } from '@/lib/tier-guard'
 import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { z } from 'zod'
+import { moderateContent, getModerationMessage } from '@/lib/content-moderation'
 
 export const maxDuration = 60
 
@@ -154,6 +155,21 @@ export async function POST(req: NextRequest) {
     }
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+
+  // ── Content moderation — COPPA compliance ──────────────────────────────
+  try {
+    const modResult = await moderateContent(prompt, { skipAI: false })
+    if (!modResult.allowed) {
+      return NextResponse.json({
+        error: getModerationMessage(modResult),
+        result: getModerationMessage(modResult),
+        tokensUsed: 0,
+      })
+    }
+  } catch {
+    // Moderation failure must never block
+    console.warn('[generate] Content moderation threw unexpectedly — allowing through')
   }
 
   // Forward the caller's auth header so Hono's requireAuth middleware passes

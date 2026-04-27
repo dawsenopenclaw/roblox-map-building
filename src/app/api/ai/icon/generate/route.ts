@@ -29,6 +29,7 @@ import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 
 import { db } from '@/lib/db'
+import { moderateContent, getModerationMessage } from '@/lib/content-moderation'
 import { spendTokens } from '@/lib/tokens-server'
 import {
   generateIcon,
@@ -140,14 +141,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  if (isNsfw(body.prompt)) {
-    return NextResponse.json(
-      {
-        error:
-          'Your prompt was rejected because it contains inappropriate content.',
-      },
-      { status: 422 },
-    )
+  // ── Content moderation — COPPA compliance (replaces old isNsfw check) ──
+  try {
+    const modResult = await moderateContent(body.prompt, { skipAI: false })
+    if (!modResult.allowed) {
+      return NextResponse.json({ error: getModerationMessage(modResult) }, { status: 422 })
+    }
+  } catch {
+    console.warn('[icon/generate] Content moderation threw unexpectedly — allowing through')
   }
 
   // 4. CRITICAL: resolve dbUserId from clerkId BEFORE touching tokens/pipeline.

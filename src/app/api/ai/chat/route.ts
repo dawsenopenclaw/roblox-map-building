@@ -87,6 +87,7 @@ import { logScriptError, markErrorFixed, buildFixContext } from '@/lib/ai/error-
 import { reviewCode } from '@/lib/ai/code-reviewer'
 import { classifyComplexity } from '@/lib/ai/script-pipeline'
 import { getContextualEnhancements } from '@/lib/ai/build-enhancer'
+import { moderateContent, getModerationMessage, MODERATION_SUGGESTIONS } from '@/lib/content-moderation'
 
 // ─── Auto-log conversation to DB (fire-and-forget) ──────────────────────────
 // Persists every user→assistant exchange so admin can review beta tester chats.
@@ -12678,6 +12679,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!message) {
     return NextResponse.json({ error: 'Message cannot be empty.' }, { status: 400 })
   }
+
+  // ── Content moderation — COPPA compliance, runs before any AI call ──────
+  try {
+    const modResult = await moderateContent(message, { skipAI: false })
+    if (!modResult.allowed) {
+      return NextResponse.json({
+        reply: getModerationMessage(modResult),
+        content: getModerationMessage(modResult),
+        suggestions: MODERATION_SUGGESTIONS,
+      })
+    }
+  } catch {
+    // Moderation failure must never block — log and continue
+    console.warn('[chat] Content moderation threw unexpectedly — allowing through')
+  }
+
   const wantsStream = parsed.data.stream === true
 
   // ── Conversation tracking — wraps toStreamResponse to auto-log every exchange ──

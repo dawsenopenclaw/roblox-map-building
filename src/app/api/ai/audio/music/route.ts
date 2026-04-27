@@ -29,6 +29,7 @@ import { requireTier } from '@/lib/tier-guard'
 import { parseBody } from '@/lib/validations'
 import { audioMusicRateLimit } from '@/lib/audio-rate-limit'
 import { rateLimitHeaders } from '@/lib/rate-limit'
+import { moderateContent, getModerationMessage } from '@/lib/content-moderation'
 import { spendTokens } from '@/lib/tokens-server'
 import { generateMusic } from '@/lib/audio-pipeline'
 import { queueCommand, getSession } from '@/lib/studio-session'
@@ -78,6 +79,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const body = parsed.data
   const prompt = body.prompt.trim()
+
+  // ── Content moderation — COPPA compliance ──────────────────────────────
+  try {
+    const modResult = await moderateContent(prompt, { skipAI: false })
+    if (!modResult.allowed) {
+      return NextResponse.json({ error: getModerationMessage(modResult) }, { status: 422 })
+    }
+  } catch {
+    console.warn('[audio/music] Content moderation threw unexpectedly — allowing through')
+  }
 
   // Credits: charge up front — if generation fails we log it but don't auto-refund
   // (matches the mesh pipeline's behaviour). Users retry expensive jobs rarely.

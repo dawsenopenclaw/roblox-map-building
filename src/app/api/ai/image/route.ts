@@ -37,6 +37,7 @@ import { IMAGE_STYLE_KEYS, getImageStyle } from '@/lib/image-styles'
 import { enhancePrompt } from '@/lib/ai/prompt-enhancer'
 import { spendTokens, earnTokens } from '@/lib/tokens-server'
 import { z } from 'zod'
+import { moderateContent, getModerationMessage } from '@/lib/content-moderation'
 
 export const maxDuration = 120
 
@@ -263,12 +264,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const { prompt, style, count, removeBackground: shouldRemoveBg, skipEnhance, upscale: shouldUpscale, watermark: shouldWatermark } = body
 
-  // ── NSFW content filter ─────────────────────────────────────────────────
-  if (containsNSFW(prompt)) {
-    return NextResponse.json(
-      { error: 'Your prompt was rejected because it contains inappropriate content. Please revise and try again.' },
-      { status: 422 },
-    )
+  // ── Content moderation — COPPA compliance (replaces old NSFW blocklist) ──
+  try {
+    const modResult = await moderateContent(prompt, { skipAI: false })
+    if (!modResult.allowed) {
+      return NextResponse.json(
+        { error: getModerationMessage(modResult) },
+        { status: 422 },
+      )
+    }
+  } catch {
+    // Moderation failure must never block
+    console.warn('[image] Content moderation threw unexpectedly — allowing through')
   }
   const preset = getImageStyle(style)
   const width = body.size?.width ?? preset.defaultDimensions.width

@@ -41,7 +41,13 @@
     "src/app/api/gamification/achievements/check/route.ts",
     "src/app/(app)/achievements/AchievementsClient.tsx",
     "src/lib/ai/playtest-verifier.ts",
-    "src/lib/ai/fix-cache.ts"
+    "src/lib/ai/fix-cache.ts",
+    "src/lib/service-worker-register.ts",
+    "src/lib/push-notifications.ts",
+    "src/components/PushNotificationManager.tsx",
+    "src/app/api/notifications/subscribe/route.ts",
+    "src/lib/content-moderation.ts",
+    "src/lib/content-moderation-words.ts"
   ],
   "exclude": ["node_modules", ".next"]
 }

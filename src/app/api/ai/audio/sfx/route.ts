@@ -29,6 +29,7 @@ import { audioSfxRateLimit } from '@/lib/audio-rate-limit'
 import { rateLimitHeaders } from '@/lib/rate-limit'
 import { spendTokens } from '@/lib/tokens-server'
 import { generateSFX } from '@/lib/audio-pipeline'
+import { moderateContent, getModerationMessage } from '@/lib/content-moderation'
 import { queueCommand, getSession } from '@/lib/studio-session'
 
 export const maxDuration = 90
@@ -72,6 +73,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const body = parsed.data
   const prompt = body.prompt.trim()
+
+  // ── Content moderation — COPPA compliance ─────────────────────────────���
+  try {
+    const modResult = await moderateContent(prompt, { skipAI: false })
+    if (!modResult.allowed) {
+      return NextResponse.json({ error: getModerationMessage(modResult) }, { status: 422 })
+    }
+  } catch {
+    console.warn('[audio/sfx] Content moderation threw unexpectedly — allowing through')
+  }
 
   try {
     await spendTokens(user.id, SFX_CREDIT_COST, 'ai.audio.sfx', {

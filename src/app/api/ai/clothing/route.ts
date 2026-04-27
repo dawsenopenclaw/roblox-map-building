@@ -30,6 +30,7 @@ import { requireTier } from '@/lib/tier-guard'
 import { spendTokens } from '@/lib/tokens-server'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { z } from 'zod'
+import { moderateContent, getModerationMessage } from '@/lib/content-moderation'
 
 export const maxDuration = 120
 
@@ -206,6 +207,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     body = parsed.data
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+
+  // ── Content moderation — COPPA compliance ──────────────────────────────
+  try {
+    const modResult = await moderateContent(body.prompt, { skipAI: false })
+    if (!modResult.allowed) {
+      return NextResponse.json({ error: getModerationMessage(modResult) }, { status: 422 })
+    }
+  } catch {
+    console.warn('[clothing] Content moderation threw unexpectedly — allowing through')
   }
 
   const template = body.type === 'shirt' ? SHIRT_TEMPLATE : PANTS_TEMPLATE

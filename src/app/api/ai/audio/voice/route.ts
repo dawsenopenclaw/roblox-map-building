@@ -29,6 +29,7 @@ import { audioVoiceRateLimit } from '@/lib/audio-rate-limit'
 import { rateLimitHeaders } from '@/lib/rate-limit'
 import { spendTokens } from '@/lib/tokens-server'
 import { generateVoice } from '@/lib/audio-pipeline'
+import { moderateContent, getModerationMessage } from '@/lib/content-moderation'
 import { queueCommand, getSession } from '@/lib/studio-session'
 
 export const maxDuration = 90
@@ -72,6 +73,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const body = parsed.data
   const text = body.text.trim()
+
+  // ── Content moderation — COPPA compliance (TTS can speak profanity) ────
+  try {
+    const modResult = await moderateContent(text, { skipAI: false })
+    if (!modResult.allowed) {
+      return NextResponse.json({ error: getModerationMessage(modResult) }, { status: 422 })
+    }
+  } catch {
+    console.warn('[audio/voice] Content moderation threw unexpectedly — allowing through')
+  }
 
   try {
     await spendTokens(user.id, VOICE_CREDIT_COST, 'ai.audio.voice', {

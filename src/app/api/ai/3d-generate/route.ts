@@ -17,6 +17,7 @@ import { parseBody } from '@/lib/validations'
 import { requireTier } from '@/lib/tier-guard'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { createMeshyTask, pollMeshyTask } from '@/lib/ai/meshy'
+import { moderateContent, getModerationMessage } from '@/lib/content-moderation'
 
 export const maxDuration = 120
 
@@ -669,6 +670,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const input = parsed.data
+
+  // ── Content moderation — COPPA compliance ──────────────────────────────
+  try {
+    const modResult = await moderateContent(input.prompt, { skipAI: false })
+    if (!modResult.allowed) {
+      return NextResponse.json({
+        error: getModerationMessage(modResult),
+        status: 'rejected',
+        reason: 'content_moderation',
+      })
+    }
+  } catch {
+    // Moderation failure must never block
+    console.warn('[3d-generate] Content moderation threw unexpectedly — allowing through')
+  }
 
   // Demo mode — no API keys or user session
   if (!process.env.MESHY_API_KEY || !userId) {

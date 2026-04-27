@@ -21,6 +21,7 @@ import { CookieBanner } from '@/components/CookieBanner'
 import { GlobalShortcuts } from '@/components/GlobalShortcuts'
 import { GlobalScrollReveal } from '@/components/GlobalScrollReveal'
 import { ProfileButton } from '@/components/ProfileButton'
+import { PushNotificationManager } from '@/components/PushNotificationManager'
 
 // Geist Sans replaces Inter — sharper, more character, modern feel
 const inter = GeistSans // keep variable name for compat
@@ -276,6 +277,7 @@ export default async function RootLayout({
                 <GlobalScrollReveal />
                 <SkipToContent />
                 <OfflineIndicator />
+                <PushNotificationManager />
                 <GlobalShortcuts />
                 <ThemeProvider>
                   <ProfileButton />

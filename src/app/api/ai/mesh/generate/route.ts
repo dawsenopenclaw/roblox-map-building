@@ -37,6 +37,7 @@ import {
   MESH_GENERATION_COST,
 } from '@/lib/mesh-pipeline'
 import { queueCommand, getSession } from '@/lib/studio-session'
+import { moderateContent, getModerationMessage } from '@/lib/content-moderation'
 import { checkRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
@@ -114,6 +115,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const body = parsed.data
+
+  // ── Content moderation — COPPA compliance ──────────────────────────────
+  try {
+    const modResult = await moderateContent(body.prompt, { skipAI: false })
+    if (!modResult.allowed) {
+      return NextResponse.json({ error: getModerationMessage(modResult) }, { status: 422 })
+    }
+  } catch {
+    console.warn('[mesh/generate] Content moderation threw unexpectedly — allowing through')
+  }
 
   // ── Resolve internal user id + balance check ─────────────────────────────
   const user = await db.user.findUnique({
