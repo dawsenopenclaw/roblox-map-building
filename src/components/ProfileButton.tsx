@@ -4,10 +4,12 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth, useUser, useClerk } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
-import { useTheme } from '@/components/ThemeProvider'
+import useSWR from 'swr'
 
-const HIDDEN_PATHS = ['/sign-in', '/sign-up', '/onboarding', '/editor']
+const HIDDEN_PATHS = ['/sign-in', '/sign-up', '/onboarding']
 const ADMIN_EMAILS = ['dawsenporter@gmail.com']
+
+const fetcher = (url: string) => fetch(url).then(r => r.ok ? r.json() : null)
 
 export function ProfileButton() {
   const { isSignedIn, isLoaded } = useAuth()
@@ -16,24 +18,9 @@ export function ProfileButton() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const { theme, themes, setTheme } = useTheme()
 
-  useEffect(() => {
-    const id = 'pb-drop-in-kf'
-    if (document.getElementById(id)) return
-    const style = document.createElement('style')
-    style.id = id
-    style.textContent = `
-      @keyframes pb-drop-in {
-        from { opacity: 0; transform: translateY(-8px) scale(0.97); }
-        to   { opacity: 1; transform: translateY(0)   scale(1);    }
-      }
-    `
-    document.head.appendChild(style)
-  }, [])
+  const { data: tokenData } = useSWR(isSignedIn ? '/api/tokens/balance' : null, fetcher, { refreshInterval: 30000 })
 
-  // Close on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
@@ -42,57 +29,11 @@ export function ProfileButton() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Close on Escape
   useEffect(() => {
-    function handler(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
-    }
+    function handler(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false) }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [])
-
-  // Clamp dropdown inside viewport — always reset first so previous clamps don't persist
-  const clampDropdown = useCallback(() => {
-    if (!dropdownRef.current) return
-    const el = dropdownRef.current
-
-    // Reset any previously applied overrides before measuring
-    el.style.maxHeight = ''
-    el.style.overflowY = ''
-    el.style.left = ''
-    el.style.right = ''
-
-    const rect = el.getBoundingClientRect()
-    const viewH = window.innerHeight
-    const viewW = window.innerWidth
-
-    // Clamp height so it doesn't overflow bottom
-    const maxH = viewH - rect.top - 12
-    if (maxH > 0 && maxH < rect.height) {
-      el.style.maxHeight = `${maxH}px`
-      el.style.overflowY = 'auto'
-    }
-
-    // If it overflows left, shift it right
-    if (rect.left < 8) {
-      el.style.right = 'auto'
-      el.style.left = `${-rect.left + 8}px`
-    }
-
-    // If it overflows right
-    if (rect.right > viewW - 8) {
-      el.style.right = '0'
-    }
-  }, [])
-
-  useEffect(() => {
-    if (open) {
-      // Clamp after render
-      requestAnimationFrame(clampDropdown)
-      window.addEventListener('resize', clampDropdown)
-      return () => window.removeEventListener('resize', clampDropdown)
-    }
-  }, [open, clampDropdown])
 
   if (!isLoaded || !isSignedIn) return null
   if (HIDDEN_PATHS.some((p) => pathname.startsWith(p))) return null
@@ -102,141 +43,194 @@ export function ProfileButton() {
   const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase())
   const initials = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
   const imageUrl = user?.imageUrl
+  const balance = tokenData?.balance ?? tokenData?.tokens ?? null
+  const tier = tokenData?.tier || tokenData?.subscription?.tier || 'FREE'
 
-  const links = [
-    { href: '/settings', label: 'Profile & Settings', icon: 'M12 15a3 3 0 100-6 3 3 0 000 6z', adminOnly: false },
-    { href: '/settings?tab=appearance', label: 'Appearance', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-1 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9z', adminOnly: false },
-    { href: '/settings?tab=notifications', label: 'Notifications', icon: 'M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9', adminOnly: false },
-    { href: '/billing', label: 'Billing', icon: 'M2 5h20v14H2z', adminOnly: false },
-    { href: '/gifts', label: 'Gifts', icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7', adminOnly: false },
-    { href: '/admin', label: 'Admin Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2z', adminOnly: true },
-    { href: '/admin/dev-board', label: 'Dev Board', icon: 'M3 3v18h18', adminOnly: true },
-  ].filter((link) => !link.adminOnly || isAdmin)
+  const tierLabel = tier === 'FREE' ? 'Test Drive' : tier.charAt(0) + tier.slice(1).toLowerCase()
+  const tierColor = tier === 'FREE' ? '#71717A' : '#D4AF37'
+
+  const sections = [
+    {
+      label: 'Account',
+      items: [
+        { href: '/editor', label: 'Editor', icon: '✦' },
+        { href: '/dashboard', label: 'Dashboard', icon: '▦' },
+        { href: '/settings', label: 'Settings', icon: '⚙' },
+        { href: '/billing', label: 'Billing & Plan', icon: '▣' },
+      ],
+    },
+    {
+      label: 'Tokens',
+      items: [
+        { href: '/tokens', label: 'Buy Tokens', icon: '◆' },
+        { href: '/settings?tab=api-keys', label: 'API Keys', icon: '⚷' },
+      ],
+    },
+    {
+      label: 'Resources',
+      items: [
+        { href: '/download', label: 'Studio Plugin', icon: '↓' },
+        { href: '/docs', label: 'Documentation', icon: '📖' },
+        { href: '/help', label: 'Help', icon: '?' },
+      ],
+    },
+    ...(isAdmin ? [{
+      label: 'Admin',
+      items: [
+        { href: '/admin', label: 'Admin Panel', icon: '⊞' },
+        { href: '/admin/dev-board', label: 'Dev Board', icon: '⊟' },
+      ],
+    }] : []),
+  ]
 
   return (
     <div className="fixed top-3 right-3 sm:top-4 sm:right-4 z-[9999]" ref={ref}>
       {/* Avatar button */}
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(v => !v)}
         className="group relative"
         aria-label="Profile menu"
         aria-expanded={open}
       >
-        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden ring-2 ring-[var(--gold,#D4AF37)]/30 hover:ring-[var(--gold,#D4AF37)]/60 transition-all shadow-lg">
+        <div
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden transition-all"
+          style={{
+            boxShadow: open
+              ? '0 0 0 2px #050810, 0 0 0 3.5px #D4AF37'
+              : '0 0 0 2px rgba(212,175,55,0.2)',
+          }}
+        >
           {imageUrl ? (
             <img src={imageUrl} alt={name} width={40} height={40} className="w-full h-full object-cover" />
           ) : (
             <div
               className="w-full h-full flex items-center justify-center font-bold text-xs"
-              style={{ background: 'linear-gradient(135deg, var(--gold, #D4AF37) 0%, #B8962E 100%)', color: '#0a0a0a' }}
+              style={{ background: 'linear-gradient(135deg, #D4AF37, #B8962E)', color: '#0a0a0a' }}
             >
               {initials}
             </div>
           )}
         </div>
-        {/* Online dot */}
-        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-emerald-400 border-2 border-[var(--background,#050810)] rounded-full" />
+        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#050810] rounded-full" />
       </button>
 
       {/* Dropdown */}
       {open && (
         <div
-          ref={dropdownRef}
-          className="absolute right-0 top-full mt-2 w-[calc(100vw-1.5rem)] max-w-[260px] sm:w-64 border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden"
+          className="absolute right-0 top-full mt-2"
           style={{
+            width: 280,
+            maxWidth: 'calc(100vw - 24px)',
+            background: 'rgba(8,10,22,0.92)',
+            backdropFilter: 'blur(40px)',
+            WebkitBackdropFilter: 'blur(40px)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 16,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03)',
             animation: 'pb-drop-in 0.15s ease-out',
-            maxHeight: 'calc(100vh - 60px)',
-            overflowY: 'auto',
-            background: 'rgba(10,12,20,0.88)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-            boxShadow: '0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)',
+            overflow: 'hidden',
           }}
         >
-          {/* Profile header */}
-          <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-white/[0.06]">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden flex-shrink-0">
+          {/* User header */}
+          <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
                 {imageUrl ? (
-                  <img src={imageUrl} alt={name} width={36} height={36} className="w-full h-full object-cover" />
+                  <img src={imageUrl} alt={name} width={36} height={36} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <div
-                    className="w-full h-full flex items-center justify-center font-bold text-xs"
-                    style={{ background: 'linear-gradient(135deg, var(--gold, #D4AF37) 0%, #B8962E 100%)', color: '#0a0a0a' }}
-                  >
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, background: 'linear-gradient(135deg, #D4AF37, #B8962E)', color: '#0a0a0a' }}>
                     {initials}
                   </div>
                 )}
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{name}</p>
-                <p className="text-[11px] text-gray-500 truncate">{email}</p>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#FAFAFA', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</p>
+                <p style={{ fontSize: 11, color: '#52525B', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</p>
+              </div>
+            </div>
+
+            {/* Token balance + tier */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '8px 12px', borderRadius: 10,
+              background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.12)',
+            }}>
+              <div>
+                <p style={{ fontSize: 10, color: '#71717A', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Tokens</p>
+                <p style={{ fontSize: 18, fontWeight: 800, color: '#D4AF37', margin: '2px 0 0', fontVariantNumeric: 'tabular-nums' }}>
+                  {balance !== null ? balance.toLocaleString() : '—'}
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, color: tierColor,
+                  padding: '3px 8px', borderRadius: 6,
+                  background: tier === 'FREE' ? 'rgba(255,255,255,0.04)' : 'rgba(212,175,55,0.1)',
+                  border: `1px solid ${tier === 'FREE' ? 'rgba(255,255,255,0.06)' : 'rgba(212,175,55,0.15)'}`,
+                  textTransform: 'uppercase', letterSpacing: '0.05em',
+                }}>
+                  {tierLabel}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Links */}
-          <div className="py-1">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-1.5 sm:px-4 sm:py-2 text-sm text-gray-300 hover:text-white hover:bg-white/[0.04] transition-colors"
-              >
-                <svg className="w-4 h-4 flex-shrink-0 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={link.icon} />
-                </svg>
-                {link.label}
-              </Link>
+          {/* Menu sections */}
+          <div style={{ padding: '6px 0', maxHeight: 320, overflowY: 'auto' }}>
+            {sections.map((section, si) => (
+              <div key={section.label}>
+                {si > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', margin: '4px 12px' }} />}
+                <p style={{ fontSize: 9, fontWeight: 700, color: '#3F3F46', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '8px 16px 4px', margin: 0 }}>
+                  {section.label}
+                </p>
+                {section.items.map(item => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 16px', fontSize: 13, fontWeight: 500,
+                      color: '#A1A1AA', textDecoration: 'none',
+                      transition: 'all 0.12s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#E4E4E7' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#A1A1AA' }}
+                  >
+                    <span style={{ width: 16, textAlign: 'center', fontSize: 12, color: '#52525B', flexShrink: 0 }}>{item.icon}</span>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
             ))}
           </div>
 
-          {/* Quick Theme */}
-          <div className="border-t border-white/[0.06] px-3 py-2 sm:px-4">
-            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Quick Theme</p>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {themes.slice(0, 8).map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTheme(t.id)}
-                  title={t.name}
-                  className="w-5 h-5 rounded-full flex-shrink-0 transition-transform hover:scale-110 focus:outline-none"
-                  style={{
-                    background: t.preview.accent,
-                    boxShadow: theme.id === t.id
-                      ? '0 0 0 2px #0a0c14, 0 0 0 3.5px #D4AF37'
-                      : '0 0 0 1px rgba(255,255,255,0.12)',
-                  }}
-                  aria-label={`Switch to ${t.name} theme`}
-                  aria-pressed={theme.id === t.id}
-                />
-              ))}
-            </div>
-            <Link
-              href="/settings?tab=appearance"
-              onClick={() => setOpen(false)}
-              className="mt-1.5 inline-block text-[11px] text-gray-500 hover:text-gray-300 transition-colors"
-            >
-              All themes &rarr;
-            </Link>
-          </div>
-
           {/* Sign out */}
-          <div className="border-t border-white/[0.06] py-1">
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', padding: '4px 0' }}>
             <button
               onClick={() => { setOpen(false); signOut({ redirectUrl: '/' }) }}
-              className="flex items-center gap-2.5 px-3 py-1.5 sm:px-4 sm:py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors w-full text-left"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                padding: '10px 16px', fontSize: 13, fontWeight: 500,
+                color: '#EF4444', background: 'transparent', border: 'none',
+                cursor: 'pointer', textAlign: 'left', transition: 'background 0.12s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.06)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <svg className="w-4 h-4 flex-shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
+              <span style={{ width: 16, textAlign: 'center', fontSize: 12, flexShrink: 0 }}>↪</span>
               Sign out
             </button>
           </div>
         </div>
       )}
 
+      <style>{`
+        @keyframes pb-drop-in {
+          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   )
 }
