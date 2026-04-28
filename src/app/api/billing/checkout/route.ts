@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         },
         include: { subscription: true },
       })
-      console.log('[billing/checkout] Auto-created user from Clerk data:', { clerkId, email })
+      console.log('[billing/checkout] Auto-created user from Clerk data:', { clerkId, email: email ? `${email.slice(0, 3)}...` : 'none' })
     }
 
     const appUrl = clientEnv.NEXT_PUBLIC_APP_URL

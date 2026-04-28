@@ -207,7 +207,7 @@ async function handler(req: NextRequest) {
           const key = `day${step.day}Sent` as keyof typeof stats
           stats[key]++
         } catch (err) {
-          console.error(`[email-drip] Failed to send Day ${step.day} to ${user.email}:`, err)
+          console.error(`[email-drip] Failed to send Day ${step.day} to user ${user.id}:`, err)
           stats.errors++
         }
       }
