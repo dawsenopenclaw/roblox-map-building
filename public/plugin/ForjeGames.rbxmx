@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
   <!-- ForjeGames Studio Plugin v1.0.0 -->
-  <!-- Built by build-plugin.js on 2026-04-27T23:26:44.305Z -->
+  <!-- Built by build-plugin.js on 2026-04-28T00:38:04.992Z -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -1869,30 +1869,41 @@ end
 
 -- ============================================================
 -- Workspace part counting — counts actual BaseParts for feedback
+-- Capped at 100K descendants to prevent freezing on massive maps.
 -- ============================================================
+local _partCountCache = { value = -1, time = 0 }
+local PART_COUNT_CACHE_TTL = 0.5 -- seconds — prevents double-scan within same frame
+
 local function countWorkspaceParts()
+  -- Return cached value if fresh (avoids double-scan for before/after in same tick)
+  local now = tick()
+  if _partCountCache.value >= 0 and (now - _partCountCache.time) < PART_COUNT_CACHE_TTL then
+    return _partCountCache.value
+  end
+
   local count = 0
   pcall(function()
-    for _, desc in ipairs(workspace:GetDescendants()) do
-      if desc:IsA("BasePart") then
+    local descendants = workspace:GetDescendants()
+    local limit = math.min(#descendants, 100000)
+    for i = 1, limit do
+      if descendants[i]:IsA("BasePart") then
         count = count + 1
       end
     end
+    if #descendants > 100000 then
+      warn("[ForjeGames] Workspace has " .. #descendants .. " descendants — part count is approximate")
+    end
   end)
+
+  _partCountCache.value = count
+  _partCountCache.time = now
   return count
 end
 
--- Count only parts we created (fj_generated attribute)
-local function countForjeParts()
-  local count = 0
-  pcall(function()
-    for _, desc in ipairs(workspace:GetDescendants()) do
-      if desc:IsA("BasePart") and desc:GetAttribute("fj_generated") then
-        count = count + 1
-      end
-    end
-  end)
-  return count
+-- Invalidate cache after a build so the "after" count is fresh
+local function invalidatePartCountCache()
+  _partCountCache.value = -1
+  _partCountCache.time = 0
 end
 
 -- ============================================================
@@ -2966,6 +2977,7 @@ end)
   end)
 
   -- Snapshot workspace AFTER execution — real delta, not command counts
+  invalidatePartCountCache()
   local partsAfter = countWorkspaceParts()
   local executionTimeMs = math.floor((tick() - startTime) * 1000)
   local actualPartsCreated = partsAfter - partsBefore
@@ -3209,6 +3221,7 @@ local function handleExecuteLuau(data, commandId)
         end
 
         -- Snapshot workspace AFTER — get REAL part count delta
+        invalidatePartCountCache()
         local lsPartsAfter = countWorkspaceParts()
         local lsExecTimeMs = math.floor((tick() - lsStartTime) * 1000)
         local lsActualParts = lsPartsAfter - lsPartsBefore

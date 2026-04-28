@@ -24,6 +24,7 @@ import { timingSafeEqual } from 'crypto'
 import { Resend } from 'resend'
 import { db } from '@/lib/db'
 import { dripDay3, dripDay7 } from '@/lib/email/drip-templates'
+import { createUnsubscribeToken } from '@/app/api/email/unsubscribe/route'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -182,7 +183,7 @@ async function handler(req: NextRequest) {
         }
 
         const name = user.displayName || user.username || 'Builder'
-        const unsubscribeToken = user.id
+        const unsubscribeToken = createUnsubscribeToken(user.id)
 
         try {
           await getResend().emails.send({

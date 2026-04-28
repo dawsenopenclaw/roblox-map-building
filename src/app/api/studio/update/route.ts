@@ -198,12 +198,16 @@ export async function POST(req: NextRequest) {
       } catch { /* Postgres unavailable */ }
 
       // Feed errors into the AI self-improvement engine
+      // Note: originalCode isn't available via the queue path (only error strings).
+      // The direct POST to /api/studio/build-result includes originalCode for deep learning.
+      // Here we pass the error string as code context — studioErrorToRule() extracts
+      // patterns from the error itself (e.g. "X is not a valid member of Y").
       const errors = change.data.errors as string[] | undefined
       if (errors && errors.length > 0 && !resultData.success) {
         try {
           const { learnFromStudioError } = await import('@/lib/ai/self-improve')
           for (const err of errors.slice(0, 5)) {
-            await learnFromStudioError(err, resultData.error ?? 'unknown', null, null)
+            await learnFromStudioError(err, err, null, null)
           }
         } catch {
           // self-improve module unavailable — non-critical

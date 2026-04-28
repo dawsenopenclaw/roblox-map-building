@@ -415,7 +415,8 @@ function EditorInner() {
     if (hasCodeStatus) {
       markFirstBuildComplete()
       // Small delay so the user sees the build first
-      setTimeout(() => setShowFirstBuildCelebration(true), 1500)
+      const timer = setTimeout(() => setShowFirstBuildCelebration(true), 1500)
+      return () => clearTimeout(timer)
     }
   }, [chat.messages, showFirstBuildCelebration])
 
