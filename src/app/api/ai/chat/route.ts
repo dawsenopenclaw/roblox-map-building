@@ -5577,6 +5577,424 @@ P(m,"CarpetFringe",Vector3.new(4.2,0.08,0.5),sp+Vector3.new(0,1.04,14.5),Color3.
     }
   }
 
+  // ── WINDMILL ─────────────────────────────────────────────────────────
+  if (/\b(windmill|wind mill)\b/.test(m)) {
+    return {
+      name: 'Windmill',
+      response: "Classic windmill — stone tower base, wooden door, small windows, and four big rotating-style blades at the top. Got a little platform around the cap and a path leading to the entrance. The kind of thing that makes a farm scene or medieval village come alive.\n\nWant me to build a farm around it or add a wheat field?",
+      code: BOILERPLATE_TOP + `
+-- Stone tower base (tapered)
+Cyl(m,"TowerBase",Vector3.new(16,8,8),sp+Vector3.new(0,8,0),Color3.fromRGB(170,165,155),"Granite")
+Cyl(m,"TowerMid",Vector3.new(8,7.5,7.5),sp+Vector3.new(0,16,0),Color3.fromRGB(165,160,150),"Granite")
+Cyl(m,"TowerTop",Vector3.new(4,7,7),sp+Vector3.new(0,22,0),Color3.fromRGB(160,155,145),"Granite")
+-- Cap (roof)
+Ball(m,"Cap",Vector3.new(8,4,8),sp+Vector3.new(0,25,0),Color3.fromRGB(85,55,30),"Wood")
+-- Platform ring
+Cyl(m,"Platform",Vector3.new(0.4,9,9),sp+Vector3.new(0,20,0),Color3.fromRGB(120,78,36),"Wood")
+-- Door
+P(m,"Door",Vector3.new(3,5,0.3),sp+Vector3.new(0,2.5,4.2),Color3.fromRGB(90,55,28),"Wood")
+P(m,"DoorBand",Vector3.new(3.2,0.3,0.15),sp+Vector3.new(0,3.5,4.3),Color3.fromRGB(60,60,65),"Metal")
+-- Windows (2)
+P(m,"Win1",Vector3.new(1.5,2,0.2),sp+Vector3.new(0,12,4.1),Color3.fromRGB(200,220,255),"Glass")
+P(m,"Win2",Vector3.new(1.5,2,0.2),sp+Vector3.new(0,18,4.1),Color3.fromRGB(200,220,255),"Glass")
+-- Blade hub
+Cyl(m,"Hub",Vector3.new(1.5,1.5,1.5),sp+Vector3.new(0,24,4),Color3.fromRGB(100,65,30),"Wood")
+-- Blades (4) — flat rectangles radiating from hub
+P(m,"Blade1",Vector3.new(0.2,12,2),sp+Vector3.new(0,30,4.5),Color3.fromRGB(140,100,55),"Wood")
+P(m,"BladeFrame1",Vector3.new(0.15,12,0.15),sp+Vector3.new(0,30,5.5),Color3.fromRGB(110,72,35),"Wood")
+P(m,"Blade2",Vector3.new(0.2,12,2),sp+Vector3.new(0,18,4.5),Color3.fromRGB(135,95,50),"Wood")
+P(m,"BladeFrame2",Vector3.new(0.15,12,0.15),sp+Vector3.new(0,18,5.5),Color3.fromRGB(110,72,35),"Wood")
+P(m,"Blade3",Vector3.new(12,0.2,2),sp+Vector3.new(6,24,4.5),Color3.fromRGB(138,98,52),"Wood")
+P(m,"BladeFrame3",Vector3.new(12,0.15,0.15),sp+Vector3.new(6,24,5.5),Color3.fromRGB(110,72,35),"Wood")
+P(m,"Blade4",Vector3.new(12,0.2,2),sp+Vector3.new(-6,24,4.5),Color3.fromRGB(132,92,48),"Wood")
+P(m,"BladeFrame4",Vector3.new(12,0.15,0.15),sp+Vector3.new(-6,24,5.5),Color3.fromRGB(110,72,35),"Wood")
+-- Path
+P(m,"Path1",Vector3.new(4,0.15,3),sp+Vector3.new(0,0.08,7),Color3.fromRGB(140,135,125),"Cobblestone")
+P(m,"Path2",Vector3.new(4,0.15,3),sp+Vector3.new(0,0.08,10),Color3.fromRGB(140,135,125),"Cobblestone")
+-- Ground grass
+Cyl(m,"Grass",Vector3.new(0.2,16,16),sp+Vector3.new(0,0.1,0),Color3.fromRGB(70,140,50),"Grass")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a wheat field', 'Build a farm around it', 'Make a medieval village'],
+      partCount: 22,
+    }
+  }
+
+  // ── LIGHTHOUSE ──────────────────────────────────────────────────────
+  if (/\b(lighthouse|light house|beacon)\b/.test(m) && !/street|lamp/.test(m)) {
+    return {
+      name: 'Lighthouse',
+      response: "Tall lighthouse on a rocky base — white and red striped cylinder tower, glass lamp room at the top with a bright rotating light beam, walkway railing, and a sturdy door at ground level. Sitting on a patch of coastal rock. Guides ships home.\n\nWant me to add the ocean around it or build a coastal village?",
+      code: BOILERPLATE_TOP + `
+-- Rocky base
+P(m,"RockBase",Vector3.new(16,3,16),sp+Vector3.new(0,1.5,0),Color3.fromRGB(100,95,88),"Granite")
+Ball(m,"Rock1",Vector3.new(4,2,3),sp+Vector3.new(6,1,5),Color3.fromRGB(110,105,98),"Granite")
+Ball(m,"Rock2",Vector3.new(3,1.5,4),sp+Vector3.new(-5,0.8,6),Color3.fromRGB(95,90,82),"Granite")
+-- Tower base (white)
+Cyl(m,"TowerLow",Vector3.new(12,5.5,5.5),sp+Vector3.new(0,9,0),Color3.fromRGB(240,238,230),"Concrete")
+-- Red stripe
+Cyl(m,"Stripe1",Vector3.new(2,5.6,5.6),sp+Vector3.new(0,10,0),Color3.fromRGB(200,40,35),"Concrete")
+-- Mid tower (white)
+Cyl(m,"TowerMid",Vector3.new(10,5,5),sp+Vector3.new(0,20,0),Color3.fromRGB(238,236,228),"Concrete")
+-- Red stripe 2
+Cyl(m,"Stripe2",Vector3.new(2,5.1,5.1),sp+Vector3.new(0,21,0),Color3.fromRGB(200,40,35),"Concrete")
+-- Upper tower
+Cyl(m,"TowerUp",Vector3.new(6,4.5,4.5),sp+Vector3.new(0,28,0),Color3.fromRGB(235,233,225),"Concrete")
+-- Lamp room walkway
+Cyl(m,"Walkway",Vector3.new(0.4,7,7),sp+Vector3.new(0,31.2,0),Color3.fromRGB(50,50,55),"Metal")
+-- Railing posts
+P(m,"RailPost1",Vector3.new(0.2,2,0.2),sp+Vector3.new(3.2,32.2,0),Color3.fromRGB(45,45,50),"Metal")
+P(m,"RailPost2",Vector3.new(0.2,2,0.2),sp+Vector3.new(-3.2,32.2,0),Color3.fromRGB(45,45,50),"Metal")
+P(m,"RailPost3",Vector3.new(0.2,2,0.2),sp+Vector3.new(0,32.2,3.2),Color3.fromRGB(45,45,50),"Metal")
+P(m,"RailPost4",Vector3.new(0.2,2,0.2),sp+Vector3.new(0,32.2,-3.2),Color3.fromRGB(45,45,50),"Metal")
+-- Glass lamp room
+Cyl(m,"LampRoom",Vector3.new(4,4,4),sp+Vector3.new(0,33.5,0),Color3.fromRGB(200,220,255),"Glass")
+-- Lamp (bright neon)
+Ball(m,"Lamp",Vector3.new(2,2,2),sp+Vector3.new(0,33.5,0),Color3.fromRGB(255,255,200),"Neon")
+-- Lamp roof
+Cyl(m,"Roof",Vector3.new(1.5,5,5),sp+Vector3.new(0,36,0),Color3.fromRGB(50,50,55),"Metal")
+Ball(m,"Finial",Vector3.new(1,1.5,1),sp+Vector3.new(0,37,0),Color3.fromRGB(55,55,60),"Metal")
+-- Door
+P(m,"Door",Vector3.new(2.5,4.5,0.3),sp+Vector3.new(0,5.5,2.8),Color3.fromRGB(85,55,28),"Wood")
+-- PointLight
+local ll = Instance.new("PointLight") ll.Color=Color3.fromRGB(255,250,200) ll.Range=80 ll.Brightness=3 ll.Parent=m:FindFirstChild("Lamp")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add the ocean', 'Build a coastal village', 'Add a dock nearby'],
+      partCount: 20,
+    }
+  }
+
+  // ── WELL ────────────────────────────────────────────────────────────
+  if (/\b(well|wishing well|water well)\b/.test(m) && !/castle|fountain/.test(m)) {
+    return {
+      name: 'Well',
+      response: "Stone wishing well — circular cobblestone base with a wooden frame overhead, rope and bucket hanging down, little crank handle on the side, and shimmering blue water at the bottom. Toss a coin in and make a wish.\n\nWant me to build a village square around it?",
+      code: BOILERPLATE_TOP + `
+-- Stone base ring
+Cyl(m,"Base",Vector3.new(3,5,5),sp+Vector3.new(0,1.5,0),Color3.fromRGB(140,135,128),"Cobblestone")
+Cyl(m,"Inner",Vector3.new(2.8,4,4),sp+Vector3.new(0,1.6,0),Color3.fromRGB(80,75,68),"Cobblestone")
+-- Rim
+Cyl(m,"Rim",Vector3.new(0.4,5.5,5.5),sp+Vector3.new(0,3.2,0),Color3.fromRGB(150,145,138),"Granite")
+-- Water
+Cyl(m,"Water",Vector3.new(0.2,3.5,3.5),sp+Vector3.new(0,0.8,0),Color3.fromRGB(50,120,180),"Glass")
+-- Support posts
+Cyl(m,"PostL",Vector3.new(5,0.4,0.4),sp+Vector3.new(-2,5.5,0),Color3.fromRGB(100,65,30),"Wood")
+Cyl(m,"PostR",Vector3.new(5,0.4,0.4),sp+Vector3.new(2,5.5,0),Color3.fromRGB(100,65,30),"Wood")
+-- Crossbeam
+P(m,"Beam",Vector3.new(5,0.4,0.4),sp+Vector3.new(0,8,0),Color3.fromRGB(95,60,28),"Wood")
+-- Roof
+W(m,"RoofL",Vector3.new(3,1.5,6),sp+Vector3.new(-1.5,9,0),Color3.fromRGB(85,55,28),"Wood")
+W(m,"RoofR",Vector3.new(3,1.5,6),sp+Vector3.new(1.5,9,0),Color3.fromRGB(82,52,25),"Wood")
+-- Crank handle
+P(m,"Axle",Vector3.new(0.2,0.2,1.5),sp+Vector3.new(2.8,7.5,0),Color3.fromRGB(65,65,70),"Metal")
+P(m,"Handle",Vector3.new(0.8,0.2,0.2),sp+Vector3.new(2.8,7.5,0.8),Color3.fromRGB(60,60,65),"Metal")
+-- Rope (thin part)
+P(m,"Rope",Vector3.new(0.1,4,0.1),sp+Vector3.new(0,5,0),Color3.fromRGB(150,130,80),"Fabric")
+-- Bucket
+P(m,"Bucket",Vector3.new(1,1.2,1),sp+Vector3.new(0,3.5,0),Color3.fromRGB(110,72,35),"Wood")
+Cyl(m,"BucketBand",Vector3.new(0.1,1.1,1.1),sp+Vector3.new(0,3.8,0),Color3.fromRGB(65,65,70),"Metal")
+-- Ground detail
+Cyl(m,"GrassPatch",Vector3.new(0.15,10,10),sp+Vector3.new(0,0.08,0),Color3.fromRGB(70,140,50),"Grass")
+Ball(m,"Rock1",Vector3.new(1.2,0.8,1),sp+Vector3.new(3,0.4,2),Color3.fromRGB(125,120,112),"Granite")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a village square', 'Add a bucket animation', 'Make it a wishing well with coins'],
+      partCount: 17,
+    }
+  }
+
+  // ── MARKET STALL ────────────────────────────────────────────────────
+  if (/\b(market stall|market stand|vendor stall|vendor stand|trade stall)\b/.test(m)) {
+    return {
+      name: 'Market Stall',
+      response: "Wooden market stall — sturdy frame with a colorful canvas awning, counter top, crates of goods stacked behind, a hanging sign, and a little shelf for display items. Ready for an NPC vendor or a player shop.\n\nWant me to build a whole marketplace?",
+      code: BOILERPLATE_TOP + `
+-- Counter
+P(m,"Counter",Vector3.new(8,3,2),sp+Vector3.new(0,1.5,2),Color3.fromRGB(130,85,40),"Wood")
+P(m,"CounterTop",Vector3.new(8.5,0.3,2.5),sp+Vector3.new(0,3.15,2),Color3.fromRGB(140,95,45),"Wood")
+-- Support posts (4)
+P(m,"Post1",Vector3.new(0.4,6,0.4),sp+Vector3.new(-4,3,3),Color3.fromRGB(120,78,35),"Wood")
+P(m,"Post2",Vector3.new(0.4,6,0.4),sp+Vector3.new(4,3,3),Color3.fromRGB(120,78,35),"Wood")
+P(m,"Post3",Vector3.new(0.4,5,0.4),sp+Vector3.new(-4,2.5,-1),Color3.fromRGB(120,78,35),"Wood")
+P(m,"Post4",Vector3.new(0.4,5,0.4),sp+Vector3.new(4,2.5,-1),Color3.fromRGB(120,78,35),"Wood")
+-- Canvas awning
+P(m,"Awning",Vector3.new(9,0.15,5),sp+Vector3.new(0,6.2,1),Color3.fromRGB(180,55,45),"Fabric")
+P(m,"AwningStripe",Vector3.new(9,0.12,1),sp+Vector3.new(0,6.15,2),Color3.fromRGB(240,230,200),"Fabric")
+P(m,"AwningEdge",Vector3.new(9.2,0.2,0.3),sp+Vector3.new(0,6,3.3),Color3.fromRGB(160,45,35),"Fabric")
+-- Crossbar
+P(m,"CrossBar",Vector3.new(9,0.3,0.3),sp+Vector3.new(0,6,1),Color3.fromRGB(115,72,32),"Wood")
+-- Crates behind counter
+P(m,"Crate1",Vector3.new(2,2,2),sp+Vector3.new(-2,1,0),Color3.fromRGB(140,95,48),"Wood")
+P(m,"Crate2",Vector3.new(1.8,1.8,1.8),sp+Vector3.new(1,0.9,-0.5),Color3.fromRGB(135,90,45),"Wood")
+P(m,"Crate3",Vector3.new(1.5,1.5,1.5),sp+Vector3.new(-2,3,0),Color3.fromRGB(145,100,52),"Wood")
+-- Display items on counter
+Ball(m,"Apple1",Vector3.new(0.6,0.6,0.6),sp+Vector3.new(-2,3.6,2),Color3.fromRGB(200,50,40),"Concrete")
+Ball(m,"Apple2",Vector3.new(0.6,0.6,0.6),sp+Vector3.new(-1.4,3.6,2.2),Color3.fromRGB(180,40,35),"Concrete")
+P(m,"Bread",Vector3.new(1.2,0.6,0.6),sp+Vector3.new(1.5,3.6,2),Color3.fromRGB(200,160,80),"Concrete")
+-- Hanging sign
+P(m,"Sign",Vector3.new(3,1.5,0.2),sp+Vector3.new(0,5.5,3.5),Color3.fromRGB(130,85,40),"Wood")
+P(m,"SignChain",Vector3.new(0.1,0.8,0.1),sp+Vector3.new(0,6.3,3.3),Color3.fromRGB(65,65,70),"Metal")
+-- Ground
+P(m,"Ground",Vector3.new(10,0.2,8),sp+Vector3.new(0,0.1,1),Color3.fromRGB(150,140,120),"Cobblestone")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a whole marketplace', 'Add an NPC vendor', 'Stock it with items'],
+      partCount: 20,
+    }
+  }
+
+  // ── CANNON ──────────────────────────────────────────────────────────
+  if (/\b(cannon|artillery|mortar)\b/.test(m) && !/ship|pirate/.test(m)) {
+    return {
+      name: 'Cannon',
+      response: "Heavy iron cannon — long barrel with a flared muzzle, mounted on a sturdy wooden carriage with two big wheels, a fuse hole on top, and a cannonball sitting ready beside it. Fort defense vibes.\n\nWant me to add a firing script or build a fortress wall?",
+      code: BOILERPLATE_TOP + `
+-- Barrel (main tube)
+Cyl(m,"Barrel",Vector3.new(8,2,2),sp+Vector3.new(0,3.5,3),Color3.fromRGB(65,65,70),"Metal")
+-- Muzzle (flared end)
+Cyl(m,"Muzzle",Vector3.new(0.8,2.4,2.4),sp+Vector3.new(0,3.5,7.2),Color3.fromRGB(60,60,65),"Metal")
+-- Barrel bands
+Cyl(m,"Band1",Vector3.new(0.3,2.2,2.2),sp+Vector3.new(0,3.5,2),Color3.fromRGB(55,55,60),"Metal")
+Cyl(m,"Band2",Vector3.new(0.3,2.2,2.2),sp+Vector3.new(0,3.5,5),Color3.fromRGB(55,55,60),"Metal")
+-- Fuse hole
+Cyl(m,"Fuse",Vector3.new(0.3,0.3,0.3),sp+Vector3.new(0,4.6,1),Color3.fromRGB(30,30,30),"Metal")
+-- Rear cap
+Ball(m,"RearCap",Vector3.new(2.2,2.2,2.2),sp+Vector3.new(0,3.5,-1),Color3.fromRGB(62,62,67),"Metal")
+-- Carriage (wooden frame)
+P(m,"CarriageBase",Vector3.new(4,1,8),sp+Vector3.new(0,1.5,2),Color3.fromRGB(120,78,35),"Wood")
+P(m,"CarriageSideL",Vector3.new(0.5,2.5,8),sp+Vector3.new(-2,2.5,2),Color3.fromRGB(115,72,32),"Wood")
+P(m,"CarriageSideR",Vector3.new(0.5,2.5,8),sp+Vector3.new(2,2.5,2),Color3.fromRGB(115,72,32),"Wood")
+-- Wheels (2)
+Cyl(m,"WheelL",Vector3.new(0.6,3.5,3.5),sp+Vector3.new(-2.5,1.8,1),Color3.fromRGB(100,65,28),"Wood")
+Cyl(m,"WheelR",Vector3.new(0.6,3.5,3.5),sp+Vector3.new(2.5,1.8,1),Color3.fromRGB(100,65,28),"Wood")
+-- Wheel hubs
+Cyl(m,"HubL",Vector3.new(0.2,0.6,0.6),sp+Vector3.new(-2.8,1.8,1),Color3.fromRGB(60,60,65),"Metal")
+Cyl(m,"HubR",Vector3.new(0.2,0.6,0.6),sp+Vector3.new(2.8,1.8,1),Color3.fromRGB(60,60,65),"Metal")
+-- Axle
+Cyl(m,"Axle",Vector3.new(0.3,5.5,0.3),sp+Vector3.new(0,1.8,1),Color3.fromRGB(55,55,60),"Metal")
+-- Cannonball (sitting beside)
+Ball(m,"Cannonball",Vector3.new(1.5,1.5,1.5),sp+Vector3.new(3.5,0.75,5),Color3.fromRGB(40,40,42),"Metal")
+-- Fuse rope
+P(m,"FuseRope",Vector3.new(0.08,0.08,1),sp+Vector3.new(0,4.7,0.5),Color3.fromRGB(150,130,80),"Fabric")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a firing script', 'Build a fortress wall', 'Make a whole artillery battery'],
+      partCount: 17,
+    }
+  }
+
+  // ── TREASURE MAP ────────────────────────────────────────────────────
+  if (/\b(treasure map|map|parchment|pirate map)\b/.test(m) && !/world map|mini ?map/.test(m)) {
+    return {
+      name: 'Treasure Map',
+      response: "Treasure map setup — flat parchment scroll laid out on the ground with curled edges, a compass sitting on one corner, and a big glowing X marking the spot. Old-school adventure vibes. Perfect for a quest start point.\n\nWant me to add a treasure hunt script or build the X marks the spot?",
+      code: BOILERPLATE_TOP + `
+-- Parchment base (flat)
+P(m,"Parchment",Vector3.new(8,0.1,6),sp+Vector3.new(0,2.05,0),Color3.fromRGB(220,195,140),"Fabric")
+-- Curled edges
+Cyl(m,"CurlTop",Vector3.new(0.4,0.5,0.5),sp+Vector3.new(0,2.15,3.2),Color3.fromRGB(210,185,130),"Fabric")
+Cyl(m,"CurlBot",Vector3.new(0.4,0.5,0.5),sp+Vector3.new(0,2.15,-3.2),Color3.fromRGB(210,185,130),"Fabric")
+-- Table underneath
+P(m,"Table",Vector3.new(10,0.5,8),sp+Vector3.new(0,1.75,0),Color3.fromRGB(120,78,35),"Wood")
+Cyl(m,"Leg1",Vector3.new(1.7,0.5,0.5),sp+Vector3.new(-4,0.85,3),Color3.fromRGB(110,70,30),"Wood")
+Cyl(m,"Leg2",Vector3.new(1.7,0.5,0.5),sp+Vector3.new(4,0.85,3),Color3.fromRGB(110,70,30),"Wood")
+Cyl(m,"Leg3",Vector3.new(1.7,0.5,0.5),sp+Vector3.new(-4,0.85,-3),Color3.fromRGB(110,70,30),"Wood")
+Cyl(m,"Leg4",Vector3.new(1.7,0.5,0.5),sp+Vector3.new(4,0.85,-3),Color3.fromRGB(110,70,30),"Wood")
+-- X mark (two crossed lines, neon glow)
+P(m,"X1",Vector3.new(3,0.05,0.4),sp+Vector3.new(1,2.12,0.5),Color3.fromRGB(200,50,40),"Neon")
+P(m,"X2",Vector3.new(0.4,0.05,3),sp+Vector3.new(1,2.12,0.5),Color3.fromRGB(200,50,40),"Neon")
+-- Compass (circular)
+Cyl(m,"CompassBase",Vector3.new(0.15,1.5,1.5),sp+Vector3.new(-3,2.2,2),Color3.fromRGB(180,160,50),"Metal")
+Cyl(m,"CompassFace",Vector3.new(0.05,1.3,1.3),sp+Vector3.new(-3,2.28,2),Color3.fromRGB(240,235,220),"Concrete")
+P(m,"Needle",Vector3.new(0.8,0.03,0.1),sp+Vector3.new(-3,2.32,2),Color3.fromRGB(200,40,40),"Metal")
+-- Dotted path line on parchment
+P(m,"Dot1",Vector3.new(0.2,0.03,0.2),sp+Vector3.new(-2,2.12,-1),Color3.fromRGB(80,50,20),"Concrete")
+P(m,"Dot2",Vector3.new(0.2,0.03,0.2),sp+Vector3.new(-1.2,2.12,-0.5),Color3.fromRGB(80,50,20),"Concrete")
+P(m,"Dot3",Vector3.new(0.2,0.03,0.2),sp+Vector3.new(-0.3,2.12,0),Color3.fromRGB(80,50,20),"Concrete")
+P(m,"Dot4",Vector3.new(0.2,0.03,0.2),sp+Vector3.new(0.4,2.12,0.3),Color3.fromRGB(80,50,20),"Concrete")
+-- Quill pen
+P(m,"Quill",Vector3.new(0.1,0.1,2.5),sp+Vector3.new(3,2.2,-1.5),Color3.fromRGB(140,100,60),"Wood")
+P(m,"QuillTip",Vector3.new(0.05,0.05,0.5),sp+Vector3.new(3,2.18,-2.8),Color3.fromRGB(30,30,30),"Metal")
+-- Ink pot
+Cyl(m,"InkPot",Vector3.new(0.8,0.6,0.6),sp+Vector3.new(3.5,2.4,-0.5),Color3.fromRGB(30,30,35),"Concrete")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a treasure hunt script', 'Build the treasure location', 'Make a pirate scene'],
+      partCount: 22,
+    }
+  }
+
+  // ── ANVIL ───────────────────────────────────────────────────────────
+  if (/\b(anvil|blacksmith|smithing|forge)\b/.test(m) && !/game/.test(m)) {
+    return {
+      name: 'Anvil',
+      response: "Blacksmith's anvil — heavy iron body with a flat work surface, tapered horn on one end, hardy hole on top, mounted on a thick wooden stump. Got a hammer resting beside it and a bucket of water for quenching. Ready for the smithy.\n\nWant me to build a full blacksmith shop?",
+      code: BOILERPLATE_TOP + `
+-- Wooden stump base
+Cyl(m,"Stump",Vector3.new(3,3,3),sp+Vector3.new(0,1.5,0),Color3.fromRGB(100,65,30),"Wood")
+Cyl(m,"StumpRing",Vector3.new(0.2,3.2,3.2),sp+Vector3.new(0,1,0),Color3.fromRGB(65,65,70),"Metal")
+-- Anvil base (wide)
+P(m,"AnvilBase",Vector3.new(3,1.5,5),sp+Vector3.new(0,3.75,0),Color3.fromRGB(75,75,80),"Metal")
+-- Anvil waist (narrow middle)
+P(m,"AnvilWaist",Vector3.new(2,1,4),sp+Vector3.new(0,5,0),Color3.fromRGB(80,80,85),"Metal")
+-- Anvil face (flat top)
+P(m,"AnvilFace",Vector3.new(3.5,0.8,5.5),sp+Vector3.new(0,5.9,0),Color3.fromRGB(90,90,95),"DiamondPlate")
+-- Horn (tapered end)
+W(m,"Horn",Vector3.new(1.5,0.8,3),sp+Vector3.new(0,5.9,4),Color3.fromRGB(85,85,90),0)
+-- Hardy hole
+P(m,"HardyHole",Vector3.new(0.4,0.1,0.4),sp+Vector3.new(0.5,6.35,-1),Color3.fromRGB(30,30,32),"Metal")
+-- Pritchel hole
+Cyl(m,"PritchelHole",Vector3.new(0.05,0.3,0.3),sp+Vector3.new(-0.5,6.35,-1.5),Color3.fromRGB(30,30,32),"Metal")
+-- Hammer (resting beside)
+P(m,"HammerHead",Vector3.new(1.5,1,1),sp+Vector3.new(3,3.5,0),Color3.fromRGB(70,70,75),"Metal")
+P(m,"HammerHandle",Vector3.new(0.3,3,0.3),sp+Vector3.new(3,2,0),Color3.fromRGB(110,72,35),"Wood")
+-- Water bucket
+Cyl(m,"Bucket",Vector3.new(2,1.5,1.5),sp+Vector3.new(-3,1,2),Color3.fromRGB(120,78,36),"Wood")
+Cyl(m,"Water",Vector3.new(0.2,1.2,1.2),sp+Vector3.new(-3,1.9,2),Color3.fromRGB(50,120,180),"Glass")
+Cyl(m,"BucketBand",Vector3.new(0.1,1.6,1.6),sp+Vector3.new(-3,1.5,2),Color3.fromRGB(65,65,70),"Metal")
+-- Hot metal piece on anvil
+P(m,"HotMetal",Vector3.new(0.3,0.15,1.5),sp+Vector3.new(0,6.4,0.5),Color3.fromRGB(255,140,30),"Neon")
+-- Ground
+Cyl(m,"Ground",Vector3.new(0.15,10,10),sp+Vector3.new(0,0.08,0),Color3.fromRGB(90,85,78),"Slate")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a blacksmith shop', 'Add a furnace', 'Make a weapon rack'],
+      partCount: 16,
+    }
+  }
+
+  // ── SWING SET ───────────────────────────────────────────────────────
+  if (/\b(swing set|swing|playground swing|swings)\b/.test(m) && !/mood/.test(m)) {
+    return {
+      name: 'Swing Set',
+      response: "Playground swing set — sturdy A-frame legs on each side, crossbar across the top, and two swings hanging from chains with flat seats. Classic playground piece. Looks right at home in a park or backyard.\n\nWant me to build a whole playground?",
+      code: BOILERPLATE_TOP + `
+-- A-frame left (two angled legs + crosspiece)
+P(m,"LegLF",Vector3.new(0.4,8,0.4),sp+Vector3.new(-5.5,4,2),Color3.fromRGB(200,40,35),"Metal")
+P(m,"LegLB",Vector3.new(0.4,8,0.4),sp+Vector3.new(-5.5,4,-2),Color3.fromRGB(200,40,35),"Metal")
+P(m,"CrossL",Vector3.new(0.3,0.3,4.5),sp+Vector3.new(-5.5,2,0),Color3.fromRGB(190,35,30),"Metal")
+-- A-frame right
+P(m,"LegRF",Vector3.new(0.4,8,0.4),sp+Vector3.new(5.5,4,2),Color3.fromRGB(200,40,35),"Metal")
+P(m,"LegRB",Vector3.new(0.4,8,0.4),sp+Vector3.new(5.5,4,-2),Color3.fromRGB(200,40,35),"Metal")
+P(m,"CrossR",Vector3.new(0.3,0.3,4.5),sp+Vector3.new(5.5,2,0),Color3.fromRGB(190,35,30),"Metal")
+-- Top crossbar
+Cyl(m,"TopBar",Vector3.new(0.4,12,0.4),sp+Vector3.new(0,8,0),Color3.fromRGB(210,45,40),"Metal")
+-- Swing 1 (left) — chains + seat
+P(m,"Chain1L",Vector3.new(0.08,5.5,0.08),sp+Vector3.new(-2.3,5,0),Color3.fromRGB(160,160,165),"Metal")
+P(m,"Chain1R",Vector3.new(0.08,5.5,0.08),sp+Vector3.new(-1.7,5,0),Color3.fromRGB(160,160,165),"Metal")
+P(m,"Seat1",Vector3.new(2,0.3,1),sp+Vector3.new(-2,2.2,0),Color3.fromRGB(30,30,35),"Concrete")
+-- Hanger hardware
+Cyl(m,"Hanger1L",Vector3.new(0.15,0.3,0.3),sp+Vector3.new(-2.3,7.9,0),Color3.fromRGB(150,150,155),"Metal")
+Cyl(m,"Hanger1R",Vector3.new(0.15,0.3,0.3),sp+Vector3.new(-1.7,7.9,0),Color3.fromRGB(150,150,155),"Metal")
+-- Swing 2 (right)
+P(m,"Chain2L",Vector3.new(0.08,5.5,0.08),sp+Vector3.new(1.7,5,0),Color3.fromRGB(160,160,165),"Metal")
+P(m,"Chain2R",Vector3.new(0.08,5.5,0.08),sp+Vector3.new(2.3,5,0),Color3.fromRGB(160,160,165),"Metal")
+P(m,"Seat2",Vector3.new(2,0.3,1),sp+Vector3.new(2,2.2,0),Color3.fromRGB(30,30,35),"Concrete")
+Cyl(m,"Hanger2L",Vector3.new(0.15,0.3,0.3),sp+Vector3.new(1.7,7.9,0),Color3.fromRGB(150,150,155),"Metal")
+Cyl(m,"Hanger2R",Vector3.new(0.15,0.3,0.3),sp+Vector3.new(2.3,7.9,0),Color3.fromRGB(150,150,155),"Metal")
+-- Ground wear (dirt patches under swings)
+Cyl(m,"Dirt1",Vector3.new(0.1,2,2),sp+Vector3.new(-2,0.05,0),Color3.fromRGB(120,95,60),"Mud")
+Cyl(m,"Dirt2",Vector3.new(0.1,2,2),sp+Vector3.new(2,0.05,0),Color3.fromRGB(120,95,60),"Mud")
+-- Grass
+P(m,"Grass",Vector3.new(14,0.15,8),sp+Vector3.new(0,0.08,0),Color3.fromRGB(70,140,50),"Grass")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a whole playground', 'Add a slide', 'Make a park around it'],
+      partCount: 21,
+    }
+  }
+
+  // ── SNOWMAN ─────────────────────────────────────────────────────────
+  if (/\b(snowman|snow man|frosty)\b/.test(m)) {
+    return {
+      name: 'Snowman',
+      response: "Classic snowman — three stacked snowballs getting smaller toward the top, orange carrot nose, coal eyes and buttons, stick arms reaching out, a top hat, and a red scarf wrapped around the neck. Standing on a snowy patch. Frosty would be proud.\n\nWant me to add a winter scene or more decorations?",
+      code: BOILERPLATE_TOP + `
+-- Snow ground patch
+Cyl(m,"SnowPatch",Vector3.new(0.3,12,12),sp+Vector3.new(0,0.15,0),Color3.fromRGB(240,245,250),"Glacier")
+-- Bottom ball (largest)
+Ball(m,"BodyBot",Vector3.new(6,5.5,6),sp+Vector3.new(0,3,0),Color3.fromRGB(245,248,252),"Glacier")
+-- Middle ball
+Ball(m,"BodyMid",Vector3.new(4.5,4,4.5),sp+Vector3.new(0,7,0),Color3.fromRGB(248,250,254),"Glacier")
+-- Top ball (head)
+Ball(m,"Head",Vector3.new(3.5,3.2,3.5),sp+Vector3.new(0,10.2,0),Color3.fromRGB(250,252,255),"Glacier")
+-- Carrot nose
+P(m,"Nose",Vector3.new(0.4,0.4,2),sp+Vector3.new(0,10.2,2.2),Color3.fromRGB(240,140,30),"Concrete")
+-- Coal eyes
+Ball(m,"EyeL",Vector3.new(0.4,0.4,0.4),sp+Vector3.new(-0.6,10.8,1.5),Color3.fromRGB(20,20,22),"Concrete")
+Ball(m,"EyeR",Vector3.new(0.4,0.4,0.4),sp+Vector3.new(0.6,10.8,1.5),Color3.fromRGB(20,20,22),"Concrete")
+-- Coal smile (5 dots)
+Ball(m,"Smile1",Vector3.new(0.25,0.25,0.25),sp+Vector3.new(-0.8,9.6,1.6),Color3.fromRGB(20,20,22),"Concrete")
+Ball(m,"Smile2",Vector3.new(0.25,0.25,0.25),sp+Vector3.new(-0.4,9.4,1.7),Color3.fromRGB(20,20,22),"Concrete")
+Ball(m,"Smile3",Vector3.new(0.25,0.25,0.25),sp+Vector3.new(0,9.3,1.75),Color3.fromRGB(20,20,22),"Concrete")
+Ball(m,"Smile4",Vector3.new(0.25,0.25,0.25),sp+Vector3.new(0.4,9.4,1.7),Color3.fromRGB(20,20,22),"Concrete")
+Ball(m,"Smile5",Vector3.new(0.25,0.25,0.25),sp+Vector3.new(0.8,9.6,1.6),Color3.fromRGB(20,20,22),"Concrete")
+-- Coal buttons (3)
+Ball(m,"Btn1",Vector3.new(0.35,0.35,0.35),sp+Vector3.new(0,7.5,2.1),Color3.fromRGB(20,20,22),"Concrete")
+Ball(m,"Btn2",Vector3.new(0.35,0.35,0.35),sp+Vector3.new(0,6.5,2.2),Color3.fromRGB(20,20,22),"Concrete")
+Ball(m,"Btn3",Vector3.new(0.35,0.35,0.35),sp+Vector3.new(0,5.5,2.1),Color3.fromRGB(20,20,22),"Concrete")
+-- Stick arms
+P(m,"ArmL",Vector3.new(3.5,0.15,0.15),sp+Vector3.new(-3.5,7.5,0),Color3.fromRGB(90,55,25),"Wood")
+P(m,"ArmR",Vector3.new(3.5,0.15,0.15),sp+Vector3.new(3.5,7.5,0),Color3.fromRGB(85,52,22),"Wood")
+-- Twig fingers
+P(m,"FingerL1",Vector3.new(1,0.1,0.1),sp+Vector3.new(-5.2,7.8,0.3),Color3.fromRGB(80,48,20),"Wood")
+P(m,"FingerR1",Vector3.new(1,0.1,0.1),sp+Vector3.new(5.2,7.8,-0.3),Color3.fromRGB(80,48,20),"Wood")
+-- Top hat
+Cyl(m,"HatBrim",Vector3.new(0.2,3.5,3.5),sp+Vector3.new(0,11.8,0),Color3.fromRGB(25,25,28),"Concrete")
+Cyl(m,"HatTop",Vector3.new(2.5,2.2,2.2),sp+Vector3.new(0,13.1,0),Color3.fromRGB(20,20,22),"Concrete")
+P(m,"HatBand",Vector3.new(2.3,0.3,0.1),sp+Vector3.new(0,12.2,1.1),Color3.fromRGB(180,40,35),"Fabric")
+-- Scarf
+P(m,"Scarf",Vector3.new(3.8,0.4,3.8),sp+Vector3.new(0,8.8,0),Color3.fromRGB(200,35,30),"Fabric")
+P(m,"ScarfTail",Vector3.new(0.8,2,0.2),sp+Vector3.new(1.5,8,1.5),Color3.fromRGB(190,30,28),"Fabric")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a winter scene', 'Build a snow fort', 'Make it a holiday scene'],
+      partCount: 25,
+    }
+  }
+
+  // ── RACE CAR ────────────────────────────────────────────────────────
+  if (/\b(race\s?car|racing car|go\s?kart|formula|nascar|f1)\b/.test(m)) {
+    return {
+      name: 'Race Car',
+      response: "Low-slung race car — aerodynamic body with a wide stance, big rear spoiler, wide tires, neon number decal on the side, roll cage visible through the cockpit, front splitter, and side air intakes. This thing screams speed.\n\nWant me to add a racing script or build a track?",
+      code: BOILERPLATE_TOP + `
+-- Main body (low and wide)
+P(m,"Body",Vector3.new(7,1.5,14),sp+Vector3.new(0,1.5,0),Color3.fromRGB(220,40,30),"Metal")
+-- Cockpit area (cut out)
+P(m,"CockpitFloor",Vector3.new(3,0.3,3),sp+Vector3.new(0,2,1),Color3.fromRGB(40,40,45),"Metal")
+-- Roll cage
+P(m,"CageTop",Vector3.new(3.5,0.2,3),sp+Vector3.new(0,3.5,1),Color3.fromRGB(50,50,55),"Metal")
+P(m,"CageFront",Vector3.new(0.15,1.5,0.15),sp+Vector3.new(-1.5,2.8,2.5),Color3.fromRGB(50,50,55),"Metal")
+P(m,"CageRear",Vector3.new(0.15,1.5,0.15),sp+Vector3.new(1.5,2.8,-0.5),Color3.fromRGB(50,50,55),"Metal")
+P(m,"CageSideL",Vector3.new(0.15,1.5,0.15),sp+Vector3.new(-1.5,2.8,-0.5),Color3.fromRGB(50,50,55),"Metal")
+P(m,"CageSideR",Vector3.new(0.15,1.5,0.15),sp+Vector3.new(1.5,2.8,2.5),Color3.fromRGB(50,50,55),"Metal")
+-- Hood (front)
+P(m,"Hood",Vector3.new(6.5,0.5,4),sp+Vector3.new(0,2,5),Color3.fromRGB(215,38,28),"Metal")
+-- Front splitter
+P(m,"Splitter",Vector3.new(7.5,0.2,1),sp+Vector3.new(0,0.5,7.2),Color3.fromRGB(30,30,35),"Metal")
+-- Rear spoiler
+P(m,"SpoilerWing",Vector3.new(7,0.2,1.5),sp+Vector3.new(0,4,-6),Color3.fromRGB(30,30,35),"Metal")
+P(m,"SpoilerStandL",Vector3.new(0.2,2,0.2),sp+Vector3.new(-2.5,3,-6),Color3.fromRGB(30,30,35),"Metal")
+P(m,"SpoilerStandR",Vector3.new(0.2,2,0.2),sp+Vector3.new(2.5,3,-6),Color3.fromRGB(30,30,35),"Metal")
+-- Wheels (wide racing tires)
+Cyl(m,"WheelFL",Vector3.new(1.2,2.8,2.8),sp+Vector3.new(-3.8,1.4,4),Color3.fromRGB(25,25,28),"Metal")
+Cyl(m,"WheelFR",Vector3.new(1.2,2.8,2.8),sp+Vector3.new(3.8,1.4,4),Color3.fromRGB(25,25,28),"Metal")
+Cyl(m,"WheelRL",Vector3.new(1.4,3,3),sp+Vector3.new(-3.8,1.5,-4),Color3.fromRGB(25,25,28),"Metal")
+Cyl(m,"WheelRR",Vector3.new(1.4,3,3),sp+Vector3.new(3.8,1.5,-4),Color3.fromRGB(25,25,28),"Metal")
+-- Side air intakes
+P(m,"IntakeL",Vector3.new(0.2,0.8,2),sp+Vector3.new(-3.5,1.8,0),Color3.fromRGB(30,30,35),"Metal")
+P(m,"IntakeR",Vector3.new(0.2,0.8,2),sp+Vector3.new(3.5,1.8,0),Color3.fromRGB(30,30,35),"Metal")
+-- Number decal (white circle with neon)
+Cyl(m,"NumberBgL",Vector3.new(0.05,1.8,1.8),sp+Vector3.new(-3.55,1.8,2),Color3.fromRGB(240,240,240),"Concrete")
+Cyl(m,"NumberBgR",Vector3.new(0.05,1.8,1.8),sp+Vector3.new(3.55,1.8,2),Color3.fromRGB(240,240,240),"Concrete")
+-- Headlights
+P(m,"HLLeft",Vector3.new(1.2,0.4,0.2),sp+Vector3.new(-2.2,1.8,7.1),Color3.fromRGB(255,255,200),"Neon")
+P(m,"HLRight",Vector3.new(1.2,0.4,0.2),sp+Vector3.new(2.2,1.8,7.1),Color3.fromRGB(255,255,200),"Neon")
+-- Tail lights
+P(m,"TLLeft",Vector3.new(1.5,0.3,0.2),sp+Vector3.new(-2.5,1.5,-7.1),Color3.fromRGB(255,0,0),"Neon")
+P(m,"TLRight",Vector3.new(1.5,0.3,0.2),sp+Vector3.new(2.5,1.5,-7.1),Color3.fromRGB(255,0,0),"Neon")
+-- Exhaust pipes
+Cyl(m,"ExhL",Vector3.new(1,0.4,0.4),sp+Vector3.new(-1.5,0.8,-7),Color3.fromRGB(80,80,85),"Metal")
+Cyl(m,"ExhR",Vector3.new(1,0.4,0.4),sp+Vector3.new(1.5,0.8,-7),Color3.fromRGB(80,80,85),"Metal")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a racing script', 'Build a racetrack', 'Make a pit stop area'],
+      partCount: 27,
+    }
+  }
+
   // ── ATMOSPHERE / SKY / LIGHTING ──────────────────────────────────────
   if (/\b(fog|foggy|atmosphere|sky|lighting|mood|cinematic|aesthetic|sunset|sunrise|golden hour|night sky|storm|moody|dreamy|ethereal|horror light|dark sky|neon city|cyberpunk|anime light)\b/.test(m)) {
     // Determine which preset
