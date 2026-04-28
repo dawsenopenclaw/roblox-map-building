@@ -15,6 +15,9 @@ import {
   PaymentActionRequiredEmail,
   DripDay3Email,
   DripDay7Email,
+  CheckoutAbandonedEmail,
+  DunningDay3Email,
+  DunningDay7Email,
 } from './email-templates'
 
 // ─── Email configuration guard ────────────────────────────────────────────────
@@ -372,6 +375,71 @@ export async function sendPaymentActionRequiredEmail({
       to: email,
       subject: `Action required: complete your ${formatted} ForjeGames payment`,
       react: PaymentActionRequiredEmail({ name, amountDue: formatted, paymentUrl }),
+    })
+  )
+}
+
+// ─── Checkout Abandoned ───────────────────────────────────────────────────────
+
+export async function sendCheckoutAbandonedEmail({
+  email,
+  name,
+  tier,
+  features,
+}: {
+  email: string
+  name: string
+  tier: string
+  features: string[]
+}): Promise<EmailResult> {
+  return guardedSend(() =>
+    getResend().emails.send({
+      from: FROM,
+      to: email,
+      subject: `You were so close — finish setting up ForjeGames`,
+      react: CheckoutAbandonedEmail({ name, tier, features }),
+    })
+  )
+}
+
+// ─── Dunning Day 3 (subscription pausing soon) ──────────────────────────────
+
+export async function sendDunningDay3Email({
+  email,
+  name,
+  tier,
+}: {
+  email: string
+  name: string
+  tier: string
+}): Promise<EmailResult> {
+  return guardedSend(() =>
+    getResend().emails.send({
+      from: FROM,
+      to: email,
+      subject: `Heads up — your ForjeGames subscription is pausing soon`,
+      react: DunningDay3Email({ name, tier }),
+    })
+  )
+}
+
+// ─── Dunning Day 7 (last chance) ─────────────────────────────────────────────
+
+export async function sendDunningDay7Email({
+  email,
+  name,
+  tier,
+}: {
+  email: string
+  name: string
+  tier: string
+}): Promise<EmailResult> {
+  return guardedSend(() =>
+    getResend().emails.send({
+      from: FROM,
+      to: email,
+      subject: `Last chance — your ForjeGames plan will be canceled tomorrow`,
+      react: DunningDay7Email({ name, tier }),
     })
   )
 }

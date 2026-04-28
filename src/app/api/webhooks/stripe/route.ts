@@ -5,7 +5,7 @@ import { getStripe, constructWebhookEvent } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { earnTokens, spendTokens } from '@/lib/tokens-server'
 import { processDonation } from '@/lib/charity'
-import { getTierTokenAllowance, getTokenPackBySlug, type SubscriptionTier, SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers'
+import { getTierTokenAllowance, getTokenPackBySlug, type SubscriptionTier, SUBSCRIPTION_TIERS, normalizeTier } from '@/lib/subscription-tiers'
 import type Stripe from 'stripe'
 import { PLATFORM_FEE_PERCENT } from '@/lib/constants'
 
@@ -15,7 +15,9 @@ import {
   sendDunningEmail,
   sendTrialEndingEmail,
   sendPaymentActionRequiredEmail,
+  sendCheckoutAbandonedEmail,
 } from '@/lib/email'
+import { SUBSCRIPTION_TIERS, normalizeTier } from '@/lib/subscription-tiers'
 import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
 import { Prisma } from '@prisma/client'
 import { getPostHogClient } from '@/lib/posthog'
@@ -754,6 +756,34 @@ export async function POST(req: NextRequest) {
             payoutsEnabled: account.payouts_enabled,
             detailsSubmitted: account.details_submitted,
           },
+        })
+        break
+      }
+
+      case 'checkout.session.expired': {
+        const expiredSession = event.data.object as Stripe.Checkout.Session
+        // Only recover subscription checkouts — token pack abandonments aren't worth emailing about
+        if (expiredSession.mode !== 'subscription') break
+        const abandonedUserId = expiredSession.metadata?.userId
+        if (!abandonedUserId) break
+
+        const abandonedUser = await db.user.findUnique({
+          where: { id: abandonedUserId },
+          select: { email: true, displayName: true, marketingEmailsOptOut: true },
+        })
+        if (!abandonedUser || abandonedUser.marketingEmailsOptOut) break
+
+        // Resolve tier from metadata and look up features
+        const abandonedTierKey = normalizeTier(expiredSession.metadata?.tier ?? 'FREE')
+        const tierInfo = SUBSCRIPTION_TIERS[abandonedTierKey]
+
+        sendCheckoutAbandonedEmail({
+          email: abandonedUser.email,
+          name: abandonedUser.displayName ?? 'Creator',
+          tier: tierInfo.name,
+          features: [...tierInfo.features],
+        }).catch((err) => {
+          console.warn('[stripe-webhook] Failed to send checkout-abandoned email:', err)
         })
         break
       }
