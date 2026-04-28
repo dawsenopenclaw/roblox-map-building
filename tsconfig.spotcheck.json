@@ -55,7 +55,9 @@
     "src/app/api/ai/report/route.ts",
     "src/app/api/ai/suggest/route.ts",
     "src/lib/ai/build-quality-gate.ts",
-    "src/lib/ai/instant-cache.ts"
+    "src/lib/ai/instant-cache.ts",
+    "src/lib/ai/build-planner.ts",
+    "src/lib/ai/build-executor.ts"
   ],
   "exclude": ["node_modules", ".next"]
 }

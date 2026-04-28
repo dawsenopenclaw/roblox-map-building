@@ -465,7 +465,31 @@ async function generateLuauForTask(task: BuildTask): Promise<string> {
   }
 
   // Fall through to AI generation — Gemini primary, Groq fallback
-  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] +
+  // ── Chunked build support: if the task has a parentName, inject instructions
+  // to parent all parts under a shared root Model so chunks assemble correctly.
+  let chunkParentInstructions = ''
+  if (params) {
+    const parentName = params['parentName'] as string | undefined
+    const chunkIndex = params['chunkIndex'] as number | undefined
+    if (parentName) {
+      chunkParentInstructions = `
+
+CHUNKED BUILD — PARENT MODEL INSTRUCTIONS:
+This task is chunk ${chunkIndex ?? 0} of a larger build called "${parentName}".
+- At the TOP of your code, find or create a root Model named "${parentName}" in workspace:
+    local rootModel = workspace:FindFirstChild("${parentName}")
+    if not rootModel then
+        rootModel = Instance.new("Model")
+        rootModel.Name = "${parentName}"
+        rootModel.Parent = workspace
+    end
+- Create a sub-Model for THIS chunk (e.g., "${parentName}_chunk${chunkIndex ?? 0}") and parent it to rootModel.
+- ALL parts you create in this task go inside that sub-Model, NOT directly in workspace.
+- This ensures all chunks of the build end up organized under one parent Model in Studio.`
+    }
+  }
+
+  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + chunkParentInstructions +
     `\n\nCRITICAL RULES:
 - Output ONLY valid Luau code. No JavaScript, no Python, no TypeScript.
 - Use game:GetService("ServiceName") not game.ServiceName

@@ -292,6 +292,8 @@ TASK DECOMPOSITION RULES:
 9. Never create circular dependencies
 10. For building tasks, set templateParams to include: style, withInterior (true for any building players enter), withWallDetail (always true), roomsPerFloor (2-4 for houses, 1 for shops, 0 for simple structures)
 11. ALWAYS create at least one separate "prop" task per building for its interior furniture (tables, chairs, shelves, beds, etc.) — do NOT try to cram furniture into the building task
+12. When a complex structure is split into multiple sub-tasks (chunks), EVERY chunk task MUST include templateParams.parentName (same string for all chunks, e.g., "Castle") and templateParams.chunkIndex (0, 1, 2, ...) so all parts assemble under one parent Model in Studio
+13. Never generate a single building/prop task with more than 80 parts — split into multiple chunk tasks instead
 
 GAME TYPE BLUEPRINTS:
 
@@ -384,9 +386,18 @@ function generatePlanId(): string {
  * @returns           Fully validated BuildPlan with wave-grouped tasks
  */
 export async function generateBuildPlan(userPrompt: string): Promise<BuildPlan> {
+  // ── Complexity detection — drives chunking instructions ───────────────────
+  const complexity = detectComplexity(userPrompt)
+  const chunkingHint = getChunkingInstructions(complexity, userPrompt)
+  const systemPrompt = chunkingHint
+    ? PLANNER_SYSTEM_PROMPT + '\n\n' + chunkingHint
+    : PLANNER_SYSTEM_PROMPT
+
+  console.log(`[build-planner] Complexity: ${complexity} for prompt: "${userPrompt.slice(0, 80)}..."`)
+
   // Use Gemini (primary) → Groq (fallback). jsonMode asks Gemini for raw JSON.
   const rawText = await callAI(
-    PLANNER_SYSTEM_PROMPT,
+    systemPrompt,
     [
       {
         role: 'user',
@@ -431,11 +442,12 @@ export async function generateBuildPlan(userPrompt: string): Promise<BuildPlan> 
   const totalWaves = Math.max(...tasksWithCorrectWaves.map((t) => t.wave)) + 1
 
   // Apply per-type defaults for tokens/seconds if Claude's estimates are off
-  const tasks: BuildTask[] = tasksWithCorrectWaves.map((t) => ({
+  // Cast is safe: Zod validation above guarantees all required fields exist.
+  const tasks = tasksWithCorrectWaves.map((t) => ({
     ...t,
     estimatedTokens: Math.max(t.estimatedTokens, TOKEN_COST_BY_TYPE[t.type]),
     estimatedSeconds: Math.max(t.estimatedSeconds, SECONDS_BY_TYPE[t.type]),
-  }))
+  })) as BuildTask[]
 
   // Compute totals — waves run in parallel, so time = sum of slowest task per wave
   const waveMaxSeconds = new Map<number, number>()
