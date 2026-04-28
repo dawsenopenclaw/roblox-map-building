@@ -12,7 +12,7 @@
  * All heavy lifting stays in hooks — this file is pure layout.
  */
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { useSWRConfig } from 'swr'
 import { useUser } from '@clerk/nextjs'
 import { ChatPanel } from '@/components/editor/ChatPanel'
@@ -35,6 +35,7 @@ import { UpgradeNudge } from '@/components/editor/UpgradeNudge'
 import ConsolePanel from '@/components/editor/ConsolePanel'
 import { SystemComposer } from '@/components/editor/SystemComposer'
 import { captureClientEvent } from '@/lib/analytics-client'
+import { Plug, X, Download, KeyRound } from 'lucide-react'
 
 // ─── Right Sidebar — AI Context Panel ────────────────────────────────────
 
@@ -241,6 +242,169 @@ function StatBadge({ label, value }: { label: string; value: number }) {
         {value.toLocaleString()}
       </div>
       <div style={{ fontSize: 10, color: '#52525B', marginTop: 2 }}>{label}</div>
+    </div>
+  )
+}
+
+// ─── Studio Not Connected Banner ─────────────────────────────────────────
+
+const BANNER_DISMISS_KEY = 'forje_studio_banner_dismissed'
+const BANNER_DISMISS_DURATION = 60 * 60 * 1000 // 1 hour
+
+function StudioBanner({ isConnected }: { isConnected: boolean }) {
+  const [dismissed, setDismissed] = useState(true) // start hidden to avoid flash
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(BANNER_DISMISS_KEY)
+      if (raw) {
+        const ts = parseInt(raw, 10)
+        if (Date.now() - ts < BANNER_DISMISS_DURATION) {
+          setDismissed(true)
+          return
+        }
+      }
+      setDismissed(false)
+    } catch {
+      setDismissed(false)
+    }
+  }, [])
+
+  // Re-show if connected state changes to disconnected after an hour
+  useEffect(() => {
+    if (isConnected) return
+    try {
+      const raw = localStorage.getItem(BANNER_DISMISS_KEY)
+      if (raw && Date.now() - parseInt(raw, 10) >= BANNER_DISMISS_DURATION) {
+        setDismissed(false)
+      }
+    } catch { /* ignore */ }
+  }, [isConnected])
+
+  if (isConnected || dismissed) return null
+
+  const handleDismiss = () => {
+    setDismissed(true)
+    try { localStorage.setItem(BANNER_DISMISS_KEY, String(Date.now())) } catch { /* ignore */ }
+  }
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        zIndex: 10,
+        margin: '0 12px',
+        marginTop: 8,
+        padding: '10px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        flexWrap: 'wrap',
+        background: 'linear-gradient(135deg, rgba(15,18,30,0.85) 0%, rgba(20,24,40,0.75) 100%)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid rgba(212,175,55,0.20)',
+        borderRadius: 12,
+        boxShadow: '0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+        animation: 'studioBannerSlideIn 0.3s ease-out',
+      }}
+    >
+      {/* Icon */}
+      <div style={{
+        width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+        background: 'rgba(212,175,55,0.10)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Plug size={16} style={{ color: '#D4AF37' }} />
+      </div>
+
+      {/* Text */}
+      <span style={{
+        flex: '1 1 200px',
+        fontSize: 13,
+        color: '#D4D4D8',
+        lineHeight: 1.4,
+      }}>
+        <strong style={{ color: '#FAFAFA' }}>Connect Roblox Studio</strong> to see your builds appear
+      </span>
+
+      {/* Action buttons */}
+      <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+        <a
+          href="/download"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '6px 14px', borderRadius: 8,
+            fontSize: 12, fontWeight: 600,
+            color: '#D4AF37',
+            background: 'rgba(212,175,55,0.10)',
+            border: '1px solid rgba(212,175,55,0.25)',
+            textDecoration: 'none',
+            transition: 'all 0.15s',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(212,175,55,0.18)'
+            e.currentTarget.style.borderColor = 'rgba(212,175,55,0.40)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(212,175,55,0.10)'
+            e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)'
+          }}
+        >
+          <Download size={13} />
+          Download Plugin
+        </a>
+        <a
+          href="/settings?tab=studio"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '6px 14px', borderRadius: 8,
+            fontSize: 12, fontWeight: 600,
+            color: '#A1A1AA',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            textDecoration: 'none',
+            transition: 'all 0.15s',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.10)'
+            e.currentTarget.style.color = '#D4D4D8'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+            e.currentTarget.style.color = '#A1A1AA'
+          }}
+        >
+          <KeyRound size={13} />
+          Enter Code
+        </a>
+      </div>
+
+      {/* Dismiss */}
+      <button
+        onClick={handleDismiss}
+        aria-label="Dismiss"
+        style={{
+          width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+          border: 'none', background: 'transparent',
+          color: '#52525B', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'color 0.15s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = '#A1A1AA'}
+        onMouseLeave={e => e.currentTarget.style.color = '#52525B'}
+      >
+        <X size={14} />
+      </button>
+
+      <style>{`
+        @keyframes studioBannerSlideIn {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }
@@ -598,6 +762,9 @@ function EditorInner() {
         selectedModel={chat.selectedModel}
         onModelChange={chat.setSelectedModel}
       />
+
+      {/* Studio not connected banner */}
+      <StudioBanner isConnected={studio.isConnected} />
 
       {/* Main content area with optional sidebar */}
       <div style={{

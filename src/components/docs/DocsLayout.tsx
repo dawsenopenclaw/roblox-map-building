@@ -70,6 +70,7 @@ export const DOCS_NAV: DocNavSection[] = [
     label: 'Integrations',
     items: [
       { href: '/docs/studio-plugin', label: 'Studio Plugin', icon: PackageOpen },
+      { href: '/docs/mcp', label: 'MCP Integration', icon: Terminal },
       // Marketplace hidden — re-releasing later
       // { href: '/docs/marketplace', label: 'Marketplace', icon: ShoppingBag },
     ],

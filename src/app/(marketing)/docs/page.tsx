@@ -10,6 +10,7 @@ import {
   CreditCard,
   Code,
   Wrench,
+  Terminal,
 } from 'lucide-react'
 import { createMetadata } from '@/lib/metadata'
 import DocsLayout from '@/components/docs/DocsLayout'
@@ -75,6 +76,14 @@ const FEATURED: FeatureCard[] = [
     title: 'Image to Map',
     description:
       'Upload a sketch or screenshot — Claude Vision and Depth Pro turn it into a playable 3D map.',
+    badge: 'New',
+  },
+  {
+    href: '/docs/mcp',
+    icon: Terminal,
+    title: 'MCP Integration',
+    description:
+      'Connect ForjeGames to Claude Code, Cursor, Windsurf, or any MCP client and build Roblox games without leaving your editor.',
     badge: 'New',
   },
   {
