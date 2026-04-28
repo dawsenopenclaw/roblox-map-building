@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,10 +90,19 @@ function IconDiscord({ className = 'w-3.5 h-3.5' }: { className?: string }) {
   )
 }
 
+function IconShare({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+    </svg>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReferralsClient() {
   const { isLoaded } = useUser()
+  const isMobile = useIsMobile()
 
   const [stats, setStats]             = useState<ReferralStats | null>(null)
   const [referrals, setReferrals]     = useState<ReferralRow[]>([])
@@ -100,6 +110,12 @@ export default function ReferralsClient() {
   const [linkCopied, setLinkCopied]       = useState(false)
   const [codeCopied, setCodeCopied]       = useState(false)
   const [discordCopied, setDiscordCopied] = useState(false)
+  const [canNativeShare, setCanNativeShare] = useState(false)
+
+  // Check for native share API (iOS Safari, Android Chrome)
+  useEffect(() => {
+    setCanNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function')
+  }, [])
 
   // Referral code is fetched from the server — never derived client-side.
   // null means the DB is unavailable; undefined means still loading.
@@ -132,33 +148,47 @@ export default function ReferralsClient() {
       .finally(() => setDataLoading(false))
   }, [isLoaded])
 
-  const copyLink = async () => {
+  const copyLink = useCallback(async () => {
     if (!referralLink) return
     try {
       await navigator.clipboard.writeText(referralLink)
       setLinkCopied(true)
       setTimeout(() => setLinkCopied(false), 2500)
     } catch { /* clipboard unavailable */ }
-  }
+  }, [referralLink])
 
-  const copyCode = async () => {
+  const copyCode = useCallback(async () => {
     if (!referralCode) return
     try {
       await navigator.clipboard.writeText(referralCode)
       setCodeCopied(true)
       setTimeout(() => setCodeCopied(false), 2500)
     } catch { /* clipboard unavailable */ }
-  }
+  }, [referralCode])
 
-  const shareTwitter = () => {
+  const nativeShare = useCallback(async () => {
+    if (!referralLink) return
+    try {
+      await navigator.share({
+        title: 'ForjeGames — Build Roblox Games with AI',
+        text: 'I\'ve been building Roblox games with AI on ForjeGames — type what you want and it builds it in Studio. Try it free with my link and we BOTH get 500 bonus tokens!',
+        url: referralLink,
+      })
+    } catch {
+      // User cancelled or share failed — fall back to copy
+      void copyLink()
+    }
+  }, [referralLink, copyLink])
+
+  const shareTwitter = useCallback(() => {
     if (!referralLink) return
     const text = encodeURIComponent(
       `I've been building Roblox games with AI on @ForjeGames — type what you want and it builds it in Studio. Try it free: ${referralLink}`
     )
     window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener,noreferrer')
-  }
+  }, [referralLink])
 
-  const shareDiscord = async () => {
+  const shareDiscord = useCallback(async () => {
     if (!referralLink) return
     const msg =
       `I've been building Roblox games with AI on ForjeGames — type what you want and it builds it in Studio.\n` +
@@ -168,76 +198,79 @@ export default function ReferralsClient() {
       setDiscordCopied(true)
       setTimeout(() => setDiscordCopied(false), 2500)
     } catch { /* clipboard unavailable */ }
-  }
+  }, [referralLink])
 
   const STAT_CARDS = [
     {
       label: 'Invites Sent',
       value: dataLoading ? '—' : String(stats?.invitesSent ?? 0),
       sub: 'Links shared',
-      icon: <IconLink className="w-3.5 h-3.5" />,
+      icon: <IconLink className="w-4 h-4" />,
       color: '#D4AF37',
     },
     {
       label: 'Signups',
       value: dataLoading ? '—' : String(stats?.signups ?? 0),
       sub: 'Friends joined',
-      icon: <IconUsers className="w-3.5 h-3.5" />,
+      icon: <IconUsers className="w-4 h-4" />,
       color: '#60a5fa',
     },
     {
       label: 'Tokens Earned',
       value: dataLoading ? '—' : (stats?.tokensEarned ?? 0).toLocaleString(),
       sub: '500 tokens / signup',
-      icon: <IconGift className="w-3.5 h-3.5" />,
+      icon: <IconGift className="w-4 h-4" />,
       color: '#34d399',
     },
   ]
 
+  // Mobile touch target: min 44px height
+  const btnClass = 'min-h-[44px]'
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-[env(safe-area-inset-bottom,16px)]">
 
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-white">Referrals</h1>
-        <p className="text-gray-400 mt-1 text-sm">
+        <p className="text-gray-400 mt-1" style={{ fontSize: isMobile ? 14 : 14 }}>
           Share your link to earn tokens when friends sign up.
         </p>
       </div>
 
-      {/* Stats */}
+      {/* Stats — stacked on mobile */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         {STAT_CARDS.map((stat) => (
-          <div key={stat.label} className="bg-[#0d0d14] border border-white/10 rounded-xl p-5 hover:border-white/20 transition-colors duration-200">
-            <div className="flex items-center gap-2 mb-3">
+          <div key={stat.label} className="bg-[#0d0d14] border border-white/10 rounded-xl p-4 sm:p-5 hover:border-white/20 transition-colors duration-200">
+            <div className="flex items-center gap-2 mb-2 sm:mb-3">
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ background: `${stat.color}15`, color: stat.color, border: `1px solid ${stat.color}25` }}
               >
                 {stat.icon}
               </div>
-              <p className="text-gray-400 text-xs uppercase tracking-wide">{stat.label}</p>
+              <p className="text-gray-400 uppercase tracking-wide" style={{ fontSize: 12 }}>{stat.label}</p>
             </div>
             <p className="text-white text-2xl font-bold tabular-nums">{stat.value}</p>
-            <p className="text-gray-500 text-xs mt-1">{stat.sub}</p>
+            <p className="text-gray-500 mt-1" style={{ fontSize: 13 }}>{stat.sub}</p>
           </div>
         ))}
       </div>
 
       {/* Reward callout */}
-      <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4 mb-4 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-green-500/15 border border-green-500/25 flex items-center justify-center flex-shrink-0">
+      <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4 mb-4 flex items-start sm:items-center gap-3">
+        <div className="w-9 h-9 rounded-lg bg-green-500/15 border border-green-500/25 flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
           <IconGift className="w-4 h-4 text-green-400" />
         </div>
         <div>
-          <p className="text-green-400 text-sm font-semibold">Both you and your friend get 500 bonus tokens</p>
-          <p className="text-gray-400 text-xs mt-0.5">Credits are awarded instantly when your friend signs up using your referral link or code.</p>
+          <p className="text-green-400 font-semibold" style={{ fontSize: 14 }}>Both you and your friend get 500 bonus tokens</p>
+          <p className="text-gray-400 mt-0.5" style={{ fontSize: 13 }}>Credits are awarded instantly when your friend signs up using your referral link or code.</p>
         </div>
       </div>
 
       {/* How it works */}
-      <div className="bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl p-5 mb-6">
-        <p className="text-[#D4AF37] font-semibold text-sm mb-4 flex items-center gap-2">
+      <div className="bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl p-4 sm:p-5 mb-6">
+        <p className="text-[#D4AF37] font-semibold mb-3 sm:mb-4 flex items-center gap-2" style={{ fontSize: 14 }}>
           <IconZap />
           How it works
         </p>
@@ -248,12 +281,12 @@ export default function ReferralsClient() {
             { step: '3', title: 'Both get 500 tokens', desc: 'You and your friend each receive 500 tokens instantly.' },
           ].map(({ step, title, desc }) => (
             <div key={step} className="flex gap-3">
-              <div className="w-6 h-6 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-[#D4AF37] text-xs font-bold">{step}</span>
+              <div className="w-7 h-7 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-[#D4AF37] font-bold" style={{ fontSize: 12 }}>{step}</span>
               </div>
               <div>
-                <p className="text-white text-sm font-medium">{title}</p>
-                <p className="text-gray-400 text-xs mt-0.5">{desc}</p>
+                <p className="text-white font-medium" style={{ fontSize: 14 }}>{title}</p>
+                <p className="text-gray-400 mt-0.5" style={{ fontSize: 13 }}>{desc}</p>
               </div>
             </div>
           ))}
@@ -261,24 +294,43 @@ export default function ReferralsClient() {
       </div>
 
       {/* Share section */}
-      <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-6 mb-6">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Your Referral Link</p>
+      <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-4 sm:p-6 mb-6">
+        <p className="font-semibold text-gray-400 uppercase tracking-wider mb-4 sm:mb-5" style={{ fontSize: 12 }}>Your Referral Link</p>
+
+        {/* Native share button — prominent on mobile */}
+        {canNativeShare && (
+          <button
+            onClick={() => void nativeShare()}
+            disabled={!referralLink}
+            className={`${btnClass} w-full flex items-center justify-center gap-2 font-bold text-black rounded-xl mb-4 transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed`}
+            style={{
+              fontSize: 15,
+              background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
+              boxShadow: '0 0 20px rgba(212,175,55,0.25)',
+              padding: '12px 16px',
+            }}
+          >
+            <IconShare className="w-5 h-5" />
+            Share Your Link
+          </button>
+        )}
 
         {/* Shareable link */}
         <div className="mb-4">
-          <label className="block text-xs text-gray-500 mb-1.5">Shareable Link</label>
+          <label className="block text-gray-500 mb-1.5" style={{ fontSize: 12 }}>Shareable Link</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-gray-300 text-sm font-mono truncate">
+            <div className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-3 sm:px-4 py-3 text-gray-300 font-mono truncate" style={{ fontSize: 13 }}>
               {referralLinkDisplay}
             </div>
             <button
               onClick={() => void copyLink()}
               disabled={!referralLink}
-              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-[#D4AF37]/40 text-gray-300 hover:text-[#D4AF37] px-3 py-3 rounded-xl transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              className={`${btnClass} inline-flex items-center gap-1.5 border border-white/10 hover:border-[#D4AF37]/40 text-gray-300 hover:text-[#D4AF37] px-4 rounded-xl transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed`}
+              style={{ fontSize: 14 }}
             >
               {linkCopied
-                ? <IconCheck className="w-3.5 h-3.5 text-green-400" />
-                : <IconCopy className="w-3.5 h-3.5" />}
+                ? <IconCheck className="w-4 h-4 text-green-400" />
+                : <IconCopy className="w-4 h-4" />}
               <span className="hidden sm:inline">{linkCopied ? 'Copied!' : 'Copy'}</span>
             </button>
           </div>
@@ -286,30 +338,32 @@ export default function ReferralsClient() {
 
         {/* Referral code */}
         <div className="mb-5">
-          <label className="block text-xs text-gray-500 mb-1.5">Referral Code</label>
+          <label className="block text-gray-500 mb-1.5" style={{ fontSize: 12 }}>Referral Code</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 font-mono text-[#D4AF37] text-sm font-bold tracking-widest">
+            <div className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-3 sm:px-4 py-3 font-mono text-[#D4AF37] font-bold tracking-widest" style={{ fontSize: 14 }}>
               {referralCodeDisplay}
             </div>
             <button
               onClick={() => void copyCode()}
               disabled={!referralCode}
-              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-[#D4AF37]/40 text-gray-300 hover:text-[#D4AF37] px-3 py-3 rounded-xl transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              className={`${btnClass} inline-flex items-center gap-1.5 border border-white/10 hover:border-[#D4AF37]/40 text-gray-300 hover:text-[#D4AF37] px-4 rounded-xl transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed`}
+              style={{ fontSize: 14 }}
             >
               {codeCopied
-                ? <IconCheck className="w-3.5 h-3.5 text-green-400" />
-                : <IconCopy className="w-3.5 h-3.5" />}
+                ? <IconCheck className="w-4 h-4 text-green-400" />
+                : <IconCopy className="w-4 h-4" />}
               <span className="hidden sm:inline">{codeCopied ? 'Copied!' : 'Copy'}</span>
             </button>
           </div>
         </div>
 
-        {/* Share buttons */}
-        <div className="flex flex-wrap gap-2">
+        {/* Share buttons — full width on mobile, flex row on desktop */}
+        <div className={isMobile ? 'flex flex-col gap-2' : 'flex flex-wrap gap-2'}>
           <button
             onClick={shareTwitter}
             disabled={!referralLink}
-            className="inline-flex items-center gap-2 text-sm bg-transparent border border-[#1d9bf0]/30 hover:border-[#1d9bf0]/70 text-[#1d9bf0] hover:bg-[#1d9bf0]/10 px-4 py-2.5 rounded-xl transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            className={`${btnClass} inline-flex items-center justify-center gap-2 bg-transparent border border-[#1d9bf0]/30 hover:border-[#1d9bf0]/70 text-[#1d9bf0] hover:bg-[#1d9bf0]/10 px-4 rounded-xl transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed`}
+            style={{ fontSize: 14 }}
           >
             <IconX />
             Share on X
@@ -317,62 +371,94 @@ export default function ReferralsClient() {
           <button
             onClick={() => void shareDiscord()}
             disabled={!referralLink}
-            className="inline-flex items-center gap-2 text-sm bg-transparent border border-[#5865f2]/30 hover:border-[#5865f2]/70 text-[#5865f2] hover:bg-[#5865f2]/10 px-4 py-2.5 rounded-xl transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            className={`${btnClass} inline-flex items-center justify-center gap-2 bg-transparent border border-[#5865f2]/30 hover:border-[#5865f2]/70 text-[#5865f2] hover:bg-[#5865f2]/10 px-4 rounded-xl transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed`}
+            style={{ fontSize: 14 }}
           >
             <IconDiscord />
             Copy for Discord
           </button>
         </div>
         {discordCopied && (
-          <p className="text-green-400 text-xs mt-2.5 flex items-center gap-1.5">
-            <IconCheck className="w-3 h-3" />
+          <p className="text-green-400 mt-2.5 flex items-center gap-1.5" style={{ fontSize: 13 }}>
+            <IconCheck className="w-3.5 h-3.5" />
             Copied! Paste it into Discord.
           </p>
         )}
       </div>
 
-      {/* Referrals table */}
-      <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-6">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Your Referrals</p>
+      {/* Referrals list — card layout on mobile, table on desktop */}
+      <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-4 sm:p-6">
+        <p className="font-semibold text-gray-400 uppercase tracking-wider mb-4 sm:mb-5" style={{ fontSize: 12 }}>Your Referrals</p>
 
         {!dataLoading && referrals.length === 0 ? (
-          <div className="py-10 text-center">
+          <div className="py-8 sm:py-10 text-center">
             <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3">
               <IconUsers className="w-5 h-5 text-gray-600" />
             </div>
-            <p className="text-gray-400 text-sm">No referrals yet.</p>
-            <p className="text-gray-600 text-xs mt-1">Share your link to get started.</p>
+            <p className="text-gray-400" style={{ fontSize: 14 }}>No referrals yet.</p>
+            <p className="text-gray-600 mt-1" style={{ fontSize: 13 }}>Share your link to get started.</p>
+          </div>
+        ) : isMobile ? (
+          /* Mobile: card-based layout — no horizontal scroll */
+          <div className="space-y-3">
+            {referrals.map((row) => (
+              <div key={row.id} className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white font-medium" style={{ fontSize: 14 }}>@{row.user}</span>
+                  <span
+                    className={`font-medium px-2.5 py-1 rounded-full border ${
+                      row.status === 'Signed Up'
+                        ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                        : 'bg-white/5 text-gray-400 border-white/10'
+                    }`}
+                    style={{ fontSize: 12 }}
+                  >
+                    {row.status}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400" style={{ fontSize: 13 }}>{row.joinedAt}</span>
+                  {row.tokensAwarded > 0 ? (
+                    <span className="text-[#D4AF37] font-semibold" style={{ fontSize: 14 }}>+{row.tokensAwarded} tokens</span>
+                  ) : (
+                    <span className="text-gray-500" style={{ fontSize: 14 }}>—</span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
+          /* Desktop: table layout */
           <div className="overflow-x-auto -mx-6 px-6">
-            <table className="w-full text-sm min-w-[360px]">
+            <table className="w-full min-w-[360px]" style={{ fontSize: 14 }}>
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="text-left text-xs text-gray-400 font-medium pb-3">User</th>
-                  <th className="text-left text-xs text-gray-400 font-medium pb-3">Joined</th>
-                  <th className="text-right text-xs text-gray-400 font-medium pb-3">Tokens</th>
-                  <th className="text-right text-xs text-gray-400 font-medium pb-3">Status</th>
+                  <th className="text-left text-gray-400 font-medium pb-3" style={{ fontSize: 12 }}>User</th>
+                  <th className="text-left text-gray-400 font-medium pb-3" style={{ fontSize: 12 }}>Joined</th>
+                  <th className="text-right text-gray-400 font-medium pb-3" style={{ fontSize: 12 }}>Tokens</th>
+                  <th className="text-right text-gray-400 font-medium pb-3" style={{ fontSize: 12 }}>Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {referrals.map((row) => (
                   <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-3 text-white font-medium text-sm">@{row.user}</td>
-                    <td className="py-3 text-gray-400 text-xs whitespace-nowrap">{row.joinedAt}</td>
-                    <td className="py-3 text-right tabular-nums">
+                    <td className="py-3.5 text-white font-medium">@{row.user}</td>
+                    <td className="py-3.5 text-gray-400 whitespace-nowrap" style={{ fontSize: 13 }}>{row.joinedAt}</td>
+                    <td className="py-3.5 text-right tabular-nums">
                       {row.tokensAwarded > 0 ? (
-                        <span className="text-[#D4AF37] font-semibold text-sm">+{row.tokensAwarded}</span>
+                        <span className="text-[#D4AF37] font-semibold">+{row.tokensAwarded}</span>
                       ) : (
-                        <span className="text-gray-500 text-sm">—</span>
+                        <span className="text-gray-500">—</span>
                       )}
                     </td>
-                    <td className="py-3 text-right">
+                    <td className="py-3.5 text-right">
                       <span
-                        className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
+                        className={`font-medium px-2 py-0.5 rounded-full border ${
                           row.status === 'Signed Up'
                             ? 'bg-green-500/10 text-green-400 border-green-500/20'
                             : 'bg-white/5 text-gray-400 border-white/10'
                         }`}
+                        style={{ fontSize: 12 }}
                       >
                         {row.status}
                       </span>
