@@ -243,17 +243,9 @@ interface PartState {
 /** Match:  local varName = Instance.new("ClassName") */
 const RE_INSTANCE_NEW = /local\s+(\w+)\s*=\s*Instance\.new\(\s*["'](\w+)["']\s*\)/
 
-/** Match the P() helper used by the CODE_GENERATION_PROMPT template:
- *    P("name", CFrame.new(sp+Vector3.new(x,y,z)), Vector3.new(sx,sy,sz), Enum.Material.X, Color3.fromRGB(r,g,b))
- *    P("name", CFrame.new(sp+Vector3.new(x,y,z)), Vector3.new(sx,sy,sz), Enum.Material.X, Color3.fromRGB(r,g,b), parent)
- *  Also matches:
- *    local varName = P(...)
- *  This is the most critical pattern to support because the AI's code
- *  generation template instructs it to use P() for every part. Without
- *  this, the translator produces 0 commands for most AI-generated builds
- *  and the plugin falls back to loadstring (which may not work for all users).
- */
-const RE_P_HELPER = /(?:local\s+\w+\s*=\s*)?P\(\s*["']([^"']+)["']\s*,\s*(.*?)\s*,\s*(Vector3\.new\([^)]+\))\s*,\s*(Enum\.Material\.\w+)\s*,\s*(Color3\.(?:fromRGB|new)\([^)]+\))(?:\s*,\s*([^)]+))?\s*\)/
+/** OLD P() helper regex is now defined inline in Pass 1b as RE_P_OLD,
+ *  which supports both Color3 literals AND color variable names (stone, dark, wood).
+ *  See Pass 1b for details. */
 
 /** Match:  varName.PropertyName = <value> */
 const RE_PROPERTY_SET = /(\w+)\.(\w+)\s*=\s*(.+)/
@@ -583,9 +575,10 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
     }
   )
 
-  // Also unroll `for i, v in ipairs({...}) do` patterns with position tables
+  // Also unroll `for i, v in ipairs({...}) do` AND `for i, v in {{...}} do` patterns
+  // The instant templates use BOTH forms — ipairs() and bare table iterators
   processedCode = processedCode.replace(
-    /for\s+(\w+)\s*,\s*(\w+)\s+in\s+ipairs\s*\(\s*\{([^}]+)\}\s*\)\s*do\s*\n([\s\S]*?)end/g,
+    /for\s+(\w+)\s*,\s*(\w+)\s+in\s+(?:ipairs\s*\(\s*)?\{([^}]*(?:\{[^}]*\}[^}]*)*)\}(?:\s*\))?\s*do\s*\n([\s\S]*?)end/g,
     (_match, iVar: string, vVar: string, tableContent: string, body: string) => {
       // Parse table entries: {{x,z}, {x,z}, ...} or {val, val, ...}
       const entries = tableContent.split(/\}\s*,\s*\{/).map(e => e.replace(/[{}]/g, '').trim())
@@ -606,6 +599,31 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
       return expanded.join('\n')
     }
   )
+
+  // ── POST-UNROLL: resolve Luau string concatenation left by loop unrolling ──
+  // After unrolling `for i=1,4 do P("Tower"..i,...) end`, the name becomes
+  // "Tower"..1 which the P() regex can't parse. Resolve these patterns:
+  //   "str"..number  → "str<number>"
+  //   "str".."str2"  → "strstr2"
+  //   "str"..num.."_"..num2  → "str<num>_<num2>"
+  // Repeat until no more concatenations remain (handles chained ..)
+  let concatResolved = true
+  while (concatResolved) {
+    const before = processedCode
+    // "string"..number
+    processedCode = processedCode.replace(/"([^"]*)"\.\.(-?\d+)/g, '"$1$2"')
+    // number.."string"
+    processedCode = processedCode.replace(/(-?\d+)\.\."([^"]*)"/g, '"$1$2"')
+    // "string".."string"
+    processedCode = processedCode.replace(/"([^"]*)"\.\."/g, '"$1')
+    // 'string'..number (single quotes)
+    processedCode = processedCode.replace(/'([^']*)'\.\.(-?\d+)/g, "'$1$2'")
+    // number..'string'
+    processedCode = processedCode.replace(/(-?\d+)\.\.'([^']*)'/g, "'$1$2'")
+    // 'string'..'string'
+    processedCode = processedCode.replace(/'([^']*)'\.\.'/g, "'$1")
+    concatResolved = processedCode !== before
+  }
 
   const lines = processedCode
     .split('\n')
@@ -641,6 +659,10 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
 
   // Pass 1: collect all Instance.new declarations
   for (const line of lines) {
+    // Skip function definition bodies — e.g. `local function P(n,cf,...) local p=Instance.new("Part") ...`
+    // These define helper functions, not actual part creation calls
+    if (/\bfunction\s+\w+\s*\(/.test(line)) continue
+
     const m = RE_INSTANCE_NEW.exec(line)
     if (!m) continue
 
@@ -677,14 +699,37 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
   // Pass 1b: detect P() helper calls from the CODE_GENERATION_PROMPT template.
   // TWO formats supported:
   //   OLD: P("name", CFrame.new(...), Vector3.new(sx,sy,sz), Enum.Material.X, Color3.fromRGB(r,g,b))
+  //        OR with a color variable: P("name", CFrame.new(...), Vector3.new(...), Enum.Material.X, stone)
   //   NEW: P("name", sx,sy,sz, rx,ry,rz, "Material", R,G,B [,transparency])
   // The NEW format is what our current prompt template uses. Without this,
   // the translator produces 0 commands and the plugin falls back to loadstring.
 
+  // Pre-parse color variable declarations so we can resolve variable names
+  // like `stone`, `dark`, `wood` in P() calls. The instant templates define
+  // colors as: `local stone=Color3.fromRGB(140,135,125)`
+  const colorVars = new Map<string, { r: number; g: number; b: number }>()
+  const RE_COLOR_VAR = /local\s+(\w+)\s*=\s*(Color3\.(?:fromRGB|new)\([^)]+\)|BrickColor\.new\([^)]+\))/g
+  for (const line of lines) {
+    let cvMatch
+    RE_COLOR_VAR.lastIndex = 0
+    while ((cvMatch = RE_COLOR_VAR.exec(line)) !== null) {
+      const parsed = parseColor(cvMatch[2])
+      if (parsed) colorVars.set(cvMatch[1], parsed)
+    }
+  }
+
   // NEW format: P("name", sx,sy,sz, rx,ry,rz, "Material", R,G,B [,t])
   const RE_P_SHORT = /(?:local\s+\w+\s*=\s*)?P\(\s*["']([^"']+)["']\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*["'](\w+)["']\s*,\s*(.+?)\s*\)/
 
+  // OLD format with Color3 literal OR variable name as 5th arg:
+  //   P("name", CFrame.new(...), Vector3.new(...), Enum.Material.X, Color3.fromRGB(...) | varName)
+  // OLD format: 5th arg can be Color3.fromRGB(r,g,b), Color3.new(r,g,b), BrickColor.new("name"), or a variable name
+  const RE_P_OLD = /(?:local\s+\w+\s*=\s*)?P\(\s*["']([^"']+)["']\s*,\s*(.*?)\s*,\s*(Vector3\.new\([^)]+\))\s*,\s*(Enum\.Material\.\w+)\s*,\s*(Color3\.(?:fromRGB|new)\([^)]+\)|BrickColor\.new\([^)]+\)|\w+)(?:\s*,\s*([^)]+))?\s*\)/
+
   for (const line of lines) {
+    // Skip function definitions — `local function P(n,cf,sz,...` is NOT a P() call
+    if (/\bfunction\s+P\s*\(/.test(line)) continue
+
     // Try NEW short format first (most common from our prompt template)
     const ms = RE_P_SHORT.exec(line)
     if (ms) {
@@ -721,15 +766,15 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
       continue
     }
 
-    // Try OLD format: P("name", CFrame.new(...), Vector3.new(...), Enum.Material.X, Color3.fromRGB(...))
-    const m = RE_P_HELPER.exec(line)
+    // Try OLD format: P("name", CFrame.new(...), Vector3.new(...), Enum.Material.X, Color3.fromRGB(...)|varName)
+    const m = RE_P_OLD.exec(line)
     if (!m) continue
 
     const name = m[1]
     const cfRaw = m[2]
     const sizeRaw = m[3]
     const matRaw = m[4]
-    const colRaw = m[5]
+    const colRaw = m[5].trim()
 
     let position = { x: 0, y: 0, z: 0 }
     const v3InCf = RE_VECTOR3.exec(cfRaw)
@@ -743,7 +788,13 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
     }
 
     const size = parseVector3(sizeRaw) ?? { x: 4, y: 1.2, z: 2 }
-    const color = parseColor(colRaw) ?? { r: 163, g: 162, b: 165 }
+    // Try parsing as Color3 literal first, then as a variable name
+    let color = parseColor(colRaw)
+    if (!color) {
+      // colRaw might be a variable name like "stone", "dark", "wood"
+      const varName = colRaw.replace(/\s+/g, '')
+      color = colorVars.get(varName) ?? { r: 163, g: 162, b: 165 }
+    }
     const material = parseMaterial(matRaw) ?? 'Concrete'
 
     if (!partStates.has(name)) {
