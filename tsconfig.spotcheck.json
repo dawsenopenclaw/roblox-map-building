@@ -58,7 +58,8 @@
     "src/lib/ai/instant-cache.ts",
     "src/lib/ai/build-planner.ts",
     "src/lib/ai/build-executor.ts",
-    "src/lib/ai/roblox-encyclopedia.ts"
+    "src/lib/ai/roblox-encyclopedia.ts",
+    "src/lib/ai/scripting-bible.ts"
   ],
   "exclude": ["node_modules", ".next"]
 }

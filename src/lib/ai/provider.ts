@@ -19,6 +19,7 @@ import { getNextKey, reportRateLimit } from './key-rotator'
 import { getKnowledgeForGameType, KNOWLEDGE_SCRIPTING, KNOWLEDGE_BALANCE } from './deep-game-knowledge'
 import { getAdvancedBuildingKnowledge, getAdvancedScriptingKnowledge, getExploitPreventionKnowledge, getVisualEffectsKnowledge, getSoundDesignKnowledge } from './advanced-roblox-knowledge'
 import { getEncyclopediaSummary } from './roblox-encyclopedia'
+import { getSystemDesignsForTaskType, getClientServerPatterns, getDataArchitecture } from './scripting-bible'
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system'
@@ -569,8 +570,19 @@ export async function callAI(
     const trimmedKnowledge = knowledge.slice(0, 4000)
     enrichedPrompt += `\n\n--- GAME DESIGN KNOWLEDGE (use this to create UNIQUE, well-designed systems) ---\n${trimmedKnowledge}\n--- END KNOWLEDGE ---`
   } else if (lowerMsg.includes('script') || lowerMsg.includes('luau') || lowerMsg.includes('code')) {
-    // For general scripting requests, inject scripting patterns
+    // For general scripting requests, inject scripting patterns + bible
     enrichedPrompt += `\n\n--- SCRIPTING PATTERNS ---\n${KNOWLEDGE_SCRIPTING.slice(0, 2000)}\n${KNOWLEDGE_BALANCE.slice(0, 1000)}\n--- END PATTERNS ---`
+    // Detect system type from message and inject relevant bible designs
+    const scriptType = ['combat', 'fight', 'attack', 'weapon', 'sword'].some(k => lowerMsg.includes(k)) ? 'combat'
+      : ['shop', 'buy', 'sell', 'store', 'currency', 'coin'].some(k => lowerMsg.includes(k)) ? 'economy'
+      : ['npc', 'enemy', 'boss', 'ai', 'pathfind', 'dialog'].some(k => lowerMsg.includes(k)) ? 'npc'
+      : ['inventory', 'equip', 'item', 'craft', 'recipe'].some(k => lowerMsg.includes(k)) ? 'script'
+      : ['pet', 'hatch', 'egg', 'follow'].some(k => lowerMsg.includes(k)) ? 'pet'
+      : ['ui', 'gui', 'interface', 'hud', 'menu', 'button'].some(k => lowerMsg.includes(k)) ? 'ui'
+      : ['vehicle', 'car', 'mount', 'race', 'drive'].some(k => lowerMsg.includes(k)) ? 'vehicle'
+      : 'script'
+    enrichedPrompt += `\n\n--- SCRIPTING BIBLE: SYSTEM DESIGNS ---\n${getSystemDesignsForTaskType(scriptType).slice(0, 4000)}\n--- END SYSTEM DESIGNS ---`
+    enrichedPrompt += `\n--- SCRIPTING BIBLE: CLIENT-SERVER ---\n${getClientServerPatterns().slice(0, 2000)}\n--- END CLIENT-SERVER ---`
   }
 
   // Inject advanced knowledge for complex/professional builds

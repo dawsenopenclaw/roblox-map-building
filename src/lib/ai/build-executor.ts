@@ -33,6 +33,7 @@ import {
   getMonetizationKnowledge,
 } from './advanced-roblox-knowledge'
 import { getEncyclopediaForTaskType } from './roblox-encyclopedia'
+import { getSystemDesignsForTaskType, getDataArchitecture, getClientServerPatterns, getUIPatterns, getEffectRecipes, getPerformanceBible } from './scripting-bible'
 import {
   economySystem,
   tycoonDropper,
@@ -913,13 +914,28 @@ This task is chunk ${chunkIndex ?? 0} of a larger build called "${parentName}".
     advancedKnowledge = `\n\n--- ADVANCED UI + MONETIZATION ---\n${getMonetizationKnowledge()}\n${getPerformanceKnowledge().slice(0, 1500)}\n--- END ADVANCED UI ---\n`
   }
 
+  // Inject scripting bible knowledge — system designs, data patterns, communication, UI, effects
+  let scriptingBibleChunk = ''
+  if (['script', 'economy', 'npc'].includes(task.type)) {
+    scriptingBibleChunk = `\n\n--- SCRIPTING BIBLE: SYSTEM DESIGNS ---\n${getSystemDesignsForTaskType(task.type)}\n--- END SYSTEM DESIGNS ---\n`
+    scriptingBibleChunk += `\n--- SCRIPTING BIBLE: DATA ARCHITECTURE ---\n${getDataArchitecture().slice(0, 3000)}\n--- END DATA ARCHITECTURE ---\n`
+    scriptingBibleChunk += `\n--- SCRIPTING BIBLE: CLIENT-SERVER PATTERNS ---\n${getClientServerPatterns().slice(0, 3000)}\n--- END CLIENT-SERVER ---\n`
+  } else if (task.type === 'ui') {
+    scriptingBibleChunk = `\n\n--- SCRIPTING BIBLE: UI PATTERNS ---\n${getUIPatterns().slice(0, 6000)}\n--- END UI PATTERNS ---\n`
+    scriptingBibleChunk += `\n--- SCRIPTING BIBLE: SYSTEM DESIGNS ---\n${getSystemDesignsForTaskType('ui').slice(0, 3000)}\n--- END SYSTEM DESIGNS ---\n`
+  } else if (['lighting', 'audio'].includes(task.type)) {
+    scriptingBibleChunk = `\n\n--- SCRIPTING BIBLE: EFFECT RECIPES ---\n${getEffectRecipes().slice(0, 6000)}\n--- END EFFECT RECIPES ---\n`
+  } else if (['building', 'terrain', 'prop'].includes(task.type)) {
+    scriptingBibleChunk = `\n\n--- SCRIPTING BIBLE: PERFORMANCE ---\n${getPerformanceBible().slice(0, 3000)}\n--- END PERFORMANCE ---\n`
+  }
+
   // Extract prompt modifiers from task description for unique, non-generic builds
   const taskModifiers = modifiersToInstructions(extractModifiers(task.prompt))
 
   // Inject relevant encyclopedia sections (materials, colors, recipes, services, luau, etc.)
   const encyclopediaKnowledge = `\n\n--- ROBLOX ENCYCLOPEDIA REFERENCE ---\n${getEncyclopediaForTaskType(task.type).slice(0, 8000)}\n--- END ENCYCLOPEDIA ---\n`
 
-  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + taskModifiers + chunkParentInstructions + buildingKnowledgeChunk + gameDesignKnowledge + advancedKnowledge + encyclopediaKnowledge +
+  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + taskModifiers + chunkParentInstructions + buildingKnowledgeChunk + gameDesignKnowledge + advancedKnowledge + scriptingBibleChunk + encyclopediaKnowledge +
     `\n\nCRITICAL RULES:
 - Output ONLY valid Luau code. No JavaScript, no Python, no TypeScript.
 - Use game:GetService("ServiceName") not game.ServiceName
