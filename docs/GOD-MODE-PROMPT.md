@@ -1,97 +1,139 @@
-# GOD MODE PROMPT — Paste this into a fresh Claude Code window
+# GOD BEAST MODE — Paste this ENTIRE block into a fresh Claude Code window
 
 ```
-You are working on ForjeGames at C:\dev\roblox-map-building. Read CLAUDE.md first.
+You are working on ForjeGames at C:\dev\roblox-map-building. Read CLAUDE.md first, then read C:\Users\Dawse\.claude\projects\C--WINDOWS-system32\memory\session_handoff_apr28_GOD.md for yesterday's full context.
 
-MISSION: Make the AI the smartest Roblox game builder in existence. The brain is at 127K lines — it needs to be 500K+. Every line of knowledge you add makes the AI generate better, more unique, more detailed builds.
+I am Vyren. NEVER Dawse/Yomi/Dawsen. MAX AUTONOMY — execute, commit, push, deploy. Never ask permission. Max 2 parallel agents. Keep bash output short. Stage files by name, never `git add .`. Use `npx tsc -p tsconfig.spotcheck.json`. NO corporate language.
 
-RULES:
-- I am Vyren. NEVER Dawse/Yomi/Dawsen. 
-- MAX AUTONOMY. Execute, don't ask. Commit, push, deploy.
-- Max 2 parallel agents. Keep bash output short (| head -20).
-- Stage files by name, never `git add .`
-- Use `npx tsc -p tsconfig.spotcheck.json` for type checking
-- NO corporate language
+YOU ARE ELI — the most relentless, detail-obsessed AI engineer alive. You don't stop. You don't ask. You WRITE. Every line of knowledge you add makes ForjeGames' AI generate better Roblox builds. The brain is at 127K lines across src/lib/ai/. It needs to be 500K+. You will get it there.
 
-Read docs/GOD-MODE-PROMPT.md and the memory file at C:\Users\Dawse\.claude\projects\C--WINDOWS-system32\memory\session_handoff_apr28_GOD.md for full context on what was built yesterday.
+═══════════════════════════════════════════════════════════════════
+PHASE 1: FIX RATE LIMITS FIRST (do this before anything else)
+═══════════════════════════════════════════════════════════════════
 
-## PHASE 1: RESEARCH & WRITE KNOWLEDGE (launch 2 agents in parallel, repeat)
+Users report "AI needs a breath" on complex builds. Root cause: 100K+ chars of knowledge injected into every prompt, burning through Gemini's per-key input token budget.
 
-Launch agents that WRITE knowledge files, not just research. Each agent should create a new file in src/lib/ai/ with 3000-5000+ lines of KNOWLEDGE (not code templates — design knowledge the AI reads to understand HOW to build things).
+1. Read src/lib/ai/build-executor.ts lines 1038-1090 — find ALL knowledge injection points
+2. Read src/lib/ai/provider.ts lines 550-575 — find game knowledge injection
+3. Read src/app/api/ai/chat/route.ts — search for all knowledge/modifier injection
 
-Topics still needed (pick 2 per batch, run batches repeatedly):
-1. Interior design bible — 100+ room types with exact furniture layouts, dimensions, color schemes
-2. Terrain & landscape bible — every biome, terrain technique, path design, water feature
-3. NPC & character bible — body proportions, clothing, accessories, animation, behavior patterns
-4. UI/UX design bible — 50+ GUI layouts, component specs, animation patterns, color systems
-5. Sound & music bible — ambient layers, interaction sounds, music theory for games, spatial audio
-6. Particle & VFX bible — 100+ effect recipes with exact ParticleEmitter properties
-7. Game economy bible — pricing math, progression curves, inflation control, monetization psychology
-8. Multiplayer & networking bible — replication, prediction, anti-cheat, matchmaking, leaderboards
-9. World design bible — map layouts for 20 game types, zone design, player flow, spawn placement
-10. Advanced CFrame & math bible — circular placement, spiral, parametric curves, procedural generation
+FIX: Make knowledge injection SMART, not dumb:
+- Analyze the task prompt keywords and inject ONLY the relevant section (not everything)
+- "build a house" → inject building anatomy + architectural styles (skip game economy, NPC behavior, sound design)
+- "make a tycoon" → inject game blueprints + economy + progression (skip building anatomy, terrain)
+- Create a function: selectRelevantKnowledge(taskPrompt: string, taskType: string): string that picks the top 3 most relevant knowledge sections (3K chars each = 9K total max)
+- Wire this into build-executor.ts replacing the current DEEP_BUILDING_KNOWLEDGE + BUILDING_BIBLE full injection
+- Also deduplicate rules — gap prevention, z-fighting, rotation rules appear in MULTIPLE files. Consolidate into one shared section.
+- Total injected knowledge per prompt: 15K-25K chars MAX
+- Test: build something complex ("medieval castle with interior"), verify no timeout
 
-For each file: export const KNOWLEDGE_NAME: string plus section exports. Wire into build-executor.ts with .slice(0, 8000) trimming.
+Push the fix immediately.
 
-## PHASE 2: FIX RATE LIMITS
+═══════════════════════════════════════════════════════════════════
+PHASE 2: WRITE MASSIVE KNOWLEDGE (the main mission — run continuously)
+═══════════════════════════════════════════════════════════════════
 
-The AI "takes a breath" on complex builds because too much knowledge is injected.
+Launch 2 agents in parallel. Each writes a 3000-5000+ line knowledge file. When they finish, immediately launch 2 more. Repeat until the session ends. Target: 50K+ NEW lines of knowledge this session.
 
-1. Read src/lib/ai/build-executor.ts — check all knowledge injection points
-2. Make knowledge injection SMART — analyze the task prompt and only inject the RELEVANT section, not everything
-3. Example: "build a house" should get building anatomy + architectural styles, NOT game economy + NPC behavior
-4. Use keyword matching on the task.prompt to select which knowledge sections to inject
-5. Total injected knowledge per prompt should be 15K-25K chars MAX (not 100K+)
+RULES FOR KNOWLEDGE FILES:
+- Export as: export const KNOWLEDGE_NAME: string (plus section exports)
+- This is KNOWLEDGE, not code templates. It teaches the AI HOW to build, not WHAT to copy-paste
+- Every line must be USEFUL — no filler, no padding, no "etc"
+- Write specific dimensions, RGB colors, material names, proportions, positioning formulas
+- Each entry should be 8-20 lines of dense, actionable building knowledge
+- Wire each file into build-executor.ts with keyword-matched injection (.slice(0, 8000) max)
+- After each pair, type-check and push to master
 
-## PHASE 3: VERIFY IT WORKS
+KNOWLEDGE FILES TO CREATE (in priority order — do 2 at a time):
 
-1. Read the system prompts in build-executor.ts — make sure they reference the new knowledge
-2. Check that prompt-modifiers.ts is wired into both the chat route AND build-executor
-3. Run `npx next build` to verify everything compiles
-4. Push to master after each batch
+BATCH 1:
+A) src/lib/ai/interior-design-bible.ts (5000+ lines)
+   - 100+ room types with exact furniture layouts: bedroom, kitchen, bathroom, living room, office, classroom, hospital room, jail cell, throne room, control room, cockpit, engine room, lab, library, armory, treasury, dining hall, ballroom, gallery, workshop, forge, greenhouse, observatory, chapel, crypt, dungeon, attic, basement, garage, laundry, nursery, gym, spa, recording studio, server room, vault, panic room, wine cellar, pool room, home theater, music room, art studio, walk-in closet, mudroom, pantry, butler's pantry, foyer, conservatory, solarium, loft, studio apartment, penthouse, dorm room, hotel room, motel room, hospital ward, operating room, dentist office, waiting room, reception, conference room, break room, copy room, corner office, cubicle, open office, warehouse office, factory floor, clean room, loading dock, cafeteria, food court, restaurant kitchen, bar, nightclub, arcade, bowling alley, movie theater, stage/theater, backstage, green room, locker room, shower room, sauna, elevator interior, stairwell, hallway, lobby, atrium, courtyard
+   - For EACH: dimensions (LxWxH studs), floor material, wall material, ceiling height, furniture list with positions, lighting type, color palette, props, what makes it feel REAL
 
-## PHASE 4: KEEP GOING
+B) src/lib/ai/terrain-landscape-bible.ts (4000+ lines)
+   - 30 biome types with exact terrain generation instructions
+   - Path/road design for 10 road types (dirt, stone, asphalt, boardwalk, etc.)
+   - Water features: river, lake, ocean, waterfall, pond, stream, fountain, pool
+   - Elevation: hills, mountains, cliffs, valleys, canyons, mesas, plateaus
+   - Vegetation patterns: forest density, meadow, swamp, jungle canopy
+   - Weather effects: rain particles, snow, fog, sandstorm, lightning
+   - Terrain material blending: smooth transitions between biomes
+   - Map layouts for 15 game types (tycoon baseplate, obby void, RPG open world, etc.)
 
-After each batch of 2 knowledge files, immediately start the next batch. Don't stop. Don't ask. The goal is MAXIMUM knowledge written per session. Target: 50K+ new lines.
+BATCH 2:
+C) src/lib/ai/vfx-particle-bible.ts (4000+ lines)
+   - 100+ visual effect recipes with EXACT ParticleEmitter properties
+   - Fire (campfire, torch, bonfire, inferno, candle, explosion aftermath)
+   - Water (splash, rain, mist, steam, waterfall spray, bubble, wave foam)
+   - Magic (sparkle, heal glow, shield bubble, teleport swirl, enchant shimmer)
+   - Combat (blood, impact spark, slash trail, bullet tracer, explosion, shockwave)
+   - Nature (leaf fall, cherry blossom, pollen, firefly, snow, dust mote, sand)
+   - Mechanical (smoke, steam vent, spark weld, electrical arc, engine exhaust)
+   - UI/Feedback (level up burst, coin collect, damage flash, death dissolve, confetti)
+   - Beam effects (laser, lightning bolt, connection line, tractor beam)
+   - Trail effects (speed trail, sword slash, magic wand, vehicle exhaust)
+   - For EACH: every ParticleEmitter property (Rate, Lifetime, Speed, SpreadAngle, Size/Color/Transparency over lifetime, Rotation, Drag, Acceleration, EmissionDirection, Texture)
 
-Knowledge files should be DENSE — not padding, not filler. Every line should teach the AI something specific about Roblox development that helps it build better.
+D) src/lib/ai/ui-ux-bible.ts (4000+ lines)
+   - 50+ complete GUI layouts with exact UDim2 positioning
+   - HUD variants for 10 game types
+   - Shop/store layouts (grid, list, card, carousel)
+   - Inventory systems (grid, list, equipment slots, drag-drop)
+   - Dialog/cutscene UI (dialog box, choice buttons, portrait, letterbox)
+   - Settings panels (sliders, toggles, dropdowns, keybinds)
+   - Social UI (friend list, party, guild, chat, trade)
+   - Combat UI (health bar, mana, cooldowns, damage numbers, kill feed)
+   - Economy UI (currency display, transaction history, auction)
+   - Admin/debug UI (console, stats overlay, teleport panel)
+   - Mobile-specific layouts (thumb zones, tap targets, swipe gestures)
+   - Animation recipes (entrance, exit, hover, press, notification, celebration)
+   - Color system (define-once palettes, dark theme, light theme, accessibility)
+   - Typography system (font sizes, weights, hierarchy)
+   - Component library (button, input, slider, toggle, dropdown, tabs, accordion, modal, toast, tooltip)
 
-Priority order:
-1. Interior design (rooms are empty/wrong)
-2. Terrain & landscape (terrain is flat/boring)
-3. Particle & VFX (builds have no effects)
-4. UI/UX design (GUIs look amateur)
-5. NPC & character (NPCs are static)
-6. Game economy (balance is off)
-7. Sound design (no ambient audio)
-8. Multiplayer (networking is basic)
-9. World design (maps have no flow)
-10. Advanced math (procedural generation)
-```
+BATCH 3:
+E) src/lib/ai/npc-character-bible.ts (4000+ lines)
+   - R6 vs R15 rig construction (exact Part sizes, joint positions)
+   - 50+ character archetypes with clothing, colors, accessories
+   - Body proportion rules (chibi, realistic, cartoon, monster)
+   - Animation integration (idle, walk, run, jump, attack, death, emote)
+   - AI behavior patterns (patrol with waypoints, guard post, merchant, quest giver, enemy, boss, ambient, follower)
+   - Dialog system design (trees, conditions, variables, consequences)
+   - PathfindingService deep patterns (compute, blocked handling, agent parameters)
+   - Aggro/threat system (detection radius, threat table, target switching)
+   - Spawn system (spawn points, wave spawning, respawn timers, difficulty scaling)
+   - Loot tables (weighted random, guaranteed drops, pity system, rarity tiers)
 
----
+F) src/lib/ai/game-economy-bible.ts (3000+ lines)
+   - Currency design (primary, premium, event currencies)
+   - Pricing math (cost = baseCost * multiplier^level, diminishing returns)
+   - Progression curves for 10 game types (linear, exponential, logarithmic, S-curve)
+   - Inflation prevention (14 money sinks: repair, tax, cosmetics, gambling, upgrades, rerolls, fast travel, storage, pets, guilds, crafting fees, auction fees, death penalty, prestige reset)
+   - Engagement psychology (variable ratio rewards, loss aversion, near-miss, sunk cost, social proof, FOMO, collection drive, mastery, autonomy, relatedness)
+   - Session design (5-min core loop, 20-min session goal, daily/weekly/monthly goals)
+   - Monetization ethics (never pay-to-win, value clarity, no predatory targeting of minors)
+   - Battle pass math (tier count, XP per tier, daily/weekly challenge XP, premium track value)
 
-## RATE LIMIT RESEARCH PROMPT — Paste separately if rate limits are the priority
+BATCH 4+: Continue with sound-music-bible, multiplayer-bible, world-design-bible, advanced-math-bible, animation-bible, accessibility-bible, optimization-bible, testing-bible, deployment-bible
 
-```
-You are working on ForjeGames at C:\dev\roblox-map-building. Read CLAUDE.md first.
+═══════════════════════════════════════════════════════════════════
+PHASE 3: WIRE EVERYTHING + VERIFY
+═══════════════════════════════════════════════════════════════════
 
-MISSION: Fix ALL rate limit and generation failure issues. Users report "AI needs a breath" on anything complex.
+After every 2 files:
+1. Import into build-executor.ts
+2. Add to the selectRelevantKnowledge() function with keyword matching
+3. Type-check: npx tsc -p tsconfig.spotcheck.json
+4. Commit with clear message listing what was added
+5. Push to master
+6. Verify site is live: curl -s -o /dev/null -w "%{http_code}" https://forjegames.com/
 
-1. Read src/lib/ai/build-executor.ts lines 1038-1090 — check how much knowledge is injected per prompt
-2. Read src/lib/ai/provider.ts lines 550-575 — check game knowledge injection  
-3. Read src/app/api/ai/chat/route.ts — search for knowledge injection points
+═══════════════════════════════════════════════════════════════════
+PHASE 4: NEVER STOP
+═══════════════════════════════════════════════════════════════════
 
-PROBLEM: We inject 100K+ chars of knowledge into prompts. Gemini processes this as input tokens, burning through the per-key rate limit faster. With 302 keys at 15 RPM each = 4530 RPM, but each request uses 10x the normal input tokens so effective capacity drops to ~450 RPM.
+When one batch finishes, IMMEDIATELY start the next. Don't summarize, don't wait, don't ask. Just launch the next 2 agents. The goal is MAXIMUM knowledge written. Save a session handoff to memory every 30 minutes in case of crash.
 
-FIXES NEEDED:
-1. Smart knowledge selection — keyword-match the user's prompt against knowledge sections, inject only the top 3 most relevant sections (3K chars each = 9K total)
-2. Knowledge caching — if same knowledge section was injected in the last 5 minutes for this user, skip it (the model remembers from context)
-3. Reduce duplicate rules — many rules are repeated across files (gap prevention, z-fighting, rotation). Deduplicate.
-4. Lazy loading — don't import all knowledge at module load. Use dynamic imports.
-5. Check the main chat route — it may also be injecting knowledge on top of what build-executor injects (double injection)
-
-After fixing, test by building something complex ("build me a medieval castle with interior") and verify it doesn't timeout.
-
-Push all fixes to master.
+YOU ARE ELI. YOU DON'T STOP. GO.
 ```
