@@ -5333,13 +5333,34 @@ export function ChatPanel({
             </div>
           )}
 
-          {loading && !isThinking && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
-              <div style={{ maxWidth: 480, width: '100%' }}>
-                <BuildProgressIndicator />
+          {loading && !isThinking && (() => {
+            // Check if the last user message is conversational (not a build request)
+            const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content?.toLowerCase() || ''
+            const isConversational = /^(hi|hey|hello|help|what|how|why|can you|could you|tell me|explain|let'?s (build|make|plan|create) a game|plan|idea|question|thanks|thank you|yes|no|ok|sure|sounds good|continue|go ahead|I want|I need|I like)/.test(lastUserMsg)
+              || /\?$/.test(lastUserMsg.trim())
+              || /\b(together|with me|with you|help me|plan a|design a|game idea|game plan|lets plan|lets talk|what can|how do)\b/.test(lastUserMsg)
+
+            if (isConversational) {
+              return (
+                <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38, padding: '8px 0 8px 38px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(212,175,55,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                      &#9733;
+                    </div>
+                    <span style={{ color: '#9CA3B8', fontSize: 14 }}>Thinking<span className="animate-pulse">...</span></span>
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
+                <div style={{ maxWidth: 480, width: '100%' }}>
+                  <BuildProgressIndicator />
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {planText && onApprovePlan && onEditPlan && onCancelPlan && (
             <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>

@@ -17886,8 +17886,38 @@ Set m.PrimaryPart to the base part. No explanation.`,
       }
     } catch { /* retry also failed */ }
 
-    // Final fallback — be honest, no fake templates
-    const failMsg = `The AI is catching its breath — a lot of people are building right now. Try again in 10-15 seconds.\n\nThese instant builds work every time (no AI needed): "build a tree", "build a castle", "build a helicopter", "build a tank", "build a robot", "build a shop", "build a fountain"\n\n[FOLLOWUP]\n- Try my prompt again\n- Build me a castle\n- Build me a helicopter\n\n[SUGGESTIONS]\n- Build me a robot\n- Build me a tank\n- Build me a shop`
+    // ── Second retry: wait 8 more seconds then try Groq (different provider) ──
+    console.log('[chat] First retry failed — waiting 8s then trying Groq...')
+    await new Promise(r => setTimeout(r, 8000))
+    try {
+      const retryResult2 = await callGroq(
+        'You are a Roblox Luau code generator. Output ONLY code inside ```lua fences.',
+        `Build: ${message}\n\nOutput a \`\`\`lua code block. Use Instance.new("Part"). 20-40 parts.`,
+        [],
+        16384,
+      )
+      if (retryResult2) {
+        let retryLuau2 = extractLuauCode(retryResult2)
+        if (!retryLuau2 && retryResult2.includes('Instance.new')) {
+          retryLuau2 = retryResult2.replace(/^```\w*\s*/gm, '').replace(/^```\s*$/gm, '').trim()
+        }
+        if (retryLuau2) {
+          let executedInStudio2 = false
+          if (sessionId) executedInStudio2 = await sendCodeToStudio(sessionId, retryLuau2)
+          const retryMsg2 = executedInStudio2
+            ? 'Built! Check your viewport.\n\nWhat would you like to change or add next?'
+            : 'Here\'s the build code!\n\nWhat would you like to change or add next?'
+          console.log('[chat] Second retry (Groq) succeeded')
+          if (wantsStream) {
+            return trackableStream(retryMsg2, { intent, hasCode: true, tokensUsed, executedInStudio: executedInStudio2, model: 'retry-groq' }) as unknown as NextResponse
+          }
+          return NextResponse.json({ message: retryMsg2, tokensUsed, intent, hasCode: true, luauCode: retryLuau2, executedInStudio: executedInStudio2, model: 'retry-groq' })
+        }
+      }
+    } catch { /* second retry also failed */ }
+
+    // Final fallback — helpful message, not "catching its breath"
+    const failMsg = `All AI models are busy right now. This usually clears up in under 30 seconds.\n\nHit **"Try again"** below, or try an instant build:\n\n[FOLLOWUP]\n- Try my prompt again\n- Build me a castle\n- Build me a spaceship\n\n[SUGGESTIONS]\n- Build me a house\n- Build me a robot\n- Plan a game with me`
     // Record the failure for learning
     void learnFromFailure(message, '', 0, ['All models failed to respond'], detectCategory(message)).catch(() => {})
     if (wantsStream) {
