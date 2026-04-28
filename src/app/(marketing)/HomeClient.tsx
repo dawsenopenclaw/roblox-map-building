@@ -12,7 +12,6 @@ import { motion } from 'framer-motion'
 const AgentOrbital = dynamic(() => import('@/components/marketing/AgentOrbital'))
 const SellingPointsBento = dynamic(() => import('@/components/marketing/SellingPointsBento'))
 const ReviewMarquee = dynamic(() => import('@/components/marketing/ReviewMarquee'))
-const ComparisonSection = dynamic(() => import('@/components/marketing/ComparisonSection'))
 const FaqSection = dynamic(() => import('@/components/marketing/FaqSection'))
 
 /* ─── Scroll reveal hook ─────────────────────────────────────────────────── */
@@ -808,9 +807,141 @@ export default function HomeClient() {
         <ReviewMarquee />
 
         {/* ═══════════════════════════════════════════════════════════════
-            SECTION 5 — COMPETITOR COMPARISON
+            SECTION 5 — START BUILDING CTA
         ═══════════════════════════════════════════════════════════════ */}
-        <ComparisonSection />
+        <section className="relative py-24 sm:py-32 px-6 overflow-hidden" style={{ background: '#050810' }}>
+          {/* Ambient glow */}
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+            <div style={{
+              position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)',
+              width: '80%', height: '60%',
+              background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.06) 0%, transparent 65%)',
+            }} />
+          </div>
+          {/* Divider */}
+          <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', maxWidth: 500, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.15), transparent)' }} />
+
+          <div className="relative max-w-3xl mx-auto text-center">
+            <motion.p
+              className="text-[11px] font-bold uppercase tracking-[0.18em] mb-5"
+              style={{ color: 'rgba(212,175,55,0.75)', fontFamily: 'var(--font-mono, monospace)' }}
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.5 }}
+            >
+              Ready?
+            </motion.p>
+            <motion.h2
+              className="font-bold tracking-tight mb-5"
+              style={{
+                fontSize: 'clamp(2rem, 5.5vw, 3.5rem)',
+                lineHeight: 1.08,
+                color: '#FAFAFA',
+              }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              Start Building in{' '}
+              <span style={{
+                background: 'linear-gradient(90deg, #D4AF37 0%, #FFD166 50%, #B8960C 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}>
+                60 Seconds
+              </span>
+            </motion.h2>
+            <motion.p
+              className="text-base sm:text-lg leading-relaxed mb-10 max-w-xl mx-auto"
+              style={{ color: '#71717A' }}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              1,000 free tokens. No credit card. Your first build appears in Studio instantly.
+            </motion.p>
+
+            {/* Buttons */}
+            <motion.div
+              className="flex flex-wrap items-center justify-center gap-3 mb-14"
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              <Link
+                href="/sign-up"
+                className="cta-shimmer inline-flex items-center gap-2 rounded-xl px-7 py-3.5 text-sm font-bold text-black transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
+                style={{
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
+                  boxShadow: '0 0 40px rgba(212,175,55,0.35), 0 0 80px rgba(212,175,55,0.12)',
+                }}
+              >
+                Start Building Free
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </Link>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 rounded-xl border px-7 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/5"
+                style={{ borderColor: 'rgba(255,255,255,0.12)' }}
+              >
+                See Pricing
+              </Link>
+            </motion.div>
+
+            {/* 3 Stats */}
+            <motion.div
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.6, delay: 0.45 }}
+            >
+              {[
+                { value: '200+', label: 'AI Specialists', icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z" />
+                    <path d="M10 21h4" />
+                  </svg>
+                )},
+                { value: '13', label: 'Art Styles', icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                )},
+                { value: '3D', label: 'Mesh Generation', icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2l8 4.5v11L12 22l-8-4.5v-11z" />
+                    <path d="M12 22V11" />
+                    <path d="M20 6.5L12 11 4 6.5" />
+                  </svg>
+                )},
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="flex items-center gap-3 rounded-xl p-4"
+                  style={{
+                    background: 'rgba(212,175,55,0.04)',
+                    border: '1px solid rgba(212,175,55,0.12)',
+                  }}
+                >
+                  <div style={{ color: '#D4AF37', flexShrink: 0 }}>{stat.icon}</div>
+                  <div className="text-left">
+                    <p className="text-lg font-bold" style={{ color: '#FAFAFA', lineHeight: 1.2 }}>{stat.value}</p>
+                    <p className="text-[12px] font-medium" style={{ color: '#71717A' }}>{stat.label}</p>
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
 
         {/* ═══════════════════════════════════════════════════════════════
             SECTION 6 — FINAL CTA + FAQ

@@ -38,16 +38,132 @@ export interface ChangelogEntry {
 }
 
 export const RELEASE_META = {
-  version: 'ForjeGames 2.0',
+  version: 'ForjeGames 3.0',
   releaseDate: 'April 2026',
   stats: {
-    linesOfCode: '6,500+',
-    featureCount: 28,
+    linesOfCode: '28,000+',
+    featureCount: 34,
     vulnerabilityCount: 0,
   },
 } as const
 
 export const CHANGELOG: ChangelogEntry[] = [
+  // ── v3.0.0 — April 27, 2026 ────────────────────────────────────────
+
+  // 29. v5.0.0 Plugin — In-Plugin AI Chat
+  {
+    id: 'plugin-v5-ai-chat',
+    category: 'Plugin',
+    title: 'AI chat built right into Studio',
+    description:
+      'The v5.0.0 plugin update brings a full AI chat panel inside Roblox Studio. Describe what you want, and it builds without you ever leaving the viewport.',
+    date: '2026-04-27',
+    badge: 'New',
+    icon: 'MessageSquare',
+    details: [
+      'Full AI chat panel docked inside Roblox Studio',
+      'Build maps, scripts, and UI without switching windows',
+      'Conversation history persists across Studio sessions',
+      'Supports all 200+ specialist agents directly in-plugin',
+    ],
+    docsHref: '/docs/plugin',
+  },
+
+  // 30. MCP Integration
+  {
+    id: 'mcp-integration',
+    category: 'Plugin',
+    title: 'Build Roblox games from Claude Code or Cursor',
+    description:
+      'ForjeGames now works as a full MCP server. Connect from Claude Code, Cursor, or any MCP-compatible client and build Roblox games with your favorite AI tools.',
+    date: '2026-04-27',
+    badge: 'New',
+    icon: 'Terminal',
+    details: [
+      'Full Model Context Protocol server with 200+ Studio operations',
+      'Works with Claude Code, Cursor, Windsurf, and any MCP client',
+      'Chain ForjeGames with other MCP tools for advanced workflows',
+      'Same quality and specialist routing as the web editor',
+    ],
+    inspiredBy: ['Model Context Protocol', 'Cursor', 'Claude Code'],
+    docsHref: '/docs/mcp',
+  },
+
+  // 31. API Key System
+  {
+    id: 'api-key-system',
+    category: 'AI',
+    title: 'Programmatic access via API keys',
+    description:
+      'Generate API keys from your dashboard and build on top of ForjeGames programmatically. Automate builds, integrate with CI/CD, or build your own tools.',
+    date: '2026-04-27',
+    badge: 'New',
+    icon: 'Key',
+    details: [
+      'Generate and manage API keys from the settings page',
+      'Scoped permissions — read-only, build, or full access',
+      'Rate-limited per key with usage analytics in your dashboard',
+      'Perfect for automated pipelines and custom integrations',
+    ],
+    docsHref: '/docs/api-keys',
+  },
+
+  // 32. Quality Overhaul — Part Limits + Specialists
+  {
+    id: 'quality-overhaul',
+    category: 'AI',
+    title: 'Builds just got 3-8x more detailed',
+    description:
+      'We raised part limits across the board and added specialist AI routing for every prompt type. Your builds now come out with dramatically more detail and variety.',
+    date: '2026-04-27',
+    badge: 'Improved',
+    icon: 'TrendingUp',
+    details: [
+      'Part limits raised 3-8x across all build types',
+      'Specialist AI routing matches every prompt to the best agent',
+      'Multi-part detailing — no more single-part walls or floors',
+      'Quality scoring ensures builds meet a minimum detail threshold',
+    ],
+  },
+
+  // 33. 10 New AI Specialists
+  {
+    id: 'ten-new-specialists',
+    category: 'AI',
+    title: '10 new AI specialists join the team',
+    description:
+      'GUI, NPC, terrain, lighting, vehicles, weapons, pets, audio, scripting, and game systems — each with a dedicated specialist agent trained on thousands of Roblox examples.',
+    date: '2026-04-27',
+    badge: 'New',
+    icon: 'Users',
+    details: [
+      'GUI specialist for menus, HUDs, and shop interfaces',
+      'NPC agent handles pathfinding, dialogue, and behavior trees',
+      'Terrain specialist for realistic landscapes and biomes',
+      'Lighting, vehicles, weapons, pets, audio, scripting, and game systems agents',
+    ],
+  },
+
+  // 34. Reliability — Auto-retry + Error Handling
+  {
+    id: 'reliability-improvements',
+    category: 'Real-time',
+    title: 'Rock-solid reliability under the hood',
+    description:
+      'Auto-retry on rate limits, better error messages, and SSE reconnect fixes. The AI pipeline now handles failures gracefully so your builds never stall.',
+    date: '2026-04-27',
+    badge: 'Improved',
+    icon: 'RefreshCw',
+    details: [
+      'Automatic retry with exponential backoff on rate limits',
+      'Clear, actionable error messages instead of cryptic failures',
+      'SSE stream reconnection fixes — no more frozen progress bars',
+      'Build success rate pushed above 99.5%',
+    ],
+  },
+
+  // ── v2.0.0 — Earlier April 2026 ────────────────────────────────────
+
   // 1. Automated Playtest Loop
   {
     id: 'automated-playtest-loop',

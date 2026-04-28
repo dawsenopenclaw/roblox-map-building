@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import {
   Rocket,
   Users,
@@ -31,7 +32,7 @@ const COMING_SOON_ICONS: Record<string, LucideIcon> = {
 
 const PAGE_URL = 'https://forjegames.com/whats-new'
 const SHARE_TEXT =
-  'ForjeGames 2.0 just shipped 28 brand new features in one massive update. AI playtest, canvas editor, cloud sessions, Robux payments and more:'
+  'ForjeGames 3.0 just shipped 34 features — in-plugin AI chat, MCP integration, API keys, 3-8x build quality, and 10 new AI specialists:'
 
 export function WhatsNewClient() {
   const [filter, setFilter] = useState<FilterValue>('All')
@@ -95,16 +96,14 @@ export function WhatsNewClient() {
               color: '#FAFAFA',
             }}
           >
-            <span style={{ color: '#D4AF37' }}>ForjeGames 2.0</span>
+            <span style={{ color: '#D4AF37' }}>ForjeGames 3.0</span>
             <br />
-            28 new features in one massive update
+            34 features — plugin AI chat, MCP, and more
           </h1>
 
           {/* Subhero */}
           <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">
-            We spent the last month rebuilding ForjeGames from the inside out.
-            Here is every single thing that is new, improved, and safer — all
-            shipping today.
+            Build from inside Studio, connect from Claude Code or Cursor, generate API keys, and enjoy 3-8x more detailed builds. Everything shipped today.
           </p>
 
           {/* Stats strip */}
@@ -172,8 +171,16 @@ export function WhatsNewClient() {
 
         {/* Card grid */}
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((entry) => (
-            <ChangelogCard key={entry.id} entry={entry} />
+          {filtered.map((entry, i) => (
+            <motion.div
+              key={entry.id}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.45, delay: Math.min(i * 0.06, 0.3), ease: [0.16, 1, 0.3, 1] }}
+            >
+              <ChangelogCard entry={entry} />
+            </motion.div>
           ))}
         </div>
 
@@ -207,11 +214,15 @@ export function WhatsNewClient() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {COMING_SOON.map((item) => {
+            {COMING_SOON.map((item, i) => {
               const Icon = COMING_SOON_ICONS[item.icon] || Rocket
               return (
-                <div
+                <motion.div
                   key={item.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-40px' }}
+                  transition={{ duration: 0.45, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
                   className="flex gap-4 rounded-2xl p-5"
                   style={{
                     background: 'rgba(255,255,255,0.02)',
@@ -248,7 +259,7 @@ export function WhatsNewClient() {
                       {item.description}
                     </p>
                   </div>
-                </div>
+                </motion.div>
               )
             })}
           </div>
