@@ -4,9 +4,9 @@ import { getBillingConfig } from '@/lib/billing-config'
 import PricingClient from './PricingClient'
 
 export const metadata: Metadata = createMetadata({
-  title: 'Pricing — Free, Starter, Pro & Studio Plans',
+  title: 'Pricing — Start Free, Upgrade When Ready',
   description:
-    'ForjeGames pricing: plans from $25/mo. Builder, Creator, Pro, and Studio tiers for AI Roblox game building. 3-day free trial. No contracts, cancel anytime.',
+    'ForjeGames is free to start. Build Roblox games with AI — no credit card, no catch. Free plan includes 50 builds/month, 5 AI models, and the Studio plugin. Paid plans from $25/mo with 14-day free trial.',
   path: '/pricing',
   keywords: [
     'ForjeGames pricing',

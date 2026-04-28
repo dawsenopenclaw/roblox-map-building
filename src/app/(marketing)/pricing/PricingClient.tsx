@@ -32,8 +32,11 @@ import { captureClientEvent } from '@/lib/analytics-client'
 type BillingConfig = {
   stripeConfigured: boolean
   subscriptions: {
+    STARTER: { monthly: boolean; yearly: boolean }
+    BUILDER: { monthly: boolean; yearly: boolean }
     HOBBY: { monthly: boolean; yearly: boolean }
     CREATOR: { monthly: boolean; yearly: boolean }
+    PRO:     { monthly: boolean; yearly: boolean }
     STUDIO:  { monthly: boolean; yearly: boolean }
   }
   tokenPacks: {
@@ -46,8 +49,11 @@ type BillingConfig = {
 const EMPTY_CONFIG: BillingConfig = {
   stripeConfigured: false,
   subscriptions: {
+    STARTER: { monthly: false, yearly: false },
+    BUILDER: { monthly: false, yearly: false },
     HOBBY: { monthly: false, yearly: false },
     CREATOR: { monthly: false, yearly: false },
+    PRO:     { monthly: false, yearly: false },
     STUDIO:  { monthly: false, yearly: false },
   },
   tokenPacks: { starter: false, creator: false, pro: false },
@@ -58,7 +64,7 @@ const EMPTY_CONFIG: BillingConfig = {
 // ---------------------------------------------------------------------------
 
 // Tier prices — premium positioning (we're the only all-in-one platform)
-// 3-day free trial → convert fast, show value immediately
+// 14-day free trial → convert fast, show value immediately
 const ANNUAL_TOTALS = {
   BUILDER: 240.00,   // $20/mo annual = $240/year (20% off)
   CREATOR: 480.00,   // $40/mo annual = $480/year (20% off)
@@ -68,6 +74,28 @@ const ANNUAL_TOTALS = {
 
 const TIERS = [
   {
+    key: 'FREE',
+    name: 'Free',
+    icon: Zap,
+    priceMonthly: 0,
+    priceYearly: 0,
+    yearlyTotal: 0,
+    tagline: 'Start building right now',
+    highlight: true,
+    badge: 'FREE',
+    cta: 'Start Building Free',
+    ctaHref: '/sign-up?plan=free',
+    features: [
+      '50 builds per month',
+      '5 AI models included',
+      'Script generation',
+      'Game system templates',
+      'Studio plugin',
+      'Community support',
+      'No credit card ever',
+    ],
+  },
+  {
     key: 'BUILDER',
     name: 'Builder',
     icon: Hammer,
@@ -76,7 +104,7 @@ const TIERS = [
     yearlyTotal: ANNUAL_TOTALS.BUILDER,
     tagline: 'For creators getting started',
     highlight: false,
-    badge: null,
+    badge: 'Most Popular',
     cta: 'Start Building',
     ctaHref: '/sign-up?plan=builder',
     features: [
@@ -97,8 +125,8 @@ const TIERS = [
     priceYearly: 40,
     yearlyTotal: ANNUAL_TOTALS.CREATOR,
     tagline: 'For serious creators who ship',
-    highlight: true,
-    badge: 'Most Popular',
+    highlight: false,
+    badge: null,
     cta: 'Get Creator',
     ctaHref: '/sign-up?plan=creator',
     features: [
@@ -160,20 +188,24 @@ const TIERS = [
   },
 ] as const
 
-// Feature matrix for comparison table (6 tiers)
+// Feature matrix for comparison table (all tiers including FREE)
 const COMPARE_FEATURES = [
-  { label: 'Tokens / month',     builder: '15,000',    creator: '40,000',    pro: '100,000',   studio: '200,000'   },
-  { label: 'Daily Builds',       builder: '30',        creator: 'Unlimited', pro: 'Unlimited', studio: 'Unlimited' },
-  { label: 'Voice Commands',     builder: true,        creator: true,        pro: true,        studio: true        },
-  { label: 'Image-to-Map',       builder: false,       creator: true,        pro: true,        studio: true        },
-  { label: 'Script Generation',  builder: true,        creator: true,        pro: true,        studio: true        },
-  { label: '3D Mesh Generation', builder: false,       creator: true,        pro: true,        studio: true        },
-  { label: 'Game DNA Scanner',   builder: false,       creator: false,       pro: true,        studio: true        },
-  { label: 'Marketplace',        builder: false,       creator: true,        pro: true,        studio: true        },
-  { label: 'Team Members',       builder: 'Solo',      creator: '3',         pro: '10',        studio: '50'        },
-  { label: 'Priority AI Queue',  builder: false,       creator: false,       pro: true,        studio: true        },
-  { label: 'API Access',         builder: false,       creator: false,       pro: false,       studio: true        },
-  { label: 'Support Level',      builder: 'Standard',  creator: 'Priority',  pro: 'Priority',  studio: 'Dedicated' },
+  { label: 'Price',              free: '$0',          builder: '$25/mo',    creator: '$50/mo',    pro: '$150/mo',   studio: '$200/mo'   },
+  { label: 'Tokens / month',    free: '1,000',       builder: '15,000',    creator: '40,000',    pro: '100,000',   studio: '200,000'   },
+  { label: 'Builds',            free: '50/month',    builder: '50/day',    creator: 'Unlimited', pro: 'Unlimited', studio: 'Unlimited' },
+  { label: 'AI Models',         free: '5',           builder: 'All',       creator: 'All',       pro: 'All',       studio: 'All'       },
+  { label: 'Voice Commands',    free: false,         builder: true,        creator: true,        pro: true,        studio: true        },
+  { label: 'Image-to-Map',      free: false,         builder: false,       creator: true,        pro: true,        studio: true        },
+  { label: 'Script Generation', free: true,          builder: true,        creator: true,        pro: true,        studio: true        },
+  { label: '3D Mesh Generation',free: false,         builder: false,       creator: true,        pro: true,        studio: true        },
+  { label: 'Game Templates',    free: true,          builder: true,        creator: true,        pro: true,        studio: true        },
+  { label: 'Studio Plugin',     free: true,          builder: true,        creator: true,        pro: true,        studio: true        },
+  { label: 'Game DNA Scanner',  free: false,         builder: false,       creator: false,       pro: true,        studio: true        },
+  { label: 'Marketplace',       free: false,         builder: false,       creator: true,        pro: true,        studio: true        },
+  { label: 'Team Members',      free: 'Solo',        builder: 'Solo',      creator: '3',         pro: '10',        studio: '50'        },
+  { label: 'Priority AI Queue', free: false,         builder: false,       creator: false,       pro: true,        studio: true        },
+  { label: 'API Access',        free: false,         builder: false,       creator: false,       pro: false,       studio: true        },
+  { label: 'Support Level',     free: 'Community',   builder: 'Standard',  creator: 'Priority',  pro: 'Priority',  studio: 'Dedicated' },
 ]
 
 const TOKEN_PACKS = [
@@ -202,8 +234,20 @@ const TOKEN_PACKS = [
 
 const FAQ = [
   {
+    q: 'Is the free plan really free?',
+    a: 'Yes, 100% free. No credit card, no trial that expires, no catch. You get 50 builds per month, 5 AI models, script generation, game templates, and the Studio plugin. Use it as long as you want. Upgrade only when you need more.',
+  },
+  {
     q: 'What is a token and how are they used?',
-    a: 'Tokens are the currency for AI operations on ForjeGames. Each generation — terrain, buildings, scripts, maps, voice commands — consumes tokens. Simple generations cost fewer; complex multi-step builds cost more. Your monthly allocation resets every billing cycle.',
+    a: 'Tokens are the currency for AI operations on ForjeGames. Each generation — terrain, buildings, scripts, maps, voice commands — uses tokens. Simple builds cost fewer; complex multi-step builds cost more. Your monthly tokens reset every billing cycle.',
+  },
+  {
+    q: 'What can I build with the free plan?',
+    a: 'A lot more than you think. 50 builds a month means roughly 15 houses, 10 game scripts, or 5 full game scenes. Most creators start free and upgrade once they have a game idea they want to go all-in on.',
+  },
+  {
+    q: 'How does the 14-day free trial work on paid plans?',
+    a: 'Pick any paid plan and try it free for 14 days. No credit card needed to start. If you like it, add payment before the trial ends. If not, you drop back to the Free plan automatically. No charge, no hassle.',
   },
   {
     q: 'How does annual billing work?',
@@ -486,10 +530,12 @@ function FaqItem({
 
 function CompareCell({
   value,
+  isFree = false,
   isCreator = false,
   isCustom = false,
 }: {
   value: string | boolean
+  isFree?: boolean
   isCreator?: boolean
   isCustom?: boolean
 }) {
@@ -497,7 +543,7 @@ function CompareCell({
     return value ? (
       <Check
         className={`w-5 h-5 mx-auto ${
-          isCreator ? 'text-[#D4AF37]' : isCustom ? 'text-[#A78BFA]' : 'text-emerald-400'
+          isFree ? 'text-[#D4AF37]' : isCreator ? 'text-[#D4AF37]' : isCustom ? 'text-[#A78BFA]' : 'text-emerald-400'
         }`}
       />
     ) : (
@@ -507,7 +553,9 @@ function CompareCell({
   return (
     <span
       className={`text-[15px] font-medium ${
-        isCreator
+        isFree
+          ? 'text-[#FFD966] font-bold'
+          : isCreator
           ? 'text-[#FFD966]'
           : isCustom
           ? 'text-[#C4B5FD]'
@@ -920,27 +968,60 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
       >
 
         {/* ------------------------------------------------------------------ */}
+        {/* Top CTA — Start Free                                               */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="text-center mb-8">
+          <Link
+            href="/sign-up?plan=free"
+            className="inline-flex items-center gap-2 text-sm font-bold px-6 py-3 rounded-full transition-all duration-200 hover:scale-105 active:scale-[0.98]"
+            style={{
+              background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
+              color: '#0A0810',
+              boxShadow: '0 4px 20px rgba(212,175,55,0.4)',
+            }}
+          >
+            <Zap className="w-4 h-4" />
+            Start Building Free — No Credit Card
+          </Link>
+        </div>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* 14-Day Free Trial Banner                                           */}
+        {/* ------------------------------------------------------------------ */}
+        <div
+          className="relative overflow-hidden rounded-2xl mb-12 px-6 py-5 text-center"
+          style={{
+            background: 'linear-gradient(135deg, #D4AF37 0%, #B8941F 50%, #D4AF37 100%)',
+          }}
+        >
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 10px, rgba(255,255,255,0.05) 10px, rgba(255,255,255,0.05) 20px)',
+            }}
+          />
+          <p className="relative text-white font-extrabold text-lg sm:text-xl mb-1">
+            Try any paid plan free for 14 days
+          </p>
+          <p className="relative text-white/80 text-sm font-medium">
+            No credit card needed. Cancel anytime. Keep everything you build.
+          </p>
+        </div>
+
+        {/* ------------------------------------------------------------------ */}
         {/* Header                                                              */}
         {/* ------------------------------------------------------------------ */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full px-4 py-1.5 mb-6">
-            <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
-            <span className="text-xs font-bold tracking-widest uppercase text-[#D4AF37]">
-              Pricing
+          {/* Social proof */}
+          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6">
+            <Users className="w-3.5 h-3.5 text-[#D4AF37]" />
+            <span className="text-xs font-bold text-white/80">
+              Trusted by <span className="text-[#D4AF37]">100+</span> Roblox creators
             </span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-5">
-            <span
-              style={{
-                background: 'linear-gradient(135deg, #FFFFFF 0%, #CBD2E8 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              Simple,{' '}
-            </span>
             <span
               style={{
                 background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 60%, #D4AF37 100%)',
@@ -949,7 +1030,17 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                 backgroundClip: 'text',
               }}
             >
-              transparent
+              Free
+            </span>
+            <span
+              style={{
+                background: 'linear-gradient(135deg, #FFFFFF 0%, #CBD2E8 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              {' '}to start.
             </span>
             <br />
             <span
@@ -960,12 +1051,12 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                 backgroundClip: 'text',
               }}
             >
-              pricing
+              Pay when you&apos;re ready.
             </span>
           </h1>
 
           <p className="text-lg text-[#6B7699] mb-6 max-w-lg mx-auto leading-relaxed">
-            Pick a plan. Build games. Scale when you&apos;re ready.
+            Build your first Roblox game in minutes. No credit card. Upgrade only if you want more.
           </p>
 
           {/* Competitor differentiation */}
@@ -1026,7 +1117,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
         {/* ------------------------------------------------------------------ */}
         {/* Subscription tier cards                                            */}
         {/* ------------------------------------------------------------------ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-20 items-start transition-all duration-300">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-20 items-start transition-all duration-300">
           {TIERS.map((tier) => {
             const price = annual ? tier.priceYearly : tier.priceMonthly
             const Icon  = tier.icon
@@ -1037,8 +1128,8 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                 className="relative flex flex-col group"
                 style={tier.highlight ? { marginTop: '-16px', marginBottom: '-16px' } : {}}
               >
-                {/* Creator card glow orb */}
-                {tier.highlight && (
+                {/* FREE / highlighted card glow orb */}
+                {(tier.highlight || tier.key === 'FREE') && (
                   <div
                     aria-hidden="true"
                     style={{
@@ -1056,12 +1147,19 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
 
                 <div
                   className={`relative flex flex-col rounded-2xl border transition-all duration-300 ${
-                    tier.highlight
+                    tier.key === 'FREE'
+                      ? 'border-[rgba(212,175,55,0.5)] shadow-[0_0_60px_rgba(212,175,55,0.2),0_20px_60px_rgba(0,0,0,0.6)] pt-10 pb-10 px-6 group-hover:-translate-y-2 group-hover:shadow-[0_0_80px_rgba(212,175,55,0.28),0_30px_80px_rgba(0,0,0,0.7)]'
+                      : tier.highlight
                       ? 'border-[rgba(212,175,55,0.4)] shadow-[0_0_60px_rgba(212,175,55,0.15),0_20px_60px_rgba(0,0,0,0.6)] pt-10 pb-10 px-6 group-hover:-translate-y-2 group-hover:shadow-[0_0_80px_rgba(212,175,55,0.22),0_30px_80px_rgba(0,0,0,0.7)]'
                       : 'bg-[#0A0F1E] border-[#141C35] p-6 group-hover:-translate-y-1.5 group-hover:border-[#1E2A4A] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]'
                   }`}
                   style={
-                    tier.highlight
+                    tier.key === 'FREE'
+                      ? {
+                          background: 'linear-gradient(160deg, #0D1226 0%, #0A0E20 50%, #0C1128 100%)',
+                          zIndex: 1,
+                        }
+                      : tier.highlight
                       ? {
                           background: 'linear-gradient(160deg, #0D1226 0%, #0A0E20 50%, #0C1128 100%)',
                           zIndex: 1,
@@ -1073,18 +1171,16 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                   {tier.badge && (
                     <div className="absolute -top-5 left-1/2 -translate-x-1/2">
                       <span
-                        className={`inline-flex items-center gap-1.5 text-sm font-extrabold px-5 py-2 rounded-full whitespace-nowrap ${
+                        className={`inline-flex items-center gap-1.5 font-extrabold px-5 py-2 rounded-full whitespace-nowrap ${
                           tier.key === 'FREE'
-                            ? 'text-[#0A0810] shadow-[0_4px_20px_rgba(16,185,129,0.5)]'
-                            : 'text-[#0A0810] shadow-[0_4px_20px_rgba(212,175,55,0.6)]'
+                            ? 'text-lg text-[#0A0810] shadow-[0_4px_24px_rgba(212,175,55,0.6)]'
+                            : 'text-sm text-[#0A0810] shadow-[0_4px_20px_rgba(212,175,55,0.6)]'
                         }`}
                         style={{
-                          background: tier.key === 'FREE'
-                            ? 'linear-gradient(135deg, #10B981 0%, #34D399 100%)'
-                            : 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
+                          background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
                         }}
                       >
-                        {tier.highlight ? <Crown className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
+                        {tier.key === 'FREE' ? <Zap className="w-4 h-4" /> : tier.highlight ? <Crown className="w-3.5 h-3.5" /> : <Star className="w-3.5 h-3.5" />}
                         {tier.badge}
                       </span>
                     </div>
@@ -1094,7 +1190,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                   <div className="mb-6">
                     <div
                       className={`inline-flex items-center justify-center w-11 h-11 rounded-xl mb-4 ${
-                        tier.highlight
+                        tier.key === 'FREE' || tier.highlight
                           ? 'bg-[#D4AF37]/15 text-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.2)]'
                           : 'bg-white/[0.06] text-[#6B7699]'
                       }`}
@@ -1103,7 +1199,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                     </div>
                     <p
                       className={`text-2xl font-bold mb-1 ${
-                        tier.highlight ? 'text-[#D4AF37]' : 'text-white'
+                        tier.key === 'FREE' || tier.highlight ? 'text-[#D4AF37]' : 'text-white'
                       }`}
                     >
                       {tier.name}
@@ -1115,8 +1211,14 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                   <div className="mb-6 min-h-[80px]">
                     {price === 0 ? (
                       <>
-                        <p className="text-5xl font-extrabold text-white tracking-tight">Free</p>
-                        <p className="text-xs text-[#6B7699] mt-1.5">Forever free</p>
+                        <p className="text-5xl font-extrabold tracking-tight" style={{
+                          background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text',
+                        }}>$0</p>
+                        <p className="text-sm text-emerald-400 font-bold mt-1.5">Free forever</p>
+                        <p className="text-xs text-[#6B7699] mt-0.5">No credit card required</p>
                       </>
                     ) : (
                       <>
@@ -1168,20 +1270,19 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                   {/* Trial / free notice */}
                   <p className="text-center text-[11px] text-[#3D4A6A] mb-1 leading-relaxed">
                     {(tier.priceMonthly as number) > 0
-                      ? 'Free for your first two weeks · No credit card required'
+                      ? '14-day free trial · No credit card required'
                       : (
-                        <span className="text-[#6B9A6B] font-semibold">
-                          No credit card required — free forever
+                        <span className="text-emerald-400 font-semibold">
+                          No credit card — free forever
                         </span>
                       )}
                   </p>
-                  {(tier.priceMonthly as number) > 0 && <div className="mb-6" />}
-                  {(tier.priceMonthly as number) === 0 && <div className="mb-6" />}
+                  <div className="mb-6" />
 
                   {/* Divider */}
                   <div
                     className={`h-px mb-5 ${
-                      tier.highlight
+                      tier.key === 'FREE' || tier.highlight
                         ? 'bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent'
                         : 'bg-[#141C35]'
                     }`}
@@ -1193,18 +1294,18 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                       <li key={f} className="flex items-start gap-3">
                         <div
                           className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
-                            tier.highlight ? 'bg-[#D4AF37]/15' : 'bg-white/[0.06]'
+                            tier.key === 'FREE' || tier.highlight ? 'bg-[#D4AF37]/15' : 'bg-white/[0.06]'
                           }`}
                         >
                           <Check
                             className={`w-3 h-3 ${
-                              tier.highlight ? 'text-[#D4AF37]' : 'text-[#6B7699]'
+                              tier.key === 'FREE' || tier.highlight ? 'text-[#D4AF37]' : 'text-[#6B7699]'
                             }`}
                           />
                         </div>
                         <span
                           className={`text-[15px] leading-snug ${
-                            tier.highlight ? 'text-[#E8EBF5]' : 'text-[#8B95B0]'
+                            tier.key === 'FREE' || tier.highlight ? 'text-[#E8EBF5]' : 'text-[#8B95B0]'
                           }`}
                         >
                           {f}
@@ -1224,6 +1325,87 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
         <div className="mb-24">
           <CustomPricingCalculator />
         </div>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* Token Explainer                                                    */}
+        {/* ------------------------------------------------------------------ */}
+        <section className="mb-24">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+              What can I build with tokens?
+            </h2>
+            <p className="text-[#6B7699] text-sm max-w-md mx-auto leading-relaxed">
+              1 token = 1 AI generation. Here&apos;s what that looks like in practice.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
+            {[
+              { icon: Hammer, count: '~30', label: 'Houses & Buildings', desc: 'Terrain, walls, roofs, interiors — all generated' },
+              { icon: Sparkles, count: '~20', label: 'Game Scripts', desc: 'Leaderboards, shops, combat systems, NPCs' },
+              { icon: Rocket, count: '~10', label: 'Full Game Scenes', desc: 'Complete playable levels with logic and UI' },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="rounded-2xl border border-[#141C35] bg-[#0A0F1E] p-6 text-center hover:border-[#1E2A4A] transition-all duration-200"
+              >
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 mb-4">
+                  <item.icon className="w-6 h-6 text-[#D4AF37]" />
+                </div>
+                <p className="text-3xl font-extrabold text-white mb-1">{item.count}</p>
+                <p className="text-sm font-bold text-[#D4AF37] mb-1">{item.label}</p>
+                <p className="text-xs text-[#6B7699]">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-xs text-[#3D4A6A] mt-6">
+            Based on 100 tokens. Simple builds use fewer tokens, complex multi-step builds use more.
+          </p>
+        </section>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* Plan Comparison Table                                               */}
+        {/* ------------------------------------------------------------------ */}
+        <section className="mb-24">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+              Compare all plans
+            </h2>
+            <p className="text-[#6B7699] text-sm">
+              Every feature, every plan. The Free column is highlighted so you can see exactly what you get for $0.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-white/[0.06]" style={{ background: 'rgba(8,10,22,0.6)' }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="text-left py-3 px-4 text-[#6B7699] font-medium">Feature</th>
+                  <th className="py-3 px-4 text-[#D4AF37] font-bold" style={{ background: 'rgba(212,175,55,0.06)' }}>Free</th>
+                  <th className="py-3 px-4 text-white font-medium">Builder</th>
+                  <th className="py-3 px-4 text-white font-medium">Creator</th>
+                  <th className="py-3 px-4 text-white font-medium">Pro</th>
+                  <th className="py-3 px-4 text-white font-medium">Studio</th>
+                </tr>
+              </thead>
+              <tbody className="text-[#8B95B0]">
+                {COMPARE_FEATURES.map((row) => (
+                  <tr key={row.label} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                    <td className="py-2.5 px-4 text-white font-medium">{row.label}</td>
+                    <td className="py-2.5 px-4 text-center" style={{ background: 'rgba(212,175,55,0.04)' }}>
+                      <CompareCell value={row.free} isFree />
+                    </td>
+                    <td className="py-2.5 px-4 text-center"><CompareCell value={row.builder} /></td>
+                    <td className="py-2.5 px-4 text-center"><CompareCell value={row.creator} /></td>
+                    <td className="py-2.5 px-4 text-center"><CompareCell value={row.pro} /></td>
+                    <td className="py-2.5 px-4 text-center"><CompareCell value={row.studio} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         {/* Token Packs — supplementary */}
         <TokenPacksSection onError={showError} packConfig={config.tokenPacks} />
@@ -1255,7 +1437,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
             { label: 'No contracts' },
             { label: 'Cancel anytime' },
             { label: 'SSL encrypted' },
-            { label: 'Free for your first two weeks' },
+            { label: '14-day free trial on all paid plans' },
           ].map(({ label, icon: TrustIcon }) => (
             <span key={label} className="flex items-center gap-2 text-sm text-[#4A5580]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
@@ -1299,7 +1481,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                   ['Knowledge Base', '25 API patterns injected', 'Context injection', 'No', 'No'],
                   ['Version Control', 'Checkpoints', 'Prompt rollback', 'No', 'No'],
                   ['Studio Plugin', 'Live sync + console', 'File sync', 'Basic', 'Desktop app'],
-                  ['Starting Price', 'Free (10/day)', 'Free (1/day)', '$8.99/mo', '$20/mo + API keys'],
+                  ['Starting Price', 'Free forever (50/mo)', 'Free (1/day)', '$8.99/mo', '$20/mo + API keys'],
                 ].map(([feature, forje, lemonade, rebirth, ropilot], i) => (
                   <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
                     <td className="py-2.5 px-4 text-white font-medium">{feature}</td>
@@ -1383,6 +1565,24 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
           </div>
         </div>
 
+      </div>
+
+      {/* Sticky mobile CTA — "Start Free" pinned to bottom on small screens */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 sm:hidden" style={{ background: 'linear-gradient(to top, #050810 0%, #050810 70%, transparent 100%)' }}>
+        <div className="px-4 pb-4 pt-6">
+          <Link
+            href="/sign-up?plan=free"
+            className="flex items-center justify-center gap-2 w-full text-base font-extrabold py-4 rounded-2xl transition-all duration-200 active:scale-[0.98]"
+            style={{
+              background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
+              color: '#0A0810',
+              boxShadow: '0 -4px 30px rgba(212,175,55,0.3)',
+            }}
+          >
+            <Zap className="w-5 h-5" />
+            Start Building Free
+          </Link>
+        </div>
       </div>
 
       {/* Error toast — shown when checkout fails */}
