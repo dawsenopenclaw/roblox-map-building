@@ -743,6 +743,7 @@ function EditorInner() {
               onSendToStudio={handleSendToStudio}
               studioConnected={studio.isConnected}
               savedAt={chat.savedAt}
+              cloudSavedAt={chat.cloudSavedAt}
               imageFile={chat.imageFile}
               onImageFile={chat.setImageFile}
               aiMode={chat.aiMode}

@@ -3531,6 +3531,7 @@ function EditorInner() {
               onSendToStudio={handleMeshSendToStudio}
               studioConnected={studio.isConnected}
               savedAt={chat.savedAt}
+              cloudSavedAt={chat.cloudSavedAt}
               imageFile={chat.imageFile}
               onImageFile={chat.setImageFile}
               compact={false}
@@ -3654,8 +3655,9 @@ function EditorInner() {
                     onSendToStudio={handleMeshSendToStudio}
                     studioConnected={studio.isConnected}
                     savedAt={chat.savedAt}
-              imageFile={chat.imageFile}
-              onImageFile={chat.setImageFile}
+                    cloudSavedAt={chat.cloudSavedAt}
+                    imageFile={chat.imageFile}
+                    onImageFile={chat.setImageFile}
                     compact={true}
                     {...aiModeProps}
                   />
@@ -3786,8 +3788,9 @@ function EditorInner() {
                       onSendToStudio={handleMeshSendToStudio}
                       studioConnected={studio.isConnected}
                       savedAt={chat.savedAt}
-              imageFile={chat.imageFile}
-              onImageFile={chat.setImageFile}
+                      cloudSavedAt={chat.cloudSavedAt}
+                      imageFile={chat.imageFile}
+                      onImageFile={chat.setImageFile}
                       compact={viewportExpanded}
                       {...aiModeProps}
                     />
@@ -3825,8 +3828,9 @@ function EditorInner() {
                         onSendToStudio={handleMeshSendToStudio}
                         studioConnected={studio.isConnected}
                         savedAt={chat.savedAt}
-              imageFile={chat.imageFile}
-              onImageFile={chat.setImageFile}
+                        cloudSavedAt={chat.cloudSavedAt}
+                        imageFile={chat.imageFile}
+                        onImageFile={chat.setImageFile}
                         compact={false}
                         {...aiModeProps}
                       />
@@ -3887,8 +3891,9 @@ function EditorInner() {
                         onSendToStudio={handleMeshSendToStudio}
                         studioConnected={studio.isConnected}
                         savedAt={chat.savedAt}
-              imageFile={chat.imageFile}
-              onImageFile={chat.setImageFile}
+                        cloudSavedAt={chat.cloudSavedAt}
+                        imageFile={chat.imageFile}
+                        onImageFile={chat.setImageFile}
                         compact={false}
                         {...aiModeProps}
                       />

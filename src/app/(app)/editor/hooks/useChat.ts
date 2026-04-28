@@ -101,8 +101,8 @@ function persistSession(sessionId: string, messages: ChatMessage[]): void {
     while (sessions.length > MAX_SESSIONS) sessions.pop()
   }
   saveSessions(sessions)
-  // Cloud persistence is now handled by debouncedCloudSave() in the hook,
-  // called after each AI response with a 2-second debounce delay.
+  // Cloud persistence is handled by debouncedCloudSave() in the hook,
+  // auto-triggered on every message change with a 5-second debounce delay.
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -505,9 +505,11 @@ export function useChat(options: UseChatOptions = {}) {
   }>({ style: 'auto', removeBackground: false, upscale: false })
   /** Epoch-ms timestamp bumped each time messages are written to localStorage. Used by ChatPanel to flash the "Saved" indicator. */
   const [savedAt, setSavedAt] = useState(0)
+  /** Epoch-ms timestamp bumped each time cloud save succeeds — drives "Synced" flash in ChatPanel. */
+  const [cloudSavedAt, setCloudSavedAt] = useState(0)
   /** Cloud sessions fetched from GET /api/sessions — populated on mount and after sync. */
   const [cloudSessions, setCloudSessions] = useState<CloudSessionMeta[]>([])
-  /** Debounce timer ref for cloud persistence — 2 second delay after last AI response. */
+  /** Debounce timer ref for cloud persistence — 5 second delay after last message change. */
   const cloudSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // ─── Checkpoint state ─────────────────────────────────────────────────────
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([])
@@ -595,7 +597,7 @@ export function useChat(options: UseChatOptions = {}) {
       }))
     if (cloudMessages.length === 0) return
     try {
-      await fetch('/api/sessions', {
+      const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -607,6 +609,9 @@ export function useChat(options: UseChatOptions = {}) {
           model: selectedModel,
         }),
       })
+      if (res.ok && mountedRef.current) {
+        setCloudSavedAt(Date.now())
+      }
       // Refresh cloud sessions list after successful sync
       await fetchCloudSessions()
     } catch {
@@ -614,12 +619,12 @@ export function useChat(options: UseChatOptions = {}) {
     }
   }, [fetchCloudSessions, aiMode, selectedModel])
 
-  /** Debounced cloud save — schedules a cloud sync 2 seconds after the last call. */
+  /** Debounced cloud save — schedules a cloud sync 5 seconds after the last call. */
   const debouncedCloudSave = useCallback(() => {
     if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current)
     cloudSaveTimerRef.current = setTimeout(() => {
       void syncToCloud()
-    }, 2000)
+    }, 5000)
   }, [syncToCloud])
 
   // Fetch cloud sessions on mount (signed-in users only)
@@ -633,24 +638,68 @@ export function useChat(options: UseChatOptions = {}) {
   // ─── Restore active conversation on mount ─────────────────────────────────────
   // Load the most-recently-updated session from fg_chat_sessions and hydrate
   // messages state so a page refresh doesn't wipe the conversation.
+  // If localStorage is empty but the user is signed in, fetch the latest
+  // session from the cloud so cross-device / cleared-storage users recover.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const sessions = loadSessions()
-    if (sessions.length === 0) return
-    // Sessions are stored newest-first (unshift on create, sorted by updatedAt on load)
-    const latest = sessions[0]
-    if (!latest || latest.messages.length === 0) return
-    // Rehydrate timestamps from ISO strings back to Date objects
-    // Also remove stale status messages ("Forje is building...") that got
-    // persisted when the user closed the tab during generation
-    const rehydrated = latest.messages
-      .filter((m) => m.role !== 'status') // Remove stale loading spinners
-      .map((m) => ({
-        ...m,
-        timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp as unknown as string),
-      }))
-    setMessagesSync(() => rehydrated)
-    setSessionId(latest.id)
+    if (sessions.length > 0) {
+      // Sessions are stored newest-first (unshift on create, sorted by updatedAt on load)
+      const latest = sessions[0]
+      if (latest && latest.messages.length > 0) {
+        // Rehydrate timestamps from ISO strings back to Date objects
+        // Also remove stale status messages ("Forje is building...") that got
+        // persisted when the user closed the tab during generation
+        const rehydrated = latest.messages
+          .filter((m) => m.role !== 'status') // Remove stale loading spinners
+          .map((m) => ({
+            ...m,
+            timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp as unknown as string),
+          }))
+        setMessagesSync(() => rehydrated)
+        setSessionId(latest.id)
+        return
+      }
+    }
+    // localStorage empty — try cloud restore for signed-in users
+    if (!user) return
+    ;(async () => {
+      try {
+        const listRes = await fetch('/api/sessions')
+        if (!listRes.ok) return
+        const listData = await listRes.json()
+        if (!Array.isArray(listData.sessions) || listData.sessions.length === 0) return
+        if (mountedRef.current) {
+          setCloudSessions(listData.sessions as CloudSessionMeta[])
+        }
+        // Load the most recent cloud session's full messages
+        const latest = listData.sessions[0] as CloudSessionMeta
+        const detailRes = await fetch(`/api/sessions/${latest.id}`)
+        if (!detailRes.ok) return
+        const detailData = await detailRes.json()
+        if (!detailData.session || !Array.isArray(detailData.session.messages)) return
+        if (!mountedRef.current) return
+        const rehydrated = detailData.session.messages.map(
+          (m: { id: string; role: string; content: string; metadata?: Record<string, unknown> | null; timestamp: string }) => ({
+            id: m.id,
+            role: m.role as MessageRole,
+            content: m.content,
+            ...(m.metadata?.tokensUsed ? { tokensUsed: m.metadata.tokensUsed as number } : {}),
+            ...(m.metadata?.model ? { model: m.metadata.model as string } : {}),
+            timestamp: new Date(m.timestamp),
+          }),
+        )
+        if (rehydrated.length > 0) {
+          setMessagesSync(() => rehydrated)
+          setSessionId(latest.id)
+          // Restore AI mode
+          const restoredMode = (detailData.session.aiMode as string | undefined) || 'build'
+          setAIMode(restoredMode as AIMode)
+        }
+      } catch {
+        // Cloud restore failed — start with empty chat
+      }
+    })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // intentionally run once on mount only
 
@@ -670,17 +719,45 @@ export function useChat(options: UseChatOptions = {}) {
       // Auto-save to session history so it appears in Chat History panel
       if (persistable.filter(m => m.role === 'user').length > 0) {
         persistSession(currentSessionIdRef.current, persistable)
+        // Auto-save to cloud (debounced 5s) on every message change for signed-in users
+        debouncedCloudSave()
       }
     } catch { /* quota exceeded — silently ignore */ }
-  }, [messages])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, debouncedCloudSave])
 
   // ─── Save session on tab close / navigate away ──────────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return
     const handleUnload = () => {
       const current = messagesRef.current.filter(m => !m.streaming && m.role !== 'status')
-      if (current.filter(m => m.role === 'user').length > 0) {
-        persistSession(currentSessionIdRef.current, current)
+      if (current.filter(m => m.role === 'user').length === 0) return
+      // Save to localStorage (synchronous, always works)
+      persistSession(currentSessionIdRef.current, current)
+      // Save to cloud via sendBeacon (fire-and-forget, survives tab close)
+      try {
+        const cloudMessages = current
+          .filter(m => m.role === 'user' || m.role === 'assistant' || m.role === 'system')
+          .map(m => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            metadata: {
+              ...(m.tokensUsed ? { tokensUsed: m.tokensUsed } : {}),
+              ...(m.model ? { model: m.model } : {}),
+            },
+            timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp,
+          }))
+        if (cloudMessages.length > 0) {
+          const payload = JSON.stringify({
+            id: currentSessionIdRef.current,
+            title: makeSessionTitle(current),
+            messages: cloudMessages,
+          })
+          navigator.sendBeacon('/api/sessions', new Blob([payload], { type: 'application/json' }))
+        }
+      } catch {
+        // sendBeacon failed — localStorage save above is the fallback
       }
     }
     window.addEventListener('beforeunload', handleUnload)
@@ -2748,6 +2825,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
     // Cloud session persistence
     cloudSessions,
     syncToCloud,
+    cloudSavedAt,
     // Image mode options (BUG 9)
     imageOptions,
     setImageOptions,

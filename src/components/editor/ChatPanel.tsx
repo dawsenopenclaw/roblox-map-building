@@ -4493,6 +4493,8 @@ interface ChatPanelProps {
   studioConnected?: boolean
   /** Epoch-ms timestamp from useChat.savedAt — bumped each time messages are persisted. Drives the "Saved" flash. */
   savedAt?: number
+  /** Epoch-ms timestamp from useChat.cloudSavedAt — bumped each time cloud save succeeds. Drives the "Synced" flash. */
+  cloudSavedAt?: number
   /** Currently attached image file (for Image-to-Map / vision) */
   imageFile?: File | null
   /** Called when user attaches or removes an image */
@@ -4571,6 +4573,7 @@ export function ChatPanel({
   onSendToStudio,
   studioConnected = false,
   savedAt = 0,
+  cloudSavedAt = 0,
   imageFile = null,
   onImageFile,
   aiMode = 'build',
@@ -4630,6 +4633,8 @@ export function ChatPanel({
   const isScrolledUpRef = useRef(false)
   const [showSaved, setShowSaved] = useState(false)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [showCloudSaved, setShowCloudSaved] = useState(false)
+  const cloudSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [aiLevelBadge, setAiLevelBadge] = useState<{ level: number; title: string } | null>(null)
 
   // Scroll to bottom on initial load so user sees latest messages
@@ -4651,6 +4656,16 @@ export function ChatPanel({
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
     }
   }, [savedAt])
+
+  useEffect(() => {
+    if (cloudSavedAt === 0) return
+    setShowCloudSaved(true)
+    if (cloudSavedTimerRef.current) clearTimeout(cloudSavedTimerRef.current)
+    cloudSavedTimerRef.current = setTimeout(() => setShowCloudSaved(false), 2000)
+    return () => {
+      if (cloudSavedTimerRef.current) clearTimeout(cloudSavedTimerRef.current)
+    }
+  }, [cloudSavedAt])
 
   // Fetch AI level badge on mount
   useEffect(() => {
@@ -5550,9 +5565,9 @@ export function ChatPanel({
               {/* Saved indicator */}
               <span style={{
                 fontSize: 10, color: 'rgba(74,222,128,0.55)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
-                opacity: showSaved ? 1 : 0, transition: 'opacity 0.35s ease',
+                opacity: showSaved || showCloudSaved ? 1 : 0, transition: 'opacity 0.35s ease',
                 pointerEvents: 'none',
-              }}>Saved</span>
+              }}>{showCloudSaved ? 'Synced \u2601' : 'Saved'}</span>
               {/* AI Level badge */}
               {aiLevelBadge && (
                 <span style={{
