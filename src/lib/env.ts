@@ -61,15 +61,19 @@ const serverSchema = z.object({
   STRIPE_RESTRICTED_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: prodRequired('STRIPE_WEBHOOK_SECRET'),
   STRIPE_FREE_PRICE_ID: z.string().optional(),
-  STRIPE_HOBBY_PRICE_ID: z.string().optional(),
-  STRIPE_HOBBY_YEARLY_PRICE_ID: z.string().optional(),
-  STRIPE_CREATOR_PRICE_ID: z.string().optional(),
-  STRIPE_CREATOR_YEARLY_PRICE_ID: z.string().optional(),
-  STRIPE_STUDIO_PRICE_ID: z.string().optional(),
-  STRIPE_STUDIO_YEARLY_PRICE_ID: z.string().optional(),
-  STRIPE_TOKEN_STARTER_PRICE_ID: z.string().optional(),
-  STRIPE_TOKEN_CREATOR_PRICE_ID: z.string().optional(),
-  STRIPE_TOKEN_PRO_PRICE_ID: z.string().optional(),
+  STRIPE_HOBBY_PRICE_ID: z.string().optional(),        // Legacy: maps to Starter tier
+  STRIPE_HOBBY_YEARLY_PRICE_ID: z.string().optional(),  // Legacy: maps to Starter tier
+  STRIPE_BUILDER_PRICE_ID: z.string().optional(),        // $25/mo
+  STRIPE_BUILDER_YEARLY_PRICE_ID: z.string().optional(), // $240/yr ($20/mo)
+  STRIPE_CREATOR_PRICE_ID: z.string().optional(),        // $50/mo
+  STRIPE_CREATOR_YEARLY_PRICE_ID: z.string().optional(), // $480/yr ($40/mo)
+  STRIPE_PRO_PRICE_ID: z.string().optional(),            // $150/mo
+  STRIPE_PRO_YEARLY_PRICE_ID: z.string().optional(),     // $1440/yr ($120/mo)
+  STRIPE_STUDIO_PRICE_ID: z.string().optional(),         // $200/mo
+  STRIPE_STUDIO_YEARLY_PRICE_ID: z.string().optional(),  // $1920/yr ($160/mo)
+  STRIPE_TOKEN_STARTER_PRICE_ID: z.string().optional(),  // Boost: $10/5K tokens
+  STRIPE_TOKEN_CREATOR_PRICE_ID: z.string().optional(),  // Builder Pack: $40/25K tokens
+  STRIPE_TOKEN_PRO_PRICE_ID: z.string().optional(),      // Studio Pack: $120/100K tokens
   STRIPE_CHARITY_ACCOUNT_ID: z.string().optional(),
 
   // ── AI Providers ──────────────────────────────────────────────────────────

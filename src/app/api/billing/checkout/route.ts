@@ -8,6 +8,7 @@ const schema = z.union([
     type: z.literal('subscription'),
     tier: z.enum(['FREE', 'STARTER', 'HOBBY', 'BUILDER', 'CREATOR', 'PRO', 'STUDIO']),
     yearly: z.boolean().optional(),
+    referralCode: z.string().optional(), // Referral = annual pricing billed monthly
   }),
   z.object({
     type: z.literal('token_pack'),
@@ -114,14 +115,27 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Free plan does not require checkout' }, { status: 400 })
       }
       const tier = SUBSCRIPTION_TIERS[normalizedTier]
-      const priceId = parsed.data.yearly ? tier.stripePriceIdYearly : tier.stripePriceIdMonthly
+
+      // Referral discount: user gets ANNUAL pricing billed monthly
+      // The referral code gives them the discounted rate without committing to annual
+      const hasReferral = !!parsed.data.referralCode
+      const priceId = (parsed.data.yearly || hasReferral)
+        ? tier.stripePriceIdYearly
+        : tier.stripePriceIdMonthly
       if (!priceId) return NextResponse.json({ error: 'Price not configured' }, { status: 500 })
+
+      // Track referral in metadata for analytics + referrer credit
+      const metadata: Record<string, string> = { userId: user.id, type: 'subscription' }
+      if (hasReferral) {
+        metadata.referralCode = parsed.data.referralCode!
+        metadata.referralDiscount = 'annual_at_monthly'
+      }
 
       const session = await createSubscriptionCheckoutSession({
         customerId,
         priceId,
         userId: user.id,
-        successUrl: `${appUrl}/dashboard?upgraded=true`,
+        successUrl: `${appUrl}/dashboard?upgraded=true${hasReferral ? '&ref=true' : ''}`,
         cancelUrl: `${appUrl}/pricing`,
       })
       return NextResponse.json({ url: session.url })

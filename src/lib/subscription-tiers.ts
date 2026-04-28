@@ -24,9 +24,9 @@ export const SUBSCRIPTION_TIERS = {
     priceMonthly: 2500, // $25
     priceYearly: 24000, // $240/yr ($20/mo)
     tokensPerMonth: 15000,
-    features: ['15,000 tokens/month', '75 builds per day', 'All Starter features', 'UI builder', 'Game system templates', 'Full game builder', 'Script generation', 'Priority support'],
-    stripePriceIdMonthly: serverEnv.STRIPE_BUILDER_PRICE_ID || '',
-    stripePriceIdYearly: serverEnv.STRIPE_BUILDER_YEARLY_PRICE_ID || '',
+    features: ['15,000 tokens/month', '50 builds per day', 'All AI build modes', 'UI builder', 'Game system templates', 'Script generation', 'Studio plugin'],
+    stripePriceIdMonthly: serverEnv.STRIPE_BUILDER_PRICE_ID || serverEnv.STRIPE_HOBBY_PRICE_ID || '',
+    stripePriceIdYearly: serverEnv.STRIPE_BUILDER_YEARLY_PRICE_ID || serverEnv.STRIPE_HOBBY_YEARLY_PRICE_ID || '',
   },
   CREATOR: {
     name: 'Creator',
@@ -43,8 +43,8 @@ export const SUBSCRIPTION_TIERS = {
     priceYearly: 144000, // $1440/yr ($120/mo)
     tokensPerMonth: 100000,
     features: ['100,000 tokens/month', 'Unlimited everything', 'All Creator features', 'Bulk 3D generation', 'Advanced analytics', 'Team collab (10 members)', 'Priority queue', 'Custom AI training'],
-    stripePriceIdMonthly: serverEnv.STRIPE_PRO_PRICE_ID || '',
-    stripePriceIdYearly: serverEnv.STRIPE_PRO_YEARLY_PRICE_ID || '',
+    stripePriceIdMonthly: serverEnv.STRIPE_PRO_PRICE_ID ?? '',
+    stripePriceIdYearly: serverEnv.STRIPE_PRO_YEARLY_PRICE_ID ?? '',
   },
   STUDIO: {
     name: 'Studio',
@@ -72,9 +72,9 @@ export function getTierTokenAllowance(tier: SubscriptionTier | string): number {
 }
 
 export const TOKEN_PACKS = [
-  { slug: 'starter', name: 'Starter Pack', tokens: 1000, priceCents: 1000, stripePriceId: serverEnv.STRIPE_TOKEN_STARTER_PRICE_ID || '' },
-  { slug: 'creator', name: 'Creator Pack', tokens: 5000, priceCents: 4500, stripePriceId: serverEnv.STRIPE_TOKEN_CREATOR_PRICE_ID || '' },
-  { slug: 'pro', name: 'Pro Pack', tokens: 15000, priceCents: 12000, stripePriceId: serverEnv.STRIPE_TOKEN_PRO_PRICE_ID || '' },
+  { slug: 'boost', name: 'Boost', tokens: 5000, priceCents: 1000, stripePriceId: serverEnv.STRIPE_TOKEN_STARTER_PRICE_ID || '' },
+  { slug: 'builder', name: 'Builder Pack', tokens: 25000, priceCents: 4000, stripePriceId: serverEnv.STRIPE_TOKEN_CREATOR_PRICE_ID || '' },
+  { slug: 'studio', name: 'Studio Pack', tokens: 100000, priceCents: 12000, stripePriceId: serverEnv.STRIPE_TOKEN_PRO_PRICE_ID || '' },
 ] as const
 
 export function getTokenPackBySlug(slug: string) {
