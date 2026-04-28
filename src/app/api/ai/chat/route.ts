@@ -5713,14 +5713,19 @@ local c = Instance.new("Clouds") c.Cover=0.7 c.Density=0.25 c.Color=Color3.fromR
     const fullCode = `local CH = game:GetService("ChangeHistoryService")
 local rid = CH:TryBeginRecording("ForjeAtmosphere")
 if not rid then warn("Recording failed") return end
--- Clear existing post-processing effects
+-- Clear existing post-processing effects (no for-loops, structured-safe)
 local L = game:GetService("Lighting")
-for _,child in ipairs(L:GetChildren()) do
-  if child:IsA("PostEffect") or child:IsA("Atmosphere") or child:IsA("Sky") then child:Destroy() end
-end
-for _,child in ipairs(workspace.Terrain:GetChildren()) do
-  if child:IsA("Clouds") then child:Destroy() end
-end
+local _e
+_e = L:FindFirstChildOfClass("Atmosphere") if _e then _e:Destroy() end
+_e = L:FindFirstChildOfClass("BloomEffect") if _e then _e:Destroy() end
+_e = L:FindFirstChildOfClass("BlurEffect") if _e then _e:Destroy() end
+_e = L:FindFirstChildOfClass("ColorCorrectionEffect") if _e then _e:Destroy() end
+_e = L:FindFirstChildOfClass("DepthOfFieldEffect") if _e then _e:Destroy() end
+_e = L:FindFirstChildOfClass("SunRaysEffect") if _e then _e:Destroy() end
+_e = L:FindFirstChildOfClass("Sky") if _e then _e:Destroy() end
+_e = workspace.Terrain:FindFirstChildOfClass("Clouds") if _e then _e:Destroy() end
+-- Remove previous ForjeDustEmitter if any
+_e = workspace:FindFirstChild("ForjeDustEmitter") if _e then _e:Destroy() end
 ${presetCode}
 -- Floating dust particles (TikTok essential)
 local dustPart = Instance.new("Part")

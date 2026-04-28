@@ -87,6 +87,10 @@ export default function RobloxLinkCard() {
         token_failed: 'Failed to exchange authorization code. Try again.',
         expired: 'OAuth session expired. Try again.',
         state_mismatch: 'Security check failed. Try again.',
+        not_configured: 'Roblox OAuth is coming soon. Use the manual link option below for now.',
+        no_user: 'Could not identify your account. Please sign in first.',
+        userinfo_failed: 'Could not fetch your Roblox profile. Try again.',
+        unexpected: 'Something went wrong. Please try again.',
       }
       setError(messages[oauthError] || `OAuth error: ${oauthError}`)
     }

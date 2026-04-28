@@ -539,6 +539,8 @@ const KNOWN_GENERIC_CLASSES = new Set([
   'Tool', 'Humanoid', 'Animation', 'AnimationController',
   'SelectionBox', 'SelectionSphere',
   'SurfaceAppearance',
+  // Scripts — need special parent resolution
+  'Script', 'LocalScript', 'ModuleScript',
 ])
 
 // ─── Main translator ──────────────────────────────────────────────────────────
@@ -1291,6 +1293,29 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         name: gi.name,
         parentName: gi.parentName,
         properties: props,
+      })
+    } else if (gi.className === 'Script' || gi.className === 'LocalScript' || gi.className === 'ModuleScript') {
+      // Emit specialized create_script command with intelligent parent routing
+      let scriptParent = gi.parentName
+      if (scriptParent === 'Workspace' || scriptParent === defaultParent) {
+        // No explicit parent — route based on script type
+        if (gi.className === 'LocalScript') {
+          scriptParent = 'StarterPlayer.StarterPlayerScripts'
+        } else if (gi.className === 'ModuleScript') {
+          // ModuleScripts used by both sides go to ReplicatedStorage
+          scriptParent = 'ReplicatedStorage'
+        } else {
+          // Regular Script → ServerScriptService
+          scriptParent = 'ServerScriptService'
+        }
+      }
+      const source = (gi.properties.Source as string) ?? ''
+      genericCommands.push({
+        type: 'create_script',
+        name: gi.name,
+        scriptType: gi.className as 'Script' | 'LocalScript' | 'ModuleScript',
+        source,
+        parent: scriptParent,
       })
     } else {
       // Smart parent defaults — if no explicit parent was set (still "Workspace"),

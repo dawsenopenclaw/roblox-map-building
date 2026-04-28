@@ -566,10 +566,22 @@ local function executeStructuredCommands(commands, commandId)
         end
         scriptInst:SetAttribute("fj_generated", true)
 
-        local parent = workspace
+        -- Resolve parent: explicit path > smart default based on script type
+        local parent = nil
         if cmd.parent then
           local resolved = resolveStructuredPath(cmd.parent)
           if resolved then parent = resolved end
+        end
+        -- Smart default: route scripts to correct service if no valid parent
+        if not parent then
+          if scriptType == "LocalScript" then
+            local sp = game:GetService("StarterPlayer")
+            parent = sp:FindFirstChild("StarterPlayerScripts") or sp
+          elseif scriptType == "ModuleScript" then
+            parent = game:GetService("ReplicatedStorage")
+          else
+            parent = game:GetService("ServerScriptService")
+          end
         end
         scriptInst.Parent = parent
 

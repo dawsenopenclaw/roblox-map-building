@@ -578,9 +578,9 @@ function CompareCell({
 
 // slug map: display name → API slug
 const PACK_SLUGS: Record<string, string> = {
-  Starter: 'starter',
-  Creator: 'creator',
-  Pro: 'pro',
+  Boost: 'starter',
+  'Builder Pack': 'creator',
+  'Studio Pack': 'pro',
 }
 
 function TokenPacksSection({

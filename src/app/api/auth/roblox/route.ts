@@ -24,7 +24,8 @@ export async function GET() {
 
   const clientId = process.env.ROBLOX_CLIENT_ID
   if (!clientId) {
-    return NextResponse.json({ error: 'Roblox OAuth not configured' }, { status: 503 })
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://forjegames.com'
+    return NextResponse.redirect(`${baseUrl}/settings/roblox?error=not_configured`)
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://forjegames.com'
