@@ -5812,7 +5812,7 @@ async function freeModelTwoPass(
     console.log(`[SimplifyPrompt] "${originalMessage.slice(0, 60)}..." → "${message}"`)
   }
 
-  const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace'].includes(intent)
+  const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace', 'gameplan'].includes(intent)
   // Opaque model names — don't leak provider details to the client
   const modelNames = ['forje-flash', 'forje-turbo', 'forje-pro']
 
@@ -5896,6 +5896,69 @@ async function freeModelTwoPass(
       }
     } catch (icErr) {
       console.warn('[InstantCache] Non-blocking:', icErr instanceof Error ? icErr.message : icErr)
+    }
+  }
+
+  // ── GAMEPLAN INTENT: conversational game planning, no code generation ──────
+  if (intent === 'gameplan') {
+    const gameplanPrompt = `You are ForjeAI, an expert Roblox game designer and planner. The user wants to plan a full game before building it.
+
+Your job is to have a CONVERSATION to understand what they want, then output a structured GAME PLAN.
+
+STEP 1 — If the user hasn't specified these yet, ask about:
+- Game TYPE: RPG, Obby, Tycoon, Simulator, Horror, Battle Royale, Racing, Survival, Tower Defense, etc.
+- THEME/STYLE: Medieval, Sci-fi, Modern, Fantasy, Underwater, Space, Cyberpunk, etc.
+- KEY FEATURES: Combat? Economy? Pets? Leaderboards? Trading? Quests? Vehicles?
+
+STEP 2 — Once you know the game type, theme, and features, output a structured GAME PLAN:
+
+**GAME PLAN: [Game Name]**
+Type: [type] | Theme: [theme] | Estimated Total Parts: [X,XXX - XX,XXX]
+
+**Phase 1: World/Terrain** (~X parts)
+- [Description of terrain, zones, biomes]
+
+**Phase 2: Buildings/Structures** (~X parts)
+- [Description of key buildings, their purpose]
+
+**Phase 3: Props/Decoration** (~X parts)
+- [Description of environmental detail]
+
+**Phase 4: NPCs/Characters** (~X parts + scripts)
+- [Description of NPCs, enemies, shopkeepers]
+
+**Phase 5: Scripts/Game Logic**
+- [Core systems: economy, combat, progression, data saving]
+
+**Phase 6: UI/HUD**
+- [Menus, health bars, inventory, shop GUI]
+
+**Phase 7: Lighting/Effects**
+- [Atmosphere, particles, post-processing]
+
+**Phase 8: Polish/Detail**
+- [Sounds, animations, quality-of-life features]
+
+End with: "Ready to start building Phase 1?"
+
+IMPORTANT: Do NOT generate any Luau code. This is a planning conversation only.
+Be enthusiastic and creative. Suggest cool features the user might not have thought of.
+Use your knowledge of what makes popular Roblox games successful.`
+
+    const planRace = await raceNonNull(
+      callGroq(gameplanPrompt, message, history, 2048),
+      callAnthropicChat(gameplanPrompt, message, history, 2048),
+      callGemini(gameplanPrompt, message, history, 2048),
+      callOpenRouterChat(gameplanPrompt, message, history, 2048),
+    )
+    if (!planRace) return null
+    const { message: cleanPlan, suggestions } = extractSuggestions(planRace.result)
+    return {
+      conversationText: cleanPlan,
+      luauCode: null,
+      executedInStudio: false,
+      suggestions: suggestions.length > 0 ? suggestions : ['Start building Phase 1', 'Adjust the plan', 'Add more features'],
+      model: modelNames[planRace.index],
     }
   }
 
@@ -6454,8 +6517,15 @@ STREET with buildings: Generate N buildings along the street via loop, each offs
 
 INTERSECTION: 4-way road crossing. Stop signs (Cyl post + octagon Part, red). Traffic lights (3 stacked Balls).
 
-=== WORLD-SCALE GENERATION (1000-10000+ parts) ===
+=== WORLD-SCALE GENERATION (1000-50000+ parts) ===
 For full game worlds, maps, and towns:
+
+PROGRESSIVE BUILD FRAMING — For large builds (full game, entire map, world, city, town):
+1. Estimate total parts needed based on scope
+2. Tell the user: "This will take X build phases. Starting Phase 1: [name]..."
+3. After generating each phase, end with: "Phase 1 complete (X parts). Ready for Phase 2: [name]?"
+4. This lets users build massive worlds across multiple messages without losing track.
+5. Each phase should be a complete, self-contained script that adds to the world.
 
 ZONE SYSTEM: Divide world into themed zones radiating from central hub.
   Each zone = 100-300 studs wide, distinct materials/colors/props.
@@ -6467,6 +6537,29 @@ BUILDING GENERATION: Use tables + loops. Never hand-place buildings individually
   Loop through configs, each iteration generates a complete facade + interaction zone.
   4 buildings × 15 parts each = 60 parts from one loop.
   A town with 12 buildings = ~180 building parts + paths + lamps + trees + terrain = 400+ parts total.
+  For 50+ buildings: use factory functions (createBuilding(cfg)) called in nested zone loops.
+
+PROCEDURAL GENERATION TECHNIQUES:
+  -- Tree scatter: place N trees with random offset
+  for i = 1, 40 do
+    local ox = math.random(-200, 200)
+    local oz = math.random(-200, 200)
+    createTree(sp.X + ox, gy, sp.Z + oz, math.random(8, 15))
+  end
+  -- Building row: generate a street of buildings from config table
+  local shops = { {name="Bakery",w=16,color={220,180,140}}, {name="Bank",w=20,color={180,180,190}}, ... }
+  local xOff = 0
+  for _, cfg in ipairs(shops) do
+    createShopFacade(sp.X + xOff, gy, sp.Z, cfg)
+    xOff = xOff + cfg.w + 4
+  end
+  -- Terrain variation: loop-generated hills
+  for i = 1, 8 do
+    local angle = (i / 8) * math.pi * 2
+    local hx = sp.X + math.cos(angle) * 150
+    local hz = sp.Z + math.sin(angle) * 150
+    terrain:FillBall(Vector3.new(hx, gy + math.random(10, 30), hz), math.random(20, 40), Enum.Material.Rock)
+  end
 
 TERRAIN ZONES:
   terrain:FillBlock(CFrame.new(sp.X, gy-2, sp.Z), Vector3.new(500,4,500), Enum.Material.Grass) -- base
@@ -6480,6 +6573,7 @@ PART COUNT BY REQUEST:
   "build a game map" → 500-3000 parts (hub + zones + buildings + paths + props)
   "build a full world" → 2000-10000 parts (multiple zones, building rows, terrain, streets)
   "build a town" → 1000-5000 parts (streets + building rows + props + terrain)
+  "build a full game" → 5000-50000 parts (world + buildings + props + scripts + UI — built in phases)
 
 === INTERIOR ROOMS (only when user EXPLICITLY asks for "interior" or "furnished") ===
 Interiors are OPTIONAL. Only build them when the user says "with interior", "furnished",
@@ -7470,6 +7564,18 @@ OBBY CODE PATTERN — checkpoints + kill bricks + moving platforms:
 - Lives display: enemies reaching the end deal 1 damage, game over at 0 lives
 - Wave indicator: current wave number, enemy count remaining, next wave countdown`
     }
+    // Detect large-scope builds that need progressive framing
+    const isLargeScope = /\b(full game|entire map|whole world|full world|entire world|full city|entire city|whole city|whole town|full town|massive|huge map|open world|mmo)\b/i.test(message)
+
+    const progressiveFraming = isLargeScope ? `
+PROGRESSIVE BUILD FRAMING — This is a large-scope request.
+1. First, estimate the total parts needed and tell the user.
+2. Say: "This will take X build phases. Starting Phase 1: [Terrain/World Base]..."
+3. Generate Phase 1 as a complete, executable Luau script.
+4. End your response with: "Phase 1 complete (~X parts placed). Ready for Phase 2: [Buildings/Structures]?"
+5. Use for-loops, table-driven generation, and factory functions to maximize parts per line of code.
+6. Each subsequent phase (when user says "yes" or "next phase") should add to the existing world, not rebuild.` : ''
+
     const fullgameOverride = (intent === 'fullgame' || intent === 'tycoon' || intent === 'obby')
       ? `\n\nIMPORTANT: Output ONE single executable Luau script that creates a COMPLETE GAME SYSTEM. This means:
 1. Create Script instances with .Source containing the SERVER game logic (economy, spawning, progression, data saving)
@@ -7478,8 +7584,8 @@ OBBY CODE PATTERN — checkpoints + kill bricks + moving platforms:
 4. Build MINIMAL physical parts only where needed (spawn platforms, zone markers, buy buttons with BillboardGui)
 5. Wrap everything in ChangeHistoryService recording
 
-This is a GAME SYSTEM request — prioritize SCRIPTS over PARTS. The user wants working game mechanics, not just a pretty build.${gameTypeGuidance}${templateReference}`
-      : ''
+This is a GAME SYSTEM request — prioritize SCRIPTS over PARTS. The user wants working game mechanics, not just a pretty build.${progressiveFraming}${gameTypeGuidance}${templateReference}`
+      : (isLargeScope && (intent === 'building' || intent === 'terrain') ? `\n\n${progressiveFraming}` : '')
 
     // ── CUSTOMIZATION EXTRACTION: detect user preferences from prompt ──
     let customizationContext = ''
@@ -12576,6 +12682,7 @@ type IntentKey =
   | 'animate'
   | 'datasave'
   | 'networking'
+  | 'gameplan'
   | 'default'
 
 // Token costs per intent — cheap for conversation, expensive for generation
@@ -12589,6 +12696,7 @@ const INTENT_TOKEN_COST: Record<IntentKey, number> = {
   help: 0,
   publish: 0,
   education: 0,
+  gameplan: 0,
   // Cheap — light processing
   debug: 1,
   performance: 1,
@@ -12633,6 +12741,17 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
       /^(place it in studio|send to studio|build it in studio|execute in studio|run in studio|put it in studio)\s*[!.]*$/i,
     ],
     intent: 'building',
+  },
+  {
+    // Game planning conversation — user wants to plan before building
+    // Must be checked BEFORE fullgame so "help me plan a game" doesn't jump to code gen
+    patterns: [
+      /\b(plan a game|plan my game|design a game|help me (?:make|build|create|design|plan) a (?:full )?game)\b/i,
+      /\b(let'?s plan|game idea|game plan|help me plan|plan out)\b/i,
+      /\b(i want to (?:build|make|create) a (?:full|complete|entire|whole|big) game)\b/i,
+      /\b(game design|game concept|brainstorm.*game|outline.*game)\b/i,
+    ],
+    intent: 'gameplan',
   },
   {
     // Full game generation — checked before generic "build/create" patterns
@@ -13933,6 +14052,19 @@ Token cost: 2 tokens`,
 
   networking: `I'll wire up the RemoteEvent and both the ServerScript and LocalScript sides.\n\n[SUGGESTIONS]\nFire to all clients\nAdd server-side validation\nCreate a bindable event instead`,
 
+  gameplan: `Let's plan your game! To create the best possible build plan, I need to know a few things:
+
+1. **Game Type** — What kind of game? (RPG, Obby, Tycoon, Simulator, Horror, Battle Royale, Racing, Survival, Tower Defense, etc.)
+2. **Theme/Style** — What's the visual style? (Medieval, Sci-fi, Modern, Fantasy, Cyberpunk, etc.)
+3. **Key Features** — What mechanics do you want? (Combat, Economy, Pets, Leaderboards, Trading, Quests, Vehicles, etc.)
+
+Tell me about your game idea and I'll create a detailed build plan with phases, part estimates, and everything you need to bring it to life!
+
+[SUGGESTIONS]
+I want to make an RPG
+Plan a tycoon game
+Help me design a simulator`,
+
   default: `✓ Request Processed
 
 I've analyzed your input and here's what was generated:
@@ -14624,7 +14756,7 @@ async function recordUniversalOutcome(text: string, meta: StreamResponseMeta): P
 
     // Skip recording for error responses, help, and empty responses
     if (!text || text.length < 20) return
-    if (intent === 'help' || intent === 'conversation' || intent === 'chat') {
+    if (intent === 'help' || intent === 'conversation' || intent === 'chat' || intent === 'gameplan') {
       // Still record conversations to ELI for topic tracking
       void recordToEli({
         prompt: text.slice(0, 200),
@@ -16090,10 +16222,10 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       )
 
       const maxTokens =
-        intent === 'chat' || intent === 'conversation'
+        intent === 'chat' || intent === 'conversation' || intent === 'gameplan'
           ? 2048
           : intent === 'fullgame'
-            ? 32768
+            ? 65536
             : intent === 'building' || intent === 'terrain'
               ? 16384
               : intent === 'script' || intent === 'multiscript' || intent === 'gamesystem'
@@ -16262,10 +16394,10 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     try {
       // Chat/conversation intents get shorter responses; code-heavy builds get max tokens
       const maxTokens =
-        intent === 'chat' || intent === 'conversation'
+        intent === 'chat' || intent === 'conversation' || intent === 'gameplan'
           ? 2048
           : intent === 'fullgame'
-            ? 32768
+            ? 65536
             : intent === 'building' || intent === 'terrain'
               ? 16384
               : intent === 'script' || intent === 'multiscript' || intent === 'gamesystem'
