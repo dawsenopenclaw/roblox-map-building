@@ -130,7 +130,35 @@ async function callGemini(
       return null
     }
   }
-  console.error('[ai-provider/gemini] Exhausted retries on 429')
+  console.error('[ai-provider/gemini] Exhausted retries on gemini-2.5-flash 429')
+
+  // ── FALLBACK: Try gemini-2.0-flash (stable, higher rate limits) ──
+  const fallbackKey = getNextKey('GEMINI') || process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
+  if (fallbackKey) {
+    console.log('[ai-provider/gemini] Trying gemini-2.0-flash as fallback...')
+    try {
+      const fallbackRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${fallbackKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(60_000),
+        },
+      )
+      if (fallbackRes.ok) {
+        const fallbackData = (await fallbackRes.json()) as GeminiRes
+        const fallbackText = fallbackData.candidates?.[0]?.content?.parts?.[0]?.text ?? null
+        if (fallbackText) {
+          console.log('[ai-provider/gemini] gemini-2.0-flash succeeded as fallback')
+          return fallbackText
+        }
+      }
+    } catch (e) {
+      console.warn('[ai-provider/gemini] 2.0-flash fallback failed:', (e as Error).message)
+    }
+  }
+
   return null
 }
 
@@ -197,7 +225,35 @@ async function callGroq(
       return null
     }
   }
-  console.error('[ai-provider/groq] Exhausted retries on 429')
+  console.error('[ai-provider/groq] Exhausted retries on llama-3.3-70b 429')
+
+  // ── FALLBACK: Try smaller Groq model (rarely rate limited) ──
+  console.log('[ai-provider/groq] Trying llama-3.1-8b-instant as fallback...')
+  try {
+    const fallbackRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: groqMessages,
+        max_tokens: Math.min(maxTokens, 8192),
+        temperature,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    })
+    if (fallbackRes.ok) {
+      type GroqRes = { choices?: Array<{ message?: { content?: string } }> }
+      const fallbackData = await fallbackRes.json() as GroqRes
+      const fallbackText = fallbackData.choices?.[0]?.message?.content ?? null
+      if (fallbackText) {
+        console.log('[ai-provider/groq] llama-3.1-8b-instant succeeded as fallback')
+        return fallbackText
+      }
+    }
+  } catch (e) {
+    console.warn('[ai-provider/groq] 8b fallback failed:', (e as Error).message)
+  }
+
   return null
 }
 

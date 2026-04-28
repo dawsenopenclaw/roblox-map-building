@@ -8662,7 +8662,7 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
       if (!luauCode) {
         console.warn('[SinglePass] ALL models failed to generate code for:', message.slice(0, 50))
         model = 'failed'
-        conversationText = `Hey, all the AI models are busy right now — give it a minute and try again. Rate limits reset fast.\n\nIf it keeps happening, try a shorter prompt like "build a tree" or "make a house". The simpler the better.\n\n[FOLLOWUP]\n- Try my prompt again\n- Build me something simple\n- What else can you do?\n\n[SUGGESTIONS]\n- Build me a tree\n- Make a house\n- Help me plan a game`
+        conversationText = `The AI is catching its breath — a lot of people are building right now. Try again in 10-15 seconds.\n\nIn the meantime, these instant builds work every time (no AI needed):\n- "build a tree" / "build a house" / "build a car"\n- "build a castle" / "build a spaceship" / "build a helicopter"\n- "build a tank" / "build a robot" / "build a campfire"\n- "build a shop" / "build a table" / "build a fountain"\n\nType any of those and it'll appear instantly!\n\n[FOLLOWUP]\n- Try my prompt again\n- Build me a helicopter\n- Build me a castle\n\n[SUGGESTIONS]\n- Build me a robot\n- Build me a tank\n- Build me a shop`
       }
     }
 
@@ -15094,7 +15094,21 @@ DAMAGE MODULE:
 
   // Full conversation history with token-aware compression (older turns summarized)
   const history = compressHistory(rawHistory)
-  const sessionId = req.headers.get('x-studio-session') ?? parsed.data.gameContext?.sessionId ?? null
+  let sessionId: string | null = req.headers.get('x-studio-session') ?? parsed.data.gameContext?.sessionId ?? null
+
+  // Auto-discover Studio session for API key / MCP callers that don't provide one
+  if (!sessionId) {
+    try {
+      const { pgFindActiveSession } = await import('@/lib/studio-queue-pg')
+      const active = await pgFindActiveSession()
+      if (active) {
+        sessionId = active.sessionId
+        console.log(`[chat] Auto-discovered Studio session: ${sessionId} (${active.placeName})`)
+      }
+    } catch {
+      // Postgres unavailable — no auto-discovery
+    }
+  }
 
   let intent = await smartDetectIntent(message, rawHistory)
 
@@ -16883,7 +16897,7 @@ Set m.PrimaryPart to the base part. No explanation.`,
     }
 
     // Final fallback — be honest, no fake templates
-    const failMsg = `All the AI models are busy right now — try again in a minute, rate limits reset fast. If it keeps happening, try a shorter prompt.\n\n[FOLLOWUP]\n- Try my prompt again\n- Build me something simple\n- What can you make?\n\n[SUGGESTIONS]\n- Build me a tree\n- Make a house\n- Help me plan a game`
+    const failMsg = `The AI is catching its breath — a lot of people are building right now. Try again in 10-15 seconds.\n\nThese instant builds work every time (no AI needed): "build a tree", "build a castle", "build a helicopter", "build a tank", "build a robot", "build a shop", "build a fountain"\n\n[FOLLOWUP]\n- Try my prompt again\n- Build me a castle\n- Build me a helicopter\n\n[SUGGESTIONS]\n- Build me a robot\n- Build me a tank\n- Build me a shop`
     // Record the failure for learning
     void learnFromFailure(message, '', 0, ['All models failed to respond'], detectCategory(message)).catch(() => {})
     if (wantsStream) {
