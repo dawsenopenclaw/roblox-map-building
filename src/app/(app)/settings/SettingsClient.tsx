@@ -50,6 +50,9 @@ type ApiKey = {
   id: string
   name: string
   prefix: string
+  scopes: string[]
+  tier: string
+  lastUsedAt: string | null
   createdAt: string
 }
 
@@ -873,32 +876,351 @@ function BillingTab() {
 // ─── API Keys Tab ─────────────────────────────────────────────────────────────
 
 function ApiKeysTab() {
+  const { data, error, mutate } = useSWR<{ keys: ApiKey[] }>('/api/settings/api-keys', fetcher)
+  const [showCreate, setShowCreate] = useState(false)
+  const [newKeyName, setNewKeyName] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [revealedKey, setRevealedKey] = useState<string | null>(null)
+  const [copiedKey, setCopiedKey] = useState(false)
+  const [copiedConfig, setCopiedConfig] = useState(false)
+  const [revoking, setRevoking] = useState<string | null>(null)
+  const [showSetup, setShowSetup] = useState(false)
+  const toast = useToast()
+
+  const keys = data?.keys ?? []
+
+  async function createKey() {
+    if (!newKeyName.trim()) return
+    setCreating(true)
+    try {
+      const res = await fetch('/api/settings/api-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newKeyName.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to create key')
+      setRevealedKey(json.key.rawKey)
+      setNewKeyName('')
+      setShowCreate(false)
+      mutate()
+      toast.success('API key created')
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function revokeKey(keyId: string) {
+    setRevoking(keyId)
+    try {
+      const res = await fetch('/api/settings/api-keys', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyId }),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        throw new Error(json.error || 'Failed to revoke')
+      }
+      mutate()
+      toast.success('Key revoked')
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setRevoking(null)
+    }
+  }
+
+  function copyKey(text: string) {
+    navigator.clipboard.writeText(text)
+    setCopiedKey(true)
+    setTimeout(() => setCopiedKey(false), 2000)
+  }
+
+  function copyConfig(text: string) {
+    navigator.clipboard.writeText(text)
+    setCopiedConfig(true)
+    setTimeout(() => setCopiedConfig(false), 2000)
+  }
+
+  const mcpConfig = `{
+  "mcpServers": {
+    "forje-games": {
+      "command": "npx",
+      "args": ["-y", "@forjegames/mcp-forje"],
+      "env": {
+        "FORJE_API_KEY": "${revealedKey || 'fj_live_your_key_here'}"
+      }
+    }
+  }
+}`
+
   return (
-    <div className="card-premium rounded-xl p-6">
-      <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
-        <div>
-          <h3 className="text-white font-semibold">API Keys</h3>
-          <p className="text-gray-400 text-xs mt-0.5">
-            Create and manage keys for programmatic access to ForjeGames.
-          </p>
+    <div className="space-y-4">
+      {/* Revealed key banner */}
+      {revealedKey && (
+        <div className="card-premium rounded-xl p-5 border border-[#D4AF37]/30 bg-[#D4AF37]/5">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Key size={16} className="text-[#D4AF37]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-white font-semibold text-sm">Your new API key</h4>
+              <p className="text-gray-400 text-xs mt-0.5 mb-3">
+                Copy this now — it won&apos;t be shown again.
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[#D4AF37] text-xs font-mono break-all select-all">
+                  {revealedKey}
+                </code>
+                <button
+                  onClick={() => copyKey(revealedKey)}
+                  className="flex-shrink-0 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+                  title="Copy key"
+                >
+                  {copiedKey ? <Check size={14} className="text-green-400" /> : <Copy size={14} className="text-gray-400" />}
+                </button>
+              </div>
+              <button
+                onClick={() => setShowSetup(s => !s)}
+                className="mt-3 text-xs font-medium text-[#D4AF37] hover:text-[#E6A519] transition-colors flex items-center gap-1"
+              >
+                {showSetup ? 'Hide' : 'Show'} MCP setup instructions
+                <ChevronDown size={12} className={`transition-transform ${showSetup ? 'rotate-180' : ''}`} />
+              </button>
+              {showSetup && (
+                <div className="mt-3 space-y-3">
+                  <p className="text-gray-400 text-xs">
+                    Add this to your editor&apos;s MCP config:
+                  </p>
+                  <div className="relative">
+                    <pre className="bg-black/60 border border-white/10 rounded-lg p-3 text-xs text-gray-300 font-mono overflow-x-auto whitespace-pre">
+                      {mcpConfig}
+                    </pre>
+                    <button
+                      onClick={() => copyConfig(mcpConfig)}
+                      className="absolute top-2 right-2 p-1.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/[0.06] transition-colors"
+                      title="Copy config"
+                    >
+                      {copiedConfig ? <Check size={12} className="text-green-400" /> : <Copy size={12} className="text-gray-400" />}
+                    </button>
+                  </div>
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <p><strong className="text-gray-400">Claude Code:</strong> Add to <code className="text-[#D4AF37]/70">.claude/settings.json</code></p>
+                    <p><strong className="text-gray-400">Cursor:</strong> Add to <code className="text-[#D4AF37]/70">.cursor/mcp.json</code></p>
+                    <p><strong className="text-gray-400">Windsurf:</strong> Add to <code className="text-[#D4AF37]/70">.windsurf/mcp.json</code></p>
+                  </div>
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3">
+                    <p className="text-xs text-gray-400 font-medium mb-2">Available tools:</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {[
+                        { name: 'forje_build', desc: 'Build anything from a prompt' },
+                        { name: 'forje_script', desc: 'Generate Luau scripts' },
+                        { name: 'forje_template', desc: 'Use instant templates' },
+                        { name: 'forje_status', desc: 'Check tokens & connection' },
+                        { name: 'forje_templates_list', desc: 'List all templates' },
+                      ].map(t => (
+                        <div key={t.name} className="flex items-baseline gap-2">
+                          <code className="text-[10px] text-[#D4AF37]/80 font-mono">{t.name}</code>
+                          <span className="text-[10px] text-gray-500">{t.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => setRevealedKey(null)}
+                className="mt-3 text-xs text-gray-500 hover:text-gray-400 transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
         </div>
-        <Link
-          href="/settings/api-keys"
-          className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold px-4 py-2 rounded-xl transition-colors"
-        >
-          <Key size={14} />
-          Manage Keys
-        </Link>
+      )}
+
+      {/* Main card */}
+      <div className="card-premium rounded-xl p-6">
+        <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
+          <div>
+            <h3 className="text-white font-semibold">API Keys</h3>
+            <p className="text-gray-400 text-xs mt-0.5">
+              Use API keys to build Roblox games from Claude Code, Cursor, or any MCP-compatible editor.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold px-4 py-2 rounded-xl transition-all"
+          >
+            <Plus size={14} />
+            New Key
+          </button>
+        </div>
+
+        {/* Loading */}
+        {!data && !error && (
+          <div className="space-y-3">
+            {[1, 2].map(i => (
+              <div key={i} className="bg-white/[0.03] rounded-xl p-4 animate-pulse">
+                <div className="h-4 bg-white/10 rounded w-1/3 mb-2" />
+                <div className="h-3 bg-white/5 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">
+            <p className="text-red-400 text-sm">Failed to load API keys</p>
+            <button onClick={() => mutate()} className="text-xs text-red-400/70 hover:text-red-400 mt-1 transition-colors">
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Empty */}
+        {data && keys.length === 0 && !revealedKey && (
+          <div className="text-center py-10">
+            <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mx-auto mb-3">
+              <Key size={20} className="text-gray-500" />
+            </div>
+            <p className="text-gray-400 text-sm font-medium">No API keys yet</p>
+            <p className="text-gray-500 text-xs mt-1 max-w-xs mx-auto">
+              Create a key to start building Roblox games from your favorite AI editor.
+            </p>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#D4AF37] hover:text-[#E6A519] transition-colors"
+            >
+              <Plus size={14} />
+              Create your first key
+            </button>
+          </div>
+        )}
+
+        {/* Key list */}
+        {data && keys.length > 0 && (
+          <div className="space-y-2">
+            {keys.map(key => (
+              <div
+                key={key.id}
+                className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 flex items-center justify-between gap-4 hover:border-white/[0.1] transition-colors group"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-white text-sm font-medium truncate">{key.name}</span>
+                    <code className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.06] text-gray-400 font-mono">
+                      {key.prefix}
+                    </code>
+                  </div>
+                  <div className="flex items-center gap-3 text-[11px] text-gray-500 flex-wrap">
+                    <span>Created {new Date(key.createdAt).toLocaleDateString()}</span>
+                    {key.lastUsedAt ? (
+                      <span>Last used {new Date(key.lastUsedAt).toLocaleDateString()}</span>
+                    ) : (
+                      <span className="text-gray-600">Never used</span>
+                    )}
+                    <span className="hidden sm:inline text-gray-600">
+                      {key.scopes.join(', ')}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => revokeKey(key.id)}
+                  disabled={revoking === key.id}
+                  className="flex-shrink-0 p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-50"
+                  title="Revoke key"
+                >
+                  {revoking === key.id ? (
+                    <div className="w-3.5 h-3.5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 size={14} />
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <p className="text-gray-500 text-sm">
-        API key management has its own dedicated page with full key creation, scopes, and revocation.
-      </p>
-      <Link
-        href="/settings/api-keys"
-        className="inline-flex items-center gap-1.5 mt-4 text-sm font-semibold text-[#D4AF37] hover:text-[#E6A519] transition-colors"
-      >
-        Open API Keys page →
-      </Link>
+
+      {/* MCP info card */}
+      <div className="card-premium rounded-xl p-6">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center flex-shrink-0">
+            <Plug size={16} className="text-[#D4AF37]" />
+          </div>
+          <div>
+            <h4 className="text-white font-semibold text-sm">MCP Integration</h4>
+            <p className="text-gray-400 text-xs mt-1 leading-relaxed">
+              ForjeGames works with any MCP-compatible AI editor. Build entire Roblox games
+              without leaving your code editor. Create an API key, then add the config to your editor.
+            </p>
+            <div className="flex items-center gap-4 mt-3 flex-wrap">
+              {['Claude Code', 'Cursor', 'Windsurf', 'Any MCP Client'].map(name => (
+                <span key={name} className="text-[11px] text-gray-500 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                  {name}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Create key modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
+          <div
+            className="bg-[#141414] border border-white/[0.08] rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-white font-semibold mb-1">Create API Key</h3>
+            <p className="text-gray-400 text-xs mb-5">
+              Give your key a name so you can identify it later.
+            </p>
+            <label className="label-premium block mb-1.5">Key Name</label>
+            <input
+              type="text"
+              value={newKeyName}
+              onChange={e => setNewKeyName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && createKey()}
+              placeholder="e.g. Claude Code, Cursor, My MCP Server"
+              maxLength={64}
+              autoFocus
+              className="input-premium w-full mb-5"
+            />
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowCreate(false)}
+                className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createKey}
+                disabled={creating || !newKeyName.trim()}
+                className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold px-5 py-2 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creating ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Key size={14} />
+                    Create Key
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
