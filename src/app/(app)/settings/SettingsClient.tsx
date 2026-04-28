@@ -500,7 +500,7 @@ function ProfileTab() {
             name={displayName || user?.fullName || 'User'}
             initialUrl={avatarUrl}
             onError={(msg) => show({ variant: 'error', title: msg })}
-            onUploaded={(url) => { setAvatarUrl(url); show({ variant: 'success', title: 'Avatar updated' }) }}
+            onUploaded={(url) => { setAvatarUrl(url); void user?.reload(); show({ variant: 'success', title: 'Avatar updated' }) }}
           />
         </div>
 
