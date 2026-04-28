@@ -6448,7 +6448,28 @@ Use your knowledge of what makes popular Roblox games successful.`
       callGemini(gameplanPrompt, message, history, 2048),
       callOpenRouterChat(gameplanPrompt, message, history, 2048),
     )
-    if (!planRace) return null
+    // If ALL models fail, return a hardcoded planning response so the user NEVER sees "catching its breath" for game planning
+    if (!planRace) {
+      const fallbackPlan = `Great — let's plan your game! To build something amazing, I need to know a few things:
+
+**1. What type of game?**
+RPG, Obby, Tycoon, Simulator, Battle Royale, Horror, Racing, or something else?
+
+**2. What's the theme?**
+Medieval, Sci-fi, Modern City, Fantasy, Underwater, Space, or your own idea?
+
+**3. What features do you want?**
+Combat, Pets, Trading, Leaderboards, NPCs, Vehicles, Economy, Daily Rewards?
+
+Tell me about your vision and I'll create a full build plan with estimated parts for each phase!`
+      return {
+        conversationText: fallbackPlan,
+        luauCode: null as unknown as string,
+        executedInStudio: false,
+        suggestions: ['RPG with combat', 'Tycoon with economy', 'Obby with 100 levels'],
+        model: 'fallback',
+      }
+    }
     const { message: cleanPlan, suggestions } = extractSuggestions(planRace.result)
 
     // ── Save game plan to persistent state (fire-and-forget) ──
@@ -13408,6 +13429,12 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
       /\b(let'?s plan|game idea|game plan|help me plan|plan out)\b/i,
       /\b(i want to (?:build|make|create) a (?:full|complete|entire|whole|big) game)\b/i,
       /\b(game design|game concept|brainstorm.*game|outline.*game)\b/i,
+      /\b(let'?s (?:build|make|create) a game)\b/i,
+      /\b((?:build|make|create) a game (?:together|with me|with you))\b/i,
+      /\b(let'?s (?:build|make|create) (?:a |an? )?(?:game|world|project) together)\b/i,
+      /\b(help me (?:build|start|begin|make) (?:a |my )game)\b/i,
+      /\b(i need (?:a |help with a )game)\b/i,
+      /\b(can you (?:help|build|make|create|plan) (?:me )?a game)\b/i,
     ],
     intent: 'gameplan',
   },
