@@ -2500,7 +2500,7 @@ function MessageBubbleImpl({
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
-        <div style={{ maxWidth: isMobile ? '88%' : '75%', position: 'relative' }}>
+        <div style={{ maxWidth: isMobile ? '90%' : '75%', position: 'relative' }}>
           {/* Pencil edit button — appears on hover, only when not editing */}
           {!editing && onEditAndResend && (
             <button
@@ -2566,7 +2566,7 @@ function MessageBubbleImpl({
                   background: 'rgba(10,10,26,0.85)',
                   border: '1.5px solid #D4AF37',
                   color: 'var(--text-primary, rgba(255,255,255,0.9))',
-                  fontSize: 14,
+                  fontSize: isMobile ? 16 : 14,
                   fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
                   lineHeight: 1.5,
                   resize: 'none',
@@ -2626,7 +2626,7 @@ function MessageBubbleImpl({
             /* ── Normal display mode ──────────────────────────────── */
             <div
               style={{
-                padding: '14px 22px',
+                padding: isMobile ? '12px 16px' : '14px 22px',
                 borderRadius: '20px 20px 6px 20px',
                 background: 'linear-gradient(135deg, rgba(212,175,55,0.10) 0%, rgba(212,175,55,0.05) 100%)',
                 border: '1px solid rgba(212,175,55,0.15)',
@@ -2650,7 +2650,7 @@ function MessageBubbleImpl({
     <div
       style={{
         display: 'flex',
-        gap: 12,
+        gap: isMobile ? 8 : 12,
         alignItems: 'flex-start',
         animation: 'msgFadeUp 0.3s ease-out forwards',
       }}
@@ -2660,9 +2660,9 @@ function MessageBubbleImpl({
       {/* Avatar */}
       <div
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 12,
+          width: isMobile ? 28 : 36,
+          height: isMobile ? 28 : 36,
+          borderRadius: isMobile ? 9 : 12,
           background: 'linear-gradient(135deg, #E8C74A 0%, #D4AF37 40%, #B8962E 100%)',
           display: 'flex',
           alignItems: 'center',
@@ -2675,7 +2675,7 @@ function MessageBubbleImpl({
           transition: 'box-shadow 0.4s ease',
         }}
       >
-        <svg width="16" height="16" viewBox="0 0 12 12" fill="#0a0a0a">
+        <svg width={isMobile ? 12 : 16} height={isMobile ? 12 : 16} viewBox="0 0 12 12" fill="#0a0a0a">
           <path d="M6 1L7.5 4.5H11L8 6.5l1 3.5L6 8l-3 2 1-3.5-3-2h3.5L6 1z"/>
         </svg>
       </div>
@@ -4945,10 +4945,12 @@ export function ChatPanel({
           flex: 1,
           minHeight: 0,
           overflowY: 'auto',
+          overflowX: 'hidden',
           display: compact ? 'none' : 'block',
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(212,175,55,0.3) transparent',
           position: 'relative',
+          WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
         }}
       >
         <div style={{
@@ -5265,8 +5267,8 @@ export function ChatPanel({
             gap: 0,
             background: 'rgba(12,14,28,0.75)',
             border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 22,
-            padding: '14px 18px',
+            borderRadius: isMobile ? 18 : 22,
+            padding: isMobile ? '10px 12px' : '14px 18px',
             transition: 'border-color 0.25s ease-out, box-shadow 0.25s ease-out',
             backdropFilter: 'blur(20px) saturate(1.2)',
             WebkitBackdropFilter: 'blur(20px) saturate(1.2)',

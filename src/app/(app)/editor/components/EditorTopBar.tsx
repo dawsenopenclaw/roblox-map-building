@@ -57,7 +57,7 @@ export function EditorTopBar({
         alignItems: 'center',
         gap: isMobile ? 6 : 10,
         padding: isMobile ? `calc(6px + env(safe-area-inset-top, 0px)) 12px 6px` : '0 20px',
-        height: isMobile ? `calc(44px + env(safe-area-inset-top, 0px))` : 52,
+        height: isMobile ? `calc(48px + env(safe-area-inset-top, 0px))` : 52,
         borderBottom: '1px solid rgba(212,175,55,0.06)',
         background: 'rgba(5,8,16,0.85)',
         backdropFilter: 'blur(24px)',
@@ -193,8 +193,10 @@ export function EditorTopBar({
             <button
               onClick={() => setModelOpen(v => !v)}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '5px 12px', borderRadius: 10,
+                display: 'inline-flex', alignItems: 'center', gap: isMobile ? 3 : 5,
+                padding: isMobile ? '5px 8px' : '5px 12px', borderRadius: 10,
+                minWidth: isMobile ? 44 : 'auto', minHeight: isMobile ? 44 : 'auto',
+                justifyContent: 'center',
                 border: modelOpen ? '1px solid rgba(212,175,55,0.25)' : '1px solid rgba(255,255,255,0.06)',
                 background: modelOpen ? 'rgba(212,175,55,0.06)' : 'rgba(255,255,255,0.03)',
                 color: modelOpen ? '#D4AF37' : '#8B8B9E',

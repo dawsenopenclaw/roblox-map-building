@@ -130,7 +130,7 @@ function RightSidebar({
               onClick={onToggle}
               style={{
                 alignSelf: 'flex-end',
-                width: 32, height: 32, borderRadius: 8,
+                width: 44, height: 44, borderRadius: 10,
                 border: '1px solid rgba(255,255,255,0.08)',
                 background: 'rgba(255,255,255,0.04)',
                 color: '#71717A', cursor: 'pointer',
@@ -736,7 +736,7 @@ function EditorInner() {
               </div>
 
               {/* System Composer — visual game system picker */}
-              <div style={{ padding: '0 20px 24px', maxWidth: 780, margin: '0 auto', width: '100%' }}>
+              <div style={{ padding: isMobile ? '0 12px 20px' : '0 20px 24px', maxWidth: 780, margin: '0 auto', width: '100%', overflowX: 'hidden' }}>
                 <SystemComposer
                   onGenerate={(prompt) => {
                     if (studio.isConnected && studio.sessionId) {
