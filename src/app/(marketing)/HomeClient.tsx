@@ -120,26 +120,21 @@ function RotatingHeroText() {
         <span className="invisible">{longestWord}</span>
         {ROTATING_WORDS.map((word, i) => {
           const isActive = i === index
+          // Only the active word renders — no overlap, no ghost, no transition on the old word
+          if (!isActive) return null
           return (
             <motion.span
               key={word}
               className="absolute top-0 left-0 right-0 text-center"
-              initial={false}
-              animate={{
-                opacity: isActive ? 1 : 0,
-                y: isActive ? 0 : -12,
-              }}
-              transition={isActive
-                ? { duration: 0.7, ease: [0.16, 1, 0.3, 1] }  // incoming: smooth fade in
-                : { duration: 0.15, ease: 'easeOut' }           // outgoing: disappear fast
-              }
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
               style={{
                 background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 45%, #D4AF37 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
                 filter: 'drop-shadow(0 0 40px rgba(212,175,55,0.3))',
-                pointerEvents: isActive ? 'auto' : 'none',
               }}
             >
               {word}
@@ -403,7 +398,7 @@ const STEPS = [
 
 function HowItWorksSection() {
   const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: '-80px' })
+  const isInView = useInView(ref, { once: true, amount: 0.05 })
 
   return (
     <section ref={ref} className="relative py-24 sm:py-32 px-6" style={{ background: '#040712' }}>
@@ -508,7 +503,7 @@ const CAPABILITIES = [
 
 function CapabilitiesSection() {
   const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: '-80px' })
+  const isInView = useInView(ref, { once: true, amount: 0.05 })
 
   return (
     <section ref={ref} className="relative py-24 sm:py-32 px-6" style={{ background: '#050810' }}>
@@ -568,7 +563,7 @@ const PHASES = [
 
 function GamePlanningSection() {
   const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: '-80px' })
+  const isInView = useInView(ref, { once: true, amount: 0.05 })
 
   return (
     <section ref={ref} className="relative py-24 sm:py-32 px-6" style={{ background: '#040712' }}>
@@ -646,7 +641,7 @@ const PLANS = [
 
 function PricingSection() {
   const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: '-80px' })
+  const isInView = useInView(ref, { once: true, amount: 0.05 })
 
   return (
     <section ref={ref} className="relative py-24 sm:py-32 px-6" style={{ background: '#050810' }}>
@@ -718,7 +713,7 @@ function PricingSection() {
 
 function FinalCTA() {
   const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: '-80px' })
+  const isInView = useInView(ref, { once: true, amount: 0.05 })
 
   return (
     <section ref={ref} className="relative py-24 sm:py-32 px-6 text-center" style={{ background: '#040712' }}>
@@ -755,9 +750,9 @@ export default function HomeClient() {
 
   return (
     <div ref={pageRef} className="min-h-screen relative" style={{ background: '#050810', color: '#FAFAFA', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)' }}>
-      {/* Fixed star field background — persists through entire scroll */}
-      <div aria-hidden="true" className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-        <div className="grid-overlay" style={{ position: 'absolute', inset: 0, opacity: 0.12 }} />
+      {/* Star field background — stretches full page height, never blocks scroll */}
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+        <div className="grid-overlay" style={{ position: 'sticky', top: 0, width: '100%', height: '100vh', opacity: 0.12 }} />
       </div>
 
       {/* 1 — Hero (full screen) */}
