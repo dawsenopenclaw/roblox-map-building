@@ -872,7 +872,7 @@ interface PricingClientProps {
 }
 
 export default function PricingClient({ initialBillingConfig }: PricingClientProps = {}) {
-  const [annual, setAnnual]     = useState(false)
+  const [annual, setAnnual]     = useState(true)
   const [openFaq, setOpenFaq]   = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   // Plans are shown immediately on /pricing — the earlier "click to reveal"

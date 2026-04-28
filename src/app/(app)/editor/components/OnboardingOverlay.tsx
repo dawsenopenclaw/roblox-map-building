@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import useSWR from 'swr'
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -403,6 +404,64 @@ export function OnboardingOverlay({
   )
 }
 
+// ─── Celebration upgrade nudge (free tier only) ──────────────────────────────
+
+const nudgeFetcher = (url: string) => fetch(url).then(r => r.ok ? r.json() : null)
+
+function CelebrationUpgradeNudge() {
+  const { data } = useSWR<{ tier?: string }>(
+    '/api/billing/status',
+    nudgeFetcher,
+    { revalidateOnFocus: false }
+  )
+
+  // Only show for free tier users (or if we can't determine tier yet, hide)
+  if (!data || (data.tier && data.tier !== 'FREE' && data.tier !== 'free')) return null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.7, duration: 0.4 }}
+      style={{
+        marginTop: 16,
+        padding: '12px 16px',
+        borderRadius: 10,
+        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        textAlign: 'center',
+      }}
+    >
+      <p style={{
+        margin: 0,
+        fontSize: 12,
+        color: '#71717A',
+        lineHeight: 1.5,
+        fontFamily: 'Inter, sans-serif',
+      }}>
+        You just built your first game for free. Upgrade for unlimited builds, priority AI, and 3D generation.
+      </p>
+      <a
+        href="/pricing"
+        style={{
+          display: 'inline-block',
+          marginTop: 8,
+          fontSize: 12,
+          fontWeight: 600,
+          color: '#D4AF37',
+          textDecoration: 'none',
+          fontFamily: 'Inter, sans-serif',
+          transition: 'opacity 0.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = '0.8' }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+      >
+        See plans &rarr;
+      </a>
+    </motion.div>
+  )
+}
+
 // ─── Post-first-build celebration overlay ────────────────────────────────────
 
 interface FirstBuildCelebrationProps {
@@ -549,6 +608,9 @@ export function FirstBuildCelebration({ visible, onNextBuild, onDismiss }: First
                 </motion.button>
               ))}
             </div>
+
+            {/* Upgrade nudge — free tier only */}
+            <CelebrationUpgradeNudge />
           </motion.div>
         </motion.div>
       )}

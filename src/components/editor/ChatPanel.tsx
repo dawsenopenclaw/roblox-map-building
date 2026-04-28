@@ -26,6 +26,7 @@ import {
   type AIMode,
   type AIModeConfig,
 } from './AIModeSelector'
+import { TokenLowBanner } from './TokenLowBanner'
 import { PlaytestToggle } from './PlaytestToggle'
 import { EnhanceToggle } from './EnhanceToggle'
 import { PlaytestIndicator } from './PlaytestIndicator'
@@ -5258,6 +5259,9 @@ export function ChatPanel({
             onCancel={onCancelPlaytest}
           />
         )}
+
+        {/* Token low-balance banner */}
+        <TokenLowBanner />
 
         {/* ── Main input container ── */}
         <div
