@@ -3940,27 +3940,39 @@ function getInstantTemplate(msg: string): InstantTemplate | null {
   if (/\b(pine|evergreen|christmas tree|conifer|spruce|fir)\b/.test(m) && !/forest|10|20|many|multiple/.test(m)) {
     return {
       name: 'Pine Tree',
-      response: "Here's a stylized pine tree — three stacked green cones tapering up to a point, short thick trunk, and a shadow disc at the base to ground it. This is the style you see in Pet Sim and top simulators. Clean low-poly look from every angle.\n\nWant me to make a forest of pines, or mix them with oak trees?",
+      response: "Chunky stylized pine — the kind you see dotting the hills in every top Roblox game. Wide triangular tiers stacked up, bright saturated greens, stubby trunk, little grass tufts around the base. Looks clean from any camera angle.\n\nWant a whole pine forest, or mix these with oaks?",
       code: BOILERPLATE_TOP + `
+-- Ground detail: grass patch under tree
+local grass = Cyl(m,"GrassPatch",Vector3.new(0.3,16,16),sp+Vector3.new(0,0.15,0),Color3.fromRGB(70,145,55),"Grass")
 -- Shadow disc
-local shadow = Cyl(m,"Shadow",Vector3.new(0.2,14,14),sp+Vector3.new(0,0.1,0),Color3.fromRGB(40,40,40),"Concrete")
-shadow.Transparency = 0.5
--- Short thick trunk
-Cyl(m,"Trunk",Vector3.new(5,3.5,3.5),sp+Vector3.new(0,2.5,0),Color3.fromRGB(101,67,33),"Wood")
--- Bottom cone (widest)
-Ball(m,"Cone1",Vector3.new(13,7,13),sp+Vector3.new(0,7,0),Color3.fromRGB(40,100,40),"LeafyGrass")
--- Middle cone
-Ball(m,"Cone2",Vector3.new(10,6,10),sp+Vector3.new(0,11.5,0),Color3.fromRGB(50,120,45),"LeafyGrass")
--- Top cone (smallest)
-Ball(m,"Cone3",Vector3.new(7,5,7),sp+Vector3.new(0,15,0),Color3.fromRGB(60,140,50),"LeafyGrass")
--- Tip
-Ball(m,"Tip",Vector3.new(3,3,3),sp+Vector3.new(0,18,0),Color3.fromRGB(75,155,60),"LeafyGrass")
--- Snow caps (subtle)
-Ball(m,"Snow1",Vector3.new(5,1.5,5),sp+Vector3.new(0,8.5,0),Color3.fromRGB(230,240,235),"Snow")
-Ball(m,"Snow2",Vector3.new(3.5,1,3.5),sp+Vector3.new(0,13,0),Color3.fromRGB(235,245,240),"Snow")
+local shadow = Cyl(m,"Shadow",Vector3.new(0.1,14,14),sp+Vector3.new(0,0.05,0),Color3.fromRGB(30,50,25),"Grass")
+shadow.Transparency = 0.45
+-- Stubby trunk
+Cyl(m,"Trunk",Vector3.new(4,4,4),sp+Vector3.new(0,2,0),Color3.fromRGB(101,67,33),"Wood")
+Cyl(m,"TrunkRoot",Vector3.new(1.5,5,5),sp+Vector3.new(0,0.75,0),Color3.fromRGB(85,55,28),"Wood")
+-- Bottom tier (WIDEST — dominates the silhouette)
+Ball(m,"Tier1",Vector3.new(16,8,16),sp+Vector3.new(0,6,0),Color3.fromRGB(35,115,40),"LeafyGrass")
+Ball(m,"Tier1R",Vector3.new(8,5,8),sp+Vector3.new(4,5,3),Color3.fromRGB(45,125,45),"LeafyGrass")
+Ball(m,"Tier1L",Vector3.new(7,5,7),sp+Vector3.new(-3.5,5.5,-2),Color3.fromRGB(40,120,42),"LeafyGrass")
+-- Middle tier
+Ball(m,"Tier2",Vector3.new(12,7,12),sp+Vector3.new(0,11,0),Color3.fromRGB(45,130,48),"LeafyGrass")
+Ball(m,"Tier2A",Vector3.new(6,4,6),sp+Vector3.new(2,10,2),Color3.fromRGB(55,140,52),"LeafyGrass")
+-- Top tier
+Ball(m,"Tier3",Vector3.new(8,6,8),sp+Vector3.new(0,15.5,0),Color3.fromRGB(55,145,50),"LeafyGrass")
+-- Tip point
+Ball(m,"Tip",Vector3.new(3,4,3),sp+Vector3.new(0,19,0),Color3.fromRGB(70,160,58),"LeafyGrass")
+-- Small rocks at base
+Ball(m,"Rock1",Vector3.new(1.8,1.4,1.6),sp+Vector3.new(3,0.6,-2),Color3.fromRGB(130,125,115),"Granite")
+Ball(m,"Rock2",Vector3.new(1.2,1,1.3),sp+Vector3.new(-2.5,0.5,3.5),Color3.fromRGB(120,118,108),"Granite")
+-- Grass tufts
+P(m,"Tuft1",Vector3.new(0.2,1.2,0.2),sp+Vector3.new(4,0.6,1),Color3.fromRGB(60,135,45),"Grass")
+P(m,"Tuft2",Vector3.new(0.15,1,0.15),sp+Vector3.new(-3,0.5,4),Color3.fromRGB(55,125,40),"Grass")
+P(m,"Tuft3",Vector3.new(0.2,1.1,0.2),sp+Vector3.new(2,0.55,-4),Color3.fromRGB(65,140,50),"Grass")
+-- Canopy glow
+local gl = Instance.new("PointLight") gl.Range=18 gl.Brightness=0.25 gl.Color=Color3.fromRGB(120,190,100) gl.Parent=m.Tier2
 ` + BOILERPLATE_BOT,
-      suggestions: ['Make a pine forest', 'Build a cabin next to it', 'Add snow on the ground'],
-      partCount: 10,
+      suggestions: ['Make a pine forest', 'Build a cabin next to it', 'Add snow everywhere'],
+      partCount: 20,
     }
   }
 
@@ -3968,86 +3980,131 @@ Ball(m,"Snow2",Vector3.new(3.5,1,3.5),sp+Vector3.new(0,13,0),Color3.fromRGB(235,
   if (/\b(forest|bunch of trees|group of trees|tree line|trees|lots of trees|many trees|woods)\b/.test(m)) {
     return {
       name: 'Forest',
-      response: "Here's a forest cluster — 10 trees scattered in a natural pattern. Mix of puffy oaks and pointy pines, each with slightly different sizes and green shades so it looks organic, not copy-pasted. Shadow discs under each one to ground them.\n\nWant me to add a path through the middle, or a clearing with a campfire?",
+      response: "Full forest scene — 12 trees in a natural cluster with ground cover. Mix of big puffy oaks and chunky pines, each different size and shade. Grass patches between them, rocks scattered around, and soft ground lighting. Feels like walking into an actual game world.\n\nWant me to add a path through the middle or a river?",
       code: BOILERPLATE_TOP + `
--- Forest: 10 trees in a natural cluster
-local treeData = {
-  {x=0,z=0,s=1.0,pine=false},{x=15,z=8,s=0.85,pine=true},{x=-12,z=5,s=1.1,pine=false},
-  {x=8,z=-14,s=0.9,pine=false},{x=-8,z=-10,s=0.75,pine=true},{x=20,z=-5,s=1.05,pine=false},
-  {x=-18,z=-2,s=0.8,pine=true},{x=5,z=18,s=0.95,pine=false},{x=-5,z=15,s=1.15,pine=false},
-  {x=18,z=16,s=0.7,pine=true}
+-- Ground base
+P(m,"Ground",Vector3.new(60,0.5,60),sp+Vector3.new(0,0.25,0),Color3.fromRGB(75,140,55),"Grass")
+-- Forest: 12 trees
+local trees = {
+  {x=0,z=0,s=1.0,t="oak"},{x=16,z=8,s=0.85,t="pine"},{x=-13,z=6,s=1.1,t="oak"},
+  {x=9,z=-15,s=0.9,t="oak"},{x=-9,z=-11,s=0.7,t="pine"},{x=22,z=-4,s=1.05,t="oak"},
+  {x=-20,z=-3,s=0.8,t="pine"},{x=5,z=20,s=0.95,t="oak"},{x=-6,z=17,s=1.15,t="oak"},
+  {x=19,z=18,s=0.65,t="pine"},{x=-16,z=14,s=0.9,t="oak"},{x=12,z=-20,s=0.75,t="pine"}
 }
-local greens = {
-  Color3.fromRGB(55,125,45),Color3.fromRGB(65,135,55),Color3.fromRGB(50,115,40),
-  Color3.fromRGB(75,145,60),Color3.fromRGB(45,110,38),Color3.fromRGB(80,150,65),
-  Color3.fromRGB(60,130,50),Color3.fromRGB(70,140,55)
+local g = {
+  Color3.fromRGB(50,125,42),Color3.fromRGB(60,138,50),Color3.fromRGB(42,118,38),
+  Color3.fromRGB(72,148,58),Color3.fromRGB(38,112,35),Color3.fromRGB(80,155,62),
+  Color3.fromRGB(55,132,48),Color3.fromRGB(65,142,54)
 }
-for i,td in ipairs(treeData) do
-  local base = sp + Vector3.new(td.x, 0, td.z)
+for i,td in ipairs(trees) do
+  local b = sp + Vector3.new(td.x, 0, td.z)
   local s = td.s
-  local g = greens[(i % #greens) + 1]
-  local g2 = greens[((i+3) % #greens) + 1]
+  local c1 = g[(i % #g) + 1]
+  local c2 = g[((i+3) % #g) + 1]
+  local c3 = g[((i+5) % #g) + 1]
   -- Shadow
-  local sh = Cyl(m,"Shadow"..i,Vector3.new(0.15, 10*s, 10*s),base+Vector3.new(0,0.08,0),Color3.fromRGB(35,35,35),"Concrete")
-  sh.Transparency = 0.55
+  local sh = Cyl(m,"Sh"..i,Vector3.new(0.1,11*s,11*s),b+Vector3.new(0,0.05,0),Color3.fromRGB(30,50,25),"Grass")
+  sh.Transparency = 0.5
   -- Trunk
-  Cyl(m,"Trunk"..i,Vector3.new(5*s, 3*s, 3*s),base+Vector3.new(0,2.5*s,0),Color3.fromRGB(101,67,33),"Wood")
-  if td.pine then
-    -- Pine style: stacked cones
-    Ball(m,"Pine"..i.."B",Vector3.new(10*s,6*s,10*s),base+Vector3.new(0,6*s,0),g,"LeafyGrass")
-    Ball(m,"Pine"..i.."M",Vector3.new(7*s,5*s,7*s),base+Vector3.new(0,10*s,0),g2,"LeafyGrass")
-    Ball(m,"Pine"..i.."T",Vector3.new(4*s,4*s,4*s),base+Vector3.new(0,13.5*s,0),g,"LeafyGrass")
+  Cyl(m,"T"..i,Vector3.new(4*s,3.5*s,3.5*s),b+Vector3.new(0,2*s,0),Color3.fromRGB(101,67,33),"Wood")
+  if td.t == "pine" then
+    Ball(m,"P"..i.."B",Vector3.new(13*s,7*s,13*s),b+Vector3.new(0,5.5*s,0),c1,"LeafyGrass")
+    Ball(m,"P"..i.."M",Vector3.new(9*s,6*s,9*s),b+Vector3.new(0,10*s,0),c2,"LeafyGrass")
+    Ball(m,"P"..i.."T",Vector3.new(5*s,5*s,5*s),b+Vector3.new(0,14*s,0),c3,"LeafyGrass")
   else
-    -- Oak style: puffy canopy
-    Ball(m,"Oak"..i.."C",Vector3.new(9*s,9*s,9*s),base+Vector3.new(0,8*s,0),g,"LeafyGrass")
-    Ball(m,"Oak"..i.."L",Vector3.new(6*s,6*s,6*s),base+Vector3.new(2.5*s,7.5*s,1.5*s),g2,"LeafyGrass")
-    Ball(m,"Oak"..i.."R",Vector3.new(6.5*s,6.5*s,6.5*s),base+Vector3.new(-2*s,7*s,-1.5*s),g,"LeafyGrass")
-    Ball(m,"Oak"..i.."F",Vector3.new(5*s,5*s,5*s),base+Vector3.new(0.5*s,9*s,2*s),g2,"LeafyGrass")
+    -- Puffy oak: MASSIVE canopy relative to trunk
+    Ball(m,"O"..i.."C",Vector3.new(12*s,11*s,12*s),b+Vector3.new(0,7*s,0),c1,"LeafyGrass")
+    Ball(m,"O"..i.."L",Vector3.new(8*s,7*s,8*s),b+Vector3.new(-3*s,6.5*s,2*s),c2,"LeafyGrass")
+    Ball(m,"O"..i.."R",Vector3.new(7*s,7*s,7*s),b+Vector3.new(3*s,6*s,-1*s),c3,"LeafyGrass")
+    Ball(m,"O"..i.."T",Vector3.new(6*s,6*s,6*s),b+Vector3.new(0,10*s,0),c2,"LeafyGrass")
   end
 end
+-- Scattered rocks
+for i=1,8 do
+  local rx = math.random(-25,25)
+  local rz = math.random(-25,25)
+  local rs = 0.8 + math.random() * 1.2
+  Ball(m,"Rock"..i,Vector3.new(rs,rs*0.7,rs),sp+Vector3.new(rx,rs*0.35,rz),Color3.fromRGB(120+math.random(-15,15),115+math.random(-15,15),105+math.random(-15,15)),"Granite")
+end
+-- Grass tufts
+for i=1,12 do
+  local gx = math.random(-28,28)
+  local gz = math.random(-28,28)
+  P(m,"Grass"..i,Vector3.new(0.15+math.random()*0.1, 0.8+math.random()*0.6, 0.15),sp+Vector3.new(gx,0.5,gz),Color3.fromRGB(50+math.random(0,30),120+math.random(0,30),40+math.random(0,20)),"Grass")
+end
+-- Soft ambient light
+local amb = Instance.new("PointLight") amb.Range=40 amb.Brightness=0.15 amb.Color=Color3.fromRGB(140,200,120) amb.Parent=m.Ground
 ` + BOILERPLATE_BOT,
-      suggestions: ['Add a path through the forest', 'Build a cabin in the middle', 'Add a campfire clearing'],
-      partCount: 70,
+      suggestions: ['Add a river through the forest', 'Build a cabin clearing', 'Add a campfire with seating'],
+      partCount: 100,
     }
   }
 
-  // ── TREE (default — pro-style puffy oak) ────────────────────────────
+  // ── TREE (default — massive puffy oak) ──────────────────────────────
   if (/\b(tree|oak|birch|willow)\b/.test(m)) {
     return {
       name: 'Tree',
-      response: "Here's a proper low-poly oak — short thick trunk with bark texture, three branch arms splitting off at angles, and a big puffy canopy of 8 overlapping spheres in different greens so it looks full and natural from every angle. Shadow disc at the base grounds it. This is the style you see in Pet Sim and Adopt Me.\n\nWant me to scatter a whole forest, or build a park around it?",
+      response: "Here's a proper stylized oak — the kind you see in Pet Sim and Adopt Me. Short chunky trunk, thick branch arms angled out naturally, and a MASSIVE puffy canopy of 12 overlapping spheres in different greens that completely dominates the silhouette. Grass patch underneath, little rocks at the base, shadow disc to ground it. Looks right from every angle.\n\nWant me to make a whole forest, or build a park scene around it?",
       code: BOILERPLATE_TOP + `
--- Shadow disc (grounds the tree visually)
-local shadow = Cyl(m,"Shadow",Vector3.new(0.15,13,13),sp+Vector3.new(0,0.08,0),Color3.fromRGB(35,35,35),"Concrete")
-shadow.Transparency = 0.55
--- Short thick trunk (height:width ratio ~2:1, not tall and skinny)
-Cyl(m,"Trunk",Vector3.new(6,4,4),sp+Vector3.new(0,3,0),Color3.fromRGB(101,67,33),"Wood")
-Cyl(m,"TrunkBase",Vector3.new(2,4.5,4.5),sp+Vector3.new(0,1,0),Color3.fromRGB(90,58,28),"Wood")
--- Branch arms (angled outward)
-local b1=Cyl(m,"Branch1",Vector3.new(4,1.5,1.5),sp+Vector3.new(2.5,5.5,0),Color3.fromRGB(95,63,32),"Wood")
-b1.CFrame=CFrame.new(sp+Vector3.new(2.5,5.5,0))*CFrame.Angles(0,0,math.rad(55))
-local b2=Cyl(m,"Branch2",Vector3.new(3.5,1.3,1.3),sp+Vector3.new(-2,5,1.5),Color3.fromRGB(90,58,28),"Wood")
-b2.CFrame=CFrame.new(sp+Vector3.new(-2,5,1.5))*CFrame.Angles(0,math.rad(40),math.rad(-60))
-local b3=Cyl(m,"Branch3",Vector3.new(3,1.2,1.2),sp+Vector3.new(0,5.5,-2),Color3.fromRGB(95,63,32),"Wood")
-b3.CFrame=CFrame.new(sp+Vector3.new(0,5.5,-2))*CFrame.Angles(math.rad(55),0,0)
--- Canopy: 8 balls with color variation (NO two the same green)
-Ball(m,"Canopy_Core",Vector3.new(10,10,10),sp+Vector3.new(0,9,0),Color3.fromRGB(65,135,55),"LeafyGrass")
-Ball(m,"Canopy_L",Vector3.new(7.5,7.5,7.5),sp+Vector3.new(-3,8.5,1.5),Color3.fromRGB(55,125,45),"LeafyGrass")
-Ball(m,"Canopy_R",Vector3.new(7,7,7),sp+Vector3.new(3.5,8,0),Color3.fromRGB(75,145,60),"LeafyGrass")
-Ball(m,"Canopy_F",Vector3.new(6.5,6.5,6.5),sp+Vector3.new(1,8,-3),Color3.fromRGB(50,115,40),"LeafyGrass")
-Ball(m,"Canopy_B",Vector3.new(6,6,6),sp+Vector3.new(-1.5,8.5,3),Color3.fromRGB(80,150,58),"LeafyGrass")
-Ball(m,"Canopy_TL",Vector3.new(5,5,5),sp+Vector3.new(-2,11,-1),Color3.fromRGB(90,155,50),"LeafyGrass")
-Ball(m,"Canopy_TR",Vector3.new(5.5,5.5,5.5),sp+Vector3.new(2,10.5,1.5),Color3.fromRGB(60,130,48),"LeafyGrass")
-Ball(m,"Canopy_Top",Vector3.new(6,6,6),sp+Vector3.new(0,12,0),Color3.fromRGB(80,155,65),"LeafyGrass")
--- Roots poking out
-P(m,"Root1",Vector3.new(3,0.5,0.8),sp+Vector3.new(2,0.25,1),Color3.fromRGB(85,55,28),"Wood")
-P(m,"Root2",Vector3.new(2.8,0.4,0.7),sp+Vector3.new(-1.5,0.2,-1.5),Color3.fromRGB(80,52,25),"Wood")
-P(m,"Root3",Vector3.new(2.2,0.4,0.6),sp+Vector3.new(0.5,0.2,-2),Color3.fromRGB(82,54,26),"Wood")
--- Subtle canopy glow (looks great in Future lighting)
-local glow = Instance.new("PointLight") glow.Range=14 glow.Brightness=0.3 glow.Color=Color3.fromRGB(140,200,120) glow.Parent=m.Canopy_Core
+-- Ground detail: circular grass patch
+local grass = Cyl(m,"GrassPatch",Vector3.new(0.3,18,18),sp+Vector3.new(0,0.15,0),Color3.fromRGB(70,145,55),"Grass")
+-- Shadow disc
+local shadow = Cyl(m,"Shadow",Vector3.new(0.1,16,16),sp+Vector3.new(0,0.05,0),Color3.fromRGB(30,50,25),"Grass")
+shadow.Transparency = 0.45
+-- Stubby thick trunk (short and wide, NOT a tall pole)
+Cyl(m,"Trunk",Vector3.new(5,4.5,4.5),sp+Vector3.new(0,2.5,0),Color3.fromRGB(101,67,33),"Wood")
+-- Flared base (wider at ground)
+Cyl(m,"TrunkBase",Vector3.new(1.5,5.5,5.5),sp+Vector3.new(0,0.75,0),Color3.fromRGB(85,55,28),"Wood")
+-- Bark detail ring
+Cyl(m,"BarkRing",Vector3.new(0.6,4.8,4.8),sp+Vector3.new(0,2,0),Color3.fromRGB(75,48,22),"Wood")
+-- Branch arms (thick, angled naturally)
+local b1=Cyl(m,"Branch1",Vector3.new(5,2,2),sp+Vector3.new(3,5,0),Color3.fromRGB(95,63,32),"Wood")
+b1.CFrame=CFrame.new(sp+Vector3.new(3,5,0))*CFrame.Angles(0,0,math.rad(50))
+local b2=Cyl(m,"Branch2",Vector3.new(4.5,1.8,1.8),sp+Vector3.new(-2.5,4.5,2),Color3.fromRGB(90,58,28),"Wood")
+b2.CFrame=CFrame.new(sp+Vector3.new(-2.5,4.5,2))*CFrame.Angles(0,math.rad(35),math.rad(-55))
+local b3=Cyl(m,"Branch3",Vector3.new(4,1.6,1.6),sp+Vector3.new(0.5,5,-2.5),Color3.fromRGB(92,60,30),"Wood")
+b3.CFrame=CFrame.new(sp+Vector3.new(0.5,5,-2.5))*CFrame.Angles(math.rad(50),math.rad(-20),0)
+-- ═══ MASSIVE CANOPY — 12 balls, all different greens, dominates the tree ═══
+-- Core (biggest — this IS the tree's shape)
+Ball(m,"C_Core",Vector3.new(14,13,14),sp+Vector3.new(0,9,0),Color3.fromRGB(58,135,48),"LeafyGrass")
+-- Ring of 5 around the core (creates the wide puffy silhouette)
+Ball(m,"C_FL",Vector3.new(9,8,9),sp+Vector3.new(-4.5,8,3),Color3.fromRGB(48,125,42),"LeafyGrass")
+Ball(m,"C_FR",Vector3.new(10,8.5,10),sp+Vector3.new(4,7.5,2.5),Color3.fromRGB(68,148,55),"LeafyGrass")
+Ball(m,"C_BL",Vector3.new(8.5,8,8.5),sp+Vector3.new(-3.5,8.5,-3),Color3.fromRGB(52,130,44),"LeafyGrass")
+Ball(m,"C_BR",Vector3.new(9.5,8,9.5),sp+Vector3.new(3.5,7,-2.5),Color3.fromRGB(62,140,50),"LeafyGrass")
+Ball(m,"C_Back",Vector3.new(8,7.5,8),sp+Vector3.new(-1,8,-4.5),Color3.fromRGB(45,122,40),"LeafyGrass")
+-- Upper crown (makes it taller and fuller on top)
+Ball(m,"C_Top",Vector3.new(10,9,10),sp+Vector3.new(0,13,0),Color3.fromRGB(72,152,58),"LeafyGrass")
+Ball(m,"C_TopL",Vector3.new(6.5,6,6.5),sp+Vector3.new(-3,12.5,1),Color3.fromRGB(55,132,46),"LeafyGrass")
+Ball(m,"C_TopR",Vector3.new(7,6.5,7),sp+Vector3.new(2.5,12,-1.5),Color3.fromRGB(65,142,52),"LeafyGrass")
+-- Accent puffs (adds volume and asymmetry)
+Ball(m,"C_Puff1",Vector3.new(5.5,5,5.5),sp+Vector3.new(5,9,0),Color3.fromRGB(82,158,62),"LeafyGrass")
+Ball(m,"C_Puff2",Vector3.new(5,5,5),sp+Vector3.new(-5,10,0.5),Color3.fromRGB(42,118,38),"LeafyGrass")
+Ball(m,"C_Crown",Vector3.new(6,5.5,6),sp+Vector3.new(0,15.5,0),Color3.fromRGB(78,155,60),"LeafyGrass")
+-- Exposed roots
+P(m,"Root1",Vector3.new(4,0.6,1),sp+Vector3.new(2.5,0.3,1.5),Color3.fromRGB(85,55,28),"Wood")
+P(m,"Root2",Vector3.new(3.5,0.5,0.8),sp+Vector3.new(-2,0.25,-2),Color3.fromRGB(80,52,25),"Wood")
+P(m,"Root3",Vector3.new(3,0.5,0.7),sp+Vector3.new(0.5,0.25,-2.5),Color3.fromRGB(82,54,26),"Wood")
+P(m,"Root4",Vector3.new(2.5,0.4,0.9),sp+Vector3.new(-1.5,0.2,2.5),Color3.fromRGB(78,50,24),"Wood")
+-- Small rocks at base
+Ball(m,"Rock1",Vector3.new(2,1.5,1.8),sp+Vector3.new(4,0.7,-3),Color3.fromRGB(130,125,115),"Granite")
+Ball(m,"Rock2",Vector3.new(1.4,1.1,1.5),sp+Vector3.new(-3.5,0.55,4),Color3.fromRGB(122,118,108),"Granite")
+Ball(m,"Rock3",Vector3.new(1,0.8,1.1),sp+Vector3.new(5,0.4,3),Color3.fromRGB(115,112,102),"Granite")
+-- Grass tufts
+P(m,"Tuft1",Vector3.new(0.2,1.3,0.2),sp+Vector3.new(5,0.65,1),Color3.fromRGB(60,138,45),"Grass")
+P(m,"Tuft2",Vector3.new(0.15,1.1,0.15),sp+Vector3.new(-4,0.55,5),Color3.fromRGB(50,128,40),"Grass")
+P(m,"Tuft3",Vector3.new(0.2,1.2,0.2),sp+Vector3.new(3,0.6,-5),Color3.fromRGB(65,142,50),"Grass")
+P(m,"Tuft4",Vector3.new(0.15,0.9,0.15),sp+Vector3.new(-5.5,0.45,-2),Color3.fromRGB(55,132,42),"Grass")
+-- Small flowers (tiny colored dots in the grass)
+Ball(m,"Flower1",Vector3.new(0.6,0.6,0.6),sp+Vector3.new(6,0.8,2),Color3.fromRGB(240,220,50),"SmoothPlastic")
+Ball(m,"Flower2",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(-4.5,0.7,-4),Color3.fromRGB(220,80,80),"SmoothPlastic")
+Ball(m,"Flower3",Vector3.new(0.55,0.55,0.55),sp+Vector3.new(3,0.75,5.5),Color3.fromRGB(180,100,220),"SmoothPlastic")
+-- Canopy glow (beautiful in Future lighting)
+local glow = Instance.new("PointLight") glow.Range=22 glow.Brightness=0.3 glow.Color=Color3.fromRGB(130,195,110) glow.Parent=m.C_Core
+local glow2 = Instance.new("PointLight") glow2.Range=12 glow2.Brightness=0.15 glow2.Color=Color3.fromRGB(140,200,120) glow2.Parent=m.C_Top
 ` + BOILERPLATE_BOT,
-      suggestions: ['Make a forest of these', 'Build a park around it', 'Make an autumn tree'],
-      partCount: 22,
+      suggestions: ['Make a forest of these', 'Build a park scene', 'Make an autumn version'],
+      partCount: 42,
     }
   }
 
