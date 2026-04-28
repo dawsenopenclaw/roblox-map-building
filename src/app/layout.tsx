@@ -171,8 +171,11 @@ export default async function RootLayout({
             `viewport` export above; no need to duplicate them here. */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        <link rel="icon" type="image/svg+xml" sizes="32x32" href="/favicon.svg" />
-        <link rel="icon" type="image/svg+xml" sizes="16x16" href="/favicon.svg" />
+        {/* PNG fallback for browsers that don't support SVG favicons (Safari <15, some mobile) */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-192.svg" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-192.svg" />
+        {/* Shortcut icon for legacy browsers */}
+        <link rel="shortcut icon" href="/favicon.svg" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="mobile-web-app-capable" content="yes" />

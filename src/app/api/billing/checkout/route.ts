@@ -6,7 +6,7 @@ import * as Sentry from '@sentry/nextjs'
 const schema = z.union([
   z.object({
     type: z.literal('subscription'),
-    tier: z.enum(['HOBBY', 'CREATOR', 'STUDIO']),
+    tier: z.enum(['FREE', 'STARTER', 'HOBBY', 'BUILDER', 'CREATOR', 'PRO', 'STUDIO']),
     yearly: z.boolean().optional(),
   }),
   z.object({
@@ -108,7 +108,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (parsed.data.type === 'subscription') {
-      const tier = SUBSCRIPTION_TIERS[parsed.data.tier]
+      const { normalizeTier } = await import('@/lib/subscription-tiers')
+      const normalizedTier = normalizeTier(parsed.data.tier)
+      if (normalizedTier === 'FREE') {
+        return NextResponse.json({ error: 'Free plan does not require checkout' }, { status: 400 })
+      }
+      const tier = SUBSCRIPTION_TIERS[normalizedTier]
       const priceId = parsed.data.yearly ? tier.stripePriceIdYearly : tier.stripePriceIdMonthly
       if (!priceId) return NextResponse.json({ error: 'Price not configured' }, { status: 500 })
 

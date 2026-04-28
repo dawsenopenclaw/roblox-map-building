@@ -12763,12 +12763,22 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
     intent: 'npc',
   },
   {
-    patterns: [/\b(script|code|luau|function|event|module|server|client|system)\b/i],
-    intent: 'script',
+    // UI intent — MUST be checked BEFORE script intent because "shop gui system",
+    // "inventory ui", "hud screen" etc. contain words like "system" that would
+    // otherwise match the script intent first.
+    patterns: [
+      /\b(ui|gui|menu|button|screen|hud|leaderboard)\b/i,
+      /\b(shop\s*gui|shop\s*ui|inventory\s*gui|inventory\s*ui|health\s*bar|stamina\s*bar)\b/i,
+      /\b(settings?\s*menu|pause\s*menu|main\s*menu|start\s*menu|game\s*over\s*screen)\b/i,
+      /\b(notification|popup|overlay|dialog|dialogue\s*box|text\s*label|text\s*button|image\s*label)\b/i,
+      /\b(screengui|surfacegui|billboardgui|frame|scrolling\s*frame)\b/i,
+      /\b(hotbar|toolbar|minimap|crosshair|coin\s*display|score\s*display|timer\s*display)\b/i,
+    ],
+    intent: 'ui',
   },
   {
-    patterns: [/\b(ui|gui|menu|button|screen|hud|leaderboard)\b/i],
-    intent: 'ui',
+    patterns: [/\b(script|code|luau|function|event|module|server|client|system)\b/i],
+    intent: 'script',
   },
   {
     patterns: [/\b(sound|music|audio|sfx|ambience)\b/i],

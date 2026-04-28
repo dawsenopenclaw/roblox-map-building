@@ -54,8 +54,9 @@ function RightSidebar({
 }) {
   if (isMobile && !open) return null
 
-  const cameraStr = studioContext.camera
-    ? `${studioContext.camera.posX.toFixed(1)}, ${studioContext.camera.posY.toFixed(1)}, ${studioContext.camera.posZ.toFixed(1)}`
+  const cam = studioContext?.camera
+  const cameraStr = cam && typeof cam.posX === 'number' && typeof cam.posY === 'number' && typeof cam.posZ === 'number'
+    ? `${cam.posX.toFixed(1)}, ${cam.posY.toFixed(1)}, ${cam.posZ.toFixed(1)}`
     : null
 
   return (
@@ -159,12 +160,12 @@ function RightSidebar({
 
           {/* Part count */}
           <div style={{ display: 'flex', gap: 8 }}>
-            <StatBadge label="Parts" value={studioContext.partCount} />
-            <StatBadge label="Nearby" value={studioContext.nearbyParts.length} />
+            <StatBadge label="Parts" value={studioContext?.partCount ?? 0} />
+            <StatBadge label="Nearby" value={studioContext?.nearbyParts?.length ?? 0} />
           </div>
 
           {/* Nearby parts */}
-          {studioContext.nearbyParts.length > 0 && (
+          {(studioContext?.nearbyParts?.length ?? 0) > 0 && (
             <SidebarSection title={`Nearby Parts (${studioContext.nearbyParts.length})`}>
               {studioContext.nearbyParts.slice(0, 12).map((part, i) => (
                 <div key={i} style={{
@@ -181,7 +182,7 @@ function RightSidebar({
             </SidebarSection>
           )}
 
-          {studioContext.partCount === 0 && !cameraStr && (
+          {(studioContext?.partCount ?? 0) === 0 && !cameraStr && (
             <p style={{
               fontSize: 12, color: '#3F3F46', lineHeight: 1.6,
               margin: 0,
@@ -1153,14 +1154,104 @@ function EditorInner() {
   )
 }
 
+// ─── Error Boundary — catches render crashes so users see a recovery UI ──────
+
+class EditorErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[EditorErrorBoundary] Crash caught:', error, info.componentStack)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#050810',
+          color: '#FAFAFA',
+          fontFamily: 'Inter, sans-serif',
+          gap: 16,
+          padding: 24,
+        }}>
+          <div style={{ fontSize: 48, marginBottom: 8 }}>&#9888;</div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Editor crashed</h2>
+          <p style={{ fontSize: 14, color: '#A1A1AA', maxWidth: 400, textAlign: 'center', lineHeight: 1.6 }}>
+            Something went wrong loading the editor. This has been logged.
+            Try refreshing the page or clearing your browser cache.
+          </p>
+          <p style={{ fontSize: 12, color: '#52525B', fontFamily: 'monospace', maxWidth: 500, wordBreak: 'break-all', textAlign: 'center' }}>
+            {this.state.error?.message || 'Unknown error'}
+          </p>
+          <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '10px 24px',
+                borderRadius: 10,
+                border: 'none',
+                background: '#D4AF37',
+                color: '#09090b',
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: 'pointer',
+              }}
+            >
+              Reload Editor
+            </button>
+            <button
+              onClick={() => {
+                try {
+                  localStorage.removeItem('fg_chat_sessions')
+                  localStorage.removeItem('fg_chat_messages_v1')
+                } catch { /* ignore */ }
+                window.location.reload()
+              }}
+              style={{
+                padding: '10px 24px',
+                borderRadius: 10,
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'transparent',
+                color: '#A1A1AA',
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: 'pointer',
+              }}
+            >
+              Clear Cache &amp; Reload
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 // ─── Exported wrapper with providers ─────────────────────────────────────
 
 export default function SimplifiedEditor() {
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <EditorInner />
-      </ToastProvider>
-    </ThemeProvider>
+    <EditorErrorBoundary>
+      <ThemeProvider>
+        <ToastProvider>
+          <EditorInner />
+        </ToastProvider>
+      </ThemeProvider>
+    </EditorErrorBoundary>
   )
 }
