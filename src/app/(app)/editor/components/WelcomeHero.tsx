@@ -229,6 +229,18 @@ const QUICK_CARDS = [
   },
 ]
 
+// ─── Example prompt cards for empty state ──────────────────────────────
+const EXAMPLE_PROMPT_CARDS = [
+  { emoji: '\u{1F3E0}', label: 'Build me a house', prompt: 'Build me a house' },
+  { emoji: '\u{1F680}', label: 'Make a spaceship', prompt: 'Make a spaceship' },
+  { emoji: '\u{1F3AE}', label: 'Create a tycoon game', prompt: 'Create a tycoon game' },
+  { emoji: '\u{1F6D2}', label: 'Add a shop system', prompt: 'Add a shop system' },
+  { emoji: '\u{1F3F0}', label: 'Build a medieval castle', prompt: 'Build a medieval castle' },
+  { emoji: '\u{1F3C1}', label: 'Make me an obby', prompt: 'Make me an obby with checkpoints' },
+  { emoji: '\u{1FA81}', label: 'Build a helicopter', prompt: 'Build a helicopter' },
+  { emoji: '\u{1F332}', label: 'Create a forest scene', prompt: 'Create a forest scene' },
+] as const
+
 interface WelcomeHeroProps {
   visible: boolean
   onQuickAction: (prompt: string, autoSend: boolean) => void
@@ -362,58 +374,58 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
         })}
       </div>
 
-      {/* ─── Try These Prompts ─── */}
+      {/* ─── Try These Prompts — 2-column card grid ─── */}
       <div style={{
         maxWidth: 780,
         width: '100%',
         position: 'relative',
         zIndex: 1,
       }}>
-        <p style={{ fontSize: 11, color: '#52525B', marginBottom: 8, textAlign: 'center', fontWeight: 600 }}>
+        <p style={{ fontSize: 11, color: '#52525B', marginBottom: 10, textAlign: 'center', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
           Try a prompt
         </p>
         <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 6,
-          justifyContent: 'center',
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+          gap: 8,
         }}>
-          {[
-            'Build a medieval castle with a throne room',
-            'Create a combat system with abilities',
-            'Make an obby with checkpoints and timer',
-            'Build a horror atmosphere with jump scares',
-            'Create a racing system with leaderboards',
-            'Build a pet following system',
-            'Add an inventory with equippable items',
-            'Create an NPC dialogue system',
-          ].map((prompt) => (
+          {EXAMPLE_PROMPT_CARDS.map((card, i) => (
             <button
-              key={prompt}
-              onClick={() => onQuickAction(prompt, true)}
+              key={card.prompt}
+              onClick={() => onQuickAction(card.prompt, true)}
               style={{
-                padding: '5px 12px',
-                borderRadius: 20,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '12px 16px',
+                borderRadius: 14,
                 border: '1px solid rgba(255,255,255,0.06)',
-                background: 'rgba(255,255,255,0.02)',
-                color: '#71717A',
-                fontSize: 11,
+                background: 'rgba(12,15,28,0.4)',
+                backdropFilter: 'blur(12px)',
                 cursor: 'pointer',
-                transition: 'all 0.15s',
-                whiteSpace: 'nowrap',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                textAlign: 'left',
+                fontFamily: 'inherit',
+                animation: `msgFadeUp 0.3s ease-out ${i * 0.04}s both`,
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)'
-                e.currentTarget.style.color = '#D4AF37'
-                e.currentTarget.style.background = 'rgba(212,175,55,0.05)'
+                e.currentTarget.style.background = 'rgba(212,175,55,0.06)'
+                e.currentTarget.style.transform = 'translateY(-2px)'
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.25), 0 0 12px rgba(212,175,55,0.06)'
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
-                e.currentTarget.style.color = '#71717A'
-                e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
+                e.currentTarget.style.background = 'rgba(12,15,28,0.4)'
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = 'none'
               }}
             >
-              {prompt}
+              <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1 }}>{card.emoji}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#E4E4E7', marginBottom: 2 }}>{card.label}</div>
+                <div style={{ fontSize: 10, color: '#52525B', fontWeight: 500 }}>Try this</div>
+              </div>
             </button>
           ))}
         </div>
