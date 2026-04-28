@@ -4422,6 +4422,68 @@ function McpQuickActions({ onAction }: { onAction: (prompt: string) => void }) {
 
 // ─── Active MCP tool indicator (shown while AI uses a tool mid-stream) ────────
 
+/**
+ * Shows a subtle "Paid users get priority" nudge when AI is thinking for 5+ seconds.
+ * Only shown to free-tier users. Dismissed for 24h via localStorage.
+ */
+function PriorityQueueNudge({ isThinking }: { isThinking: boolean }) {
+  const [show, setShow] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!isThinking) {
+      setShow(false)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      return
+    }
+    // Check if dismissed recently
+    try {
+      const dismissed = localStorage.getItem('fj_priority_nudge_dismissed')
+      if (dismissed && Date.now() - parseInt(dismissed, 10) < 86400000) return
+    } catch { /* SSR safe */ }
+    // Show after 5 seconds of thinking
+    timerRef.current = setTimeout(() => setShow(true), 5000)
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [isThinking])
+
+  if (!show) return null
+
+  return (
+    <div
+      style={{
+        marginTop: 6,
+        padding: '4px 10px',
+        borderRadius: 6,
+        background: 'rgba(212,175,55,0.05)',
+        border: '1px solid rgba(212,175,55,0.12)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+      }}
+    >
+      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+        Paid plans get priority AI responses.{' '}
+        <a href="/pricing" target="_blank" rel="noopener" style={{ color: '#D4AF37', textDecoration: 'none' }}>
+          See plans
+        </a>
+      </span>
+      <button
+        onClick={() => {
+          setShow(false)
+          try { localStorage.setItem('fj_priority_nudge_dismissed', String(Date.now())) } catch {}
+        }}
+        style={{
+          background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)',
+          cursor: 'pointer', fontSize: 11, padding: '0 2px', lineHeight: 1,
+        }}
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
 function McpToolIndicator({ toolName }: { toolName: string }) {
   const label = toolName.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
   return (
@@ -4982,6 +5044,7 @@ export function ChatPanel({
             <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
               <div style={{ maxWidth: 460, width: '100%' }}>
                 <ThinkingIndicator mode={aiMode} thinkingText={thinkingText} />
+                <PriorityQueueNudge isThinking={isThinking} />
               </div>
             </div>
           )}

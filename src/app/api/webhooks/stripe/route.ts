@@ -17,7 +17,6 @@ import {
   sendPaymentActionRequiredEmail,
   sendCheckoutAbandonedEmail,
 } from '@/lib/email'
-import { SUBSCRIPTION_TIERS, normalizeTier } from '@/lib/subscription-tiers'
 import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
 import { Prisma } from '@prisma/client'
 import { getPostHogClient } from '@/lib/posthog'
