@@ -102,44 +102,41 @@ function RotatingHeroText() {
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
-    const timer = setInterval(() => setIndex((i) => (i + 1) % ROTATING_WORDS.length), 2800)
+    const timer = setInterval(() => setIndex((i) => (i + 1) % ROTATING_WORDS.length), 3800)
     return () => clearInterval(timer)
   }, [])
+
+  const longestWord = ROTATING_WORDS.reduce((a, b) => (a.length > b.length ? a : b))
 
   return (
     <h1
       className="font-black tracking-tight text-center"
-      style={{ fontSize: 'clamp(3.2rem, 10vw, 7.5rem)', lineHeight: 1.02, letterSpacing: '-0.04em', fontWeight: 900 }}
+      style={{ fontSize: 'clamp(3.2rem, 10vw, 7.5rem)', lineHeight: 1.1, letterSpacing: '-0.04em', fontWeight: 900 }}
     >
-      <span style={{ color: '#FAFAFA', textShadow: '0 0 80px rgba(255,255,255,0.08)' }}>Forge your </span>
-      <span className="relative inline-flex justify-center" style={{ minWidth: '5ch' }}>
+      <div style={{ color: '#FAFAFA', textShadow: '0 0 80px rgba(255,255,255,0.08)' }}>Forge your</div>
+      <div className="relative mx-auto" style={{ height: '1.15em', width: '100%', maxWidth: '8ch' }}>
         {ROTATING_WORDS.map((word, i) => (
-          <motion.span
+          <motion.div
             key={word}
             className="absolute inset-0 flex items-center justify-center"
-            initial={{ opacity: 0, y: 30 }}
             animate={{
               opacity: i === index ? 1 : 0,
-              y: i === index ? 0 : -30,
+              y: i === index ? 0 : 20,
+              scale: i === index ? 1 : 0.95,
             }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
             style={{
               background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 45%, #D4AF37 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
               filter: 'drop-shadow(0 0 40px rgba(212,175,55,0.3))',
-              pointerEvents: i === index ? 'auto' : 'none',
             }}
           >
             {word}
-          </motion.span>
+          </motion.div>
         ))}
-        {/* Invisible spacer — uses longest word to hold width */}
-        <span className="invisible" aria-hidden="true">
-          {ROTATING_WORDS.reduce((a, b) => (a.length > b.length ? a : b))}
-        </span>
-      </span>
+      </div>
     </h1>
   )
 }
@@ -289,7 +286,7 @@ function LiveBuildCounter() {
     if (!loaded) return
 
     function scheduleNext() {
-      const delay = 3000 + Math.random() * 5000
+      const delay = 1500 + Math.random() * 3500 // 1.5-5s intervals, more organic
       incrementRef.current = setTimeout(() => {
         setRealBuilds(prev => prev + 1)
         scheduleNext()

@@ -281,7 +281,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
             >
               F
             </span>
-            <ForjeLogo size={18} useImage />
+            <ForjeLogo size={18} />
           </Link>
           <button
             onClick={onClose}

@@ -112,7 +112,7 @@ export default function OnboardingPlanPage() {
             <polygon points="16,8 24,13 24,19 16,24 8,19 8,13" fill="#D4AF37" opacity="0.6" />
             <circle cx="16" cy="16" r="3" fill="#D4AF37" />
           </svg>
-          <ForjeLogo size={22} useImage />
+          <ForjeLogo size={22} />
         </Link>
       </div>
 

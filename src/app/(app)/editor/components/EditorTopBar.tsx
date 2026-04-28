@@ -118,7 +118,7 @@ export function EditorTopBar({
             display: 'flex', alignItems: 'center', gap: 1,
           }}
         >
-          <ForjeLogo size={20} useImage />
+          <ForjeLogo size={20} />
         </Link>
       </div>
 

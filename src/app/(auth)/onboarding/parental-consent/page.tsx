@@ -102,7 +102,7 @@ export default function ParentalConsentPage() {
         />
         <div className="relative z-10 max-w-md w-full text-center">
           <div className="text-center mb-8">
-            <h1 className="text-2xl"><ForjeLogo size={28} useImage /></h1>
+            <h1 className="text-2xl"><ForjeLogo size={28} /></h1>
           </div>
           <div
             className="rounded-xl p-8"
@@ -168,7 +168,7 @@ export default function ParentalConsentPage() {
       <div className="relative z-10 max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl"><ForjeLogo size={28} useImage /></h1>
+          <h1 className="text-2xl"><ForjeLogo size={28} /></h1>
         </div>
 
         {/* Card */}

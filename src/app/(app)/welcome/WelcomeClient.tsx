@@ -172,7 +172,7 @@ function LogoMark({ size = 64 }: { size?: number }) {
         boxShadow: '0 0 32px rgba(212,175,55,0.2), inset 0 1px 0 rgba(212,175,55,0.15)',
       }}
     >
-      <ForjeLogo size={size * 0.5} useImage />
+      <ForjeLogo size={size * 0.5} />
     </div>
   )
 }

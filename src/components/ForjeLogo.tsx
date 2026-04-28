@@ -15,12 +15,13 @@ import Image from 'next/image'
 const GOLD = '#D4AF37'
 
 const baseStyle: React.CSSProperties = {
-  fontWeight: 800,
+  fontWeight: 900,
   fontStyle: 'italic',
   letterSpacing: '-0.02em',
   lineHeight: 1,
   display: 'inline-flex',
   alignItems: 'baseline',
+  whiteSpace: 'nowrap',
 }
 
 // ─── Image Logo ──────────────────────────────────────────────────────────────
