@@ -23,7 +23,30 @@ export function LeftDrawer({
   onDeleteSession,
   onNewChat,
 }: LeftDrawerProps) {
-  const [tab, setTab] = useState<'history' | 'settings'>('history')
+  const [tab, setTab] = useState<'history' | 'projects' | 'settings'>('history')
+  const [projects, setProjects] = useState<Array<{ id: string; name: string; sessionIds: string[] }>>(() => {
+    if (typeof window === 'undefined') return []
+    try { return JSON.parse(localStorage.getItem('forje_projects') || '[]') } catch { return [] }
+  })
+  const [newProjectName, setNewProjectName] = useState('')
+  const [dragTarget, setDragTarget] = useState<string | null>(null)
+
+  const saveProjects = (p: typeof projects) => {
+    setProjects(p)
+    try { localStorage.setItem('forje_projects', JSON.stringify(p)) } catch {}
+  }
+  const createProject = () => {
+    if (!newProjectName.trim()) return
+    saveProjects([...projects, { id: Date.now().toString(), name: newProjectName.trim(), sessionIds: [] }])
+    setNewProjectName('')
+  }
+  const deleteProject = (id: string) => saveProjects(projects.filter(p => p.id !== id))
+  const addToProject = (projectId: string, sessionId: string) => {
+    saveProjects(projects.map(p => p.id === projectId ? { ...p, sessionIds: [...new Set([...p.sessionIds, sessionId])] } : p))
+  }
+  const removeFromProject = (projectId: string, sessionId: string) => {
+    saveProjects(projects.map(p => p.id === projectId ? { ...p, sessionIds: p.sessionIds.filter(s => s !== sessionId) } : p))
+  }
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   if (!open) return null
@@ -84,7 +107,7 @@ export function LeftDrawer({
           borderBottom: '1px solid rgba(255,255,255,0.04)',
         }}>
           <div style={{ display: 'flex', gap: 4 }}>
-            {(['history', 'settings'] as const).map((t) => (
+            {(['history', 'projects', 'settings'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -194,6 +217,8 @@ export function LeftDrawer({
                   return (
                     <div
                       key={s.id}
+                      draggable
+                      onDragStart={e => e.dataTransfer.setData('sessionId', s.id)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -206,7 +231,7 @@ export function LeftDrawer({
                         border: isActive
                           ? '1px solid rgba(212,175,55,0.12)'
                           : '1px solid transparent',
-                        cursor: 'pointer',
+                        cursor: 'grab',
                         transition: 'all 0.15s',
                       }}
                       onClick={() => safeLoadSession(s.id)}
@@ -262,6 +287,133 @@ export function LeftDrawer({
                   )
                 })}
               </div>
+            </>
+          )}
+
+          {tab === 'projects' && (
+            <>
+              {/* Create project */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+                <input
+                  type="text"
+                  value={newProjectName}
+                  onChange={e => setNewProjectName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && createProject()}
+                  placeholder="New project name..."
+                  style={{
+                    flex: 1, padding: '9px 12px', borderRadius: 10,
+                    border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)',
+                    color: '#E4E4E7', fontSize: 12, outline: 'none', fontFamily: 'Inter, sans-serif',
+                  }}
+                />
+                <button
+                  onClick={createProject}
+                  style={{
+                    padding: '9px 14px', borderRadius: 10,
+                    border: '1px solid rgba(212,175,55,0.2)', background: 'rgba(212,175,55,0.08)',
+                    color: '#D4AF37', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif', flexShrink: 0,
+                  }}
+                >
+                  +
+                </button>
+              </div>
+
+              {projects.length === 0 && (
+                <div style={{ textAlign: 'center', marginTop: 30 }}>
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 14, margin: '0 auto 12px',
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.04)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3F3F46" strokeWidth="1.5" strokeLinecap="round">
+                      <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+                    </svg>
+                  </div>
+                  <p style={{ fontSize: 13, color: '#3F3F46' }}>No projects yet</p>
+                  <p style={{ fontSize: 11, color: '#27272A', marginTop: 4 }}>Create a project to organize your chats</p>
+                </div>
+              )}
+
+              {projects.map(project => (
+                <div key={project.id} style={{
+                  marginBottom: 12, borderRadius: 12,
+                  border: dragTarget === project.id ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.04)',
+                  background: dragTarget === project.id ? 'rgba(212,175,55,0.04)' : 'rgba(255,255,255,0.02)',
+                  overflow: 'hidden', transition: 'all 0.15s',
+                }}
+                  onDragOver={e => { e.preventDefault(); setDragTarget(project.id) }}
+                  onDragLeave={() => setDragTarget(null)}
+                  onDrop={e => {
+                    e.preventDefault(); setDragTarget(null)
+                    const sid = e.dataTransfer.getData('sessionId')
+                    if (sid) addToProject(project.id, sid)
+                  }}
+                >
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.03)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round">
+                        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+                      </svg>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#E4E4E7' }}>{project.name}</span>
+                      <span style={{ fontSize: 10, color: '#52525B' }}>{project.sessionIds.length}</span>
+                    </div>
+                    <button
+                      onClick={() => deleteProject(project.id)}
+                      style={{ background: 'transparent', border: 'none', color: '#3F3F46', cursor: 'pointer', padding: 4, borderRadius: 4 }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
+                      onMouseLeave={e => e.currentTarget.style.color = '#3F3F46'}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                      </svg>
+                    </button>
+                  </div>
+                  {project.sessionIds.length > 0 && (
+                    <div style={{ padding: '6px 8px' }}>
+                      {project.sessionIds.map(sid => {
+                        const session = sessions.find(s => s.id === sid)
+                        if (!session) return null
+                        return (
+                          <div key={sid} style={{
+                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
+                            borderRadius: 8, cursor: 'pointer', transition: 'background 0.15s',
+                          }}
+                            onClick={() => safeLoadSession(sid)}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <div style={{ width: 4, height: 4, borderRadius: '50%', background: sid === currentSessionId ? '#D4AF37' : 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
+                            <span style={{ fontSize: 12, color: '#A1A1AA', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {session.title || 'Untitled'}
+                            </span>
+                            <button
+                              onClick={e => { e.stopPropagation(); removeFromProject(project.id, sid) }}
+                              style={{ background: 'transparent', border: 'none', color: '#3F3F46', cursor: 'pointer', padding: 2, fontSize: 10 }}
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {project.sessionIds.length === 0 && (
+                    <p style={{ fontSize: 11, color: '#27272A', padding: '10px 12px', margin: 0 }}>
+                      Drag chats here to organize
+                    </p>
+                  )}
+                </div>
+              ))}
+
+              {projects.length > 0 && (
+                <p style={{ fontSize: 10, color: '#27272A', textAlign: 'center', marginTop: 8 }}>
+                  Drag conversations from History into projects
+                </p>
+              )}
             </>
           )}
 
