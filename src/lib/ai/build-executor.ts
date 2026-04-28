@@ -12,6 +12,7 @@
 import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
 import { callAI } from './provider'
+import { getKnowledgeForTaskType } from './deep-game-knowledge'
 import { analyzeLuau, autoFixLuau } from './static-analysis'
 import { validateBuild } from './build-validator'
 import { redis } from '@/lib/redis'
@@ -20,6 +21,7 @@ import { startMeshPipeline } from '@/lib/pipeline/mesh-pipeline'
 import { spendTokens } from '@/lib/tokens-server'
 import { serverEnv } from '@/lib/env'
 import type { BuildPlan, BuildTask, BuildTaskType } from './build-planner'
+import { DEEP_BUILDING_KNOWLEDGE } from './deep-building-knowledge'
 import {
   economySystem,
   tycoonDropper,
@@ -873,7 +875,18 @@ This task is chunk ${chunkIndex ?? 0} of a larger build called "${parentName}".
     }
   }
 
-  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + chunkParentInstructions +
+  // Inject deep building knowledge for building/terrain/prop tasks (the types that construct geometry)
+  const needsBuildingKnowledge = ['building', 'terrain', 'prop', 'npc'].includes(task.type)
+  const buildingKnowledgeChunk = needsBuildingKnowledge
+    ? `\n\n--- DEEP BUILDING KNOWLEDGE REFERENCE ---\n${DEEP_BUILDING_KNOWLEDGE}\n--- END BUILDING KNOWLEDGE ---\n`
+    : ''
+
+  // Inject deep game design knowledge for script/economy/ui/npc tasks
+  const gameDesignKnowledge = ['script', 'economy', 'ui', 'npc'].includes(task.type)
+    ? `\n\n--- DEEP GAME DESIGN KNOWLEDGE ---\n${getKnowledgeForTaskType(task.type)}\n--- END GAME DESIGN KNOWLEDGE ---\n`
+    : ''
+
+  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + chunkParentInstructions + buildingKnowledgeChunk + gameDesignKnowledge +
     `\n\nCRITICAL RULES:
 - Output ONLY valid Luau code. No JavaScript, no Python, no TypeScript.
 - Use game:GetService("ServiceName") not game.ServiceName

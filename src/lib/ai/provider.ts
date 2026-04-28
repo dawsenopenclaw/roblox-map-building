@@ -16,6 +16,7 @@ import { findSpecialist, findSpecialists, applySpecialist, getSpecialistRAGCateg
 import { callOpenRouter, selectBestModel, estimateBuildComplexity } from './openrouter'
 import { isPaidModelsEnabled } from '@/lib/spending-guard'
 import { getNextKey, reportRateLimit } from './key-rotator'
+import { getKnowledgeForGameType, KNOWLEDGE_SCRIPTING, KNOWLEDGE_BALANCE } from './deep-game-knowledge'
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system'
@@ -548,6 +549,26 @@ export async function callAI(
     } catch (e) {
       console.error('[ai-provider] RAG enrichment failed, using base prompt:', (e as Error).message)
     }
+  }
+
+  // Inject deep game knowledge when the user is asking about game systems/scripting
+  const gameKeywords = ['tycoon', 'simulator', 'rpg', 'obby', 'roleplay', 'tower defense',
+    'battle royale', 'survival', 'horror', 'racing', 'fighting', 'puzzle', 'sandbox',
+    'clicker', 'idle', 'murder mystery', 'game script', 'economy system', 'pet system',
+    'quest system', 'combat system', 'inventory system', 'datastore', 'npc ai',
+    'skill tree', 'rebirth', 'prestige', 'wave system', 'spawn system', 'loot system']
+  const lowerMsg = userMessage.toLowerCase()
+  const isGameRelated = gameKeywords.some(kw => lowerMsg.includes(kw))
+  if (isGameRelated) {
+    // Find the most relevant game type and inject trimmed knowledge
+    const matchedType = gameKeywords.find(kw => lowerMsg.includes(kw)) ?? ''
+    const knowledge = getKnowledgeForGameType(matchedType)
+    // Trim to ~4000 chars to avoid bloating the prompt too much
+    const trimmedKnowledge = knowledge.slice(0, 4000)
+    enrichedPrompt += `\n\n--- GAME DESIGN KNOWLEDGE (use this to create UNIQUE, well-designed systems) ---\n${trimmedKnowledge}\n--- END KNOWLEDGE ---`
+  } else if (lowerMsg.includes('script') || lowerMsg.includes('luau') || lowerMsg.includes('code')) {
+    // For general scripting requests, inject scripting patterns
+    enrichedPrompt += `\n\n--- SCRIPTING PATTERNS ---\n${KNOWLEDGE_SCRIPTING.slice(0, 2000)}\n${KNOWLEDGE_BALANCE.slice(0, 1000)}\n--- END PATTERNS ---`
   }
 
   // Try Gemini direct first (fastest, free tier)
