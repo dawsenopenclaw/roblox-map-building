@@ -14,7 +14,7 @@ export default function RobloxSettingsPage() {
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-white">Roblox Account</h1>
         <p className="text-gray-400 mt-1 text-sm">
-          Link your Roblox account to unlock Robux payments, game sync, and direct asset imports.
+          Link your Roblox account to unlock game sync and direct asset imports.
         </p>
       </div>
 

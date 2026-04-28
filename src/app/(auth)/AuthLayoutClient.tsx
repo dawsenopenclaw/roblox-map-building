@@ -6,15 +6,6 @@ import { useRouter } from 'next/navigation'
 import { ForjeLogo } from '@/components/ForjeLogo'
 import { useAuth, useClerk } from '@clerk/nextjs'
 
-function LogoMark() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden>
-      <polygon points="16,2 30,10 30,22 16,30 2,22 2,10" stroke="#D4AF37" strokeWidth="1.5" fill="rgba(212,175,55,0.06)" />
-      <polygon points="16,8 24,13 24,19 16,24 8,19 8,13" fill="#D4AF37" opacity="0.5" />
-      <circle cx="16" cy="16" r="3" fill="#D4AF37" />
-    </svg>
-  )
-}
 
 function SignOutButton() {
   const { isSignedIn, isLoaded } = useAuth()
@@ -75,7 +66,6 @@ export default function AuthLayoutClient({ children }: { children: React.ReactNo
       {/* Branding header — always visible */}
       <div className="relative z-10 text-center mb-8">
         <Link href="/" className="inline-flex items-center gap-3 select-none group mb-4">
-          <LogoMark />
           <ForjeLogo size={28} useImage className="transition-opacity duration-150 group-hover:opacity-80" />
         </Link>
         <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight mb-3">

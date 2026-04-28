@@ -63,8 +63,16 @@ const bodySchema = z.object({
 })
 
 // ── Handler ─────────────────────────────────────────────────────────────────
+// Robux payments are disabled — the Roblox experience and GamePass IDs are
+// not configured and the flow is not functional. Return 503 for all requests.
 
 export async function POST(req: NextRequest) {
+  return NextResponse.json(
+    { error: 'Robux payments are not available at this time.' },
+    { status: 503 },
+  )
+
+  // --- Original handler below (disabled) ---
   try {
     const { userId: clerkId } = await auth()
     if (!clerkId) {

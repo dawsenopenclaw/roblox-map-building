@@ -22,7 +22,7 @@ import {
   Quote,
 } from 'lucide-react'
 import CustomPricingCalculator from '@/components/pricing/CustomPricingCalculator'
-import RobuxPayment from '@/components/billing/RobuxPayment'
+// RobuxPayment removed — Robux payments not yet functional
 import { captureClientEvent } from '@/lib/analytics-client'
 
 // ---------------------------------------------------------------------------
@@ -1409,24 +1409,6 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
 
         {/* Token Packs — supplementary */}
         <TokenPacksSection onError={showError} packConfig={config.tokenPacks} />
-
-        {/* ------------------------------------------------------------------ */}
-        {/* Pay with Robux                                                      */}
-        {/* ------------------------------------------------------------------ */}
-        <div className="mb-24 mt-24">
-          <div className="text-center mb-10">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.12em] mb-3" style={{ color: 'rgba(212,175,55,0.6)' }}>
-              Roblox Players
-            </p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-              Pay with <span className="gradient-text">Robux</span>
-            </h2>
-            <p className="text-[#6B7699] text-sm max-w-xl mx-auto">
-              No credit card? Use the Robux you already have. Buy credits inside our Roblox experience and they appear instantly in your ForjeGames account.
-            </p>
-          </div>
-          <RobuxPayment />
-        </div>
 
         {/* ------------------------------------------------------------------ */}
         {/* Trust bar                                                           */}

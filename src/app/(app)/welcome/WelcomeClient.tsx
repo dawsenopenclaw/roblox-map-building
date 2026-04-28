@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
+import { ForjeLogo } from '@/components/ForjeLogo'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -157,7 +158,7 @@ function ProgressDots({ step, total }: { step: number; total: number }) {
   )
 }
 
-// ─── Gold Logo Mark ────────────────────────────────────────────────────────────
+// ─── Logo Mark (uses ForjeLogo image) ──────────────────────────────────────────
 
 function LogoMark({ size = 64 }: { size?: number }) {
   return (
@@ -171,29 +172,7 @@ function LogoMark({ size = 64 }: { size?: number }) {
         boxShadow: '0 0 32px rgba(212,175,55,0.2), inset 0 1px 0 rgba(212,175,55,0.15)',
       }}
     >
-      {/* Stylised F lettermark */}
-      <svg
-        width={size * 0.44}
-        height={size * 0.44}
-        viewBox="0 0 28 28"
-        fill="none"
-      >
-        <path
-          d="M6 4h16M6 4v20M6 14h11"
-          stroke="#D4AF37"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M6 4h16M6 4v20M6 14h11"
-          stroke="#F5D060"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity="0.4"
-        />
-      </svg>
+      <ForjeLogo size={size * 0.5} useImage />
     </div>
   )
 }

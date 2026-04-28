@@ -170,7 +170,7 @@ function MarketingNav() {
           {/* Language switcher removed until translations complete */}
           {!(isLoaded && isSignedIn) && (
             <>
-              <SignInButton mode="modal">
+              <SignInButton mode="redirect">
                 <button
                   type="button"
                   className="text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-150 text-zinc-300 hover:text-white hover:bg-white/5"
@@ -178,7 +178,7 @@ function MarketingNav() {
                   Sign in
                 </button>
               </SignInButton>
-              <SignUpButton mode="modal">
+              <SignUpButton mode="redirect">
                 <button
                   type="button"
                   className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black hover:brightness-110 active:scale-[0.97]"
@@ -272,7 +272,7 @@ function MarketingNav() {
               {/* Language switcher removed until translations complete */}
               {!(isLoaded && isSignedIn) && (
                 <>
-                  <SignInButton mode="modal">
+                  <SignInButton mode="redirect">
                     <button
                       type="button"
                       onClick={() => setMenuOpen(false)}
@@ -281,7 +281,7 @@ function MarketingNav() {
                       Sign in
                     </button>
                   </SignInButton>
-                  <SignUpButton mode="modal">
+                  <SignUpButton mode="redirect">
                     <button
                       type="button"
                       onClick={() => setMenuOpen(false)}
