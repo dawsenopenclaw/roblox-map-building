@@ -6,18 +6,18 @@ import type { NextRequest } from 'next/server'
 const locales = ['en'] as const
 const defaultLocale = 'en' as const
 
-// ─── Rate limiting imports ──────────────────────────────────────────────────
-// Import from the actual rate-limit module. These use Upstash Redis when
-// available and fall back gracefully (fail-open) when Redis is down.
-import {
-  authApiRateLimit,
-  signInRateLimit,
-  signUpRateLimit,
-  billingRateLimit,
-  studioConnectRateLimit,
-  rateLimitHeaders,
-  type RateLimitResult,
-} from './lib/rate-limit'
+// ─── Rate limit stubs (no-op in Edge middleware) ────────────────────────────
+// @upstash/ratelimit uses .unref() which doesn't exist in Vercel Edge Runtime.
+// Real rate limiting happens at the API route level (src/lib/rate-limit.ts).
+// These stubs ensure middleware never crashes — every request passes through.
+type RateLimitResult = { allowed: boolean; remaining: number; resetAt: number }
+const ALLOW: RateLimitResult = { allowed: true, remaining: 999, resetAt: 0 }
+async function authApiRateLimit(_ip: string): Promise<RateLimitResult> { return ALLOW }
+async function signInRateLimit(_ip: string): Promise<RateLimitResult> { return ALLOW }
+async function signUpRateLimit(_ip: string): Promise<RateLimitResult> { return ALLOW }
+async function billingRateLimit(_id: string): Promise<RateLimitResult> { return ALLOW }
+async function studioConnectRateLimit(_id: string): Promise<RateLimitResult> { return ALLOW }
+function rateLimitHeaders(_result: RateLimitResult): Record<string, string> { return {} }
 
 // ─── i18n composition ─────────────────────────────────────────────────────────
 // Non-default locale prefixes that, when present as the first path segment,
