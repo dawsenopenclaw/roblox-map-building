@@ -255,8 +255,15 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
             <button
               key={card.title}
               onClick={() => {
-                if (card.title === 'Build a Game' && onBuildGame) {
-                  onBuildGame(card.prompt)
+                if (card.title === 'Plan a Game') {
+                  if (onBuildGame) {
+                    onBuildGame(card.prompt)
+                  } else {
+                    onQuickAction(card.prompt, true)
+                  }
+                } else if (card.title === 'Free Build') {
+                  // Focus the input — don't send empty string
+                  onQuickAction('', false)
                 } else {
                   onQuickAction(card.prompt, card.autoSend !== false)
                 }
@@ -326,7 +333,7 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
         zIndex: 1,
       }}>
         <p style={{ fontSize: 11, color: '#52525B', marginBottom: 10, textAlign: 'center', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
-          Try a prompt
+          Or try one of these
         </p>
         <div style={{
           display: 'grid',
