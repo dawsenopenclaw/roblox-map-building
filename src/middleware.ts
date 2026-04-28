@@ -92,6 +92,8 @@ const isPublicRoute = createRouteMatcher([
   '/prompt-guide(.*)',
   // AI chat — guest mode with strict rate limiting (3 messages then signup required)
   '/api/ai/chat',
+  // MCP endpoints — API key auth handled in the route handler, not Clerk
+  '/api/mcp/(.*)',
   // AI feedback — anonymous thumbs up/down (POST only, GET requires auth)
   '/api/ai/feedback',
   // Site reviews — public GET for homepage marquee, POST is auth-gated in the route handler
