@@ -287,120 +287,33 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
       {/* ─── Heading ─── */}
       <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
         <h1 style={{
-          fontSize: isMobile ? 'clamp(1.8rem, 6vw, 2.5rem)' : 'clamp(2.4rem, 4vw, 3.2rem)',
-          fontWeight: 700,
+          fontSize: isMobile ? 'clamp(1.8rem, 6vw, 2.5rem)' : 'clamp(2.2rem, 3.5vw, 2.8rem)',
+          fontWeight: 800,
           lineHeight: 1.15,
           letterSpacing: '-0.03em',
           color: '#FAFAFA',
           margin: 0,
-          textShadow: '0 0 40px rgba(212,175,55,0.08)',
         }}>
-          What do you want to build?
+          What are we building?
         </h1>
         <p style={{
-          marginTop: 14,
-          fontSize: 16,
-          color: '#71717A',
-          maxWidth: 460,
-          margin: '14px auto 0',
+          marginTop: 10,
+          fontSize: 15,
+          color: '#52525B',
+          maxWidth: 500,
+          margin: '10px auto 0',
           lineHeight: 1.6,
         }}>
-          Describe anything. Forje builds your <RotatingWord3D /> and syncs to Studio.
+          Pick an option or type anything below. The AI handles the rest.
         </p>
       </div>
 
-      {/* ─── Quick-start card grid ─── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-        gap: 14,
-        maxWidth: 780,
-        width: '100%',
-        position: 'relative',
-        zIndex: 1,
-      }}>
-        {QUICK_CARDS.map((card, i) => {
-          const isHovered = hoveredCard === i
-          return (
-            <button
-              key={card.title}
-              onClick={() => {
-                if (card.title === 'Plan a Game') {
-                  if (onBuildGame) {
-                    onBuildGame(card.prompt)
-                  } else {
-                    onQuickAction(card.prompt, true)
-                  }
-                } else if (card.title === 'Free Build') {
-                  // Focus the input — don't send empty string
-                  onQuickAction('', false)
-                } else {
-                  onQuickAction(card.prompt, card.autoSend !== false)
-                }
-              }}
-              onMouseEnter={() => setHoveredCard(i)}
-              onMouseLeave={() => setHoveredCard(null)}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                gap: 10,
-                padding: '18px 20px',
-                borderRadius: 18,
-                border: `1px solid ${isHovered ? `${card.color}50` : 'rgba(255,255,255,0.06)'}`,
-                background: isHovered
-                  ? `rgba(${hexToRgb(card.color)}, 0.06)`
-                  : 'rgba(12,15,28,0.5)',
-                backdropFilter: 'blur(16px)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                fontFamily: 'inherit',
-                transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
-                boxShadow: isHovered
-                  ? `0 12px 32px rgba(0,0,0,0.35), 0 0 20px rgba(${hexToRgb(card.color)}, 0.08), inset 0 1px 0 rgba(255,255,255,0.06)`
-                  : '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.03)',
-              }}
-            >
-              <div style={{
-                width: 44, height: 44, borderRadius: 12,
-                background: isHovered
-                  ? `rgba(${hexToRgb(card.color)}, 0.15)`
-                  : `rgba(${hexToRgb(card.color)}, 0.08)`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.25s',
-                boxShadow: isHovered ? `0 0 16px rgba(${hexToRgb(card.color)}, 0.12)` : 'none',
-              }}>
-                {card.icon}
-              </div>
-              <div>
-                <div style={{
-                  fontSize: 14, fontWeight: 650,
-                  color: isHovered ? '#FAFAFA' : '#E4E4E7',
-                  marginBottom: 4, transition: 'color 0.2s',
-                  letterSpacing: '-0.01em',
-                }}>
-                  {card.title}
-                </div>
-                <div style={{
-                  fontSize: 12, lineHeight: 1.5,
-                  color: isHovered ? '#A1A1AA' : '#52525B',
-                  transition: 'color 0.2s',
-                }}>
-                  {card.description}
-                </div>
-              </div>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* ─── 6-card action grid ─── */}
-      <div style={{ maxWidth: 780, width: '100%', position: 'relative', zIndex: 1 }}>
+      {/* ─── 6-card action grid (full width, even height) ─── */}
+      <div style={{ maxWidth: 900, width: '100%', position: 'relative', zIndex: 1 }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-          gap: 10,
+          gap: 12,
         }}>
           {ACTION_CARDS.map((card, i) => (
             <button
@@ -417,33 +330,34 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'flex-start',
-                gap: 12,
-                padding: '18px 16px',
-                borderRadius: 14,
+                gap: 14,
+                padding: '22px 20px',
+                borderRadius: 16,
                 border: '1px solid rgba(255,255,255,0.06)',
-                background: 'rgba(10,14,28,0.6)',
-                backdropFilter: 'blur(20px)',
+                background: 'rgba(10,14,28,0.55)',
+                backdropFilter: 'blur(24px)',
                 cursor: 'pointer',
                 transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                 textAlign: 'left',
                 fontFamily: 'inherit',
                 animation: `msgFadeUp 0.3s ease-out ${i * 0.05}s both`,
+                minHeight: isMobile ? 'auto' : 130,
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.borderColor = `${card.iconColor}40`
-                e.currentTarget.style.background = `${card.iconColor}08`
+                e.currentTarget.style.background = `${card.iconColor}06`
                 e.currentTarget.style.transform = 'translateY(-3px)'
-                e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.3), 0 0 16px ${card.iconColor}10`
+                e.currentTarget.style.boxShadow = `0 8px 28px rgba(0,0,0,0.35), 0 0 20px ${card.iconColor}08`
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
-                e.currentTarget.style.background = 'rgba(10,14,28,0.6)'
+                e.currentTarget.style.background = 'rgba(10,14,28,0.55)'
                 e.currentTarget.style.transform = 'translateY(0)'
                 e.currentTarget.style.boxShadow = 'none'
               }}
             >
               <div style={{
-                width: 40, height: 40, borderRadius: 10,
+                width: 42, height: 42, borderRadius: 11,
                 background: card.iconBg,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
@@ -451,8 +365,8 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
                 {card.icon}
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{card.title}</div>
-                <div style={{ fontSize: 11, color: '#52525B', lineHeight: 1.4 }}>{card.description}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#E4E4E7', marginBottom: 5, letterSpacing: '-0.01em' }}>{card.title}</div>
+                <div style={{ fontSize: 12, color: '#52525B', lineHeight: 1.5 }}>{card.description}</div>
               </div>
             </button>
           ))}
