@@ -16896,6 +16896,37 @@ Set m.PrimaryPart to the base part. No explanation.`,
       }
     }
 
+    // ── Last-resort retry: wait 5s then try Gemini once more ──
+    // Rate limits are per-minute windows — a short pause often clears them
+    console.log('[chat] All models failed — waiting 5s for rate limit cooldown...')
+    await new Promise(r => setTimeout(r, 5000))
+    try {
+      const retryResult = await callGemini(
+        'You are a Roblox Luau code generator. Output ONLY code inside ```lua fences. No other text.',
+        `Build: ${message}\n\nONLY output a \`\`\`lua code block. Use Instance.new("Part"). 30-60 parts. No explanation.`,
+        [],
+        16384,
+      )
+      if (retryResult) {
+        let retryLuau = extractLuauCode(retryResult)
+        if (!retryLuau && retryResult.includes('Instance.new')) {
+          retryLuau = retryResult.replace(/^```\w*\s*/gm, '').replace(/^```\s*$/gm, '').trim()
+        }
+        if (retryLuau) {
+          let executedInStudio = false
+          if (sessionId) executedInStudio = await sendCodeToStudio(sessionId, retryLuau)
+          const retryMsg = executedInStudio
+            ? 'Built! Check your viewport.\n\nWhat would you like to change or add next?'
+            : 'Here\'s the build code! Click **"Import to Studio"** to paste it into your game.\n\nWhat would you like to change or add next?'
+          console.log('[chat] Rate-limit retry succeeded')
+          if (wantsStream) {
+            return trackableStream(retryMsg, { intent, hasCode: true, tokensUsed, executedInStudio, model: 'retry' }) as unknown as NextResponse
+          }
+          return NextResponse.json({ message: retryMsg, tokensUsed, intent, hasCode: true, luauCode: retryLuau, executedInStudio, model: 'retry' })
+        }
+      }
+    } catch { /* retry also failed */ }
+
     // Final fallback — be honest, no fake templates
     const failMsg = `The AI is catching its breath — a lot of people are building right now. Try again in 10-15 seconds.\n\nThese instant builds work every time (no AI needed): "build a tree", "build a castle", "build a helicopter", "build a tank", "build a robot", "build a shop", "build a fountain"\n\n[FOLLOWUP]\n- Try my prompt again\n- Build me a castle\n- Build me a helicopter\n\n[SUGGESTIONS]\n- Build me a robot\n- Build me a tank\n- Build me a shop`
     // Record the failure for learning
