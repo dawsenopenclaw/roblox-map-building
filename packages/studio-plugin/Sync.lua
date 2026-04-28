@@ -44,13 +44,13 @@ local Sync = {}
 -- direct-download vs Creator Store builds without hardcoding the string in
 -- two places. Store builds suffix this with "-store" at build time; the
 -- loadstring auto-enable logic in Plugin.lua:init() checks for that suffix.
-Sync.PLUGIN_VERSION = "4.8.0"
+Sync.PLUGIN_VERSION = "5.0.0"
 
 -- ============================================================
 -- Config
 -- ============================================================
 local BASE_URL           = "https://forjegames.com"
-local PLUGIN_VERSION     = "4.8.0"
+local PLUGIN_VERSION     = "5.0.0"
 local MIN_INTERVAL       = 5    -- seconds (was 2 — burned through Upstash free tier)
 local MAX_INTERVAL       = 30   -- seconds (backoff ceiling)
 local HEARTBEAT_INTERVAL = 30   -- seconds between keepalive POSTs

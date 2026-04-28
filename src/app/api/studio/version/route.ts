@@ -24,10 +24,10 @@ import { getRedis } from '@/lib/redis'
 
 // ── Defaults (used when Redis has no stored version yet) ─────────────────────
 const DEFAULTS = {
-  version:     '4.8.0',
-  minVersion:  '4.5.0',
+  version:     '5.0.0',
+  minVersion:  '4.8.0',
   downloadUrl: '/api/studio/plugin',
-  changelog:   'Script placement fix, atmosphere preset improvements, auto-update reliability.',
+  changelog:   'NEW: In-plugin AI chat — build without leaving Studio. SSE reconnect fixes, better error handling.',
   forceUpdate: false,
 }
 
