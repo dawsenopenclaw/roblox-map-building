@@ -18,6 +18,7 @@ import { isPaidModelsEnabled } from '@/lib/spending-guard'
 import { getNextKey, reportRateLimit } from './key-rotator'
 import { getKnowledgeForGameType, KNOWLEDGE_SCRIPTING, KNOWLEDGE_BALANCE } from './deep-game-knowledge'
 import { getAdvancedBuildingKnowledge, getAdvancedScriptingKnowledge, getExploitPreventionKnowledge, getVisualEffectsKnowledge, getSoundDesignKnowledge } from './advanced-roblox-knowledge'
+import { getEncyclopediaSummary } from './roblox-encyclopedia'
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system'
@@ -601,6 +602,12 @@ export async function callAI(
     if (advSection) {
       enrichedPrompt += `\n\n--- ADVANCED ROBLOX KNOWLEDGE ---\n${advSection}\n--- END ADVANCED KNOWLEDGE ---`
     }
+  }
+
+  // Inject relevant encyclopedia knowledge based on user message keywords
+  const encyclopediaSummary = getEncyclopediaSummary(userMessage)
+  if (encyclopediaSummary) {
+    enrichedPrompt += `\n\n--- ROBLOX ENCYCLOPEDIA ---\n${encyclopediaSummary}\n--- END ENCYCLOPEDIA ---`
   }
 
   // Try Gemini direct first (fastest, free tier)

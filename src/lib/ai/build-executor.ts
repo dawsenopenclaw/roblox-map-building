@@ -32,6 +32,7 @@ import {
   getSoundDesignKnowledge,
   getMonetizationKnowledge,
 } from './advanced-roblox-knowledge'
+import { getEncyclopediaForTaskType } from './roblox-encyclopedia'
 import {
   economySystem,
   tycoonDropper,
@@ -915,7 +916,10 @@ This task is chunk ${chunkIndex ?? 0} of a larger build called "${parentName}".
   // Extract prompt modifiers from task description for unique, non-generic builds
   const taskModifiers = modifiersToInstructions(extractModifiers(task.prompt))
 
-  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + taskModifiers + chunkParentInstructions + buildingKnowledgeChunk + gameDesignKnowledge + advancedKnowledge +
+  // Inject relevant encyclopedia sections (materials, colors, recipes, services, luau, etc.)
+  const encyclopediaKnowledge = `\n\n--- ROBLOX ENCYCLOPEDIA REFERENCE ---\n${getEncyclopediaForTaskType(task.type).slice(0, 8000)}\n--- END ENCYCLOPEDIA ---\n`
+
+  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + taskModifiers + chunkParentInstructions + buildingKnowledgeChunk + gameDesignKnowledge + advancedKnowledge + encyclopediaKnowledge +
     `\n\nCRITICAL RULES:
 - Output ONLY valid Luau code. No JavaScript, no Python, no TypeScript.
 - Use game:GetService("ServiceName") not game.ServiceName

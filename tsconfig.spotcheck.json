@@ -57,7 +57,8 @@
     "src/lib/ai/build-quality-gate.ts",
     "src/lib/ai/instant-cache.ts",
     "src/lib/ai/build-planner.ts",
-    "src/lib/ai/build-executor.ts"
+    "src/lib/ai/build-executor.ts",
+    "src/lib/ai/roblox-encyclopedia.ts"
   ],
   "exclude": ["node_modules", ".next"]
 }
