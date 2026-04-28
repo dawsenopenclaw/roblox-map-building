@@ -8,7 +8,7 @@
  * Unique to ForjeGames — no competitor has this.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 
 interface GameSystem {
   id: string
@@ -18,20 +18,79 @@ interface GameSystem {
   dependencies: string[] // IDs of required systems
 }
 
-const GAME_SYSTEMS: GameSystem[] = [
-  { id: 'inventory', name: 'Inventory', icon: '🎒', description: 'Item storage, equipping, stacking', dependencies: [] },
-  { id: 'combat', name: 'Combat', icon: '⚔️', description: 'Health, damage, abilities, knockback', dependencies: [] },
-  { id: 'shop', name: 'Shop', icon: '🏪', description: 'Buy/sell items, currency, pricing', dependencies: ['inventory'] },
-  { id: 'quests', name: 'Quests', icon: '📜', description: 'Objectives, tracking, rewards', dependencies: [] },
-  { id: 'npcs', name: 'NPCs', icon: '🧑', description: 'Dialogue, spawning, pathfinding', dependencies: [] },
-  { id: 'vehicles', name: 'Vehicles', icon: '🚗', description: 'Driving, seats, physics', dependencies: [] },
-  { id: 'pets', name: 'Pets', icon: '🐾', description: 'Following, leveling, abilities', dependencies: [] },
-  { id: 'crafting', name: 'Crafting', icon: '🔨', description: 'Recipes, materials, workbenches', dependencies: ['inventory'] },
-  { id: 'trading', name: 'Trading', icon: '🤝', description: 'Player-to-player item exchange', dependencies: ['inventory'] },
-  { id: 'progression', name: 'Leveling', icon: '📊', description: 'XP, levels, stat upgrades', dependencies: [] },
-  { id: 'dailyrewards', name: 'Daily Rewards', icon: '🎁', description: 'Login streaks, reward calendar', dependencies: [] },
-  { id: 'leaderboard', name: 'Leaderboard', icon: '🏆', description: 'Rankings, stats display', dependencies: [] },
+type SystemCategory = 'Core' | 'Economy' | 'Combat' | 'Social' | 'World' | 'UI' | 'Monetization' | 'Advanced'
+
+interface CategorizedSystem extends GameSystem {
+  category: SystemCategory
+}
+
+const GAME_SYSTEMS: CategorizedSystem[] = [
+  // Core
+  { id: 'inventory', name: 'Inventory', icon: '🎒', description: 'Item storage, equipping, stacking', dependencies: [], category: 'Core' },
+  { id: 'datastore', name: 'Data Save', icon: '💾', description: 'Player data persistence', dependencies: [], category: 'Core' },
+  { id: 'spawning', name: 'Spawn System', icon: '📍', description: 'Spawn points, respawning', dependencies: [], category: 'Core' },
+  { id: 'teams', name: 'Teams', icon: '👥', description: 'Team assignment, colors, balancing', dependencies: [], category: 'Core' },
+  { id: 'rounds', name: 'Round System', icon: '🔄', description: 'Game rounds, timers, intermission', dependencies: [], category: 'Core' },
+  { id: 'teleport', name: 'Teleportation', icon: '🌀', description: 'Place-to-place, zone warps', dependencies: [], category: 'Core' },
+
+  // Economy
+  { id: 'shop', name: 'Shop', icon: '🏪', description: 'Buy/sell items, currency, pricing', dependencies: ['inventory'], category: 'Economy' },
+  { id: 'trading', name: 'Trading', icon: '🤝', description: 'Player-to-player item exchange', dependencies: ['inventory'], category: 'Economy' },
+  { id: 'currency', name: 'Currency', icon: '💰', description: 'Multiple currencies, earning, spending', dependencies: [], category: 'Economy' },
+  { id: 'auction', name: 'Auction House', icon: '🏛️', description: 'Player marketplace, bidding', dependencies: ['inventory', 'currency'], category: 'Economy' },
+  { id: 'crafting', name: 'Crafting', icon: '🔨', description: 'Recipes, materials, workbenches', dependencies: ['inventory'], category: 'Economy' },
+  { id: 'droppers', name: 'Tycoon Droppers', icon: '🏭', description: 'Conveyor belts, upgraders, collectors', dependencies: ['currency'], category: 'Economy' },
+
+  // Combat
+  { id: 'combat', name: 'Combat', icon: '⚔️', description: 'Health, damage, abilities, knockback', dependencies: [], category: 'Combat' },
+  { id: 'weapons', name: 'Weapons', icon: '🗡️', description: 'Swords, guns, bows, ammo', dependencies: ['combat'], category: 'Combat' },
+  { id: 'abilities', name: 'Abilities', icon: '✨', description: 'Cooldowns, mana, skill trees', dependencies: ['combat'], category: 'Combat' },
+  { id: 'bossfights', name: 'Boss Fights', icon: '👹', description: 'Boss AI, phases, loot drops', dependencies: ['combat', 'npcs'], category: 'Combat' },
+  { id: 'pvp', name: 'PvP Arena', icon: '🥊', description: 'Player vs player, matchmaking', dependencies: ['combat', 'teams'], category: 'Combat' },
+  { id: 'tower-defense', name: 'Tower Defense', icon: '🗼', description: 'Towers, waves, paths, upgrades', dependencies: ['combat', 'currency'], category: 'Combat' },
+
+  // Social
+  { id: 'npcs', name: 'NPCs', icon: '🧑', description: 'Dialogue, spawning, pathfinding', dependencies: [], category: 'Social' },
+  { id: 'quests', name: 'Quests', icon: '📜', description: 'Objectives, tracking, rewards', dependencies: [], category: 'Social' },
+  { id: 'pets', name: 'Pets', icon: '🐾', description: 'Following, leveling, hatching, rarity', dependencies: [], category: 'Social' },
+  { id: 'friends', name: 'Friends', icon: '💬', description: 'Friend list, invites, party system', dependencies: [], category: 'Social' },
+  { id: 'guilds', name: 'Guilds/Clans', icon: '🛡️', description: 'Clan creation, ranks, wars', dependencies: ['friends'], category: 'Social' },
+  { id: 'emotes', name: 'Emotes', icon: '💃', description: 'Dance, wave, custom animations', dependencies: [], category: 'Social' },
+
+  // World
+  { id: 'vehicles', name: 'Vehicles', icon: '🚗', description: 'Cars, boats, planes with controls', dependencies: [], category: 'World' },
+  { id: 'daynight', name: 'Day/Night', icon: '🌙', description: 'Time cycle, lighting changes', dependencies: [], category: 'World' },
+  { id: 'weather', name: 'Weather', icon: '🌧️', description: 'Rain, snow, fog, thunder', dependencies: [], category: 'World' },
+  { id: 'farming', name: 'Farming', icon: '🌾', description: 'Planting, growing, harvesting', dependencies: ['inventory'], category: 'World' },
+  { id: 'fishing', name: 'Fishing', icon: '🎣', description: 'Casting, reeling, fish rarity', dependencies: ['inventory'], category: 'World' },
+  { id: 'mining', name: 'Mining', icon: '⛏️', description: 'Ore nodes, pickaxes, smelting', dependencies: ['inventory'], category: 'World' },
+
+  // UI
+  { id: 'leaderboard', name: 'Leaderboard', icon: '🏆', description: 'Rankings, stats display', dependencies: [], category: 'UI' },
+  { id: 'minimap', name: 'Minimap', icon: '🗺️', description: 'Map overlay, markers, zoom', dependencies: [], category: 'UI' },
+  { id: 'healthbar', name: 'Health Bar', icon: '❤️', description: 'HP display, damage numbers', dependencies: ['combat'], category: 'UI' },
+  { id: 'settings', name: 'Settings Menu', icon: '⚙️', description: 'Graphics, audio, controls', dependencies: [], category: 'UI' },
+  { id: 'notifications', name: 'Notifications', icon: '🔔', description: 'Pop-ups, toasts, alerts', dependencies: [], category: 'UI' },
+  { id: 'loading', name: 'Loading Screen', icon: '⏳', description: 'Progress bar, tips, branding', dependencies: [], category: 'UI' },
+
+  // Monetization
+  { id: 'gamepass', name: 'Game Passes', icon: '🎫', description: 'VIP, speed boost, double XP', dependencies: [], category: 'Monetization' },
+  { id: 'devproducts', name: 'Dev Products', icon: '💎', description: 'Coins, gems, revives', dependencies: ['currency'], category: 'Monetization' },
+  { id: 'premium', name: 'Premium Perks', icon: '👑', description: 'Roblox Premium benefits', dependencies: [], category: 'Monetization' },
+  { id: 'battlepass', name: 'Battle Pass', icon: '🎖️', description: 'Seasons, tiers, exclusive rewards', dependencies: ['progression'], category: 'Monetization' },
+  { id: 'dailyrewards', name: 'Daily Rewards', icon: '🎁', description: 'Login streaks, reward calendar', dependencies: [], category: 'Monetization' },
+  { id: 'codes', name: 'Promo Codes', icon: '🔑', description: 'Redeem codes for items/currency', dependencies: ['inventory'], category: 'Monetization' },
+
+  // Advanced
+  { id: 'progression', name: 'Leveling', icon: '📊', description: 'XP, levels, stat upgrades', dependencies: [], category: 'Advanced' },
+  { id: 'achievements', name: 'Achievements', icon: '🏅', description: 'Badges, milestones, unlocks', dependencies: [], category: 'Advanced' },
+  { id: 'rebirth', name: 'Rebirth/Prestige', icon: '♻️', description: 'Reset progress for multipliers', dependencies: ['progression'], category: 'Advanced' },
+  { id: 'gacha', name: 'Egg Hatching', icon: '🥚', description: 'Lootboxes, rarity, luck boosts', dependencies: ['pets', 'currency'], category: 'Advanced' },
+  { id: 'obby', name: 'Obby Checkpoints', icon: '🏁', description: 'Stages, saves, skips', dependencies: [], category: 'Advanced' },
+  { id: 'simulator', name: 'Simulator Loop', icon: '🔁', description: 'Click-collect-upgrade-rebirth', dependencies: ['progression', 'currency'], category: 'Advanced' },
 ]
+
+const CATEGORIES: SystemCategory[] = ['Core', 'Economy', 'Combat', 'Social', 'World', 'UI', 'Monetization', 'Advanced']
 
 interface SystemComposerProps {
   onGenerate: (prompt: string) => void
@@ -41,6 +100,18 @@ interface SystemComposerProps {
 export function SystemComposer({ onGenerate, loading }: SystemComposerProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState(false)
+  const [search, setSearch] = useState('')
+  const [activeCategory, setActiveCategory] = useState<SystemCategory | 'All'>('All')
+
+  const filtered = useMemo(() => {
+    let systems = GAME_SYSTEMS as CategorizedSystem[]
+    if (activeCategory !== 'All') systems = systems.filter(s => s.category === activeCategory)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      systems = systems.filter(s => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q) || s.category.toLowerCase().includes(q))
+    }
+    return systems
+  }, [search, activeCategory])
 
   const toggleSystem = useCallback((id: string) => {
     setSelected(prev => {
@@ -128,13 +199,52 @@ export function SystemComposer({ onGenerate, loading }: SystemComposerProps) {
         </button>
       </div>
 
-      <p style={{ fontSize: 11, color: '#71717A', marginBottom: 12, lineHeight: 1.4 }}>
-        Pick the systems you want. Dependencies auto-resolve. We generate all scripts integrated.
-      </p>
+      {/* Search */}
+      <div style={{ marginBottom: 10 }}>
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search systems..."
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            borderRadius: 8,
+            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(255,255,255,0.03)',
+            color: '#E4E4E7',
+            fontSize: 12,
+            outline: 'none',
+          }}
+        />
+      </div>
+
+      {/* Category tabs */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
+        {(['All', ...CATEGORIES] as const).map(cat => (
+          <button
+            key={cat}
+            onClick={() => setActiveCategory(cat)}
+            style={{
+              padding: '4px 10px',
+              borderRadius: 6,
+              border: 'none',
+              background: activeCategory === cat ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.03)',
+              color: activeCategory === cat ? '#D4AF37' : '#71717A',
+              fontSize: 10,
+              fontWeight: activeCategory === cat ? 700 : 500,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
 
       {/* System grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
-        {GAME_SYSTEMS.map(system => {
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 12, maxHeight: 280, overflowY: 'auto' }}>
+        {filtered.map(system => {
           const isSelected = selected.has(system.id)
           const isDependency = !isSelected && Array.from(selected).some(sid => {
             const s = GAME_SYSTEMS.find(gs => gs.id === sid)
