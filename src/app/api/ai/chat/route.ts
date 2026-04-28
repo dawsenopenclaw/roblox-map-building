@@ -67,6 +67,7 @@ import { getRelevantAnimationKnowledge } from '@/lib/ai/animation-knowledge'
 import { getRelevantNPCKnowledge } from '@/lib/ai/npc-knowledge'
 import { getRelevantMobileControlsKnowledge } from '@/lib/ai/mobile-controls-knowledge'
 import { getRelevantWaterKnowledge } from '@/lib/ai/water-mechanics-knowledge'
+import { getTrimmedBuildingKnowledge } from '@/lib/ai/deep-building-knowledge'
 import { runStagedPipeline } from '@/lib/ai/staged-pipeline'
 import {
   shopGui, inventoryGui, healthBarGui, hudGui, settingsGui,
@@ -6582,7 +6583,8 @@ Use your knowledge of what makes popular Roblox games successful.`
   const gameKnowledge = buildGameKnowledgePrompt(message)
 
   const studioMechanics = getStudioMechanicsKnowledge()
-  const codePrompt = studioMechanics + specialistPrefix + userPreferencesPrompt + styleConstraintPrompt + gameStatePrompt + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
+  const deepBuildKnowledge = isBuildIntent ? '\n\n--- DEEP BUILDING KNOWLEDGE (proportions, materials, variation) ---\n' + getTrimmedBuildingKnowledge(8000) + '\n--- END DEEP BUILDING KNOWLEDGE ---\n' : ''
+  const codePrompt = studioMechanics + specialistPrefix + userPreferencesPrompt + styleConstraintPrompt + gameStatePrompt + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + deepBuildKnowledge + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
 
 HOW TO TALK:
 - Talk like a real person. "Alright, check this out —" not "Create a detailed Roblox tree model with the following specifications:"
