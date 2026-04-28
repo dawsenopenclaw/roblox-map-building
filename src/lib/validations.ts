@@ -187,9 +187,9 @@ export const studioUpdateSchema = z
       .array(z.object({ type: z.string(), data: z.record(z.unknown()), timestamp: z.number().optional() }))
       .optional(),
     source: z.string().optional(),
-    placeId: z.string().optional(),
+    placeId: z.union([z.string(), z.number().transform(String)]).optional(),
     placeName: z.string().optional(),
-    jobId: z.string().optional(),
+    jobId: z.union([z.string(), z.number().transform(String)]).optional(),
     event: z.string().optional(),
     /** Workspace snapshot sent with workspace_snapshot events */
     snapshot: z.record(z.unknown()).optional(),

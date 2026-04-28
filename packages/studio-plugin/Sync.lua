@@ -3230,8 +3230,8 @@ local function pushChanges()
     timestamp = os.time(),
     changes   = batch,
     source    = "studio-plugin",
-    placeId   = game.PlaceId,
-    jobId     = game.JobId,
+    placeId   = tostring(game.PlaceId),
+    jobId     = tostring(game.JobId),
     sessionId = _sessionId,
   }
 
@@ -3349,8 +3349,14 @@ local function connectLiveSSE()
 
   -- Check if CreateWebStreamClient is available (Roblox 2025.10+)
   if not HttpService.CreateWebStreamClient then
-    warn("[ForjeGames] CreateWebStreamClient not available — using polling fallback")
     return
+  end
+
+  -- Close existing SSE client before creating a new one
+  -- Prevents "Too many WebStreamClients active" error
+  if _sseClient then
+    pcall(function() _sseClient:Close() end)
+    _sseClient = nil
   end
 
   local url = resolveBaseUrl() .. "/api/studio/live?sessionId=" .. HttpService:UrlEncode(_sessionId)
@@ -3364,7 +3370,7 @@ local function connectLiveSSE()
   end)
 
   if not ok or not client then
-    warn("[ForjeGames] SSE connection failed — using polling fallback: " .. tostring(client))
+    -- Don't spam — this is expected when client limit is reached
     return
   end
 
@@ -3407,10 +3413,11 @@ local function connectLiveSSE()
   end)
 
   client.Opened:Connect(function()
+    local wasConnected = _sseConnected
     _sseConnected = true
-    warn("[ForjeGames] Live SSE connected — commands will arrive instantly")
-    if _onStatusMessage then
-      _onStatusMessage("Live connection active", "info")
+    -- Only log the first connection, not every 5-min reconnect
+    if not wasConnected then
+      print("[ForjeGames] Live SSE connected — commands will arrive instantly")
     end
     if _onStatusChange then
       _onStatusChange(true, os.time())
@@ -3420,9 +3427,9 @@ local function connectLiveSSE()
   client.Closed:Connect(function()
     _sseConnected = false
     _sseClient = nil
-    warn("[ForjeGames] SSE disconnected — falling back to polling")
-    if _onStatusMessage then
-      _onStatusMessage("Live connection lost, using polling", "warn")
+    -- Don't spam output — Vercel kills SSE every 5 min, this is expected
+    if _onStatusChange then
+      _onStatusChange(true, os.time()) -- still "connected" via polling fallback
     end
     if _running then
       task.delay(5, connectLiveSSE)
@@ -3430,7 +3437,11 @@ local function connectLiveSSE()
   end)
 
   client.Error:Connect(function(err)
-    warn("[ForjeGames] SSE error: " .. tostring(err))
+    -- Only log real errors, not routine 200 disconnects from Vercel timeout
+    local errStr = tostring(err)
+    if errStr ~= "200" then
+      warn("[ForjeGames] SSE error: " .. errStr)
+    end
     _sseConnected = false
   end)
 end
