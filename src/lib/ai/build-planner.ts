@@ -93,18 +93,137 @@ const buildPlanOutputSchema = z.object({
 
 type BuildPlanOutput = z.infer<typeof buildPlanOutputSchema>
 
+// ── Complexity detector ──────────────────────────────────────────────────────
+
+/**
+ * Detects how complex a build request is and returns a complexity tier.
+ * This drives how aggressively the planner chunks structures into sub-tasks.
+ *
+ * - 'simple'  → 1 task per structure (tree, sword, barrel)
+ * - 'medium'  → 2-3 sub-tasks (house with garden, shop with interior)
+ * - 'complex' → 4-6 sub-tasks (castle, city, school, stadium)
+ */
+export type ComplexityTier = 'simple' | 'medium' | 'complex'
+
+const COMPLEX_KEYWORDS = [
+  'castle', 'city', 'town', 'mansion', 'school', 'hospital', 'factory',
+  'stadium', 'mall', 'village', 'neighborhood', 'airport', 'harbor',
+  'base', 'fortress', 'palace', 'cathedral', 'university', 'prison',
+  'skyscraper', 'downtown', 'district', 'compound', 'resort', 'theme park',
+  'amusement park', 'military base', 'space station', 'pirate ship',
+  'shopping center', 'apartment complex', 'office complex',
+]
+
+const MEDIUM_KEYWORDS = [
+  'house', 'shop', 'store', 'restaurant', 'cafe', 'church', 'temple',
+  'barn', 'garage', 'library', 'tavern', 'inn', 'cottage', 'cabin',
+  'tower', 'bridge', 'dock', 'pier', 'market', 'plaza', 'park',
+  'garden', 'courtyard', 'warehouse', 'workshop', 'studio',
+  'with interior', 'with rooms', 'with furniture', 'multi-story',
+  'two story', 'three story', 'multi-floor', '2 story', '3 story',
+]
+
+export function detectComplexity(prompt: string): ComplexityTier {
+  const lower = prompt.toLowerCase()
+
+  // Check for explicit multi-structure requests
+  const multiStructurePatterns = [
+    /\b\d+\s*(buildings?|houses?|towers?|shops?|stores?)\b/,
+    /\bseveral\s/,
+    /\bmultiple\s/,
+    /\bcity\s*block\b/,
+    /\brow\s*of\b/,
+    /\bstreet\s*with\b/,
+    /\bneighborhood\b/,
+  ]
+  for (const pat of multiStructurePatterns) {
+    if (pat.test(lower)) return 'complex'
+  }
+
+  // Check complex keywords
+  for (const kw of COMPLEX_KEYWORDS) {
+    if (lower.includes(kw)) return 'complex'
+  }
+
+  // Check medium keywords
+  for (const kw of MEDIUM_KEYWORDS) {
+    if (lower.includes(kw)) return 'medium'
+  }
+
+  // Check for "large" / "big" / "huge" / "massive" + any structure word
+  if (/\b(large|big|huge|massive|giant|enormous|grand)\b/.test(lower)) {
+    if (/\b(building|structure|house|tower|ship|boat|vehicle|tree|wall)\b/.test(lower)) {
+      return 'medium'
+    }
+  }
+
+  return 'simple'
+}
+
+/**
+ * Returns a chunking instruction to inject into the planner prompt based on
+ * detected complexity. For simple builds this returns an empty string.
+ */
+function getChunkingInstructions(complexity: ComplexityTier, prompt: string): string {
+  if (complexity === 'simple') return ''
+
+  const shared = `
+CHUNKED BUILDING — CRITICAL INSTRUCTIONS:
+- For complex structures, break into 3-6 sub-tasks. Each sub-task should be a self-contained build that references the same parent model.
+- Never try to build more than 80 parts in a single task. Split into chunks.
+- Each chunk MUST set templateParams.parentName to a shared root model name (e.g., "MyCastle" or "CityBlock1") so all chunks end up under one parent Model in Studio.
+- Each chunk should use templateParams.chunkIndex (0, 1, 2, ...) so the executor can order them.
+- Each chunk's prompt MUST specify a CFrame offset so parts don't overlap between chunks.
+- Each chunk uses parentName to attach to the same root model.`
+
+  if (complexity === 'medium') {
+    return `${shared}
+
+This is a MEDIUM complexity build. Break each major structure into 2-3 sub-tasks:
+- Task A: The main shell — foundation, walls, roof, exterior details
+- Task B: Interior — rooms, furniture, lighting
+- Task C (if applicable): Surrounding area — garden, path, fence, props
+
+Example for "build a house with garden":
+  1. "House exterior — foundation, walls, roof, windows, door" (building, parentName: "House", chunkIndex: 0)
+  2. "House interior — rooms, furniture, lighting" (building, parentName: "House", chunkIndex: 1)
+  3. "Garden — fence, path, flowers, trees, bench" (prop, parentName: "House", chunkIndex: 2)`
+  }
+
+  // complex
+  return `${shared}
+
+This is a COMPLEX build. Break it into 4-6 self-contained sub-tasks:
+
+Example for "build a large castle":
+  1. "Castle foundation and outer walls — 80x60 stud base, 15-stud tall perimeter walls, main gate with portcullis" (building, parentName: "Castle", chunkIndex: 0)
+  2. "Castle towers and battlements — 4 corner towers (12x12x25 studs each), crenellations along walls, arrow slits" (building, parentName: "Castle", chunkIndex: 1)
+  3. "Castle interior — great hall (40x30), throne room, dining hall, stone floors, chandeliers" (building, parentName: "Castle", chunkIndex: 2)
+  4. "Castle courtyard — cobblestone ground, well, training dummies, stable structure, hay bales" (building, parentName: "Castle", chunkIndex: 3)
+  5. "Castle props — banners, torches, weapon racks, barrels, crates, suits of armor" (prop, parentName: "Castle", chunkIndex: 4)
+
+Example for "build a modern city block":
+  1. "City streets and sidewalks — road grid, crosswalks, curbs, lane markings" (terrain, parentName: "CityBlock", chunkIndex: 0)
+  2. "Office tower — 3-story glass and steel building, 24x20 footprint, lobby interior" (building, parentName: "CityBlock", chunkIndex: 1)
+  3. "Apartment building — 4-story brick building, 20x16 footprint, fire escapes" (building, parentName: "CityBlock", chunkIndex: 2)
+  4. "Shops and storefronts — row of 3 connected shops, awnings, display windows" (building, parentName: "CityBlock", chunkIndex: 3)
+  5. "Street props — lampposts, benches, trees, trash cans, mailbox, bus stop" (prop, parentName: "CityBlock", chunkIndex: 4)
+
+For the user prompt "${prompt.slice(0, 200)}", generate 4-6 building/prop sub-tasks that together form the complete structure. Each sub-task is self-contained but references the same parentName.`
+}
+
 // ── Token cost estimate per task type ────────────────────────────────────────
 
 const TOKEN_COST_BY_TYPE: Record<BuildTaskType, number> = {
-  terrain:  400,
-  building: 500,
-  prop:     300,
-  npc:      350,
-  script:   600,
-  ui:       450,
-  economy:  550,
-  lighting: 200,
-  audio:    150,
+  terrain:  800,
+  building: 1500,
+  prop:     600,
+  npc:      700,
+  script:   1200,
+  ui:       900,
+  economy:  1100,
+  lighting: 400,
+  audio:    300,
 }
 
 const SECONDS_BY_TYPE: Record<BuildTaskType, number> = {
@@ -275,7 +394,7 @@ export async function generateBuildPlan(userPrompt: string): Promise<BuildPlan> 
       },
     ],
     {
-      maxTokens: 6000,
+      maxTokens: 8192,
       temperature: 0.3,
       jsonMode: true,
       useRAG: true,

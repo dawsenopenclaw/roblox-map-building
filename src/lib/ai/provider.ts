@@ -57,7 +57,7 @@ async function callGemini(
   const key = getNextKey('GEMINI') || process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
   if (!key) return null
 
-  const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7, jsonMode = false } = opts
+  const { maxTokens = 16384, temperature = opts.codeMode ? 0.2 : 0.7, jsonMode = false } = opts
 
   // Gemini uses a separate system_instruction + contents format
   const contents = messages
@@ -144,7 +144,7 @@ async function callGroq(
   const key = getNextKey('GROQ') || process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_MAIN
   if (!key) return null
 
-  const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
+  const { maxTokens = 16384, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
 
   const groqMessages = [
     { role: 'system', content: systemPrompt },
@@ -209,7 +209,7 @@ async function* streamGemini(
   const key = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
   if (!key) return
 
-  const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
+  const { maxTokens = 16384, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
 
   const contents = messages
     .filter((m) => m.role !== 'system')
@@ -274,7 +274,7 @@ async function* streamGroq(
   const key = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_MAIN
   if (!key) return
 
-  const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
+  const { maxTokens = 16384, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
 
   const groqMessages = [
     { role: 'system', content: systemPrompt },
@@ -500,7 +500,7 @@ export async function callAI(
     const complexity = estimateBuildComplexity(userMessage)
     const bestModel = selectBestModel('build', complexity, opts.codeMode ?? false, 'creator')
     console.log(`[ai-provider] OpenRouter fallback: ${bestModel} (complexity: ${complexity})`)
-    const orResult = await callOpenRouter(bestModel, enrichedPrompt, userMessage, [], opts.maxTokens ?? 8192, opts.temperature ?? (opts.codeMode ? 0.2 : 0.7))
+    const orResult = await callOpenRouter(bestModel, enrichedPrompt, userMessage, [], opts.maxTokens ?? 16384, opts.temperature ?? (opts.codeMode ? 0.2 : 0.7))
     if (orResult) return orResult
   }
 

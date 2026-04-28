@@ -570,7 +570,7 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
       const start = parseInt(startStr)
       const end = parseInt(endStr)
       const step = stepStr ? parseInt(stepStr) : 1
-      if (step === 0 || Math.abs((end - start) / step) > 100) return _match // safety: skip huge/infinite loops
+      if (step === 0 || Math.abs((end - start) / step) > 500) return _match // safety: skip huge/infinite loops
       // Only unroll if body contains P(), W(), Cyl(), Ball(), or Light()
       if (!/\b(P|W|Cyl|Ball|Light)\s*\(/.test(body)) return _match
       const expanded: string[] = []
@@ -589,7 +589,7 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
     (_match, iVar: string, vVar: string, tableContent: string, body: string) => {
       // Parse table entries: {{x,z}, {x,z}, ...} or {val, val, ...}
       const entries = tableContent.split(/\}\s*,\s*\{/).map(e => e.replace(/[{}]/g, '').trim())
-      if (entries.length > 100) return _match // safety cap
+      if (entries.length > 500) return _match // safety cap
       if (!/\b(P|W|Cyl|Ball|Light)\s*\(/.test(body)) return _match
       const expanded: string[] = []
       for (let idx = 0; idx < entries.length; idx++) {

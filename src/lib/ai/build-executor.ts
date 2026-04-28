@@ -497,7 +497,7 @@ async function generateLuauForTask(task: BuildTask): Promise<string> {
     }
 
     const text = await callAI(systemPrompt, messages, {
-      maxTokens: 4096,
+      maxTokens: 16384,
       codeMode: true,
       useRAG: true,
       // Include 'service' + 'dev' + 'blender' alongside the task-specific
