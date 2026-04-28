@@ -56,6 +56,7 @@ import { findObjectBlueprints, findScriptPatterns, formatBlueprintsForPrompt, fo
 import { recordToEli } from '@/lib/eli/build-intelligence'
 import { formatGraphPrompt, recordBuildSuccess, detectComponentsInCode } from '@/lib/eli/codegraph'
 import { buildFocusedPrompt } from '@/lib/ai/focused-prompt'
+import { extractModifiers, modifiersToInstructions } from '@/lib/ai/prompt-modifiers'
 // asset-library import removed — fake IDs caused AI to hallucinate "placed from asset library" with no actual code
 import { getRelevantBuildingKnowledge } from '@/lib/ai/devforum-knowledge'
 import { getRelevantScriptingKnowledge } from '@/lib/ai/devforum-scripting-knowledge'
@@ -6552,6 +6553,7 @@ Use your knowledge of what makes popular Roblox games successful.`
   const freeMatchWater = /\b(water|swim|ocean|sea|lake|river|pond|pool|underwater|diving|boat|ship|sail|float|buoyan|drown|wave|waterfall|fountain|splash|fish|fishing|submarine|beach|dock|moat|lagoon)\b/i.test(msgLower)
 
   const freeSources: Array<{ name: string; get: () => string }> = [
+    { name: 'modifiers', get: () => modifiersToInstructions(extractModifiers(message)) },
     { name: 'roblox', get: () => buildRobloxContext(message) },
     { name: 'codegraph', get: () => formatGraphPrompt(message) },
     { name: 'focused', get: () => buildFocusedPrompt(message) },
@@ -10120,6 +10122,33 @@ MATERIAL VARIETY:
 - Floor: WoodPlanks (interior), Concrete (modern), Cobblestone (medieval), Grass (outdoor)
 - Trim/detail: Wood, Metal, or contrasting wall material
 - Glass: always with Transparency 0.3-0.5, always with a frame Part
+
+=== PROMPT-DRIVEN CUSTOMIZATION (CRITICAL — NO GENERIC BUILDS) ===
+EVERY build must be uniquely tailored to what the user asked for. Analyze their prompt for:
+
+1. MOOD WORDS (cozy, dark, futuristic, magical, rustic, cheerful, elegant, industrial)
+   → These change your ENTIRE color palette, material selection, and lighting.
+   → "cozy cabin" = warm browns/oranges, WoodPlanks/Fabric, soft PointLights
+   → "dark castle" = charcoal/blood red, Slate/Granite, minimal dim lights
+   → "futuristic base" = whites/blues/silvers, Metal/Glass/Neon, bright SpotLights
+
+2. ENVIRONMENT CONTEXT ("in the woods", "by the ocean", "floating in the sky", "underground")
+   → These add SURROUNDING ELEMENTS around the main build.
+   → "house in the woods" = trees, leaf ground, dirt path, dappled light
+   → "cabin by the lake" = water body, dock, sandy shore, reeds
+
+3. TIME/WEATHER ("at night", "sunset", "in the rain", "winter")
+   → These change LIGHTING completely. Night = ClockTime 0, visible lights. Sunset = golden hour.
+
+4. SCALE ADJECTIVES ("tiny", "massive", "detailed", "intricate")
+   → These affect dimensions and part count. "Tiny cottage" ≠ "massive fortress".
+
+5. SPECIFIC FEATURES mentioned by the user ("with a fireplace", "red roof", "spiral staircase")
+   → These are NON-NEGOTIABLE. If the user said it, it MUST be in the build.
+
+When you receive a [STYLE_MODIFIERS] block in the architect blueprint, those colors, materials, and environment elements are MANDATORY. Use them. Do not fall back to generic defaults.
+
+The user's words are your design brief. A "cozy cottage in the woods with a fireplace" must look and feel COMPLETELY different from a "futuristic lab in the desert at night". Same part count, totally different vibe.
 
 === SHAPE MASTERY — NOT JUST BOXES ===
 Pro Roblox builds use ALL part types, not just boxes. You MUST mix these shapes:
@@ -16879,6 +16908,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
 
         // Priority-ordered knowledge sources: core first, specialized last
         const sources: Array<{ name: string; get: () => string }> = [
+          { name: 'modifiers', get: () => modifiersToInstructions(extractModifiers(message)) },
           { name: 'focused', get: () => buildFocusedPrompt(message) },
           { name: 'roblox', get: () => buildRobloxContext(message) },
           { name: 'codegraph', get: () => formatGraphPrompt(message) },

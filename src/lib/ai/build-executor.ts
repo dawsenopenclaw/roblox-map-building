@@ -22,6 +22,7 @@ import { spendTokens } from '@/lib/tokens-server'
 import { serverEnv } from '@/lib/env'
 import type { BuildPlan, BuildTask, BuildTaskType } from './build-planner'
 import { DEEP_BUILDING_KNOWLEDGE } from './deep-building-knowledge'
+import { extractModifiers, modifiersToInstructions } from './prompt-modifiers'
 import {
   getAdvancedBuildingKnowledge,
   getAdvancedScriptingKnowledge,
@@ -911,7 +912,10 @@ This task is chunk ${chunkIndex ?? 0} of a larger build called "${parentName}".
     advancedKnowledge = `\n\n--- ADVANCED UI + MONETIZATION ---\n${getMonetizationKnowledge()}\n${getPerformanceKnowledge().slice(0, 1500)}\n--- END ADVANCED UI ---\n`
   }
 
-  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + chunkParentInstructions + buildingKnowledgeChunk + gameDesignKnowledge + advancedKnowledge +
+  // Extract prompt modifiers from task description for unique, non-generic builds
+  const taskModifiers = modifiersToInstructions(extractModifiers(task.prompt))
+
+  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + taskModifiers + chunkParentInstructions + buildingKnowledgeChunk + gameDesignKnowledge + advancedKnowledge +
     `\n\nCRITICAL RULES:
 - Output ONLY valid Luau code. No JavaScript, no Python, no TypeScript.
 - Use game:GetService("ServiceName") not game.ServiceName
