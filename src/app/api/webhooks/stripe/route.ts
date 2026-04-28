@@ -432,6 +432,29 @@ export async function POST(req: NextRequest) {
           effectiveAt: new Date().toISOString(),
           billingCycleEnd: new Date(subscription.current_period_end * 1000).toISOString(),
         }).catch(() => {})
+
+        // ── Affiliate commission: pay referrer on first paid subscription ──
+        // Only triggers on new subscriptions (not upgrades/downgrades) and paid tiers.
+        if (isNew && tier !== 'FREE') {
+          try {
+            // Find if this user was referred by someone
+            const referral = await db.referral.findFirst({
+              where: {
+                referredId: userId,
+                status: { in: ['PENDING', 'CONVERTED'] },
+              },
+              select: { referrerId: true },
+            })
+            if (referral) {
+              const { processReferralPayout } = await import('@/lib/growth/referral')
+              const paid = await processReferralPayout(referral.referrerId, userId, tier)
+              console.log(`[stripe-webhook] Referral commission for ${tier}: referrer=${referral.referrerId} paid=${paid}`)
+            }
+          } catch (err) {
+            // Referral payout failure must never break subscription activation
+            console.error('[stripe-webhook] Referral payout error:', err instanceof Error ? err.message : err)
+          }
+        }
         break
       }
 

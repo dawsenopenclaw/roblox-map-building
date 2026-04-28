@@ -39,7 +39,7 @@ export type CommissionEvent = {
   id: string
   referrerId: string
   referredUserId: string
-  type: 'signup' | 'builder_plan_signup'
+  type: 'paid_subscription' | 'builder_plan'
   grossAmountCents: number
   commissionCents: number        // $20 flat or $12.50 for Builder plan
   createdAt: Date
@@ -146,39 +146,159 @@ export function buildReferralLink(code: string, baseUrl = 'https://forjegames.co
 }
 
 // ─── Commission calculation ───────────────────────────────────────────────────
-// One-time flat commissions — NOT recurring.
+// One-time flat commissions on PAID subscriptions only — NOT on free signups.
 
-/** $20 flat commission per referred signup (any plan, including free). In cents. */
-export const SIGNUP_COMMISSION_CENTS = 2000
+/** $20 flat commission per referred PAID subscription. In cents. */
+export const PAID_SIGNUP_COMMISSION_CENTS = 2000
 
-/** Commission for Builder plan ($25/mo) referral: affiliate gets half ($12.50). In cents. */
+/** Commission for Builder plan ($25/mo): affiliate gets half ($12.50). In cents. */
 export const BUILDER_PLAN_COMMISSION_CENTS = 1250
 
 /**
- * Calculate the one-time affiliate commission for a referral.
+ * Calculate the one-time affiliate commission for a referred paid subscription.
  *
- * @param planPriceCents - 0 for free signup, or the plan's monthly price in cents
- * @returns commission in cents
+ * Only triggers on PAID plans — free signups get zero commission.
+ *
+ * @param tier - subscription tier name (e.g. 'BUILDER', 'CREATOR', 'STARTER')
+ * @returns commission in cents (0 for FREE tier)
  *
  * Rules:
- *   - Free signup (or any non-Builder plan): $20 flat
- *   - $25/mo Builder plan: $12.50 (half — other half kept for taxes)
+ *   - FREE tier: $0 (no commission on free signups)
+ *   - BUILDER plan ($25/mo): $12.50 (half — other half kept for taxes)
+ *   - All other paid plans: $20 flat
  */
-export function calculateCommission(planPriceCents: number): number {
-  if (planPriceCents === 2500) {
-    // Builder plan ($25/mo) — affiliate gets half, other half kept for taxes
-    return BUILDER_PLAN_COMMISSION_CENTS
-  }
-  // All other signups (free, Starter, Creator, Pro, Studio) — $20 flat
-  return SIGNUP_COMMISSION_CENTS
+export function calculateCommission(tier: string): number {
+  if (tier === 'FREE') return 0
+  if (tier === 'BUILDER') return BUILDER_PLAN_COMMISSION_CENTS
+  // STARTER, CREATOR, PRO, STUDIO — $20 flat
+  return PAID_SIGNUP_COMMISSION_CENTS
 }
 
 /**
- * Project total earnings for an affiliate based on referral count.
- * Since commissions are one-time, this is simply: referrals x $20.
+ * Project total earnings for an affiliate based on paid referral count.
+ * Since commissions are one-time, this is simply: paidReferrals x $20.
  */
-export function projectTotalCommission(totalReferrals: number): number {
-  return totalReferrals * SIGNUP_COMMISSION_CENTS
+export function projectTotalCommission(paidReferrals: number): number {
+  return paidReferrals * PAID_SIGNUP_COMMISSION_CENTS
+}
+
+/**
+ * Process a referral commission payout via Stripe Connect.
+ *
+ * Called from the Stripe webhook when a referred user's first paid subscription
+ * is confirmed. Creates a Stripe Transfer to the affiliate's Connect account.
+ *
+ * @param referrerId - the affiliate's user ID
+ * @param referredId - the referred user's ID
+ * @param tier - the subscription tier the referred user signed up for
+ * @returns true if payout was created, false if skipped (no Connect account, already paid, etc.)
+ */
+export async function processReferralPayout(
+  referrerId: string,
+  referredId: string,
+  tier: string,
+): Promise<boolean> {
+  const commissionCents = calculateCommission(tier)
+  if (commissionCents === 0) return false
+
+  const { db } = await import('@/lib/db')
+  const { getStripe } = await import('@/lib/stripe')
+
+  // Find the referral record
+  const referral = await db.referral.findFirst({
+    where: {
+      referrerId,
+      referredId,
+      status: { in: ['PENDING', 'CONVERTED'] }, // not already PAID
+    },
+  })
+  if (!referral) return false
+
+  // Check if affiliate has a Stripe Connect account with payouts enabled
+  const creatorAccount = await db.creatorAccount.findUnique({
+    where: { userId: referrerId },
+    select: { stripeAccountId: true, payoutsEnabled: true },
+  })
+
+  // Update the referral record with commission amount regardless of payout capability
+  await db.referral.update({
+    where: { id: referral.id },
+    data: {
+      commissionCents,
+      convertedAt: new Date(),
+      status: creatorAccount?.payoutsEnabled ? 'PAID' : 'CONVERTED',
+    },
+  })
+
+  // If no Connect account or payouts not enabled, commission is recorded but not transferred yet.
+  // It will be paid out when the affiliate completes Stripe Connect onboarding.
+  if (!creatorAccount?.payoutsEnabled) {
+    console.log(`[referral] Commission $${(commissionCents / 100).toFixed(2)} recorded for ${referrerId} but payout deferred — no Connect account`)
+
+    // Track pending balance
+    await db.creatorAccount.upsert({
+      where: { userId: referrerId },
+      create: {
+        userId: referrerId,
+        stripeAccountId: 'pending_setup',
+        pendingBalanceCents: commissionCents,
+        totalEarnedCents: commissionCents,
+      },
+      update: {
+        pendingBalanceCents: { increment: commissionCents },
+        totalEarnedCents: { increment: commissionCents },
+      },
+    })
+    return false
+  }
+
+  // Create the Stripe Transfer to the affiliate's Connect account
+  const stripe = getStripe()
+  if (!stripe) {
+    console.error('[referral] Stripe not configured — cannot process payout')
+    return false
+  }
+
+  try {
+    await stripe.transfers.create(
+      {
+        amount: commissionCents,
+        currency: 'usd',
+        destination: creatorAccount.stripeAccountId,
+        description: `Referral commission: ${tier} plan signup ($${(commissionCents / 100).toFixed(2)})`,
+        metadata: {
+          referralId: referral.id,
+          referrerId,
+          referredId,
+          tier,
+          type: 'referral_commission',
+        },
+      },
+      { idempotencyKey: `referral_payout_${referral.id}` },
+    )
+
+    // Update balances
+    await db.creatorAccount.update({
+      where: { userId: referrerId },
+      data: {
+        totalEarnedCents: { increment: commissionCents },
+        lastPayoutAt: new Date(),
+      },
+    })
+
+    // Mark referral as paid
+    await db.referral.update({
+      where: { id: referral.id },
+      data: { status: 'PAID' },
+    })
+
+    console.log(`[referral] Paid $${(commissionCents / 100).toFixed(2)} to ${referrerId} for ${tier} referral (${referral.id})`)
+    return true
+  } catch (err) {
+    console.error('[referral] Stripe transfer failed:', err instanceof Error ? err.message : err)
+    // Commission is still recorded in the Referral row — can be retried
+    return false
+  }
 }
 
 // ─── Milestone rewards ────────────────────────────────────────────────────────
@@ -329,9 +449,9 @@ export function getDemoCommissionEvents(): CommissionEvent[] {
       id: 'ce_001',
       referrerId: 'u_01',
       referredUserId: 'u_ref_001',
-      type: 'signup',
-      grossAmountCents: 0,
-      commissionCents: 2000, // $20 flat
+      type: 'paid_subscription',
+      grossAmountCents: 5000,
+      commissionCents: 2000, // $20 flat (Creator plan)
       createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000),
       paid: false,
     },
@@ -339,7 +459,7 @@ export function getDemoCommissionEvents(): CommissionEvent[] {
       id: 'ce_002',
       referrerId: 'u_01',
       referredUserId: 'u_ref_002',
-      type: 'builder_plan_signup',
+      type: 'builder_plan',
       grossAmountCents: 2500,
       commissionCents: 1250, // $12.50 (half of $25, other half for taxes)
       createdAt: new Date(now.getTime() - 8 * 60 * 60 * 1000),
@@ -349,9 +469,9 @@ export function getDemoCommissionEvents(): CommissionEvent[] {
       id: 'ce_003',
       referrerId: 'u_01',
       referredUserId: 'u_ref_003',
-      type: 'signup',
-      grossAmountCents: 0,
-      commissionCents: 2000, // $20 flat
+      type: 'paid_subscription',
+      grossAmountCents: 1000,
+      commissionCents: 2000, // $20 flat (Starter plan)
       createdAt: new Date(now.getTime() - 26 * 60 * 60 * 1000),
       paid: true,
     },

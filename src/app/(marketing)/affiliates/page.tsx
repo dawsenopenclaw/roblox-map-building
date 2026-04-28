@@ -5,7 +5,7 @@ import { createMetadata } from '@/lib/metadata'
 export const metadata: Metadata = createMetadata({
   title: 'Affiliate Program — Earn $20 Per Referral',
   description:
-    'Join the ForjeGames affiliate program. Earn $20 for every person you refer. One-time payout per signup. No cap on earnings.',
+    'Join the ForjeGames affiliate program. Earn $20 for every paid subscriber you refer. One-time payout via Stripe. No cap on earnings.',
   path: '/affiliates',
   keywords: [
     'ForjeGames affiliate',
@@ -18,8 +18,8 @@ export const metadata: Metadata = createMetadata({
 const BENEFITS = [
   {
     icon: '💰',
-    title: '$20 Per Signup',
-    desc: 'Earn $20 for every person who signs up through your link. One-time payout, no strings attached.',
+    title: '$20 Per Paid Subscriber',
+    desc: 'Earn $20 for every person who subscribes to a paid plan through your link. One-time payout, no strings attached.',
   },
   {
     icon: '🔗',
@@ -51,7 +51,7 @@ const BENEFITS = [
 const STEPS = [
   { step: '1', title: 'Sign up', desc: 'Create your ForjeGames account (free). Your referral link is generated automatically.' },
   { step: '2', title: 'Share your link', desc: 'Post your referral link on YouTube, TikTok, Discord, Twitter — anywhere Roblox creators hang out.' },
-  { step: '3', title: 'Get paid', desc: 'When someone signs up through your link, you earn $20. If they subscribe to the Builder plan ($25/mo), you earn $12.50. One-time per signup.' },
+  { step: '3', title: 'Get paid', desc: 'When someone subscribes to a paid plan through your link, you earn $20. Builder plan ($25/mo) pays $12.50. One-time per subscriber.' },
 ]
 
 export default function AffiliatesPage() {
@@ -64,11 +64,11 @@ export default function AffiliatesPage() {
         </div>
 
         <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4" style={{ letterSpacing: '-0.03em' }}>
-          Earn <span style={{ color: '#D4AF37' }}>$20</span> per referral
+          Earn <span style={{ color: '#D4AF37' }}>$20</span> per paid referral
         </h1>
         <p className="text-lg text-[#6B7699] max-w-2xl mx-auto mb-8">
-          Share ForjeGames with your audience. Every signup through your link = $20 in your pocket.
-          One-time payout. No cap on earnings.
+          Share ForjeGames with your audience. When someone subscribes to a paid plan through your link,
+          you get $20. One-time payout. No cap on earnings.
         </p>
 
         <div className="flex flex-wrap gap-4 justify-center">
@@ -133,7 +133,7 @@ export default function AffiliatesPage() {
         >
           <h2 className="text-2xl font-bold text-white mb-3">Ready to earn?</h2>
           <p className="text-[#6B7699] text-sm mb-6">
-            Sign up for free, get your referral link, and start earning $20 per signup.
+            Sign up for free, get your referral link, and earn $20 every time someone subscribes.
           </p>
           <Link
             href="/sign-up"
