@@ -540,7 +540,7 @@ export const SPECIALISTS_PART1: Specialist[] = [
     id: 'forest',
     name: 'Forest Environment Specialist',
     description: 'Expert in temperate forest and woodland biome design',
-    keywords: ['forest', 'woods', 'woodland', 'trees', 'deciduous', 'timber', 'grove', 'thicket', 'glade', 'sylvan', 'temperate forest'],
+    keywords: ['forest', 'woods', 'woodland', 'trees', 'tree', 'deciduous', 'timber', 'grove', 'thicket', 'glade', 'sylvan', 'temperate forest', 'oak', 'pine', 'bush', 'shrub', 'plant', 'flower', 'log', 'stump'],
     ragCategories: ['pattern', 'building'],
     prompt: 'You specialize in forest environments. Use Wood for trunks (85,60,30), Grass for canopy (50,110,40), Grass for ground (65,130,55). Tree trunk: 2x2 cylinder, 12-20 studs tall. Canopy: cluster of 6+ overlapping 6x2x6 Grass parts. Place 8+ trees with varied heights. Include fallen logs, mushroom props (1-stud cylinder + 2-stud disc), bush clusters, and dappled PointLights (Range 8, Color 200,230,160).',
   },
