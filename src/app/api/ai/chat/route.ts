@@ -4486,6 +4486,197 @@ end
     }
   }
 
+  // ── ATMOSPHERE / SKY / LIGHTING ──────────────────────────────────────
+  if (/\b(fog|foggy|atmosphere|sky|lighting|mood|cinematic|aesthetic|sunset|sunrise|golden hour|night sky|storm|moody|dreamy|ethereal|horror light|dark sky|neon city|cyberpunk|anime light)\b/.test(m)) {
+    // Determine which preset
+    let presetName = 'foggy_morning'
+    let presetResponse = ''
+    let presetCode = ''
+
+    if (/\b(horror|dark|moody|scary|creepy|thriller)\b/.test(m)) {
+      presetName = 'dark_moody'
+      presetResponse = "Dark moody atmosphere set — pitch black sky, thick dark fog creeping along the ground, deep shadows, and a faint purple-blue tint to everything. The kind of lighting that makes your horror game instantly feel 10x scarier. Perfect for TikTok hooks.\n\nWant me to add flickering lights or a lightning flash effect?"
+      presetCode = `
+local L = game:GetService("Lighting")
+L.Technology = Enum.Technology.Future
+L.GlobalShadows = true
+L.ClockTime = 0
+L.Brightness = 0.1
+L.Ambient = Color3.fromRGB(5,5,10)
+L.OutdoorAmbient = Color3.fromRGB(10,10,20)
+L.ColorShift_Top = Color3.fromRGB(30,20,40)
+L.ColorShift_Bottom = Color3.fromRGB(5,5,15)
+L.ExposureCompensation = -0.5
+L.EnvironmentDiffuseScale = 0
+L.EnvironmentSpecularScale = 0.1
+L.ShadowSoftness = 0.1
+local a = Instance.new("Atmosphere") a.Density=0.6 a.Offset=0.1 a.Color=Color3.fromRGB(20,20,30) a.Decay=Color3.fromRGB(40,30,50) a.Glare=0 a.Haze=2.8 a.Parent=L
+local cc = Instance.new("ColorCorrectionEffect") cc.Brightness=-0.05 cc.Contrast=0.2 cc.Saturation=-0.3 cc.TintColor=Color3.fromRGB(180,170,200) cc.Parent=L
+local bl = Instance.new("BloomEffect") bl.Intensity=0.3 bl.Size=24 bl.Threshold=0.95 bl.Parent=L
+local bf = Instance.new("BlurEffect") bf.Size=2 bf.Parent=L
+local dof = Instance.new("DepthOfFieldEffect") dof.FarIntensity=0.35 dof.FocusDistance=30 dof.InFocusRadius=50 dof.NearIntensity=0.1 dof.Parent=L
+local c = Instance.new("Clouds") c.Cover=0.9 c.Density=0.5 c.Color=Color3.fromRGB(15,15,25) c.Parent=workspace.Terrain`
+    } else if (/\b(sunset|golden hour|warm|orange)\b/.test(m)) {
+      presetName = 'golden_hour'
+      presetResponse = "Golden hour sunset atmosphere — warm amber light flooding everything, long dramatic shadows, golden clouds, and that cinematic orange-pink sky. This is THE lighting that makes any build look like a million bucks. TikTok gold.\n\nWant me to build a scene to go with it?"
+      presetCode = `
+local L = game:GetService("Lighting")
+L.Technology = Enum.Technology.Future
+L.GlobalShadows = true
+L.ClockTime = 17.5
+L.Brightness = 2.3
+L.Ambient = Color3.fromRGB(60,40,25)
+L.OutdoorAmbient = Color3.fromRGB(180,130,80)
+L.ColorShift_Top = Color3.fromRGB(255,190,100)
+L.ColorShift_Bottom = Color3.fromRGB(200,120,60)
+L.ExposureCompensation = 0.2
+L.EnvironmentDiffuseScale = 0.5
+L.EnvironmentSpecularScale = 1
+L.ShadowSoftness = 0.3
+local a = Instance.new("Atmosphere") a.Density=0.3 a.Offset=0.3 a.Color=Color3.fromRGB(255,180,100) a.Decay=Color3.fromRGB(255,130,70) a.Glare=0.5 a.Haze=1.5 a.Parent=L
+local cc = Instance.new("ColorCorrectionEffect") cc.Brightness=0.03 cc.Contrast=0.15 cc.Saturation=0.1 cc.TintColor=Color3.fromRGB(255,230,200) cc.Parent=L
+local bl = Instance.new("BloomEffect") bl.Intensity=1.2 bl.Size=36 bl.Threshold=0.8 bl.Parent=L
+local sr = Instance.new("SunRaysEffect") sr.Intensity=0.2 sr.Spread=0.8 sr.Parent=L
+local c = Instance.new("Clouds") c.Cover=0.4 c.Density=0.2 c.Color=Color3.fromRGB(255,200,150) c.Parent=workspace.Terrain`
+    } else if (/\b(neon|cyberpunk|city night|purple)\b/.test(m)) {
+      presetName = 'neon_city'
+      presetResponse = "Neon city night atmosphere — deep purple sky, fog that catches all the neon glow, high bloom so every Neon material part pops hard. Wet street reflections from the high specular scale. Cyberpunk vibes. Perfect for city/futuristic builds and TikTok.\n\nWant me to build a neon city scene to go with it?"
+      presetCode = `
+local L = game:GetService("Lighting")
+L.Technology = Enum.Technology.Future
+L.GlobalShadows = true
+L.ClockTime = 22
+L.Brightness = 0.5
+L.Ambient = Color3.fromRGB(15,10,30)
+L.OutdoorAmbient = Color3.fromRGB(30,20,60)
+L.ColorShift_Top = Color3.fromRGB(80,40,120)
+L.ColorShift_Bottom = Color3.fromRGB(20,10,40)
+L.ExposureCompensation = -0.3
+L.EnvironmentDiffuseScale = 0.2
+L.EnvironmentSpecularScale = 0.8
+L.ShadowSoftness = 0.15
+local a = Instance.new("Atmosphere") a.Density=0.35 a.Offset=0.15 a.Color=Color3.fromRGB(40,20,80) a.Decay=Color3.fromRGB(60,30,100) a.Glare=0.1 a.Haze=1.8 a.Parent=L
+local cc = Instance.new("ColorCorrectionEffect") cc.Brightness=-0.02 cc.Contrast=0.2 cc.Saturation=0.15 cc.TintColor=Color3.fromRGB(200,180,255) cc.Parent=L
+local bl = Instance.new("BloomEffect") bl.Intensity=1.5 bl.Size=40 bl.Threshold=0.7 bl.Parent=L
+local dof = Instance.new("DepthOfFieldEffect") dof.FarIntensity=0.25 dof.FocusDistance=40 dof.InFocusRadius=60 dof.NearIntensity=0.15 dof.Parent=L
+local c = Instance.new("Clouds") c.Cover=0.3 c.Density=0.15 c.Color=Color3.fromRGB(30,20,50) c.Parent=workspace.Terrain`
+    } else if (/\b(dream|ethereal|fantasy|magical|fairy|pastel)\b/.test(m)) {
+      presetName = 'ethereal'
+      presetResponse = "Ethereal dreamy atmosphere — soft lavender-pink fog, heavenly bloom glow, blurred edges, and that overexposed magical quality you see in fantasy games. Stars visible even in daylight. Makes everything feel like a fairy tale.\n\nWant me to add floating particles or a magical scene?"
+      presetCode = `
+local L = game:GetService("Lighting")
+L.Technology = Enum.Technology.Future
+L.GlobalShadows = true
+L.ClockTime = 8
+L.Brightness = 2.0
+L.Ambient = Color3.fromRGB(140,120,160)
+L.OutdoorAmbient = Color3.fromRGB(180,170,200)
+L.ColorShift_Top = Color3.fromRGB(230,200,255)
+L.ColorShift_Bottom = Color3.fromRGB(180,160,200)
+L.ExposureCompensation = 0.5
+L.EnvironmentDiffuseScale = 0.7
+L.EnvironmentSpecularScale = 0.5
+L.ShadowSoftness = 0.6
+local a = Instance.new("Atmosphere") a.Density=0.4 a.Offset=0.4 a.Color=Color3.fromRGB(255,200,255) a.Decay=Color3.fromRGB(255,220,240) a.Glare=0.4 a.Haze=2.5 a.Parent=L
+local cc = Instance.new("ColorCorrectionEffect") cc.Brightness=0.05 cc.Contrast=0.05 cc.Saturation=0.1 cc.TintColor=Color3.fromRGB(240,220,250) cc.Parent=L
+local bl = Instance.new("BloomEffect") bl.Intensity=2.0 bl.Size=48 bl.Threshold=0.75 bl.Parent=L
+local bf = Instance.new("BlurEffect") bf.Size=6 bf.Parent=L
+local sr = Instance.new("SunRaysEffect") sr.Intensity=0.15 sr.Spread=1.0 sr.Parent=L
+local dof = Instance.new("DepthOfFieldEffect") dof.FarIntensity=0.3 dof.FocusDistance=60 dof.InFocusRadius=80 dof.NearIntensity=0.1 dof.Parent=L
+local c = Instance.new("Clouds") c.Cover=0.5 c.Density=0.1 c.Color=Color3.fromRGB(255,230,245) c.Parent=workspace.Terrain
+local sk = L:FindFirstChildOfClass("Sky") or Instance.new("Sky",L)
+sk.StarCount = 3000`
+    } else if (/\b(storm|thunder|lightning|rain|dramatic)\b/.test(m)) {
+      presetName = 'storm'
+      presetResponse = "Dramatic storm atmosphere — heavy dark clouds at 95% cover, thick grey fog, desaturated washed-out colors, and that oppressive overcast sky. Feels like rain is about to pour. Great for survival/adventure games.\n\nWant me to add rain particles and a lightning flash script?"
+      presetCode = `
+local L = game:GetService("Lighting")
+L.Technology = Enum.Technology.Future
+L.GlobalShadows = true
+L.ClockTime = 15
+L.Brightness = 0.8
+L.Ambient = Color3.fromRGB(25,30,35)
+L.OutdoorAmbient = Color3.fromRGB(50,55,65)
+L.ColorShift_Top = Color3.fromRGB(80,90,100)
+L.ColorShift_Bottom = Color3.fromRGB(30,35,45)
+L.ExposureCompensation = -0.3
+L.EnvironmentDiffuseScale = 0.3
+L.EnvironmentSpecularScale = 0.6
+L.ShadowSoftness = 0.4
+local a = Instance.new("Atmosphere") a.Density=0.55 a.Offset=0.15 a.Color=Color3.fromRGB(60,65,75) a.Decay=Color3.fromRGB(80,85,95) a.Glare=0 a.Haze=2.2 a.Parent=L
+local cc = Instance.new("ColorCorrectionEffect") cc.Brightness=-0.03 cc.Contrast=0.18 cc.Saturation=-0.2 cc.TintColor=Color3.fromRGB(190,200,215) cc.Parent=L
+local bl = Instance.new("BloomEffect") bl.Intensity=0.5 bl.Size=24 bl.Threshold=0.9 bl.Parent=L
+local dof = Instance.new("DepthOfFieldEffect") dof.FarIntensity=0.3 dof.FocusDistance=40 dof.InFocusRadius=70 dof.NearIntensity=0 dof.Parent=L
+local c = Instance.new("Clouds") c.Cover=0.95 c.Density=0.5 c.Color=Color3.fromRGB(40,45,55) c.Parent=workspace.Terrain`
+    } else {
+      // Default: foggy morning (best TikTok background)
+      presetName = 'foggy_morning'
+      presetResponse = "Foggy morning atmosphere set — soft white mist rolling through the scene, early dawn light, muted colors with a slight blue tint, and that cinematic depth-of-field blur in the background. This is the go-to TikTok background lighting — makes everything look professional and mysterious. Sun rays just starting to peek through.\n\nWant me to add floating dust particles or build a scene in this fog?"
+      presetCode = `
+local L = game:GetService("Lighting")
+L.Technology = Enum.Technology.Future
+L.GlobalShadows = true
+L.ClockTime = 6.5
+L.Brightness = 1.5
+L.Ambient = Color3.fromRGB(40,45,60)
+L.OutdoorAmbient = Color3.fromRGB(120,130,140)
+L.ColorShift_Top = Color3.fromRGB(200,210,230)
+L.ColorShift_Bottom = Color3.fromRGB(80,80,100)
+L.ExposureCompensation = 0.3
+L.EnvironmentDiffuseScale = 0.5
+L.EnvironmentSpecularScale = 0.3
+L.ShadowSoftness = 0.5
+local a = Instance.new("Atmosphere") a.Density=0.5 a.Offset=0.2 a.Color=Color3.fromRGB(220,225,235) a.Decay=Color3.fromRGB(230,235,245) a.Glare=0.2 a.Haze=2.0 a.Parent=L
+local cc = Instance.new("ColorCorrectionEffect") cc.Brightness=0.02 cc.Contrast=0.08 cc.Saturation=-0.15 cc.TintColor=Color3.fromRGB(230,235,245) cc.Parent=L
+local bl = Instance.new("BloomEffect") bl.Intensity=0.8 bl.Size=30 bl.Threshold=0.9 bl.Parent=L
+local bf = Instance.new("BlurEffect") bf.Size=3 bf.Parent=L
+local sr = Instance.new("SunRaysEffect") sr.Intensity=0.1 sr.Spread=0.9 sr.Parent=L
+local dof = Instance.new("DepthOfFieldEffect") dof.FarIntensity=0.2 dof.FocusDistance=50 dof.InFocusRadius=100 dof.NearIntensity=0 dof.Parent=L
+local c = Instance.new("Clouds") c.Cover=0.7 c.Density=0.25 c.Color=Color3.fromRGB(220,220,230) c.Parent=workspace.Terrain`
+    }
+
+    const fullCode = `local CH = game:GetService("ChangeHistoryService")
+local rid = CH:TryBeginRecording("ForjeAtmosphere")
+if not rid then warn("Recording failed") return end
+-- Clear existing post-processing effects
+local L = game:GetService("Lighting")
+for _,child in ipairs(L:GetChildren()) do
+  if child:IsA("PostEffect") or child:IsA("Atmosphere") or child:IsA("Sky") then child:Destroy() end
+end
+for _,child in ipairs(workspace.Terrain:GetChildren()) do
+  if child:IsA("Clouds") then child:Destroy() end
+end
+${presetCode}
+-- Floating dust particles (TikTok essential)
+local dustPart = Instance.new("Part")
+dustPart.Name = "ForjeDustEmitter"
+dustPart.Size = Vector3.new(200,1,200)
+dustPart.Position = Vector3.new(0,20,0)
+dustPart.Anchored = true
+dustPart.Transparency = 1
+dustPart.CanCollide = false
+dustPart.Parent = workspace
+local pe = Instance.new("ParticleEmitter")
+pe.Rate = 5
+pe.Lifetime = NumberRange.new(8,15)
+pe.Speed = NumberRange.new(0.2,0.8)
+pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,0.1),NumberSequenceKeypoint.new(0.5,0.25),NumberSequenceKeypoint.new(1,0.05)})
+pe.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0.7),NumberSequenceKeypoint.new(0.4,0.4),NumberSequenceKeypoint.new(1,0.9)})
+pe.Color = ColorSequence.new(Color3.fromRGB(255,255,240))
+pe.LightEmission = 0.3
+pe.SpreadAngle = Vector2.new(180,180)
+pe.Parent = dustPart
+CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit)`
+
+    return {
+      name: `Atmosphere: ${presetName}`,
+      response: presetResponse,
+      code: fullCode,
+      suggestions: ['Build a scene in this atmosphere', 'Try a different mood', 'Add rain particles'],
+      partCount: 1,
+    }
+  }
+
   return null
 }
 
