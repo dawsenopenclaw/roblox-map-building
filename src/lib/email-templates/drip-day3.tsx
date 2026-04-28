@@ -5,50 +5,61 @@ interface DripDay3Props {
   buildsCompleted: number
 }
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com'
+
 export const DripDay3Email = ({ name, buildsCompleted }: DripDay3Props) => (
-  <div style={{ fontFamily: 'Inter, -apple-system, sans-serif', maxWidth: 560, margin: '0 auto', padding: 32, background: '#0a0a0f', color: '#fafafa' }}>
+  <div style={{ fontFamily: 'Inter, -apple-system, sans-serif', maxWidth: 560, margin: '0 auto', padding: 32, background: '#0a0a0a', color: '#fafafa' }}>
     <div style={{ textAlign: 'center', marginBottom: 32 }}>
-      <span style={{ color: '#D4AF37', fontWeight: 800, fontSize: 24 }}>Forje</span>
-      <span style={{ fontWeight: 800, fontSize: 24 }}>Games</span>
+      <span style={{ color: '#ffffff', fontWeight: 800, fontSize: 24 }}>Forje</span>
+      <span style={{ color: '#D4AF37', fontWeight: 800, fontSize: 24 }}>Games</span>
     </div>
 
     <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 16px' }}>
-      Hey {name} — here&apos;s what other creators are building
+      {name}, did you try building yet?
     </h1>
 
     <p style={{ color: '#a1a1aa', lineHeight: 1.7, margin: '0 0 20px' }}>
-      You&apos;ve been on ForjeGames for 3 days now{buildsCompleted > 0 ? ` and completed ${buildsCompleted} build${buildsCompleted > 1 ? 's' : ''}` : ''}. Here&apos;s what other creators shipped this week:
+      {buildsCompleted > 0
+        ? `You've already made ${buildsCompleted} build${buildsCompleted > 1 ? 's' : ''} — nice work. Here's what other creators shipped this week:`
+        : "Other creators are already shipping games from a single prompt. Here's what they built this week:"}
     </p>
 
     <div style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-      <p style={{ margin: '0 0 12px', fontWeight: 600, color: '#D4AF37' }}>Popular builds this week:</p>
-      <ul style={{ margin: 0, paddingLeft: 20, color: '#a1a1aa', lineHeight: 2 }}>
-        <li><strong style={{ color: '#fafafa' }}>Mining Simulator</strong> — with rebirths, upgrades, and auto-mining</li>
-        <li><strong style={{ color: '#fafafa' }}>Medieval Castle</strong> — drawbridge, throne room, torches</li>
-        <li><strong style={{ color: '#fafafa' }}>20-Stage Obby</strong> — kill bricks, moving platforms, leaderboard</li>
+      <ul style={{ margin: 0, paddingLeft: 20, color: '#a1a1aa', lineHeight: 2.2 }}>
+        <li><strong style={{ color: '#fafafa' }}>Neon Obby Tower</strong> — 50 stages with glowing platforms</li>
+        <li><strong style={{ color: '#fafafa' }}>Pizza Tycoon</strong> — upgrades, workers, delivery van</li>
+        <li><strong style={{ color: '#fafafa' }}>Haunted Forest RPG</strong> — enemy AI, loot drops, boss fights</li>
+        <li><strong style={{ color: '#fafafa' }}>Space Station Escape</strong> — puzzles and zero-gravity zones</li>
       </ul>
     </div>
 
     <p style={{ color: '#a1a1aa', lineHeight: 1.7, margin: '0 0 24px' }}>
-      Each of these was built by typing ONE prompt. The AI handles scripts, lighting, leaderstats — everything.
+      Each one was built by typing ONE prompt. The AI handles scripts, lighting, terrain — everything.
     </p>
 
     <div style={{ textAlign: 'center', marginBottom: 32 }}>
       <a
-        href="https://forjegames.com/editor"
+        href={`${baseUrl}/editor`}
         style={{
-          display: 'inline-block', padding: '14px 32px', borderRadius: 10,
-          background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
-          color: '#050810', fontWeight: 700, fontSize: 15, textDecoration: 'none',
+          display: 'inline-block', padding: '14px 36px', borderRadius: 10,
+          background: '#D4AF37',
+          color: '#0a0a0a', fontWeight: 700, fontSize: 15, textDecoration: 'none',
         }}
       >
-        Build something right now →
+        Open the Editor
       </a>
     </div>
 
-    <p style={{ color: '#52525b', fontSize: 12, textAlign: 'center', margin: 0 }}>
-      You&apos;re on the Free plan with 10 builds/day. <a href="https://forjegames.com/pricing" style={{ color: '#D4AF37' }}>Upgrade</a> for 100+ builds and 3D meshes.
-    </p>
+    <div style={{ borderTop: '1px solid #222', paddingTop: 16, textAlign: 'center' }}>
+      <p style={{ color: '#52525b', fontSize: 12, margin: '0 0 4px' }}>
+        <a href={`${baseUrl}/unsubscribe`} style={{ color: '#666' }}>Unsubscribe</a>
+        {' · '}
+        <a href={`${baseUrl}/privacy`} style={{ color: '#666' }}>Privacy</a>
+      </p>
+      <p style={{ color: '#3f3f46', fontSize: 11, margin: 0 }}>
+        ForjeGames LLC &middot; 2261 Market Street #4671 &middot; San Francisco, CA 94114
+      </p>
+    </div>
   </div>
 )
 

@@ -1,4 +1,4 @@
-﻿import {
+import {
   Body,
   Button,
   Container,
@@ -6,7 +6,6 @@
   Heading,
   Hr,
   Html,
-  Img,
   Link,
   Preview,
   Row,
@@ -18,18 +17,12 @@ import * as React from 'react'
 
 interface WelcomeEmailProps {
   name: string
-  dashboardUrl?: string
-  docsUrl?: string
-  communityUrl?: string
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com'
 
 export const WelcomeEmail = ({
   name = 'Builder',
-  dashboardUrl = `${baseUrl}/dashboard`,
-  docsUrl = `${baseUrl}/docs`,
-  communityUrl = `${baseUrl}/community`,
 }: WelcomeEmailProps) => (
   <Html>
     <Head>
@@ -37,7 +30,7 @@ export const WelcomeEmail = ({
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
       `}</style>
     </Head>
-    <Preview>Welcome to ForjeGames — 1,000 free tokens, ready to use.</Preview>
+    <Preview>You just got 1,000 free tokens. Build your first Roblox game in 60 seconds.</Preview>
     <Body style={body}>
       <Container style={container}>
         {/* Logo Header */}
@@ -52,72 +45,59 @@ export const WelcomeEmail = ({
 
         {/* Hero */}
         <Section style={heroSection}>
-          <Heading style={heading}>Welcome, {name}!</Heading>
+          <Heading style={heading}>Hey {name}, welcome!</Heading>
           <Text style={subheading}>
-            You&apos;re now part of the fastest-growing Roblox game building community.
-            AI-powered tools, ready-to-use templates, and a community of builders await you.
+            You&apos;re one of our early creators. That means 1,000 free tokens
+            and first access to every new feature we ship.
           </Text>
         </Section>
 
         {/* Token Badge */}
         <Section style={tokenBadge}>
           <Text style={tokenBadgeText}>
-            You have <strong style={tokenGold}>1,000 free tokens</strong> ready to use
+            <strong style={tokenGold}>1,000 free tokens</strong> loaded and ready
           </Text>
         </Section>
 
-        {/* Quick Start Actions */}
+        {/* Quick Start — 3 steps */}
         <Section style={actionsSection}>
           <Heading as="h2" style={sectionHeading}>
-            Get started in 3 steps
+            Build your first game in 60 seconds
           </Heading>
           <Row>
             <Column style={actionCard}>
-              <Text style={actionNumber}>01</Text>
-              <Text style={actionTitle}>Build your first map</Text>
+              <Text style={actionNumber}>1</Text>
+              <Text style={actionTitle}>Open the editor</Text>
               <Text style={actionDesc}>
-                Describe your vision and let AI generate a Roblox map in seconds.
+                Click the button below. No downloads, no installs.
               </Text>
-              <Button style={primaryButton} href={dashboardUrl}>
-                Open Dashboard
-              </Button>
             </Column>
           </Row>
           <Row style={{ marginTop: '12px' }}>
             <Column style={actionCard}>
-              <Text style={actionNumber}>02</Text>
-              <Text style={actionTitle}>Browse templates</Text>
+              <Text style={actionNumber}>2</Text>
+              <Text style={actionTitle}>Type what you want</Text>
               <Text style={actionDesc}>
-                Thousands of community-built templates, free to use and remix.
+                &quot;A haunted house with jump scares&quot; or &quot;A tycoon where you build pizzas.&quot;
+                Our AI handles terrain, scripts, lighting — everything.
               </Text>
-              <Button style={secondaryButton} href={`${baseUrl}/templates`}>
-                Browse Templates
-              </Button>
             </Column>
           </Row>
           <Row style={{ marginTop: '12px' }}>
             <Column style={actionCard}>
-              <Text style={actionNumber}>03</Text>
-              <Text style={actionTitle}>Read the docs</Text>
+              <Text style={actionNumber}>3</Text>
+              <Text style={actionTitle}>Play it in Studio</Text>
               <Text style={actionDesc}>
-                Learn scripting tips, API references, and best practices.
+                One click sends it straight to Roblox Studio. Done.
               </Text>
-              <Button style={secondaryButton} href={docsUrl}>
-                Read the Docs
-              </Button>
             </Column>
           </Row>
         </Section>
 
-        <Hr style={divider} />
-
-        {/* Community CTA */}
-        <Section style={communitySection}>
-          <Text style={communityText}>
-            Join 12,000+ builders in our community Discord
-          </Text>
-          <Button style={ghostButton} href={communityUrl}>
-            Join the Community
+        {/* Main CTA */}
+        <Section style={ctaSection}>
+          <Button style={primaryButton} href={`${baseUrl}/editor`}>
+            Open the Editor
           </Button>
         </Section>
 
@@ -132,17 +112,14 @@ export const WelcomeEmail = ({
             Your game. Forjed by AI.
           </Text>
           <Text style={footerLinks}>
-            <Link href={`${baseUrl}/privacy`} style={footerLink}>Privacy Policy</Link>
+            <Link href={`${baseUrl}/privacy`} style={footerLink}>Privacy</Link>
             {' · '}
-            <Link href={`${baseUrl}/terms`} style={footerLink}>Terms of Service</Link>
+            <Link href={`${baseUrl}/terms`} style={footerLink}>Terms</Link>
             {' · '}
             <Link href={`${baseUrl}/unsubscribe`} style={footerLink}>Unsubscribe</Link>
           </Text>
           <Text style={footerAddress}>
-            ForjeGames Inc. · All rights reserved
-          </Text>
-          <Text style={footerAddress}>
-            ForjeGames LLC · 2261 Market Street #4671 · San Francisco, CA 94114 · United States
+            ForjeGames LLC · 2261 Market Street #4671 · San Francisco, CA 94114
           </Text>
         </Section>
       </Container>
@@ -201,7 +178,7 @@ const heroSection: React.CSSProperties = {
 
 const heading: React.CSSProperties = {
   color: '#ffffff',
-  fontSize: '32px',
+  fontSize: '28px',
   fontWeight: '700',
   margin: '0 0 16px',
   lineHeight: '1.2',
@@ -234,7 +211,7 @@ const tokenGold: React.CSSProperties = {
 }
 
 const actionsSection: React.CSSProperties = {
-  padding: '0 40px 32px',
+  padding: '0 40px 24px',
 }
 
 const sectionHeading: React.CSSProperties = {
@@ -248,7 +225,7 @@ const actionCard: React.CSSProperties = {
   backgroundColor: '#0d1235',
   border: '1px solid #1e2347',
   borderRadius: '12px',
-  padding: '20px 24px',
+  padding: '16px 20px',
 }
 
 const actionNumber: React.CSSProperties = {
@@ -256,70 +233,38 @@ const actionNumber: React.CSSProperties = {
   fontSize: '13px',
   fontWeight: '700',
   letterSpacing: '1px',
-  margin: '0 0 6px',
+  margin: '0 0 4px',
 }
 
 const actionTitle: React.CSSProperties = {
   color: '#ffffff',
-  fontSize: '16px',
+  fontSize: '15px',
   fontWeight: '600',
-  margin: '0 0 6px',
+  margin: '0 0 4px',
 }
 
 const actionDesc: React.CSSProperties = {
   color: '#8b92b8',
-  fontSize: '14px',
+  fontSize: '13px',
   lineHeight: '1.5',
-  margin: '0 0 16px',
+  margin: '0',
+}
+
+const ctaSection: React.CSSProperties = {
+  padding: '0 40px 32px',
+  textAlign: 'center',
 }
 
 const primaryButton: React.CSSProperties = {
   backgroundColor: '#D4AF37',
-  borderRadius: '8px',
+  borderRadius: '10px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',
-  fontSize: '14px',
-  fontWeight: '600',
-  padding: '10px 24px',
+  fontSize: '16px',
+  fontWeight: '700',
+  padding: '14px 40px',
   textDecoration: 'none',
   display: 'inline-block',
-}
-
-const secondaryButton: React.CSSProperties = {
-  backgroundColor: 'transparent',
-  border: '1px solid #D4AF37',
-  borderRadius: '8px',
-  color: '#D4AF37',
-  fontFamily: 'Inter, Arial, sans-serif',
-  fontSize: '14px',
-  fontWeight: '600',
-  padding: '10px 24px',
-  textDecoration: 'none',
-  display: 'inline-block',
-}
-
-const ghostButton: React.CSSProperties = {
-  backgroundColor: 'transparent',
-  border: '1px solid #1e2347',
-  borderRadius: '8px',
-  color: '#8b92b8',
-  fontFamily: 'Inter, Arial, sans-serif',
-  fontSize: '14px',
-  fontWeight: '500',
-  padding: '10px 24px',
-  textDecoration: 'none',
-  display: 'inline-block',
-}
-
-const communitySection: React.CSSProperties = {
-  padding: '28px 40px',
-  textAlign: 'center',
-}
-
-const communityText: React.CSSProperties = {
-  color: '#8b92b8',
-  fontSize: '15px',
-  margin: '0 0 16px',
 }
 
 const footer: React.CSSProperties = {

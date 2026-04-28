@@ -1,25 +1,29 @@
 /**
  * GET|POST /api/crons/email-drip
  *
- * Automated drip campaign — sends 3 milestone emails to free-tier signups:
+ * Automated drip campaign — sends 2 milestone emails to free-tier signups:
  *
- *   Day 1 (23-25h after signup):  Welcome + first build nudge
- *   Day 3 (71-73h after signup):  Social proof / showcase
- *   Day 7 (167-169h after signup): Upgrade pitch
+ *   Day 3 (2.5-3.5 days after signup): "Did you try building yet?" — showcase
+ *   Day 7 (6.5-7.5 days after signup): "Builders like you" — social proof + CTA
  *
  * Runs every 2 hours via Vercel cron. CRON_SECRET gated.
  *
- * Deduplication: checks AuditLog for DRIP_EMAIL_DAY_1 / DAY_3 / DAY_7
- * entries per user before sending. Creates an entry after each successful send.
+ * Welcome email (Day 1) is sent immediately on signup via the Clerk webhook,
+ * so it's NOT included in this cron.
  *
- * Respects marketingEmailsOptOut on the User model.
+ * Skip logic:
+ *   - Users with 5+ builds (token DEBIT transactions) are engaged — skip them
+ *   - Users who opted out of marketing emails — skip them
+ *   - Users who already received this drip step — skip (dedup via AuditLog)
+ *
+ * CAN-SPAM: All emails include unsubscribe link + physical address.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { Resend } from 'resend'
 import { db } from '@/lib/db'
-import { dripDay1, dripDay3, dripDay7 } from '@/lib/email/drip-templates'
+import { dripDay3, dripDay7 } from '@/lib/email/drip-templates'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -29,7 +33,6 @@ export const maxDuration = 60
 // ---------------------------------------------------------------------------
 
 function verifyCronSecret(req: NextRequest): boolean {
-  // Support both x-cron-secret header (Vercel cron) and Authorization bearer
   const secret =
     req.headers.get('x-cron-secret') ||
     req.headers.get('authorization')?.replace('Bearer ', '')
@@ -59,13 +62,15 @@ function getResend(): Resend {
 const FROM_EMAIL = process.env.FROM_EMAIL || 'ForjeGames <noreply@forjegames.com>'
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://forjegames.com'
 
+/** Users with this many or more builds are already engaged — skip drip emails */
+const ENGAGED_BUILD_THRESHOLD = 5
+
 // ---------------------------------------------------------------------------
 // Drip windows (in milliseconds from signup)
 // ---------------------------------------------------------------------------
 
 interface DripStep {
   day: number
-  /** Action string stored in AuditLog */
   action: string
   /** Minimum ms since signup */
   minMs: number
@@ -75,31 +80,23 @@ interface DripStep {
   html: (params: { name: string; baseUrl: string; unsubscribeToken: string }) => string
 }
 
-const HOUR = 60 * 60 * 1000
+const DAY = 24 * 60 * 60 * 1000
 
 const DRIP_STEPS: DripStep[] = [
   {
-    day: 1,
-    action: 'DRIP_EMAIL_DAY_1',
-    minMs: 23 * HOUR,
-    maxMs: 25 * HOUR,
-    subject: (name) => `Your first build awaits, ${name}`,
-    html: dripDay1,
-  },
-  {
     day: 3,
     action: 'DRIP_EMAIL_DAY_3',
-    minMs: 71 * HOUR,
-    maxMs: 73 * HOUR,
-    subject: (name) => `${name}, check out what others are building`,
+    minMs: 2.5 * DAY,
+    maxMs: 3.5 * DAY,
+    subject: (name) => `${name}, did you try building yet?`,
     html: dripDay3,
   },
   {
     day: 7,
     action: 'DRIP_EMAIL_DAY_7',
-    minMs: 167 * HOUR,
-    maxMs: 169 * HOUR,
-    subject: (name) => `Ready to level up, ${name}?`,
+    minMs: 6.5 * DAY,
+    maxMs: 7.5 * DAY,
+    subject: (name) => `Builders like you are creating games, ${name}`,
     html: dripDay7,
   },
 ]
@@ -119,10 +116,11 @@ async function handler(req: NextRequest) {
 
   const now = Date.now()
   const stats: Record<string, number> = {
-    day1Sent: 0,
     day3Sent: 0,
     day7Sent: 0,
-    skipped: 0,
+    skippedEngaged: 0,
+    skippedDupe: 0,
+    skippedNoEmail: 0,
     errors: 0,
   }
 
@@ -144,13 +142,28 @@ async function handler(req: NextRequest) {
           email: true,
           displayName: true,
           username: true,
+          tokenBalance: {
+            select: {
+              transactions: {
+                where: { type: 'DEBIT' },
+                select: { id: true },
+              },
+            },
+          },
         },
         take: 200, // cap per step to stay within lambda timeout
       })
 
       for (const user of users) {
         if (!user.email) {
-          stats.skipped++
+          stats.skippedNoEmail++
+          continue
+        }
+
+        // Skip engaged users (5+ builds)
+        const buildCount = user.tokenBalance?.transactions?.length ?? 0
+        if (buildCount >= ENGAGED_BUILD_THRESHOLD) {
+          stats.skippedEngaged++
           continue
         }
 
@@ -164,13 +177,11 @@ async function handler(req: NextRequest) {
         })
 
         if (alreadySent) {
-          stats.skipped++
+          stats.skippedDupe++
           continue
         }
 
         const name = user.displayName || user.username || 'Builder'
-        // Use the user ID as a simple unsubscribe token (the unsubscribe
-        // page should validate and set marketingEmailsOptOut = true)
         const unsubscribeToken = user.id
 
         try {

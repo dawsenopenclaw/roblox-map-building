@@ -19,12 +19,8 @@
       "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/crons/drip-campaign",
-      "schedule": "0 10 * * *"
-    },
-    {
       "path": "/api/crons/email-drip",
-      "schedule": "0 */2 * * *"
+      "schedule": "0 10 * * *"
     },
     {
       "path": "/api/crons/eli-audit",
