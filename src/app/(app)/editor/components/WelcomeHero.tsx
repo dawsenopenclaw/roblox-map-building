@@ -173,16 +173,86 @@ const QUICK_CARDS = [
   },
 ]
 
-// ─── Example prompt cards for empty state ──────────────────────────────
-const EXAMPLE_PROMPT_CARDS = [
-  { emoji: '\u{1F3E0}', label: 'Build me a house', prompt: 'Build me a house' },
-  { emoji: '\u{1F680}', label: 'Make a spaceship', prompt: 'Make a spaceship' },
-  { emoji: '\u{1F3AE}', label: 'Create a tycoon game', prompt: 'Create a tycoon game' },
-  { emoji: '\u{1F6D2}', label: 'Add a shop system', prompt: 'Add a shop system' },
-  { emoji: '\u{1F3F0}', label: 'Build a medieval castle', prompt: 'Build a medieval castle' },
-  { emoji: '\u{1F3C1}', label: 'Make me an obby', prompt: 'Make me an obby with checkpoints' },
-  { emoji: '\u{1FA81}', label: 'Build a helicopter', prompt: 'Build a helicopter' },
-  { emoji: '\u{1F332}', label: 'Create a forest scene', prompt: 'Create a forest scene' },
+// ─── 6-card action grid (matches the screenshot layout) ──────────────
+const ACTION_CARDS = [
+  {
+    title: 'Build a Game',
+    description: 'Tycoon, obby, simulator, RPG — pick a genre and go',
+    prompt: 'Let\'s plan a game together',
+    iconColor: '#D4AF37',
+    iconBg: 'rgba(212,175,55,0.12)',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="3" />
+        <path d="M9 3v18M3 9h18" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Write a Script',
+    description: 'Leaderboards, shops, combat, doors — any game logic',
+    prompt: '',
+    autoSend: false,
+    iconColor: '#7C3AED',
+    iconBg: 'rgba(124,58,237,0.12)',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 18l2-2-2-2" /><path d="M8 18l-2-2 2-2" /><path d="M14 4l-4 16" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Generate an Image',
+    description: 'Thumbnails, icons, decals, textures — any style',
+    prompt: '',
+    autoSend: false,
+    iconColor: '#10B981',
+    iconBg: 'rgba(16,185,129,0.12)',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Create 3D Model',
+    description: 'Weapons, characters, props — AI mesh generation',
+    prompt: '',
+    autoSend: false,
+    iconColor: '#F59E0B',
+    iconBg: 'rgba(245,158,11,0.12)',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2l8 4.5v11L12 22l-8-4.5v-11z" /><path d="M12 22V11" /><path d="M20 6.5L12 11 4 6.5" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Design Terrain',
+    description: 'Islands, mountains, cities — natural landscapes',
+    prompt: '',
+    autoSend: false,
+    iconColor: '#06B6D4',
+    iconBg: 'rgba(6,182,212,0.12)',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 22L12 2l10 20H2z" /><path d="M7 17h10" /><path d="M9 13h6" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Get Game Advice',
+    description: 'Monetization, design, marketing — expert guidance',
+    prompt: '',
+    autoSend: false,
+    iconColor: '#EC4899',
+    iconBg: 'rgba(236,72,153,0.12)',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EC4899" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" /><circle cx="12" cy="17" r="0.5" fill="#EC4899" />
+      </svg>
+    ),
+  },
 ] as const
 
 interface WelcomeHeroProps {
@@ -325,57 +395,64 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
         })}
       </div>
 
-      {/* ─── Try These Prompts — 2-column card grid ─── */}
-      <div style={{
-        maxWidth: 780,
-        width: '100%',
-        position: 'relative',
-        zIndex: 1,
-      }}>
-        <p style={{ fontSize: 11, color: '#52525B', marginBottom: 10, textAlign: 'center', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
-          Or try one of these
-        </p>
+      {/* ─── 6-card action grid ─── */}
+      <div style={{ maxWidth: 780, width: '100%', position: 'relative', zIndex: 1 }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-          gap: 8,
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+          gap: 10,
         }}>
-          {EXAMPLE_PROMPT_CARDS.map((card, i) => (
+          {ACTION_CARDS.map((card, i) => (
             <button
-              key={card.prompt}
-              onClick={() => onQuickAction(card.prompt, true)}
+              key={card.title}
+              onClick={() => {
+                if (card.title === 'Build a Game') {
+                  if (onBuildGame) onBuildGame(card.prompt)
+                  else onQuickAction(card.prompt, true)
+                } else {
+                  onQuickAction(card.prompt, card.autoSend !== false)
+                }
+              }}
               style={{
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
                 gap: 12,
-                padding: '12px 16px',
+                padding: '18px 16px',
                 borderRadius: 14,
                 border: '1px solid rgba(255,255,255,0.06)',
-                background: 'rgba(12,15,28,0.4)',
-                backdropFilter: 'blur(12px)',
+                background: 'rgba(10,14,28,0.6)',
+                backdropFilter: 'blur(20px)',
                 cursor: 'pointer',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                 textAlign: 'left',
                 fontFamily: 'inherit',
-                animation: `msgFadeUp 0.3s ease-out ${i * 0.04}s both`,
+                animation: `msgFadeUp 0.3s ease-out ${i * 0.05}s both`,
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)'
-                e.currentTarget.style.background = 'rgba(212,175,55,0.06)'
-                e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.25), 0 0 12px rgba(212,175,55,0.06)'
+                e.currentTarget.style.borderColor = `${card.iconColor}40`
+                e.currentTarget.style.background = `${card.iconColor}08`
+                e.currentTarget.style.transform = 'translateY(-3px)'
+                e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.3), 0 0 16px ${card.iconColor}10`
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
-                e.currentTarget.style.background = 'rgba(12,15,28,0.4)'
+                e.currentTarget.style.background = 'rgba(10,14,28,0.6)'
                 e.currentTarget.style.transform = 'translateY(0)'
                 e.currentTarget.style.boxShadow = 'none'
               }}
             >
-              <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1 }}>{card.emoji}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#E4E4E7', marginBottom: 2 }}>{card.label}</div>
-                <div style={{ fontSize: 10, color: '#52525B', fontWeight: 500 }}>Try this</div>
+              <div style={{
+                width: 40, height: 40, borderRadius: 10,
+                background: card.iconBg,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                {card.icon}
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#E4E4E7', marginBottom: 4 }}>{card.title}</div>
+                <div style={{ fontSize: 11, color: '#52525B', lineHeight: 1.4 }}>{card.description}</div>
               </div>
             </button>
           ))}
