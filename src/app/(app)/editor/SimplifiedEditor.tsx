@@ -35,7 +35,8 @@ import { UpgradeNudge } from '@/components/editor/UpgradeNudge'
 import ConsolePanel from '@/components/editor/ConsolePanel'
 import { SystemComposer } from '@/components/editor/SystemComposer'
 import { captureClientEvent } from '@/lib/analytics-client'
-import { Plug, X, Download, KeyRound } from 'lucide-react'
+import { Plug, X, Download, KeyRound, HelpCircle } from 'lucide-react'
+import { SetupGuide, useSetupGuide } from './components/SetupGuide'
 
 // ─── Right Sidebar — AI Context Panel ────────────────────────────────────
 
@@ -252,7 +253,7 @@ function StatBadge({ label, value }: { label: string; value: number }) {
 const BANNER_DISMISS_KEY = 'forje_studio_banner_dismissed'
 const BANNER_DISMISS_DURATION = 60 * 60 * 1000 // 1 hour
 
-function StudioBanner({ isConnected }: { isConnected: boolean }) {
+function StudioBanner({ isConnected, onOpenGuide }: { isConnected: boolean; onOpenGuide: () => void }) {
   const [dismissed, setDismissed] = useState(true) // start hidden to avoid flash
 
   useEffect(() => {
@@ -381,6 +382,31 @@ function StudioBanner({ isConnected }: { isConnected: boolean }) {
           <KeyRound size={13} />
           Enter Code
         </a>
+        <button
+          onClick={onOpenGuide}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '6px 14px', borderRadius: 8,
+            fontSize: 12, fontWeight: 600,
+            color: '#A1A1AA',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            textDecoration: 'none',
+            transition: 'all 0.15s',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.10)'
+            e.currentTarget.style.color = '#D4D4D8'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+            e.currentTarget.style.color = '#A1A1AA'
+          }}
+        >
+          <HelpCircle size={13} />
+          Setup Guide
+        </button>
       </div>
 
       {/* Dismiss */}
@@ -471,6 +497,7 @@ function EditorInner() {
 
   // ── Studio connection ──
   const studio = useStudioConnection()
+  const setupGuide = useSetupGuide(studio.isConnected)
 
   React.useEffect(() => {
     if (isSignedIn && !studio.isConnected && studio.connectFlow === 'idle') {
@@ -765,7 +792,10 @@ function EditorInner() {
       />
 
       {/* Studio not connected banner */}
-      <StudioBanner isConnected={studio.isConnected} />
+      <StudioBanner isConnected={studio.isConnected} onOpenGuide={() => setupGuide.setOpen(true)} />
+
+      {/* Setup guide modal */}
+      <SetupGuide open={setupGuide.open} onClose={() => setupGuide.setOpen(false)} />
 
       {/* Main content area with optional sidebar */}
       <div style={{
