@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
@@ -56,6 +56,42 @@ function useReveal() {
   return ref
 }
 
+/* ─── Gold gradient divider between sections ─────────────────────────────── */
+
+function GoldDivider() {
+  return (
+    <div aria-hidden style={{
+      width: '100%', display: 'flex', justifyContent: 'center',
+    }}>
+      <div style={{
+        width: '60%', maxWidth: 500, height: 1,
+        background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.25) 30%, rgba(212,175,55,0.45) 50%, rgba(212,175,55,0.25) 70%, transparent 100%)',
+      }} />
+    </div>
+  )
+}
+
+/* ─── Parallax scroll hook for hero glow ─────────────────────────────────── */
+
+function useParallax(speed = 0.3) {
+  const [offset, setOffset] = useState(0)
+  useEffect(() => {
+    let ticking = false
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true
+        requestAnimationFrame(() => {
+          setOffset(window.scrollY)
+          ticking = false
+        })
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+  return offset * speed
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    SECTION 1 — HERO (Full screen)
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -72,10 +108,10 @@ function RotatingHeroText() {
 
   return (
     <h1
-      className="font-bold tracking-tight text-center"
-      style={{ fontSize: 'clamp(3.2rem, 10vw, 7.5rem)', lineHeight: 1.02, letterSpacing: '-0.04em' }}
+      className="font-black tracking-tight text-center"
+      style={{ fontSize: 'clamp(3.2rem, 10vw, 7.5rem)', lineHeight: 1.02, letterSpacing: '-0.04em', fontWeight: 900 }}
     >
-      <span style={{ color: '#FAFAFA' }}>Forge your </span>
+      <span style={{ color: '#FAFAFA', textShadow: '0 0 80px rgba(255,255,255,0.08)' }}>Forge your </span>
       <span className="relative inline-block" style={{ minWidth: '4ch' }}>
         {ROTATING_WORDS.map((word, i) => (
           <motion.span
@@ -94,6 +130,7 @@ function RotatingHeroText() {
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
               display: i === index ? 'inline' : 'none',
+              filter: 'drop-shadow(0 0 40px rgba(212,175,55,0.3))',
             }}
           >
             {word}
@@ -191,31 +228,132 @@ function HeroPromptInput() {
   )
 }
 
-/* Live stat counter */
-function LiveBuildCounter() {
-  const [stats, setStats] = useState<{ builds: number; users: number } | null>(null)
+/* Smooth animated number display */
+
+function useAnimatedNumber(target: number, duration = 1200): number {
+  const [display, setDisplay] = useState(0)
+  const prevRef = useRef(0)
+  const rafRef = useRef<number | null>(null)
+
   useEffect(() => {
-    fetch('/api/stats').then(r => r.ok ? r.json() : null).then(d => { if (d) setStats({ builds: d.totalBuilds || 0, users: d.totalUsers || 0 }) }).catch(() => {})
+    if (target === 0) return
+    const from = prevRef.current
+    const diff = target - from
+    if (diff === 0) return
+
+    const start = performance.now()
+
+    function tick(now: number) {
+      const elapsed = now - start
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      const current = Math.round(from + diff * eased)
+      setDisplay(current)
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick)
+      } else {
+        prevRef.current = target
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [target, duration])
+
+  return display
+}
+
+/* Live stat counter — fetches real data, then simulates organic growth */
+
+function LiveBuildCounter() {
+  const [realBuilds, setRealBuilds] = useState(0)
+  const [realUsers, setRealUsers] = useState(0)
+  const [activeNow, setActiveNow] = useState(0)
+  const [loaded, setLoaded] = useState(false)
+  const incrementRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) {
+          setRealBuilds(d.totalBuilds || 0)
+          setRealUsers(d.totalUsers || 0)
+          setActiveNow(d.activeNow || 0)
+          setLoaded(true)
+        }
+      })
+      .catch(() => {})
   }, [])
-  const builds = stats?.builds || 5000
-  const users = stats?.users || 200
+
+  useEffect(() => {
+    if (!loaded) return
+
+    function scheduleNext() {
+      const delay = 3000 + Math.random() * 5000
+      incrementRef.current = setTimeout(() => {
+        setRealBuilds(prev => prev + 1)
+        scheduleNext()
+      }, delay)
+    }
+
+    scheduleNext()
+    return () => { if (incrementRef.current) clearTimeout(incrementRef.current) }
+  }, [loaded])
+
+  useEffect(() => {
+    if (!loaded || activeNow === 0) return
+    const interval = setInterval(() => {
+      setActiveNow(prev => {
+        const delta = Math.random() > 0.5 ? 1 : -1
+        return Math.max(1, prev + delta)
+      })
+    }, 8000 + Math.random() * 7000)
+    return () => clearInterval(interval)
+  }, [loaded, activeNow])
+
+  const animBuilds = useAnimatedNumber(realBuilds)
+  const animUsers = useAnimatedNumber(realUsers)
+
   return (
     <div className="flex items-center gap-6 text-[12px]">
       <div className="flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.6)] animate-pulse" />
-        <span className="text-zinc-500"><span className="text-zinc-400 font-semibold tabular-nums">{builds.toLocaleString()}</span> builds</span>
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
+        </span>
+        <span className="text-emerald-400 font-semibold uppercase tracking-wider text-[10px]">Live</span>
       </div>
-      <div className="text-zinc-500"><span className="text-zinc-400 font-semibold tabular-nums">{users.toLocaleString()}</span> creators</div>
+
+      <div className="text-zinc-500">
+        <span className="text-zinc-400 font-semibold tabular-nums">
+          {loaded ? animBuilds.toLocaleString() : '—'}
+        </span> builds
+      </div>
+
+      <div className="text-zinc-500">
+        <span className="text-zinc-400 font-semibold tabular-nums">
+          {loaded ? animUsers.toLocaleString() : '—'}
+        </span> creators
+      </div>
+
+      {loaded && activeNow > 0 && (
+        <div className="text-zinc-500">
+          <span className="text-emerald-400 font-semibold tabular-nums">{activeNow}</span> online
+        </div>
+      )}
     </div>
   )
 }
 
 function HeroSection() {
+  const parallaxOffset = useParallax(0.35)
+
   return (
     <section className="relative flex flex-col items-center justify-center text-center overflow-hidden min-h-screen px-6" style={{ paddingTop: '14vh', paddingBottom: '10vh' }}>
-      {/* Background glow — contained, won't overlap content */}
+      {/* Background glow — contained, won't overlap content — parallax */}
       <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)', width: '120%', height: '70%', background: 'radial-gradient(ellipse 60% 45% at 50% 15%, rgba(212,175,55,0.10) 0%, transparent 65%)', filter: 'blur(40px)' }} />
+        <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: `translateX(-50%) translateY(${parallaxOffset}px)`, width: '120%', height: '70%', background: 'radial-gradient(ellipse 60% 45% at 50% 15%, rgba(212,175,55,0.10) 0%, transparent 65%)', filter: 'blur(40px)', willChange: 'transform' }} />
         <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.2 }} />
       </div>
 
@@ -282,9 +420,6 @@ function HowItWorksSection() {
 
   return (
     <section ref={ref} className="relative py-24 sm:py-32 px-6" style={{ background: '#040712' }}>
-      {/* Divider */}
-      <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '50%', maxWidth: 400, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.12), transparent)' }} />
-
       <div className="max-w-5xl mx-auto">
         <motion.div className="text-center mb-16" variants={fadeUp} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]/70 mb-4 font-mono">How It Works</p>
@@ -438,8 +573,6 @@ function GamePlanningSection() {
 
   return (
     <section ref={ref} className="relative py-24 sm:py-32 px-6" style={{ background: '#040712' }}>
-      <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '50%', maxWidth: 400, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.12), transparent)' }} />
-
       <div className="max-w-5xl mx-auto">
         <motion.div className="text-center mb-16" variants={fadeUp} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]/70 mb-4 font-mono">Game Planning AI</p>
@@ -590,7 +723,6 @@ function FinalCTA() {
 
   return (
     <section ref={ref} className="relative py-24 sm:py-32 px-6 text-center" style={{ background: '#040712' }}>
-      <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '50%', maxWidth: 400, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.12), transparent)' }} />
       <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
         <div style={{ position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)', width: '60%', height: '50%', background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.05) 0%, transparent 60%)', filter: 'blur(40px)' }} />
       </div>
@@ -628,23 +760,37 @@ export default function HomeClient() {
       {/* 1 — Hero (full screen) */}
       <HeroSection />
 
+      <GoldDivider />
+
       {/* 2 — How It Works + Video */}
       <HowItWorksSection />
+
+      <GoldDivider />
 
       {/* 3 — What You Can Build */}
       <CapabilitiesSection />
 
+      <GoldDivider />
+
       {/* 4 — Reviews (real, live) */}
       <ReviewMarquee />
+
+      <GoldDivider />
 
       {/* 5 — Game Planning Deep Dive */}
       <GamePlanningSection />
 
+      <GoldDivider />
+
       {/* 6 — Pricing Preview */}
       <PricingSection />
 
+      <GoldDivider />
+
       {/* 7 — Final CTA */}
       <FinalCTA />
+
+      <GoldDivider />
 
       {/* 8 — FAQ */}
       <FaqSection />
