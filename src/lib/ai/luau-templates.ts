@@ -582,7 +582,7 @@ print("[Progression] Leaderboard system initialized — ${stats.map((s) => s.nam
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. BASIC CLICK COMBAT
+// 5. PRODUCTION COMBAT SYSTEM — melee, ranged, magic, enemy AI, status effects
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface CombatParams {
@@ -598,116 +598,1945 @@ export function basicCombat(params: CombatParams): string {
   const cooldown = Math.max(0.1, params.attackCooldown)
   const enemyTag = safe(params.enemyTag ?? 'Enemy')
 
-  return `-- Basic Click Combat System (LocalScript → StarterPlayerScripts)
+  return `-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  PRODUCTION COMBAT SYSTEM — ForjeGames Build Engine                     ║
+-- ║  Server-authoritative melee, ranged, magic, AI, status effects          ║
+-- ║  Place this Script in ServerScriptService                               ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-
-local player = Players.LocalPlayer
-local mouse = player:GetMouse()
-local camera = workspace.CurrentCamera
-
-local CLICK_DAMAGE = ${damage}
-local ATTACK_RANGE = ${range}
-local ATTACK_COOLDOWN = ${cooldown}
-local ENEMY_TAG = "${enemyTag}"
-
-local lastAttack = 0
-local attackRemote: RemoteEvent
-
--- Wait for combat remote to be created by server
 local RS = game:GetService("ReplicatedStorage")
-local combatRemote = RS:WaitForChild("CombatAttack", 10) :: RemoteEvent?
-if not combatRemote then
-  warn("[Combat] CombatAttack RemoteEvent not found in ReplicatedStorage")
-  return
+local SS = game:GetService("ServerStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local PathfindingService = game:GetService("PathfindingService")
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 1: CONSTANTS & CONFIGURATION
+-- ══════════════════════════════════════════════════════════════════════════
+
+local BASE_CLICK_DAMAGE = ${damage}
+local ATTACK_RANGE_MELEE = ${range}
+local MELEE_WIDTH = 4
+local ATTACK_COOLDOWN_MELEE = ${cooldown}
+local ENEMY_TAG = "${enemyTag}"
+local COMBO_WINDOW = 1.5
+local COMBO_THIRD_MULT = 1.5
+local HEAVY_CHARGE_TIME = 1.0
+local HEAVY_DAMAGE_MULT = 2.0
+local HEAVY_COOLDOWN = 2.0
+local IFRAMES_DURATION = 0.5
+local KNOCKBACK_FORCE = 50
+local KNOCKBACK_DURATION = 0.2
+
+-- Ranged constants
+local ARROW_SPEED = 100
+local BULLET_SPEED = 200
+local MAX_AMMO = 30
+local RELOAD_TIME = 2.0
+local HEADSHOT_MULT = 1.5
+local PROJECTILE_LIFETIME = 3.0
+local ARROW_DROP_FORCE = 15
+
+-- Magic constants
+local MAX_MANA = 100
+local MANA_REGEN_RATE = 5
+local FIREBALL_COST = 25
+local FIREBALL_DAMAGE = 50
+local FIREBALL_AOE = 8
+local FIREBALL_COOLDOWN = 3
+local ICE_SHIELD_COST = 30
+local ICE_SHIELD_DURATION = 3
+local ICE_SHIELD_REDUCTION = 0.5
+local ICE_SHIELD_COOLDOWN = 12
+local LIGHTNING_COST = 35
+local LIGHTNING_DAMAGE = 40
+local LIGHTNING_AOE = 6
+local LIGHTNING_DELAY = 1.0
+local LIGHTNING_COOLDOWN = 8
+local HEAL_COST = 20
+local HEAL_PERCENT = 0.3
+local HEAL_COOLDOWN = 10
+
+-- Health & Death
+local BASE_HP = 100
+local HP_PER_LEVEL = 10
+local HP_REGEN_RATE = 1
+local OUT_OF_COMBAT_TIME = 5
+local RESPAWN_TIME = 5
+local SPAWN_PROTECTION_TIME = 3
+local DEATH_DROP_PERCENT = 0.1
+
+-- Kill system
+local ASSIST_WINDOW = 10
+local DOUBLE_KILL_WINDOW = 3
+local STREAK_THRESHOLDS = {3, 5, 10}
+local STREAK_NAMES = {"Streak", "Rampage", "Unstoppable"}
+local KILL_XP_REWARD = 50
+local KILL_COIN_REWARD = 25
+
+-- Enemy AI
+local ENEMY_AGGRO_RANGE = 30
+local ENEMY_DEAGGRO_RANGE = 45
+local ENEMY_LEASH_RANGE = 60
+local ENEMY_ATTACK_RANGE = 5
+local ENEMY_ATTACK_SPEED = 1.5
+local ENEMY_PATROL_WAIT = 3
+
+-- Damage types
+local DAMAGE_TYPE = {
+  Physical = "Physical",
+  Magic = "Magic",
+  True = "True",
+}
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 2: REMOTE EVENTS SETUP
+-- ══════════════════════════════════════════════════════════════════════════
+
+local function getOrCreateRemote(name: string, className: string): Instance
+  local existing = RS:FindFirstChild(name)
+  if existing then return existing end
+  local remote = Instance.new(className)
+  remote.Name = name
+  remote.Parent = RS
+  return remote
 end
 
--- Visual feedback: swing animation
-local function playSwingEffect(hitPosition: Vector3)
-  local effect = Instance.new("Part")
-  effect.Anchored = true
-  effect.CanCollide = false
-  effect.CastShadow = false
-  effect.Size = Vector3.new(0.5, 0.5, 0.5)
-  effect.Shape = Enum.PartType.Ball
-  effect.Material = Enum.Material.Neon
-  effect.Color = Color3.fromRGB(255, 80, 80)
-  effect.Position = hitPosition
-  effect.Parent = workspace
-  game:GetService("Debris"):AddItem(effect, 0.15)
+local MeleeAttackRemote = getOrCreateRemote("CombatMeleeAttack", "RemoteEvent") :: RemoteEvent
+local HeavyAttackRemote = getOrCreateRemote("CombatHeavyAttack", "RemoteEvent") :: RemoteEvent
+local RangedFireRemote = getOrCreateRemote("CombatRangedFire", "RemoteEvent") :: RemoteEvent
+local ReloadRemote = getOrCreateRemote("CombatReload", "RemoteEvent") :: RemoteEvent
+local AbilityCastRemote = getOrCreateRemote("CombatAbilityCast", "RemoteEvent") :: RemoteEvent
+local DamageNumberRemote = getOrCreateRemote("CombatDamageNumber", "RemoteEvent") :: RemoteEvent
+local KillFeedRemote = getOrCreateRemote("CombatKillFeed", "RemoteEvent") :: RemoteEvent
+local ScreenShakeRemote = getOrCreateRemote("CombatScreenShake", "RemoteEvent") :: RemoteEvent
+local HitFlashRemote = getOrCreateRemote("CombatHitFlash", "RemoteEvent") :: RemoteEvent
+local DeathCamRemote = getOrCreateRemote("CombatDeathCam", "RemoteEvent") :: RemoteEvent
+local RespawnRemote = getOrCreateRemote("CombatRespawn", "RemoteEvent") :: RemoteEvent
+local EquipWeaponRemote = getOrCreateRemote("CombatEquipWeapon", "RemoteEvent") :: RemoteEvent
+local KillStreakRemote = getOrCreateRemote("CombatKillStreak", "RemoteEvent") :: RemoteEvent
+-- Legacy compat
+local CombatAttackRemote = getOrCreateRemote("CombatAttack", "RemoteEvent") :: RemoteEvent
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 3: WEAPON DEFINITIONS
+-- ══════════════════════════════════════════════════════════════════════════
+
+export type WeaponDef = {
+  name: string,
+  weaponType: string,    -- "Melee" | "Ranged" | "Magic"
+  baseDamage: number,
+  attackSpeed: number,   -- cooldown in seconds
+  range: number,
+  critBonus: number,     -- added to base 5% crit chance
+  damageType: string,
+  projectileSpeed: number?,
+  ammoMax: number?,
+}
+
+local WEAPONS: {[string]: WeaponDef} = {
+  WoodSword = {
+    name = "Wood Sword", weaponType = "Melee", baseDamage = 10,
+    attackSpeed = 0.8, range = 5, critBonus = 0, damageType = DAMAGE_TYPE.Physical,
+  },
+  IronSword = {
+    name = "Iron Sword", weaponType = "Melee", baseDamage = 20,
+    attackSpeed = 0.8, range = 5, critBonus = 2, damageType = DAMAGE_TYPE.Physical,
+  },
+  GoldSword = {
+    name = "Gold Sword", weaponType = "Melee", baseDamage = 35,
+    attackSpeed = 0.7, range = 5.5, critBonus = 5, damageType = DAMAGE_TYPE.Physical,
+  },
+  DiamondSword = {
+    name = "Diamond Sword", weaponType = "Melee", baseDamage = 50,
+    attackSpeed = 0.6, range = 6, critBonus = 8, damageType = DAMAGE_TYPE.Physical,
+  },
+  Bow = {
+    name = "Bow", weaponType = "Ranged", baseDamage = 15,
+    attackSpeed = 1.2, range = 80, critBonus = 3, damageType = DAMAGE_TYPE.Physical,
+    projectileSpeed = ARROW_SPEED, ammoMax = 30,
+  },
+  Crossbow = {
+    name = "Crossbow", weaponType = "Ranged", baseDamage = 30,
+    attackSpeed = 1.8, range = 100, critBonus = 5, damageType = DAMAGE_TYPE.Physical,
+    projectileSpeed = BULLET_SPEED, ammoMax = 20,
+  },
+  Staff = {
+    name = "Staff", weaponType = "Magic", baseDamage = 25,
+    attackSpeed = 1.0, range = 50, critBonus = 4, damageType = DAMAGE_TYPE.Magic,
+    projectileSpeed = 80,
+  },
+  Wand = {
+    name = "Wand", weaponType = "Magic", baseDamage = 15,
+    attackSpeed = 0.5, range = 40, critBonus = 2, damageType = DAMAGE_TYPE.Magic,
+    projectileSpeed = 120,
+  },
+}
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 4: ARMOR DEFINITIONS
+-- ══════════════════════════════════════════════════════════════════════════
+
+export type ArmorDef = {
+  name: string,
+  slot: string,          -- "Head" | "Chest" | "Legs"
+  defense: number,
+  magicResist: number,
+  speedPenalty: number,  -- WalkSpeed reduction
+}
+
+local ARMOR_SETS: {[string]: ArmorDef} = {
+  LeatherHelm = { name = "Leather Helm", slot = "Head", defense = 3, magicResist = 1, speedPenalty = 0 },
+  LeatherChest = { name = "Leather Chest", slot = "Chest", defense = 5, magicResist = 2, speedPenalty = 0 },
+  LeatherLegs = { name = "Leather Legs", slot = "Legs", defense = 4, magicResist = 1, speedPenalty = 0 },
+  IronHelm = { name = "Iron Helm", slot = "Head", defense = 8, magicResist = 2, speedPenalty = 1 },
+  IronChest = { name = "Iron Chest", slot = "Chest", defense = 15, magicResist = 4, speedPenalty = 2 },
+  IronLegs = { name = "Iron Legs", slot = "Legs", defense = 10, magicResist = 3, speedPenalty = 1 },
+  DiamondHelm = { name = "Diamond Helm", slot = "Head", defense = 15, magicResist = 8, speedPenalty = 1 },
+  DiamondChest = { name = "Diamond Chest", slot = "Chest", defense = 25, magicResist = 12, speedPenalty = 3 },
+  DiamondLegs = { name = "Diamond Legs", slot = "Legs", defense = 18, magicResist = 10, speedPenalty = 2 },
+  MageRobeHead = { name = "Mage Hood", slot = "Head", defense = 2, magicResist = 12, speedPenalty = 0 },
+  MageRobeChest = { name = "Mage Robe", slot = "Chest", defense = 3, magicResist = 20, speedPenalty = 0 },
+  MageRobeLegs = { name = "Mage Pants", slot = "Legs", defense = 2, magicResist = 15, speedPenalty = 0 },
+}
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 5: PLAYER STATE MANAGEMENT
+-- ══════════════════════════════════════════════════════════════════════════
+
+export type PlayerCombatState = {
+  level: number,
+  maxHP: number,
+  currentHP: number,
+  maxMana: number,
+  currentMana: number,
+  luck: number,
+  defense: number,
+  magicResist: number,
+
+  -- Equipped gear
+  meleeWeapon: string?,
+  rangedWeapon: string?,
+  magicWeapon: string?,
+  armorHead: string?,
+  armorChest: string?,
+  armorLegs: string?,
+
+  -- Ammo
+  currentAmmo: number,
+  maxAmmo: number,
+  isReloading: boolean,
+
+  -- Cooldowns
+  lastMeleeAttack: number,
+  lastHeavyAttack: number,
+  lastRangedAttack: number,
+  abilityCooldowns: {[string]: number},
+
+  -- Combo tracking
+  comboCount: number,
+  lastComboTime: number,
+
+  -- Combat state
+  lastDamageTaken: number,
+  isInvincible: boolean,
+  invincibleUntil: number,
+  isDead: boolean,
+  respawnTime: number,
+  spawnProtectionUntil: number,
+
+  -- Status effects
+  activeEffects: {[string]: {endTime: number, tickRate: number?, lastTick: number?, data: {[string]: any}?}},
+
+  -- Kill tracking
+  kills: number,
+  deaths: number,
+  assists: number,
+  killStreak: number,
+  lastKillTime: number,
+  coins: number,
+  xp: number,
+
+  -- Assist tracking: {attackerUserId: lastDamageTime}
+  recentDamageSources: {[number]: number},
+}
+
+local playerStates: {[number]: PlayerCombatState} = {}
+
+local function getMaxHP(level: number): number
+  return BASE_HP + (level * HP_PER_LEVEL)
 end
 
-mouse.Button1Down:Connect(function()
+local function initPlayerState(player: Player): PlayerCombatState
+  local level = player:GetAttribute("CombatLevel") or 1
+  local maxHP = getMaxHP(level)
+
+  local state: PlayerCombatState = {
+    level = level,
+    maxHP = maxHP,
+    currentHP = maxHP,
+    maxMana = MAX_MANA,
+    currentMana = MAX_MANA,
+    luck = player:GetAttribute("Luck") or 0,
+    defense = 0,
+    magicResist = 0,
+
+    meleeWeapon = "WoodSword",
+    rangedWeapon = nil,
+    magicWeapon = nil,
+    armorHead = nil,
+    armorChest = nil,
+    armorLegs = nil,
+
+    currentAmmo = MAX_AMMO,
+    maxAmmo = MAX_AMMO,
+    isReloading = false,
+
+    lastMeleeAttack = 0,
+    lastHeavyAttack = 0,
+    lastRangedAttack = 0,
+    abilityCooldowns = {},
+
+    comboCount = 0,
+    lastComboTime = 0,
+
+    lastDamageTaken = 0,
+    isInvincible = false,
+    invincibleUntil = 0,
+    isDead = false,
+    respawnTime = 0,
+    spawnProtectionUntil = 0,
+
+    activeEffects = {},
+
+    kills = 0,
+    deaths = 0,
+    assists = 0,
+    killStreak = 0,
+    lastKillTime = 0,
+    coins = 0,
+    xp = 0,
+
+    recentDamageSources = {},
+  }
+
+  playerStates[player.UserId] = state
+  return state
+end
+
+local function getState(player: Player): PlayerCombatState?
+  return playerStates[player.UserId]
+end
+
+-- Recalculate defense from equipped armor
+local function recalcArmorStats(state: PlayerCombatState)
+  local totalDef = 0
+  local totalMR = 0
+  local totalSpeedPen = 0
+
+  local slots = {state.armorHead, state.armorChest, state.armorLegs}
+  for _, armorId in slots do
+    if armorId then
+      local armor = ARMOR_SETS[armorId]
+      if armor then
+        totalDef += armor.defense
+        totalMR += armor.magicResist
+        totalSpeedPen += armor.speedPenalty
+      end
+    end
+  end
+
+  state.defense = totalDef
+  state.magicResist = totalMR
+
+  -- Apply speed penalty to humanoid
+  -- (done elsewhere when character spawns)
+end
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 6: CORE DAMAGE ENGINE
+-- ══════════════════════════════════════════════════════════════════════════
+
+local function calculateDamage(
+  baseDamage: number,
+  attackerLevel: number,
+  weaponMultiplier: number,
+  critRoll: boolean,
+  damageType: string,
+  targetDefense: number,
+  targetMagicResist: number
+): (number, boolean)
+  -- Formula: BaseDamage * (1 + Level*0.05) * WeaponMult * CritMult - (Defense * 0.5)
+  local levelMult = 1 + (attackerLevel * 0.05)
+  local critMult = critRoll and 2.0 or 1.0
+  local rawDamage = baseDamage * levelMult * weaponMultiplier * critMult
+
+  -- Apply resistance based on damage type
+  local reduction = 0
+  if damageType == DAMAGE_TYPE.Physical then
+    reduction = targetDefense * 0.5
+  elseif damageType == DAMAGE_TYPE.Magic then
+    reduction = targetMagicResist * 0.5
+  end
+  -- True damage ignores all defense
+
+  local finalDamage = math.max(1, math.floor(rawDamage - reduction))
+  return finalDamage, critRoll
+end
+
+local function rollCrit(baseCritChance: number, luck: number, weaponCritBonus: number): boolean
+  local totalCrit = baseCritChance + luck + weaponCritBonus
+  return math.random(1, 100) <= math.clamp(totalCrit, 1, 75)
+end
+
+local function applyDamage(
+  targetHumanoid: Humanoid,
+  targetModel: Model,
+  damage: number,
+  isCrit: boolean,
+  attackerPlayer: Player?,
+  damageType: string
+)
+  if not targetHumanoid or targetHumanoid.Health <= 0 then return end
+
+  -- Check if target is a player with invincibility
+  local targetPlayer: Player? = nil
+  for _, p in Players:GetPlayers() do
+    if p.Character == targetModel then
+      targetPlayer = p
+      break
+    end
+  end
+
+  if targetPlayer then
+    local tState = getState(targetPlayer)
+    if tState then
+      -- Check iframes
+      if tState.isInvincible and tick() < tState.invincibleUntil then return end
+      -- Check spawn protection
+      if tick() < tState.spawnProtectionUntil then return end
+      -- Check ice shield
+      if tState.activeEffects["IceShield"] and tick() < tState.activeEffects["IceShield"].endTime then
+        damage = math.floor(damage * ICE_SHIELD_REDUCTION)
+      end
+    end
+  end
+
+  -- Apply damage
+  targetHumanoid:TakeDamage(damage)
+
+  -- Trigger iframes on target player
+  if targetPlayer then
+    local tState = getState(targetPlayer)
+    if tState then
+      tState.isInvincible = true
+      tState.invincibleUntil = tick() + IFRAMES_DURATION
+      tState.lastDamageTaken = tick()
+
+      -- Track damage source for assists
+      if attackerPlayer then
+        tState.recentDamageSources[attackerPlayer.UserId] = tick()
+      end
+
+      -- Notify client for hit flash + screen shake
+      HitFlashRemote:FireClient(targetPlayer)
+      ScreenShakeRemote:FireClient(targetPlayer, 0.2)
+    end
+  end
+
+  -- Knockback
+  local targetHRP = targetModel:FindFirstChild("HumanoidRootPart") :: BasePart?
+  if targetHRP and attackerPlayer then
+    local attackerChar = attackerPlayer.Character
+    local attackerHRP = attackerChar and attackerChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if attackerHRP then
+      local knockDir = (targetHRP.Position - attackerHRP.Position).Unit
+      local bv = Instance.new("BodyVelocity")
+      bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+      bv.Velocity = knockDir * KNOCKBACK_FORCE + Vector3.new(0, 20, 0)
+      bv.Parent = targetHRP
+      Debris:AddItem(bv, KNOCKBACK_DURATION)
+    end
+  end
+
+  -- Floating damage number broadcast
+  local hitPos = targetHRP and targetHRP.Position or targetModel:GetPivot().Position
+  local color = isCrit and "Gold" or (damage > 0 and "Red" or "Green")
+  DamageNumberRemote:FireAllClients(hitPos, damage, color, isCrit)
+
+  -- Blood splatter particles
+  if targetHRP and damage > 0 then
+    local particles = Instance.new("ParticleEmitter")
+    particles.Color = ColorSequence.new(Color3.fromRGB(180, 20, 20))
+    particles.Size = NumberSequence.new(0.3, 0)
+    particles.Lifetime = NumberRange.new(0.2, 0.4)
+    particles.Speed = NumberRange.new(5, 15)
+    particles.SpreadAngle = Vector2.new(45, 45)
+    particles.Rate = 0
+    particles.Parent = targetHRP
+    particles:Emit(8)
+    Debris:AddItem(particles, 0.5)
+  end
+end
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 7: MELEE COMBAT
+-- ══════════════════════════════════════════════════════════════════════════
+
+local function handleMeleeAttack(player: Player, isHeavy: boolean)
+  local state = getState(player)
+  if not state or state.isDead then return end
+
   local now = tick()
-  if now - lastAttack < ATTACK_COOLDOWN then return end
+  local weaponId = state.meleeWeapon
+  if not weaponId then return end
+  local weapon = WEAPONS[weaponId]
+  if not weapon or weapon.weaponType ~= "Melee" then return end
+
+  -- Cooldown check
+  if isHeavy then
+    if now - state.lastHeavyAttack < HEAVY_COOLDOWN then return end
+    state.lastHeavyAttack = now
+  else
+    if now - state.lastMeleeAttack < weapon.attackSpeed then return end
+    state.lastMeleeAttack = now
+  end
 
   local char = player.Character
   if not char then return end
   local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
   if not hrp then return end
 
-  -- Raycast from camera through mouse
-  local unitRay = camera:ScreenPointToRay(mouse.X, mouse.Y)
-  local rayParams = RaycastParams.new()
-  rayParams.FilterDescendantsInstances = {char}
-  rayParams.FilterType = Enum.RaycastFilterType.Exclude
+  -- Combo tracking (melee only, not heavy)
+  local comboMultiplier = 1.0
+  if not isHeavy then
+    if now - state.lastComboTime <= COMBO_WINDOW then
+      state.comboCount += 1
+      if state.comboCount >= 3 then
+        comboMultiplier = COMBO_THIRD_MULT
+        state.comboCount = 0
+      end
+    else
+      state.comboCount = 1
+    end
+    state.lastComboTime = now
+  end
 
-  local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * ATTACK_RANGE, rayParams)
-  if not result then return end
+  -- Heavy attack multiplier
+  local heavyMult = isHeavy and HEAVY_DAMAGE_MULT or 1.0
 
-  local hitPart = result.Instance
-  if not hitPart then return end
+  -- Hit detection: GetPartBoundsInBox in front of player
+  local lookDir = hrp.CFrame.LookVector
+  local boxCenter = hrp.Position + lookDir * (weapon.range * 0.5)
+  local boxSize = Vector3.new(MELEE_WIDTH, 4, weapon.range)
+  local boxCF = CFrame.new(boxCenter, boxCenter + lookDir)
 
-  -- Check if hit part belongs to an enemy model
-  local model = hitPart:FindFirstAncestorOfClass("Model")
-  if not model then return end
+  local overlapParams = OverlapParams.new()
+  overlapParams.FilterDescendantsInstances = {char}
+  overlapParams.FilterType = Enum.RaycastFilterType.Exclude
 
-  local humanoid = model:FindFirstChildOfClass("Humanoid")
-  if not humanoid then return end
+  local hitParts = workspace:GetPartBoundsInBox(boxCF, boxSize, overlapParams)
+  local hitModels: {[Model]: boolean} = {}
 
-  -- Validate range (server will also validate — this is just client feedback)
-  if (hrp.Position - result.Position).Magnitude > ATTACK_RANGE then return end
+  for _, part in hitParts do
+    local model = part:FindFirstAncestorOfClass("Model")
+    if model and not hitModels[model] then
+      local hum = model:FindFirstChildOfClass("Humanoid")
+      if hum and hum.Health > 0 then
+        hitModels[model] = true
 
-  lastAttack = now
-  playSwingEffect(result.Position)
-  combatRemote:FireServer(model, CLICK_DAMAGE)
+        -- Get target defense
+        local targetDef = 0
+        local targetMR = 0
+        local targetPlayer: Player? = nil
+        for _, p in Players:GetPlayers() do
+          if p.Character == model then
+            targetPlayer = p
+            local tState = getState(p)
+            if tState then
+              targetDef = tState.defense
+              targetMR = tState.magicResist
+            end
+            break
+          end
+        end
+
+        local critBonus = weapon.critBonus or 0
+        local isCrit = rollCrit(5, state.luck, critBonus)
+        local finalDamage, wasCrit = calculateDamage(
+          weapon.baseDamage * comboMultiplier * heavyMult,
+          state.level,
+          1.0,
+          isCrit,
+          weapon.damageType,
+          targetDef,
+          targetMR
+        )
+
+        applyDamage(hum, model, finalDamage, wasCrit, player, weapon.damageType)
+      end
+    end
+  end
+end
+
+-- Sword trail effect (visual, applied on client via tool)
+-- The server just validates hits; client handles trail between two Attachments
+
+MeleeAttackRemote.OnServerEvent:Connect(function(player: Player)
+  handleMeleeAttack(player, false)
 end)
 
--- Server combat handler (place in ServerScriptService)
--- Note: This section below should be in a SEPARATE ServerScript
---[[
-local combatRemote = Instance.new("RemoteEvent")
-combatRemote.Name = "CombatAttack"
-combatRemote.Parent = game:GetService("ReplicatedStorage")
+HeavyAttackRemote.OnServerEvent:Connect(function(player: Player)
+  handleMeleeAttack(player, true)
+end)
 
-local attackCooldowns: {[number]: number} = {}
+-- Legacy compat
+CombatAttackRemote.OnServerEvent:Connect(function(player: Player, _targetModel: Model?, _damage: number?)
+  handleMeleeAttack(player, false)
+end)
 
-combatRemote.OnServerEvent:Connect(function(player: Player, targetModel: Model, damage: number)
-  -- Server-side validation
-  local userId = player.UserId
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 8: RANGED COMBAT
+-- ══════════════════════════════════════════════════════════════════════════
+
+local function spawnProjectile(
+  origin: CFrame,
+  direction: Vector3,
+  speed: number,
+  weapon: WeaponDef,
+  player: Player,
+  state: PlayerCombatState,
+  isArrow: boolean
+)
+  local projectile = Instance.new("Part")
+  projectile.Name = "Projectile_" .. player.UserId
+  projectile.Size = isArrow and Vector3.new(0.2, 0.2, 2) or Vector3.new(0.15, 0.15, 0.8)
+  projectile.Color = isArrow and Color3.fromRGB(139, 90, 43) or Color3.fromRGB(255, 200, 50)
+  projectile.Material = isArrow and Enum.Material.Wood or Enum.Material.Neon
+  projectile.Anchored = false
+  projectile.CanCollide = false
+  projectile.CastShadow = false
+  projectile.CFrame = CFrame.new(origin.Position, origin.Position + direction)
+  projectile.Parent = workspace
+
+  -- Trail for visual flair
+  local att0 = Instance.new("Attachment")
+  att0.Position = Vector3.new(0, 0, -1)
+  att0.Parent = projectile
+  local att1 = Instance.new("Attachment")
+  att1.Position = Vector3.new(0, 0, 1)
+  att1.Parent = projectile
+
+  local trail = Instance.new("Trail")
+  trail.Attachment0 = att0
+  trail.Attachment1 = att1
+  trail.Lifetime = 0.3
+  trail.MinLength = 0.1
+  trail.Color = ColorSequence.new(isArrow and Color3.fromRGB(200, 160, 100) or Color3.fromRGB(255, 255, 150))
+  trail.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0),
+    NumberSequenceKeypoint.new(1, 1),
+  })
+  trail.Parent = projectile
+
+  -- Velocity
+  local bv = Instance.new("BodyVelocity")
+  bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+  bv.Velocity = direction.Unit * speed
+  bv.Parent = projectile
+
+  -- Arrow drop (gravity arc)
+  if isArrow then
+    local bf = Instance.new("BodyForce")
+    bf.Force = Vector3.new(0, -projectile:GetMass() * ARROW_DROP_FORCE, 0)
+    bf.Parent = projectile
+    -- Reduce BodyVelocity max Y force so gravity takes effect
+    bv.MaxForce = Vector3.new(1e6, 0, 1e6)
+  end
+
+  Debris:AddItem(projectile, PROJECTILE_LIFETIME)
+
+  -- Hit detection
+  local alreadyHit = false
+  projectile.Touched:Connect(function(hitPart: BasePart)
+    if alreadyHit then return end
+    -- Ignore own character
+    local char = player.Character
+    if char and hitPart:IsDescendantOf(char) then return end
+
+    local model = hitPart:FindFirstAncestorOfClass("Model")
+    if not model then
+      -- Hit terrain/static object — destroy projectile
+      alreadyHit = true
+      projectile:Destroy()
+      return
+    end
+
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then
+      alreadyHit = true
+      projectile:Destroy()
+      return
+    end
+
+    alreadyHit = true
+
+    -- Headshot check
+    local headshotMult = 1.0
+    if hitPart.Name == "Head" then
+      headshotMult = HEADSHOT_MULT
+    end
+
+    -- Get target defense
+    local targetDef = 0
+    local targetMR = 0
+    for _, p in Players:GetPlayers() do
+      if p.Character == model then
+        local tState = getState(p)
+        if tState then
+          targetDef = tState.defense
+          targetMR = tState.magicResist
+        end
+        break
+      end
+    end
+
+    local isCrit = rollCrit(5, state.luck, weapon.critBonus or 0)
+    local finalDamage, wasCrit = calculateDamage(
+      weapon.baseDamage * headshotMult,
+      state.level,
+      1.0,
+      isCrit,
+      weapon.damageType,
+      targetDef,
+      targetMR
+    )
+
+    applyDamage(hum, model, finalDamage, wasCrit, player, weapon.damageType)
+    projectile:Destroy()
+  end)
+end
+
+RangedFireRemote.OnServerEvent:Connect(function(player: Player, aimDirection: Vector3)
+  local state = getState(player)
+  if not state or state.isDead then return end
+
+  local weaponId = state.rangedWeapon
+  if not weaponId then return end
+  local weapon = WEAPONS[weaponId]
+  if not weapon or weapon.weaponType ~= "Ranged" then return end
+
+  -- Cooldown
   local now = tick()
-  if now - (attackCooldowns[userId] or 0) < ${cooldown * 0.9} then return end
-  attackCooldowns[userId] = now
+  if now - state.lastRangedAttack < weapon.attackSpeed then return end
 
-  -- Validate target is a real enemy with humanoid
-  local humanoid = targetModel and targetModel:FindFirstChildOfClass("Humanoid")
-  if not humanoid or humanoid.Health <= 0 then return end
+  -- Ammo check
+  if state.currentAmmo <= 0 then return end
+  if state.isReloading then return end
 
-  -- Validate range
+  state.lastRangedAttack = now
+  state.currentAmmo -= 1
+
   local char = player.Character
-  local hrp = char and char:FindFirstChild("HumanoidRootPart")
-  local targetHrp = targetModel:FindFirstChild("HumanoidRootPart")
-  if not hrp or not targetHrp then return end
-  if (hrp.Position - targetHrp.Position).Magnitude > ${range + 5} then return end
+  if not char then return end
+  local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+  if not hrp then return end
 
-  -- Apply damage (always between 1 and 2x declared damage to prevent exploit)
-  local safeDamage = math.clamp(damage, 1, ${damage * 2})
-  humanoid:TakeDamage(safeDamage)
+  -- Validate aim direction (normalize, prevent exploits)
+  if typeof(aimDirection) ~= "Vector3" then return end
+  local dir = aimDirection.Unit
+  if dir ~= dir then return end -- NaN check
+
+  local isArrow = (weapon.projectileSpeed or ARROW_SPEED) <= ARROW_SPEED
+  local speed = weapon.projectileSpeed or ARROW_SPEED
+
+  spawnProjectile(hrp.CFrame, dir, speed, weapon, player, state, isArrow)
 end)
---]]
 
-print("[Combat] Click combat initialized — ${damage} dmg, ${range} studs range, ${cooldown}s cooldown")`
+ReloadRemote.OnServerEvent:Connect(function(player: Player)
+  local state = getState(player)
+  if not state or state.isDead or state.isReloading then return end
+  if state.currentAmmo >= state.maxAmmo then return end
+
+  state.isReloading = true
+
+  task.delay(RELOAD_TIME, function()
+    if state then
+      state.currentAmmo = state.maxAmmo
+      state.isReloading = false
+    end
+  end)
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 9: MAGIC / ABILITY SYSTEM
+-- ══════════════════════════════════════════════════════════════════════════
+
+export type AbilityDef = {
+  name: string,
+  manaCost: number,
+  cooldown: number,
+  damage: number?,
+  healAmount: number?,
+  range: number,
+  aoeRadius: number?,
+}
+
+local ABILITIES: {[string]: AbilityDef} = {
+  Fireball = {
+    name = "Fireball", manaCost = FIREBALL_COST, cooldown = FIREBALL_COOLDOWN,
+    damage = FIREBALL_DAMAGE, range = 60, aoeRadius = FIREBALL_AOE,
+  },
+  IceShield = {
+    name = "Ice Shield", manaCost = ICE_SHIELD_COST, cooldown = ICE_SHIELD_COOLDOWN,
+    range = 0, -- self-cast
+  },
+  LightningStrike = {
+    name = "Lightning Strike", manaCost = LIGHTNING_COST, cooldown = LIGHTNING_COOLDOWN,
+    damage = LIGHTNING_DAMAGE, range = 50, aoeRadius = LIGHTNING_AOE,
+  },
+  Heal = {
+    name = "Heal", manaCost = HEAL_COST, cooldown = HEAL_COOLDOWN,
+    range = 0, -- self-cast
+  },
+}
+
+local function castFireball(player: Player, state: PlayerCombatState, targetPos: Vector3)
+  local char = player.Character
+  if not char then return end
+  local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+  if not hrp then return end
+
+  local direction = (targetPos - hrp.Position).Unit
+  local fireball = Instance.new("Part")
+  fireball.Name = "Fireball"
+  fireball.Shape = Enum.PartType.Ball
+  fireball.Size = Vector3.new(2, 2, 2)
+  fireball.Color = Color3.fromRGB(255, 80, 0)
+  fireball.Material = Enum.Material.Neon
+  fireball.Anchored = false
+  fireball.CanCollide = false
+  fireball.CastShadow = false
+  fireball.CFrame = CFrame.new(hrp.Position + direction * 3)
+  fireball.Parent = workspace
+
+  -- Fire particles
+  local fireEmitter = Instance.new("ParticleEmitter")
+  fireEmitter.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 0)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 50, 0)),
+  })
+  fireEmitter.Size = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 1.5),
+    NumberSequenceKeypoint.new(1, 0),
+  })
+  fireEmitter.Lifetime = NumberRange.new(0.3, 0.6)
+  fireEmitter.Speed = NumberRange.new(3, 8)
+  fireEmitter.SpreadAngle = Vector2.new(30, 30)
+  fireEmitter.Rate = 80
+  fireEmitter.Parent = fireball
+
+  -- Light
+  local light = Instance.new("PointLight")
+  light.Color = Color3.fromRGB(255, 120, 0)
+  light.Brightness = 3
+  light.Range = 12
+  light.Parent = fireball
+
+  local bv = Instance.new("BodyVelocity")
+  bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+  bv.Velocity = direction * 80
+  bv.Parent = fireball
+
+  Debris:AddItem(fireball, 3)
+
+  local alreadyExploded = false
+  fireball.Touched:Connect(function(hitPart: BasePart)
+    if alreadyExploded then return end
+    local aChar = player.Character
+    if aChar and hitPart:IsDescendantOf(aChar) then return end
+    alreadyExploded = true
+
+    -- Explosion AoE
+    local explodePos = fireball.Position
+    fireball:Destroy()
+
+    -- Visual explosion
+    local explosion = Instance.new("Part")
+    explosion.Shape = Enum.PartType.Ball
+    explosion.Size = Vector3.new(1, 1, 1)
+    explosion.Color = Color3.fromRGB(255, 100, 0)
+    explosion.Material = Enum.Material.Neon
+    explosion.Anchored = true
+    explosion.CanCollide = false
+    explosion.Position = explodePos
+    explosion.Transparency = 0.3
+    explosion.Parent = workspace
+
+    local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local expandTween = TweenService:Create(explosion, tweenInfo, {
+      Size = Vector3.new(FIREBALL_AOE * 2, FIREBALL_AOE * 2, FIREBALL_AOE * 2),
+      Transparency = 1,
+    })
+    expandTween:Play()
+    Debris:AddItem(explosion, 0.5)
+
+    -- AoE damage
+    for _, target in workspace:GetChildren() do
+      if target:IsA("Model") and target ~= aChar then
+        local tHum = target:FindFirstChildOfClass("Humanoid")
+        local tHRP = target:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if tHum and tHRP and tHum.Health > 0 then
+          local dist = (tHRP.Position - explodePos).Magnitude
+          if dist <= FIREBALL_AOE then
+            local targetDef = 0
+            local targetMR = 0
+            for _, p in Players:GetPlayers() do
+              if p.Character == target then
+                local tState = getState(p)
+                if tState then targetMR = tState.magicResist end
+                break
+              end
+            end
+            local isCrit = rollCrit(5, state.luck, 0)
+            local dmg, wasCrit = calculateDamage(
+              FIREBALL_DAMAGE, state.level, 1.0, isCrit,
+              DAMAGE_TYPE.Magic, targetDef, targetMR
+            )
+            applyDamage(tHum, target, dmg, wasCrit, player, DAMAGE_TYPE.Magic)
+
+            -- Apply burn status
+            applyStatusEffect(target, "Burn", 5, {damagePerTick = 5, tickRate = 1})
+          end
+        end
+      end
+    end
+  end)
+end
+
+local function castIceShield(player: Player, state: PlayerCombatState)
+  -- Apply ice shield status effect
+  state.activeEffects["IceShield"] = {
+    endTime = tick() + ICE_SHIELD_DURATION,
+  }
+
+  -- Visual: ice crystals around player
+  local char = player.Character
+  if not char then return end
+  local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+  if not hrp then return end
+
+  local shield = Instance.new("Part")
+  shield.Name = "IceShield"
+  shield.Shape = Enum.PartType.Ball
+  shield.Size = Vector3.new(8, 8, 8)
+  shield.Color = Color3.fromRGB(150, 220, 255)
+  shield.Material = Enum.Material.Glass
+  shield.Transparency = 0.7
+  shield.Anchored = false
+  shield.CanCollide = false
+  shield.CastShadow = false
+  shield.Massless = true
+  shield.Parent = char
+
+  local weld = Instance.new("WeldConstraint")
+  weld.Part0 = hrp
+  weld.Part1 = shield
+  weld.Parent = shield
+
+  -- Sparkle particles
+  local sparkle = Instance.new("ParticleEmitter")
+  sparkle.Color = ColorSequence.new(Color3.fromRGB(180, 230, 255))
+  sparkle.Size = NumberSequence.new(0.2, 0)
+  sparkle.Lifetime = NumberRange.new(0.5, 1)
+  sparkle.Speed = NumberRange.new(2, 5)
+  sparkle.SpreadAngle = Vector2.new(180, 180)
+  sparkle.Rate = 30
+  sparkle.Parent = shield
+
+  Debris:AddItem(shield, ICE_SHIELD_DURATION)
+end
+
+local function castLightningStrike(player: Player, state: PlayerCombatState, targetPos: Vector3)
+  -- 1s delay before strike
+  task.delay(LIGHTNING_DELAY, function()
+    -- Visual: lightning bolt (thin Part from sky to ground)
+    local skyPos = Vector3.new(targetPos.X, targetPos.Y + 100, targetPos.Z)
+    local bolt = Instance.new("Part")
+    bolt.Name = "LightningBolt"
+    bolt.Size = Vector3.new(0.5, 100, 0.5)
+    bolt.Color = Color3.fromRGB(200, 200, 255)
+    bolt.Material = Enum.Material.Neon
+    bolt.Anchored = true
+    bolt.CanCollide = false
+    bolt.CFrame = CFrame.new((skyPos + targetPos) / 2, targetPos)
+    bolt.Parent = workspace
+
+    local boltLight = Instance.new("PointLight")
+    boltLight.Color = Color3.fromRGB(180, 180, 255)
+    boltLight.Brightness = 8
+    boltLight.Range = 30
+    boltLight.Parent = bolt
+
+    -- Flash effect
+    local tweenFade = TweenService:Create(bolt, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {
+      Transparency = 1,
+    })
+    tweenFade:Play()
+    Debris:AddItem(bolt, 0.6)
+
+    -- Ground impact ring
+    local ring = Instance.new("Part")
+    ring.Shape = Enum.PartType.Cylinder
+    ring.Size = Vector3.new(0.3, 1, 1)
+    ring.Color = Color3.fromRGB(200, 200, 255)
+    ring.Material = Enum.Material.Neon
+    ring.Anchored = true
+    ring.CanCollide = false
+    ring.CFrame = CFrame.new(targetPos) * CFrame.Angles(0, 0, math.rad(90))
+    ring.Parent = workspace
+
+    local ringTween = TweenService:Create(ring, TweenInfo.new(0.5), {
+      Size = Vector3.new(0.3, LIGHTNING_AOE * 2, LIGHTNING_AOE * 2),
+      Transparency = 1,
+    })
+    ringTween:Play()
+    Debris:AddItem(ring, 0.6)
+
+    -- AoE damage
+    local aChar = player.Character
+    for _, target in workspace:GetChildren() do
+      if target:IsA("Model") and target ~= aChar then
+        local tHum = target:FindFirstChildOfClass("Humanoid")
+        local tHRP = target:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if tHum and tHRP and tHum.Health > 0 then
+          local dist = (tHRP.Position - targetPos).Magnitude
+          if dist <= LIGHTNING_AOE then
+            local targetMR = 0
+            for _, p in Players:GetPlayers() do
+              if p.Character == target then
+                local ts = getState(p)
+                if ts then targetMR = ts.magicResist end
+                break
+              end
+            end
+            local isCrit = rollCrit(5, state.luck, 0)
+            local dmg, wasCrit = calculateDamage(
+              LIGHTNING_DAMAGE, state.level, 1.0, isCrit,
+              DAMAGE_TYPE.Magic, 0, targetMR
+            )
+            applyDamage(tHum, target, dmg, wasCrit, player, DAMAGE_TYPE.Magic)
+
+            -- Apply stun
+            applyStatusEffect(target, "Stun", 1.5, {})
+          end
+        end
+      end
+    end
+  end)
+end
+
+local function castHeal(player: Player, state: PlayerCombatState)
+  local healAmount = math.floor(state.maxHP * HEAL_PERCENT)
+  state.currentHP = math.min(state.maxHP, state.currentHP + healAmount)
+
+  -- Apply to humanoid
+  local char = player.Character
+  if not char then return end
+  local hum = char:FindFirstChildOfClass("Humanoid")
+  if hum then
+    hum.Health = math.min(hum.MaxHealth, hum.Health + healAmount)
+  end
+
+  -- Green healing particles
+  local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+  if hrp then
+    local healFX = Instance.new("ParticleEmitter")
+    healFX.Color = ColorSequence.new(Color3.fromRGB(50, 255, 50))
+    healFX.Size = NumberSequence.new({
+      NumberSequenceKeypoint.new(0, 0.5),
+      NumberSequenceKeypoint.new(1, 0),
+    })
+    healFX.Lifetime = NumberRange.new(0.5, 1)
+    healFX.Speed = NumberRange.new(3, 8)
+    healFX.SpreadAngle = Vector2.new(180, 180)
+    healFX.Rate = 0
+    healFX.Parent = hrp
+    healFX:Emit(20)
+    Debris:AddItem(healFX, 1.5)
+
+    -- Floating heal number
+    DamageNumberRemote:FireAllClients(hrp.Position, healAmount, "Green", false)
+  end
+end
+
+AbilityCastRemote.OnServerEvent:Connect(function(player: Player, abilityName: string, targetPos: Vector3?)
+  local state = getState(player)
+  if not state or state.isDead then return end
+
+  local ability = ABILITIES[abilityName]
+  if not ability then return end
+
+  -- Mana check
+  if state.currentMana < ability.manaCost then return end
+
+  -- Cooldown check
+  local now = tick()
+  local cdEnd = state.abilityCooldowns[abilityName] or 0
+  if now < cdEnd then return end
+
+  -- Deduct mana and set cooldown
+  state.currentMana -= ability.manaCost
+  state.abilityCooldowns[abilityName] = now + ability.cooldown
+
+  -- Cast the ability
+  if abilityName == "Fireball" and targetPos then
+    castFireball(player, state, targetPos)
+  elseif abilityName == "IceShield" then
+    castIceShield(player, state)
+  elseif abilityName == "LightningStrike" and targetPos then
+    castLightningStrike(player, state, targetPos)
+  elseif abilityName == "Heal" then
+    castHeal(player, state)
+  end
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 10: STATUS EFFECTS
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- Global status tracking for NPCs (players use playerStates)
+local npcStatusEffects: {[Model]: {[string]: {endTime: number, tickRate: number?, lastTick: number?, data: {[string]: any}?}}} = {}
+
+function applyStatusEffect(targetModel: Model, effectName: string, duration: number, data: {[string]: any}?)
+  -- Check if target is player
+  local targetPlayer: Player? = nil
+  for _, p in Players:GetPlayers() do
+    if p.Character == targetModel then
+      targetPlayer = p
+      break
+    end
+  end
+
+  local effectData = {
+    endTime = tick() + duration,
+    tickRate = (data and data.tickRate) or 1,
+    lastTick = tick(),
+    data = data,
+  }
+
+  if targetPlayer then
+    local tState = getState(targetPlayer)
+    if tState then
+      -- No stacking: overwrite existing effect of same type
+      tState.activeEffects[effectName] = effectData
+    end
+  else
+    if not npcStatusEffects[targetModel] then
+      npcStatusEffects[targetModel] = {}
+    end
+    npcStatusEffects[targetModel][effectName] = effectData
+  end
+
+  -- Visual effects based on type
+  local hrp = targetModel:FindFirstChild("HumanoidRootPart") :: BasePart?
+  if not hrp then return end
+
+  if effectName == "Burn" then
+    local fire = Instance.new("ParticleEmitter")
+    fire.Name = "BurnEffect"
+    fire.Color = ColorSequence.new({
+      ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 0)),
+      ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 50, 0)),
+    })
+    fire.Size = NumberSequence.new(0.5, 0)
+    fire.Lifetime = NumberRange.new(0.3, 0.6)
+    fire.Speed = NumberRange.new(3, 6)
+    fire.Rate = 20
+    fire.Parent = hrp
+    Debris:AddItem(fire, duration)
+
+  elseif effectName == "Freeze" then
+    -- Ice tint on character parts
+    for _, part in targetModel:GetDescendants() do
+      if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+        local origColor = part.Color
+        part:SetAttribute("OrigColor_R", origColor.R)
+        part:SetAttribute("OrigColor_G", origColor.G)
+        part:SetAttribute("OrigColor_B", origColor.B)
+        part.Color = Color3.fromRGB(150, 200, 255)
+      end
+    end
+    -- Slow: reduce WalkSpeed
+    local hum = targetModel:FindFirstChildOfClass("Humanoid")
+    if hum then
+      local origSpeed = hum.WalkSpeed
+      hum:SetAttribute("OrigWalkSpeed", origSpeed)
+      hum.WalkSpeed = origSpeed * 0.5
+    end
+    task.delay(duration, function()
+      -- Restore colors
+      for _, part in targetModel:GetDescendants() do
+        if part:IsA("BasePart") then
+          local r = part:GetAttribute("OrigColor_R")
+          local g = part:GetAttribute("OrigColor_G")
+          local b = part:GetAttribute("OrigColor_B")
+          if r and g and b then
+            part.Color = Color3.new(r, g, b)
+          end
+        end
+      end
+      local h = targetModel:FindFirstChildOfClass("Humanoid")
+      if h then
+        local os = h:GetAttribute("OrigWalkSpeed")
+        if os then h.WalkSpeed = os end
+      end
+    end)
+
+  elseif effectName == "Poison" then
+    local poison = Instance.new("ParticleEmitter")
+    poison.Name = "PoisonEffect"
+    poison.Color = ColorSequence.new(Color3.fromRGB(80, 200, 50))
+    poison.Size = NumberSequence.new(0.3, 0)
+    poison.Lifetime = NumberRange.new(0.5, 1)
+    poison.Speed = NumberRange.new(1, 3)
+    poison.SpreadAngle = Vector2.new(180, 180)
+    poison.Rate = 10
+    poison.Parent = hrp
+    Debris:AddItem(poison, duration)
+
+  elseif effectName == "Stun" then
+    local hum = targetModel:FindFirstChildOfClass("Humanoid")
+    if hum then
+      local origSpeed = hum.WalkSpeed
+      hum:SetAttribute("StunOrigSpeed", origSpeed)
+      hum.WalkSpeed = 0
+      hum.JumpPower = 0
+      task.delay(duration, function()
+        if hum and hum.Parent then
+          hum.WalkSpeed = hum:GetAttribute("StunOrigSpeed") or 16
+          hum.JumpPower = 50
+        end
+      end)
+    end
+  end
+end
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 11: HEALTH, DEATH & RESPAWN
+-- ══════════════════════════════════════════════════════════════════════════
+
+local function onPlayerDeath(player: Player, killer: Player?)
+  local state = getState(player)
+  if not state then return end
+
+  state.isDead = true
+  state.deaths += 1
+  state.killStreak = 0
+
+  -- Drop coins on death
+  if state.coins > 0 then
+    local dropAmount = math.floor(state.coins * DEATH_DROP_PERCENT)
+    state.coins -= dropAmount
+    -- Spawn pickup part at death location
+    local char = player.Character
+    if char then
+      local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+      if hrp then
+        local coinDrop = Instance.new("Part")
+        coinDrop.Name = "CoinDrop_" .. dropAmount
+        coinDrop.Shape = Enum.PartType.Cylinder
+        coinDrop.Size = Vector3.new(0.3, 1.5, 1.5)
+        coinDrop.Color = Color3.fromRGB(255, 200, 0)
+        coinDrop.Material = Enum.Material.Neon
+        coinDrop.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, 0, math.rad(90))
+        coinDrop.Anchored = false
+        coinDrop.CanCollide = true
+        coinDrop:SetAttribute("CoinAmount", dropAmount)
+        coinDrop.Parent = workspace
+        Debris:AddItem(coinDrop, 60) -- Despawn after 1 min
+      end
+    end
+  end
+
+  -- Ragdoll effect
+  local char = player.Character
+  if char then
+    for _, part in char:GetDescendants() do
+      if part:IsA("Motor6D") then
+        local socket = Instance.new("BallSocketConstraint")
+        local a0 = Instance.new("Attachment")
+        a0.Parent = part.Part0
+        local a1 = Instance.new("Attachment")
+        a1.Parent = part.Part1
+        socket.Attachment0 = a0
+        socket.Attachment1 = a1
+        socket.Parent = part.Parent
+        part:Destroy()
+      end
+    end
+    -- Upward impulse
+    local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if hrp then
+      local upVel = Instance.new("BodyVelocity")
+      upVel.MaxForce = Vector3.new(0, 1e5, 0)
+      upVel.Velocity = Vector3.new(0, 30, 0)
+      upVel.Parent = hrp
+      Debris:AddItem(upVel, 0.3)
+    end
+  end
+
+  -- Death camera (client-side grayscale)
+  DeathCamRemote:FireClient(player)
+
+  -- Credit the killer
+  if killer and killer ~= player then
+    local killerState = getState(killer)
+    if killerState then
+      killerState.kills += 1
+      killerState.killStreak += 1
+      killerState.coins += KILL_COIN_REWARD
+      killerState.xp += KILL_XP_REWARD
+
+      -- Double kill bonus
+      local now = tick()
+      if now - killerState.lastKillTime <= DOUBLE_KILL_WINDOW then
+        killerState.coins += KILL_COIN_REWARD -- 2x coins
+        killerState.xp += KILL_XP_REWARD
+      end
+      killerState.lastKillTime = now
+
+      -- Kill streak announcements
+      for i, threshold in STREAK_THRESHOLDS do
+        if killerState.killStreak == threshold then
+          KillStreakRemote:FireAllClients(killer.Name, STREAK_NAMES[i], killerState.killStreak)
+          break
+        end
+      end
+
+      -- Kill feed
+      local weaponName = "Unknown"
+      if killerState.meleeWeapon and WEAPONS[killerState.meleeWeapon] then
+        weaponName = WEAPONS[killerState.meleeWeapon].name
+      end
+      KillFeedRemote:FireAllClients(killer.Name, player.Name, weaponName)
+    end
+
+    -- Assist credit
+    if state then
+      local now2 = tick()
+      for attackerId, lastTime in state.recentDamageSources do
+        if attackerId ~= killer.UserId and now2 - lastTime <= ASSIST_WINDOW then
+          local assistPlayer = Players:GetPlayerByUserId(attackerId)
+          if assistPlayer then
+            local aState = getState(assistPlayer)
+            if aState then
+              aState.assists += 1
+              aState.xp += math.floor(KILL_XP_REWARD * 0.5)
+            end
+          end
+        end
+      end
+      state.recentDamageSources = {}
+    end
+  end
+
+  -- Respawn after delay
+  state.respawnTime = tick() + RESPAWN_TIME
+  task.delay(RESPAWN_TIME, function()
+    if not player.Parent then return end -- Player left
+    local st = getState(player)
+    if not st then return end
+
+    st.isDead = false
+    st.currentHP = st.maxHP
+    st.currentMana = st.maxMana
+
+    -- Spawn protection
+    st.spawnProtectionUntil = tick() + SPAWN_PROTECTION_TIME
+    st.isInvincible = true
+    st.invincibleUntil = tick() + SPAWN_PROTECTION_TIME
+
+    player:LoadCharacter()
+
+    RespawnRemote:FireClient(player)
+
+    -- Spawn protection golden glow
+    task.delay(0.5, function()
+      local newChar = player.Character
+      if newChar then
+        local glowPart = Instance.new("Part")
+        glowPart.Name = "SpawnProtection"
+        glowPart.Shape = Enum.PartType.Ball
+        glowPart.Size = Vector3.new(6, 6, 6)
+        glowPart.Color = Color3.fromRGB(255, 215, 0)
+        glowPart.Material = Enum.Material.Neon
+        glowPart.Transparency = 0.7
+        glowPart.Anchored = false
+        glowPart.CanCollide = false
+        glowPart.Massless = true
+        glowPart.Parent = newChar
+
+        local newHRP = newChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if newHRP then
+          local weld = Instance.new("WeldConstraint")
+          weld.Part0 = newHRP
+          weld.Part1 = glowPart
+          weld.Parent = glowPart
+        end
+
+        Debris:AddItem(glowPart, SPAWN_PROTECTION_TIME)
+      end
+    end)
+  end)
+end
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 12: EQUIPMENT SYSTEM
+-- ══════════════════════════════════════════════════════════════════════════
+
+EquipWeaponRemote.OnServerEvent:Connect(function(player: Player, slot: string, itemId: string)
+  local state = getState(player)
+  if not state then return end
+
+  if slot == "Melee" then
+    if WEAPONS[itemId] and WEAPONS[itemId].weaponType == "Melee" then
+      state.meleeWeapon = itemId
+    end
+  elseif slot == "Ranged" then
+    if WEAPONS[itemId] and WEAPONS[itemId].weaponType == "Ranged" then
+      state.rangedWeapon = itemId
+      state.currentAmmo = WEAPONS[itemId].ammoMax or MAX_AMMO
+      state.maxAmmo = WEAPONS[itemId].ammoMax or MAX_AMMO
+      state.isReloading = false
+    end
+  elseif slot == "Magic" then
+    if WEAPONS[itemId] and WEAPONS[itemId].weaponType == "Magic" then
+      state.magicWeapon = itemId
+    end
+  elseif slot == "ArmorHead" then
+    if ARMOR_SETS[itemId] and ARMOR_SETS[itemId].slot == "Head" then
+      state.armorHead = itemId
+      recalcArmorStats(state)
+    end
+  elseif slot == "ArmorChest" then
+    if ARMOR_SETS[itemId] and ARMOR_SETS[itemId].slot == "Chest" then
+      state.armorChest = itemId
+      recalcArmorStats(state)
+    end
+  elseif slot == "ArmorLegs" then
+    if ARMOR_SETS[itemId] and ARMOR_SETS[itemId].slot == "Legs" then
+      state.armorLegs = itemId
+      recalcArmorStats(state)
+    end
+  end
+
+  -- Store on character via attributes for other systems to read
+  local char = player.Character
+  if char then
+    char:SetAttribute("MeleeWeapon", state.meleeWeapon or "")
+    char:SetAttribute("RangedWeapon", state.rangedWeapon or "")
+    char:SetAttribute("MagicWeapon", state.magicWeapon or "")
+    char:SetAttribute("ArmorHead", state.armorHead or "")
+    char:SetAttribute("ArmorChest", state.armorChest or "")
+    char:SetAttribute("ArmorLegs", state.armorLegs or "")
+    char:SetAttribute("Defense", state.defense)
+    char:SetAttribute("MagicResist", state.magicResist)
+  end
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 13: ENEMY AI
+-- ══════════════════════════════════════════════════════════════════════════
+
+export type EnemyState = {
+  model: Model,
+  humanoid: Humanoid,
+  hrp: BasePart,
+  spawnPosition: Vector3,
+  maxHP: number,
+  damage: number,
+  attackSpeed: number,
+  aggroRange: number,
+  deaggroRange: number,
+  state: string,       -- "Idle" | "Patrol" | "Chase" | "Attack" | "Return"
+  target: Player?,
+  lastAttack: number,
+  patrolWaypoints: {Vector3},
+  currentWaypoint: number,
+  patrolWaitUntil: number,
+  lootTable: {{name: string, chance: number, value: number}},
+}
+
+local enemies: {EnemyState} = {}
+
+local function findEnemiesInWorkspace()
+  for _, model in workspace:GetDescendants() do
+    if model:IsA("Model") and model:GetAttribute("IsEnemy") then
+      local hum = model:FindFirstChildOfClass("Humanoid")
+      local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart?
+      if hum and hrp then
+        local waypoints: {Vector3} = {}
+        local wpFolder = model:FindFirstChild("Waypoints")
+        if wpFolder then
+          for _, wp in wpFolder:GetChildren() do
+            if wp:IsA("BasePart") then
+              table.insert(waypoints, wp.Position)
+            end
+          end
+        end
+        if #waypoints == 0 then
+          -- Default patrol: random nearby points
+          local sp = hrp.Position
+          table.insert(waypoints, sp + Vector3.new(10, 0, 0))
+          table.insert(waypoints, sp + Vector3.new(-10, 0, 0))
+          table.insert(waypoints, sp + Vector3.new(0, 0, 10))
+          table.insert(waypoints, sp + Vector3.new(0, 0, -10))
+        end
+
+        local loot: {{name: string, chance: number, value: number}} = {}
+        local lootStr = model:GetAttribute("LootTable") or "Coin:80:10,Gem:20:50"
+        for entry in string.gmatch(lootStr, "[^,]+") do
+          local name, chance, value = string.match(entry, "(%w+):(%d+):(%d+)")
+          if name then
+            table.insert(loot, {name = name, chance = tonumber(chance) or 50, value = tonumber(value) or 10})
+          end
+        end
+
+        local enemy: EnemyState = {
+          model = model,
+          humanoid = hum,
+          hrp = hrp,
+          spawnPosition = hrp.Position,
+          maxHP = model:GetAttribute("MaxHP") or 100,
+          damage = model:GetAttribute("Damage") or 15,
+          attackSpeed = model:GetAttribute("AttackSpeed") or ENEMY_ATTACK_SPEED,
+          aggroRange = model:GetAttribute("AggroRange") or ENEMY_AGGRO_RANGE,
+          deaggroRange = model:GetAttribute("DeaggroRange") or ENEMY_DEAGGRO_RANGE,
+          state = "Idle",
+          target = nil,
+          lastAttack = 0,
+          patrolWaypoints = waypoints,
+          currentWaypoint = 1,
+          patrolWaitUntil = 0,
+          lootTable = loot,
+        }
+
+        hum.MaxHealth = enemy.maxHP
+        hum.Health = enemy.maxHP
+
+        -- Death handler
+        hum.Died:Connect(function()
+          -- Drop loot
+          for _, lootEntry in enemy.lootTable do
+            if math.random(1, 100) <= lootEntry.chance then
+              local drop = Instance.new("Part")
+              drop.Name = "Loot_" .. lootEntry.name
+              drop.Size = Vector3.new(1, 1, 1)
+              drop.Shape = Enum.PartType.Ball
+              drop.Color = lootEntry.name == "Gem" and Color3.fromRGB(150, 50, 255) or Color3.fromRGB(255, 200, 0)
+              drop.Material = Enum.Material.Neon
+              drop.Anchored = false
+              drop.CanCollide = true
+              drop.Position = hrp.Position + Vector3.new(math.random(-3, 3), 2, math.random(-3, 3))
+              drop:SetAttribute("LootName", lootEntry.name)
+              drop:SetAttribute("LootValue", lootEntry.value)
+              drop.Parent = workspace
+              Debris:AddItem(drop, 30)
+            end
+          end
+
+          -- Credit nearest player who dealt damage
+          if enemy.target then
+            local killerState = getState(enemy.target)
+            if killerState then
+              killerState.kills += 1
+              killerState.xp += KILL_XP_REWARD
+              killerState.coins += KILL_COIN_REWARD
+            end
+          end
+
+          -- Respawn enemy after delay
+          task.delay(10, function()
+            if model and model.Parent then
+              hum.Health = enemy.maxHP
+              hrp.CFrame = CFrame.new(enemy.spawnPosition)
+              enemy.state = "Idle"
+              enemy.target = nil
+            end
+          end)
+        end)
+
+        table.insert(enemies, enemy)
+      end
+    end
+  end
+end
+
+local function updateEnemyAI(enemy: EnemyState, dt: number)
+  if not enemy.model.Parent or not enemy.humanoid or enemy.humanoid.Health <= 0 then return end
+
+  local now = tick()
+  local myPos = enemy.hrp.Position
+
+  -- Leash check: if too far from spawn, hard return + reset
+  if (myPos - enemy.spawnPosition).Magnitude > ENEMY_LEASH_RANGE then
+    enemy.state = "Return"
+    enemy.target = nil
+    enemy.humanoid.Health = enemy.maxHP
+    enemy.hrp.CFrame = CFrame.new(enemy.spawnPosition)
+    return
+  end
+
+  -- Find closest player for aggro
+  if enemy.state ~= "Chase" and enemy.state ~= "Attack" then
+    local closestPlayer: Player? = nil
+    local closestDist = enemy.aggroRange
+
+    for _, player in Players:GetPlayers() do
+      local char = player.Character
+      if char then
+        local pHRP = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+        local pHum = char:FindFirstChildOfClass("Humanoid")
+        if pHRP and pHum and pHum.Health > 0 then
+          local dist = (pHRP.Position - myPos).Magnitude
+          if dist < closestDist then
+            closestDist = dist
+            closestPlayer = player
+          end
+        end
+      end
+    end
+
+    if closestPlayer then
+      enemy.target = closestPlayer
+      enemy.state = "Chase"
+    end
+  end
+
+  -- State machine
+  if enemy.state == "Idle" then
+    if now >= enemy.patrolWaitUntil then
+      enemy.state = "Patrol"
+    end
+
+  elseif enemy.state == "Patrol" then
+    local wp = enemy.patrolWaypoints[enemy.currentWaypoint]
+    if wp then
+      enemy.humanoid:MoveTo(wp)
+      if (myPos - wp).Magnitude < 3 then
+        enemy.currentWaypoint = (enemy.currentWaypoint % #enemy.patrolWaypoints) + 1
+        enemy.patrolWaitUntil = now + ENEMY_PATROL_WAIT
+        enemy.state = "Idle"
+      end
+    end
+
+  elseif enemy.state == "Chase" then
+    if not enemy.target or not enemy.target.Parent then
+      enemy.state = "Return"
+      enemy.target = nil
+      return
+    end
+
+    local targetChar = enemy.target.Character
+    if not targetChar then
+      enemy.state = "Return"
+      enemy.target = nil
+      return
+    end
+
+    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+    local targetHum = targetChar:FindFirstChildOfClass("Humanoid")
+    if not targetHRP or not targetHum or targetHum.Health <= 0 then
+      enemy.state = "Return"
+      enemy.target = nil
+      return
+    end
+
+    local distToTarget = (targetHRP.Position - myPos).Magnitude
+
+    -- Deaggro check
+    if distToTarget > enemy.deaggroRange then
+      enemy.state = "Return"
+      enemy.target = nil
+      return
+    end
+
+    if distToTarget <= ENEMY_ATTACK_RANGE then
+      enemy.state = "Attack"
+    else
+      enemy.humanoid:MoveTo(targetHRP.Position)
+    end
+
+  elseif enemy.state == "Attack" then
+    if not enemy.target or not enemy.target.Parent then
+      enemy.state = "Return"
+      enemy.target = nil
+      return
+    end
+
+    local targetChar = enemy.target.Character
+    if not targetChar then
+      enemy.state = "Return"
+      enemy.target = nil
+      return
+    end
+
+    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+    local targetHum = targetChar:FindFirstChildOfClass("Humanoid")
+    if not targetHRP or not targetHum or targetHum.Health <= 0 then
+      enemy.state = "Return"
+      enemy.target = nil
+      return
+    end
+
+    local distToTarget = (targetHRP.Position - myPos).Magnitude
+
+    -- Move back to chase if target ran away
+    if distToTarget > ENEMY_ATTACK_RANGE * 1.5 then
+      enemy.state = "Chase"
+      return
+    end
+
+    -- Face target
+    enemy.hrp.CFrame = CFrame.lookAt(myPos, Vector3.new(targetHRP.Position.X, myPos.Y, targetHRP.Position.Z))
+
+    -- Attack on cooldown
+    if now - enemy.lastAttack >= enemy.attackSpeed then
+      enemy.lastAttack = now
+      applyDamage(targetHum, targetChar, enemy.damage, false, nil, DAMAGE_TYPE.Physical)
+    end
+
+  elseif enemy.state == "Return" then
+    local distToSpawn = (myPos - enemy.spawnPosition).Magnitude
+    if distToSpawn < 3 then
+      enemy.state = "Idle"
+      enemy.patrolWaitUntil = now + ENEMY_PATROL_WAIT
+      -- Heal to full when returning
+      enemy.humanoid.Health = enemy.maxHP
+    else
+      enemy.humanoid:MoveTo(enemy.spawnPosition)
+    end
+  end
+end
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 14: GAME LOOP — Tick every frame
+-- ══════════════════════════════════════════════════════════════════════════
+
+local function processStatusEffects(model: Model, effects: {[string]: {endTime: number, tickRate: number?, lastTick: number?, data: {[string]: any}?}})
+  local now = tick()
+  local hum = model:FindFirstChildOfClass("Humanoid")
+  if not hum or hum.Health <= 0 then return end
+
+  for name, effect in effects do
+    if now >= effect.endTime then
+      effects[name] = nil
+      continue
+    end
+
+    local tickRate = effect.tickRate or 1
+    if now - (effect.lastTick or 0) >= tickRate then
+      effect.lastTick = now
+      local data = effect.data
+
+      if name == "Burn" then
+        local dmgPerTick = (data and data.damagePerTick) or 5
+        hum:TakeDamage(dmgPerTick)
+      elseif name == "Poison" then
+        local dmgPerTick = (data and data.damagePerTick) or 3
+        hum:TakeDamage(dmgPerTick)
+      end
+    end
+  end
+end
+
+RunService.Heartbeat:Connect(function(dt: number)
+  local now = tick()
+
+  -- Update all player states
+  for _, player in Players:GetPlayers() do
+    local state = getState(player)
+    if not state or state.isDead then continue end
+
+    -- Mana regeneration
+    if state.currentMana < state.maxMana then
+      state.currentMana = math.min(state.maxMana, state.currentMana + MANA_REGEN_RATE * dt)
+    end
+
+    -- HP regeneration (only out of combat)
+    if now - state.lastDamageTaken >= OUT_OF_COMBAT_TIME then
+      local char = player.Character
+      local hum = char and char:FindFirstChildOfClass("Humanoid")
+      if hum and hum.Health < hum.MaxHealth and hum.Health > 0 then
+        hum.Health = math.min(hum.MaxHealth, hum.Health + HP_REGEN_RATE * dt)
+        state.currentHP = hum.Health
+      end
+    end
+
+    -- Clear expired iframes
+    if state.isInvincible and now >= state.invincibleUntil then
+      state.isInvincible = false
+    end
+
+    -- Process status effects
+    local char = player.Character
+    if char then
+      processStatusEffects(char, state.activeEffects)
+    end
+
+    -- Sync HP with humanoid
+    local character = player.Character
+    if character then
+      local hum = character:FindFirstChildOfClass("Humanoid")
+      if hum then
+        state.currentHP = hum.Health
+        -- Detect death
+        if hum.Health <= 0 and not state.isDead then
+          -- Find killer from recent damage sources
+          local killer: Player? = nil
+          local latestTime = 0
+          for attackerId, lastTime in state.recentDamageSources do
+            if lastTime > latestTime then
+              latestTime = lastTime
+              killer = Players:GetPlayerByUserId(attackerId)
+            end
+          end
+          onPlayerDeath(player, killer)
+        end
+      end
+    end
+  end
+
+  -- Process NPC status effects
+  for model, effects in npcStatusEffects do
+    if model.Parent then
+      processStatusEffects(model, effects)
+    else
+      npcStatusEffects[model] = nil
+    end
+  end
+
+  -- Update enemy AI
+  for _, enemy in enemies do
+    updateEnemyAI(enemy, dt)
+  end
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 15: PLAYER SETUP & LEADERSTATS
+-- ══════════════════════════════════════════════════════════════════════════
+
+Players.PlayerAdded:Connect(function(player: Player)
+  local state = initPlayerState(player)
+
+  -- Leaderstats
+  local ls = Instance.new("Folder")
+  ls.Name = "leaderstats"
+  ls.Parent = player
+
+  local killsStat = Instance.new("IntValue")
+  killsStat.Name = "Kills"
+  killsStat.Value = 0
+  killsStat.Parent = ls
+
+  local deathsStat = Instance.new("IntValue")
+  deathsStat.Name = "Deaths"
+  deathsStat.Value = 0
+  deathsStat.Parent = ls
+
+  local coinsStat = Instance.new("IntValue")
+  coinsStat.Name = "Coins"
+  coinsStat.Value = 0
+  coinsStat.Parent = ls
+
+  -- Update leaderstats periodically
+  task.spawn(function()
+    while player.Parent do
+      local s = getState(player)
+      if s then
+        killsStat.Value = s.kills
+        deathsStat.Value = s.deaths
+        coinsStat.Value = s.coins
+      end
+      task.wait(1)
+    end
+  end)
+
+  -- Character setup on spawn
+  player.CharacterAdded:Connect(function(char: Model)
+    local hum = char:WaitForChild("Humanoid") :: Humanoid
+    hum.MaxHealth = state.maxHP
+    hum.Health = state.currentHP
+
+    -- Apply armor speed penalty
+    recalcArmorStats(state)
+    local totalPenalty = 0
+    local slots = {state.armorHead, state.armorChest, state.armorLegs}
+    for _, armorId in slots do
+      if armorId and ARMOR_SETS[armorId] then
+        totalPenalty += ARMOR_SETS[armorId].speedPenalty
+      end
+    end
+    hum.WalkSpeed = math.max(8, 16 - totalPenalty)
+
+    -- Store attributes on character
+    char:SetAttribute("Level", state.level)
+    char:SetAttribute("Defense", state.defense)
+    char:SetAttribute("MagicResist", state.magicResist)
+    char:SetAttribute("MeleeWeapon", state.meleeWeapon or "")
+  end)
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+  playerStates[player.UserId] = nil
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SECTION 16: LOOT PICKUP
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- Coin drop pickup (from player death drops and enemy loot)
+RunService.Heartbeat:Connect(function()
+  for _, part in workspace:GetChildren() do
+    if part:IsA("BasePart") and (string.match(part.Name, "^CoinDrop_") or string.match(part.Name, "^Loot_")) then
+      local amount = part:GetAttribute("CoinAmount") or part:GetAttribute("LootValue") or 0
+      for _, player in Players:GetPlayers() do
+        local char = player.Character
+        if char then
+          local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+          if hrp and (hrp.Position - part.Position).Magnitude < 4 then
+            local state = getState(player)
+            if state then
+              state.coins += amount
+            end
+            part:Destroy()
+            break
+          end
+        end
+      end
+    end
+  end
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- INITIALIZATION
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- Find all enemies tagged in workspace
+task.defer(function()
+  findEnemiesInWorkspace()
+  print("[Combat] Found " .. #enemies .. " enemy NPCs")
+end)
+
+print("[Combat] Production combat system initialized")
+print("[Combat] Melee: " .. BASE_CLICK_DAMAGE .. " base dmg, " .. ATTACK_RANGE_MELEE .. " studs range")
+print("[Combat] Weapons: " .. #{k for k, _ in WEAPONS} .. " defined")
+print("[Combat] Abilities: Fireball, Ice Shield, Lightning Strike, Heal")
+print("[Combat] Status effects: Burn, Freeze, Poison, Stun")
+print("[Combat] Enemy AI: Idle → Patrol → Chase → Attack → Return")`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
