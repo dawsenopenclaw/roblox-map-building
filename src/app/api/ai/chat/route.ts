@@ -105,6 +105,7 @@ import {
   extractGameStateFromResponse,
   type GameState,
 } from '@/lib/ai/user-memory'
+import { extractStyleFromCode, formatStyleConstraint } from '@/lib/ai/style-enforcer'
 
 // ─── Auto-log conversation to DB (fire-and-forget) ──────────────────────────
 // Persists every user→assistant exchange so admin can review beta tester chats.
@@ -3277,6 +3278,8 @@ async function callGemini(
   userMessage: string,
   history: Array<{ role: string; content: string }>,
   maxTokens: number = 8192,
+  /** Optional base64 PNG screenshot to include as a vision input */
+  screenshotBase64?: string | null,
 ): Promise<string | null> {
   // Try up to 3 different keys from the rotation pool
   for (let keyAttempt = 0; keyAttempt < 3; keyAttempt++) {
@@ -3284,6 +3287,15 @@ async function callGemini(
     if (!geminiKey) return null
 
     try {
+      // Build the user message parts — text + optional screenshot image
+      const userParts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = []
+      if (screenshotBase64) {
+        userParts.push({ inlineData: { mimeType: 'image/png', data: screenshotBase64 } })
+        userParts.push({ text: 'I can see your current workspace from the screenshot above. Here is the request:\n\n' + userMessage })
+      } else {
+        userParts.push({ text: userMessage })
+      }
+
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
         {
@@ -3296,7 +3308,7 @@ async function callGemini(
                 role: h.role === 'assistant' ? 'model' : 'user',
                 parts: [{ text: h.content }],
               })),
-              { role: 'user', parts: [{ text: userMessage }] },
+              { role: 'user', parts: userParts },
             ],
             generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4 },
           }),
@@ -6260,6 +6272,22 @@ async function freeModelTwoPass(
     }
   }
 
+  // ── STYLE CONSISTENCY: load previous build style from user memory ────────
+  let styleConstraintPrompt = ''
+  if (userId && isBuildIntent) {
+    try {
+      const { getUserPreferences } = await import('@/lib/ai/user-memory')
+      const prefs = await getUserPreferences(userId)
+      if (prefs.build_style) {
+        const previousStyle = JSON.parse(prefs.build_style) as import('@/lib/ai/style-enforcer').BuildStyle
+        styleConstraintPrompt = formatStyleConstraint(previousStyle)
+        if (styleConstraintPrompt) console.log(`[style-enforcer] Loaded style constraint for user ${userId.slice(0, 8)}: theme=${previousStyle.theme}, ${previousStyle.materials.length} materials`)
+      }
+    } catch (err) {
+      console.warn('[style-enforcer] Non-blocking style load:', err instanceof Error ? err.message : err)
+    }
+  }
+
   // ── GAME STATE: load multi-turn project state for fullgame/gameplan ────────
   let gameStatePrompt = ''
   let currentGameState: GameState | null = null
@@ -6398,6 +6426,13 @@ Type: [type] | Theme: [theme] | Estimated Total Parts: [X,XXX - XX,XXX]
 
 **Phase 8: Polish/Detail**
 - [Sounds, animations, quality-of-life features]
+
+If the user wants to monetize their game (mentions money, robux, game passes, premium, etc.), include:
+**Phase 9: Monetization**
+- Game Passes (VIP, Speed Boost, Double XP, Extra Inventory Slots, etc.) — recommend 49-499 Robux each
+- Developer Products (coins, gems, revives, crate keys) — recommend 25-199 Robux each
+- Premium Benefits (Roblox Premium exclusive perks: bonus coins, exclusive areas, premium badge)
+- Include estimated Robux pricing recommendations based on game type
 
 End with: "Ready to start building Phase 1?"
 
@@ -6547,7 +6582,7 @@ Use your knowledge of what makes popular Roblox games successful.`
   const gameKnowledge = buildGameKnowledgePrompt(message)
 
   const studioMechanics = getStudioMechanicsKnowledge()
-  const codePrompt = studioMechanics + specialistPrefix + userPreferencesPrompt + gameStatePrompt + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
+  const codePrompt = studioMechanics + specialistPrefix + userPreferencesPrompt + styleConstraintPrompt + gameStatePrompt + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
 
 HOW TO TALK:
 - Talk like a real person. "Alright, check this out —" not "Create a detailed Roblox tree model with the following specifications:"
@@ -8768,13 +8803,43 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     // Old approach raced 4 providers and Groq (Llama 3.3) always won because it's fastest,
     // but produced garbage 15-part builds. Gemini 2.5 Flash is much better at following
     // complex building instructions with part counts, loops, and architectural detail.
+
+    // ── SCREENSHOT VISION: let Gemini SEE the workspace for build intents ──
+    // If the session has a screenshot, include it as a vision input so the AI
+    // can build around what already exists. Only for build intents, not scripts.
+    // Screenshots > 1MB base64 are skipped to avoid payload bloat.
+    const MAX_SCREENSHOT_B64_LEN = 1_400_000 // ~1MB base64 ≈ 1.37M chars
+    let buildScreenshot: string | null = null
+    if (isBuildIntent && !isScriptIntent && sessionId) {
+      try {
+        const { getSession: getScreenshotSession } = await import('@/lib/studio-session')
+        const ssSession = await getScreenshotSession(sessionId)
+        if (ssSession) {
+          // Prefer beforeScreenshot (pre-build) — shows the current workspace state
+          const shot = ssSession.beforeScreenshot || ssSession.latestScreenshot
+          if (shot && shot.length < MAX_SCREENSHOT_B64_LEN) {
+            buildScreenshot = shot
+            const shotType = ssSession.beforeScreenshot ? 'before' : 'latest'
+            console.log(`[Vision] Including ${shotType} screenshot (${(shot.length / 1024).toFixed(0)}KB base64) for build context`)
+            // Add vision context to the prompt so the AI knows it can see
+            enrichedCodePrompt += '\n\nVISION CONTEXT: A screenshot of the user\'s current Roblox Studio workspace is included. Observe what already exists and build AROUND it — do not overlap or replace existing structures unless the user asks. Match the existing style if present.'
+          } else if (shot) {
+            console.log(`[Vision] Screenshot too large (${(shot.length / 1024).toFixed(0)}KB) — skipping vision`)
+          }
+        }
+      } catch (ssErr) {
+        console.warn('[Vision] Non-blocking screenshot load error:', ssErr instanceof Error ? ssErr.message : ssErr)
+      }
+    }
+
     let buildRace: { result: string; index: number } | null = null
     const outputTokens = isScriptIntent ? 32768 : 16384
     if (!luauCode) {
       logTiming('pre-gemini')
       console.log(`[SinglePass] Gemini-first build gen for: "${message.slice(0, 50)}" | prompt: ${enrichedCodePrompt.length} chars (base: ${basePromptLength}, enriched: +${enrichmentChars})`)
       // Try Gemini first — it's the best at structured code generation
-      const geminiResult = await callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens)
+      // Include workspace screenshot for vision-aware builds when available
+      const geminiResult = await callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens, buildScreenshot)
       logTiming('post-gemini')
       if (geminiResult && geminiResult.length > 200) {
         buildRace = { result: geminiResult, index: 2 }
@@ -9321,6 +9386,19 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
         timestamp: Date.now(),
       })
       console.log(`[BuildContext] Saved context for session ${sessionId} (${ctxPartCount} parts)`)
+
+      // ── STYLE ENFORCEMENT: extract and persist build style for consistency ──
+      if (userId && luauCode.length > 200) {
+        try {
+          const style = extractStyleFromCode(luauCode)
+          if (style.materials.length > 0 || style.colors.length > 0) {
+            void saveUserPreference(userId, 'build_style', JSON.stringify(style)).catch(() => {})
+            console.log(`[style-enforcer] Saved style: theme=${style.theme}, ${style.materials.length} materials, ${style.colors.length} colors`)
+          }
+        } catch (styleErr) {
+          console.warn('[style-enforcer] Non-blocking style save:', styleErr instanceof Error ? styleErr.message : styleErr)
+        }
+      }
     }
 
     // Auto-execute in Studio + error recovery loop
@@ -9490,8 +9568,26 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
       } catch { /* non-blocking */ }
     }
 
+    // ── Auto-suggest next phase after fullgame/gameplan build completes ──
+    let phaseHint = ''
+    if (userId && sessionId && (intent === 'fullgame' || intent === 'gameplan') && luauCode) {
+      try {
+        const gameState = await loadGameState(userId, sessionId)
+        if (gameState && gameState.phases.length > 0) {
+          const completedCount = gameState.completedPhases.length
+          const totalCount = gameState.phases.length
+          const nextPhase = gameState.phases.find(p => !gameState.completedPhases.includes(p))
+          if (nextPhase) {
+            phaseHint = `\n\n**Progress: ${completedCount}/${totalCount} phases complete.**\nNext up: **${nextPhase}** — say "build next phase" or "continue" to proceed.`
+          } else {
+            phaseHint = `\n\n**All ${totalCount} phases complete!** Your game is built. Want me to add polish, more detail, or new features?`
+          }
+        }
+      } catch { /* non-blocking */ }
+    }
+
     return {
-      conversationText: finalConv,
+      conversationText: finalConv + phaseHint,
       luauCode,
       executedInStudio,
       suggestions,
@@ -13264,6 +13360,16 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
     intent: 'building',
   },
   {
+    // Phase continuation — user wants to build the next phase of a game plan
+    // Must be checked BEFORE gameplan so "continue" doesn't restart planning
+    patterns: [
+      /^(continue|next phase|build next phase|next step|keep going|keep building)\s*[!.]*$/i,
+      /\b(build (?:the )?next phase|start (?:the )?next phase|move to (?:the )?next phase)\b/i,
+      /\b(continue building|continue the game|build phase \d+)\b/i,
+    ],
+    intent: 'fullgame',
+  },
+  {
     // Game planning conversation — user wants to plan before building
     // Must be checked BEFORE fullgame so "help me plan a game" doesn't jump to code gen
     patterns: [
@@ -13398,6 +13504,10 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
       /\b(combat system|damage system|health system|pvp system|respawn system)\b/i,
       /\b(trading? system|player.?to.?player trade|trade system)\b/i,
       /\b(daily rewards? system|login streak system|daily bonus system)\b/i,
+      // Monetization — game passes, developer products, premium benefits
+      /\b(monetize|monetization|game pass(?:es)?|developer product(?:s)?|dev product(?:s)?|premium benefits?)\b/i,
+      /\b(make money|earn robux|robux income|in.?game purchases?|microtransactions?)\b/i,
+      /\b(add|make|create|build|implement|give me|set ?up)\b.{0,20}\b(a |an )?(game pass|dev(?:eloper)? product|monetization|premium)\b/i,
       // Natural language variants
       /\b(add|make|create|build|implement|give me|set ?up)\b.{0,20}\b(a |an )?(currency|coin|shop|pet|inventory|leaderboard|level|xp|quest|combat|trade|trading|daily reward)\b/i,
       /\b(a |an )(currency|shop|pet|inventory|leaderboard|leveling|xp|quest|combat|trading|daily rewards?) system\b/i,
@@ -15860,6 +15970,22 @@ DAMAGE MODULE:
       }
     } catch {
       // Postgres unavailable — no auto-discovery
+    }
+  }
+
+  // ── AUTO WORKSPACE SCAN: ensure fresh workspace data before builds ──────
+  // If the session exists but has no workspace snapshot, queue a non-blocking
+  // scan_workspace command so the plugin captures current state. The scan
+  // won't delay THIS build, but the NEXT one will have fresh data.
+  if (sessionId) {
+    try {
+      const scanSession = await getSession(sessionId)
+      if (scanSession && scanSession.connected && !scanSession.latestState?.worldSnapshot) {
+        void queueCommand(sessionId, { type: 'scan_workspace', data: {} }).catch(() => {})
+        console.log(`[chat] Queued workspace scan for session ${sessionId} (no snapshot yet)`)
+      }
+    } catch {
+      // Non-blocking — don't fail the chat if scan queue fails
     }
   }
 
