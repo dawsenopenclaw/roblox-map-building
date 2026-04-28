@@ -212,6 +212,22 @@ VEHICLE TYPE VARIATIONS:
 - Bus: very long (25-30 studs), tall (8 studs), many windows, flat front
 - Motorcycle: no body shell — exposed frame tubes, seat, handlebars, two wheels inline
 
+DRIVING FUNCTIONALITY (CRITICAL — every vehicle MUST be driveable, NOT static):
+- VehicleSeat: placed at driver position, set as Model.PrimaryPart
+  - Ground vehicles: MaxSpeed=50, Torque=10000, TurnSpeed=2
+  - Boats: MaxSpeed=30, Torque=15000
+  - Aircraft: MaxSpeed=100
+- ALL body parts: Anchored=false, connected with WeldConstraint to chassis
+- Wheels: HingeConstraint with Motor (axis attachment on chassis, wheel spins freely)
+  - CustomPhysicalProperties(0.5, 0.3, 0.5, 1, 1) for realistic grip
+- Engine sound: Sound instance (Looped=true, Volume=0.3) parented to chassis
+- Boats: low-density hull via CustomPhysicalProperties(0.3,0,0,0,0) + BodyForce for buoyancy
+- Aircraft: BodyVelocity for thrust + BodyGyro for orientation + flight control script
+  - W/S=pitch, A/D=roll, Q/E=yaw, Shift/Ctrl=throttle
+- Helicopters: BodyPosition for altitude + spinning rotor (HingeConstraint AngularVelocity)
+- Spaceships: full 6DOF with BodyVelocity + BodyGyro, thrusters (ParticleEmitter)
+- A vehicle with no VehicleSeat or all parts Anchored=true = FAILURE
+
 ────────────────────────────────────────────────────────────────────────────────
 1.4 FURNITURE
 ────────────────────────────────────────────────────────────────────────────────

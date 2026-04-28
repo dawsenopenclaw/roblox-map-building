@@ -296,7 +296,7 @@ BEHAVIOR SCRIPTING (add life to builds):
 - Doors: add ClickDetector + TweenService open/close
 - Lights: add flickering (PointLight.Brightness randomized via Heartbeat)
 - Machines: add moving parts (conveyor belt TweenService loop, gears rotating)
-- Vehicles: add VehicleSeat so players can drive
+- Vehicles: add VehicleSeat + full driving physics (HingeConstraint wheels, BodyVelocity/BodyGyro for flight, unanchored chassis with WeldConstraints). A STATIC vehicle = FAILURE. Every vehicle must be driveable/flyable/sailable.
 - Water features: add ParticleEmitter for splash/mist
 
 ORGANIZATION: Group ALL parts in a named Model. Use Folders: Foundation, Walls, WallDetail, Windows, Doors, Roof, Interior, Furniture, Exterior, Lights. Anchor ALL parts. Wrap in ChangeHistoryService.
@@ -328,7 +328,7 @@ FENCE (per section, 8+ parts): 2 posts (with cap tops and base plates) + 2 horiz
 
 ROCK (6+ parts): 3-4 irregular Parts at different angles (use CFrame.Angles for random tilt) + varying materials (Slate, Granite, Basalt) + varying shades of gray/brown + small pebble Parts scattered around base
 
-VEHICLE CAR (20+ parts): Body shell (main Part) + hood + trunk + 4 wheel cylinders + 4 wheel well arches + 2 headlights (with PointLight) + 2 taillights (red neon) + windshield (Glass, transparent) + side windows + door panel lines + bumpers + side mirrors + exhaust pipe
+VEHICLE CAR (30+ parts, MUST BE DRIVEABLE): Multi-part body (hood + cabin + trunk + fenders + bumpers, NOT one box) + panel lines (thin dark 0.04-stud Parts) + 4 wheels (each: tire Cyl + rim Cyl + hubcap + brake disc) with HingeConstraint + wheel well arches + 2 headlights (Glass + SpotLight) + 2 taillights (red Neon + PointLight) + windshield (Glass angled 30-45deg, Transparency 0.3) + side windows + door panel lines + side mirrors + interior (dashboard with SurfaceGui, steering wheel, seats) + undercarriage (exhaust, axles, engine block) + VehicleSeat as PrimaryPart (MaxSpeed=50, Torque=10000, TurnSpeed=2) + ALL parts Anchored=false welded with WeldConstraint + engine Sound (Looped=true)
 
 BED (12+ parts): Frame (base rectangle) + headboard (tall panel with trim) + footboard (shorter) + mattress (Fabric, raised) + 2 pillows (small white ellipsoids) + blanket (thin draped part, slightly rumpled with CFrame.Angles tilt) + 2 side rails + under-bed shadow part
 
@@ -356,9 +356,111 @@ GAP PREVENTION FOR PROPS:
 - Wheels MUST touch the ground AND align with the body
 - ZERO visible gaps. Calculate every position from neighbor edges.
 
+VEHICLE FUNCTIONALITY (CRITICAL — vehicles must be DRIVEABLE, not static):
+
+When building ANY vehicle (car, truck, tank, boat, plane, helicopter, motorcycle, train, spaceship), you MUST include:
+
+CAR/TRUCK/MOTORCYCLE (ground vehicles):
+- VehicleSeat in the driver position (Size 2x1x2, set as Model.PrimaryPart)
+- VehicleSeat properties: MaxSpeed=50, Torque=10000, TurnSpeed=2
+- 4 wheels with HingeConstraint (Axis attachment on chassis, wheel spins freely)
+- Wheels: CylinderMesh, CanCollide=true, CustomPhysicalProperties(0.5, 0.3, 0.5, 1, 1)
+- Chassis: all body parts welded together with WeldConstraint
+- Headlights: 2 SpotLight (Face=Front, Brightness=2, Range=40, Angle=45)
+- Taillights: 2 small red Neon parts
+- Engine sound: Sound (Looped=true, Volume=0.3, PlaybackSpeed varies with speed)
+- Horn: Sound triggered by H key (ContextActionService)
+- Unanchor the chassis (Anchored=false) so physics works
+- Keep body panels anchored=false but welded to chassis
+
+BOAT/SHIP (water vehicles):
+- VehicleSeat with MaxSpeed=30, Torque=15000
+- Hull: must float (set Density low via CustomPhysicalProperties(0.3, 0, 0, 0, 0))
+- Buoyancy: BodyForce counteracting gravity (BodyForce.Force = Vector3.new(0, workspace.Gravity * totalMass, 0))
+- Wake effect: ParticleEmitter at stern (white, speed=5, lifetime=1)
+- Steering: rudder part with HingeConstraint
+
+AIRPLANE/JET (flying vehicles):
+- VehicleSeat with MaxSpeed=100
+- Flight script in the seat: BodyVelocity for forward thrust, BodyGyro for orientation
+- W/S = pitch (nose up/down), A/D = roll, Q/E = yaw
+- Throttle: shift=increase speed, ctrl=decrease
+- Landing gear: PrismaticConstraint (retract on takeoff)
+- Jet engines: ParticleEmitter (orange/white, speed=20, at engine exhaust)
+- Contrails: Trail on wing tips at high speed
+
+HELICOPTER:
+- VehicleSeat
+- Main rotor: HingeConstraint with AngularVelocity (spins constantly when active)
+- Flight: BodyPosition for altitude (Y axis), BodyGyro for orientation
+- W/S = forward/backward tilt, A/D = strafe, Space/Ctrl = up/down, Q/E = yaw
+- Rotor wash: ParticleEmitter pointing down under rotor
+
+TANK:
+- VehicleSeat for driver + Seat for gunner
+- Turret: HingeConstraint on Y axis, mouse controls rotation
+- Barrel: follows mouse vertical aim
+- Fire: click to spawn projectile from barrel tip (BodyVelocity forward)
+- Treads: texture scrolling effect (SurfaceGui with moving TextLabel pattern)
+- Engine sound: deep rumble loop
+
+TRAIN:
+- VehicleSeat in locomotive
+- Runs on track (AlignPosition constraining to track path Parts)
+- W = accelerate, S = brake
+- Multiple cars connected with RopeConstraint or PrismaticConstraint
+- Whistle sound on H key
+- Smoke from smokestack (Smoke instance)
+
+SPACESHIP:
+- VehicleSeat
+- Full 6DOF movement: BodyVelocity + BodyGyro
+- W/S = thrust forward/backward, A/D = yaw, Q/E = roll, Space/Ctrl = pitch
+- Thrusters: ParticleEmitter at engine outputs (blue/white glow)
+- Shield effect: ForceField or transparent sphere
+- Weapon: click to fire laser (Beam from nose to hit point via Raycast)
+
+VEHICLE VISUAL QUALITY (Jailbreak-level detail, not blocky):
+
+BODY CONSTRUCTION:
+- Main body is NOT one big box. Break into: hood, cabin, trunk/bed, fenders, bumpers
+- Each body section is a separate Part with slightly different shade (+/-5 RGB)
+- Panel lines: thin dark Parts (0.04 stud) between body sections
+- Rounded edges: use WedgeParts at corners for aerodynamic shapes
+- Wheel wells: inset arches (Part with hole effect using dark interior Parts)
+
+GLASS:
+- Windshield: Glass material, Transparency 0.3, angled 30-45 degrees (CFrame.Angles)
+- Side windows: Glass, Transparency 0.4, recessed 0.05 studs into door panel
+- Rear window: Glass, Transparency 0.3
+- Window tint: slightly darker Color3 than clear glass
+
+WHEELS (per wheel, 4+ parts):
+- Tire: black Cylinder (Rubber material)
+- Rim: smaller silver/chrome Cylinder inside tire (Metal material)
+- Hub cap: small circular detail in rim center
+- Brake disc: thin dark Cylinder visible through rim gaps
+
+INTERIOR (visible through windows):
+- Dashboard: angled Part with gauges (SurfaceGui with speed text)
+- Steering wheel: thin torus-like shape (3 small Parts arranged in circle)
+- Seats: Fabric material, colored, headrest bump
+- Center console: between front seats
+
+LIGHTS:
+- Headlights: Glass Parts + SpotLight (Brightness=2, white)
+- Taillights: Neon red Parts + small red PointLight
+- Turn signals: Neon orange Parts (can toggle with script)
+- Brake lights: brighter red Neon when decelerating
+
+UNDERCARRIAGE:
+- Exhaust pipe: small Cylinder underneath rear
+- Axles: thin dark Parts connecting wheels
+- Engine block: dark Part visible from underneath
+
 BEHAVIOR SCRIPTING FOR PROPS:
 - Robot/character: add idle behavior (head swivel, light blink, servo sound, or simple patrol between 2 points)
-- Vehicle: add VehicleSeat for driveable vehicles
+- Vehicle: add VehicleSeat + full driving/flying/sailing script (see VEHICLE FUNCTIONALITY above). A static vehicle = FAILURE.
 - Lamp/torch: add PointLight with flicker (Heartbeat + math.random modulation)
 - Clock: add time display via SurfaceGui updating every second
 - Machine: add moving parts (TweenService loop for conveyor, gears, pistons)

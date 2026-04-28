@@ -97,18 +97,31 @@ const EXAMPLES: Record<string, string> = {
 -- Perimeter fence: loop (40 posts + rails)
 -- AAA lighting stack: Future + Atmosphere + Bloom + CC + SunRays`,
 
-  vehicle: `-- EXAMPLE PATTERN: Vehicle (25-50 parts)
--- Body: main chassis Part + hood + trunk + roof
--- Wheels: 4 Cyl parts, dark rubber color, positioned at corners
--- Windshield: angled Glass Part (transparency 0.3) + frame
--- Windows: side Glass Parts with frames
--- Headlights: 2 small Parts (Neon material, white/yellow) + SpotLight
--- Taillights: 2 small Parts (Neon, red)
+  vehicle: `-- EXAMPLE PATTERN: Vehicle (30-60 parts, MUST BE DRIVEABLE)
+-- BODY (multi-part, NOT one box): hood + cabin + trunk/bed + fenders + bumpers
+-- Each body section: separate Part, slightly different shade (+/-5 RGB)
+-- Panel lines: thin dark Parts (0.04 stud) between body sections
+-- Rounded edges: WedgeParts at corners for aerodynamic shape
+-- Wheel wells: inset arches (dark interior Parts simulating depth)
+-- Wheels (4+ parts EACH): tire (black Cyl, Rubber) + rim (silver Cyl, Metal) + hubcap + brake disc
+-- Windshield: angled 30-45deg Glass (transparency 0.3) + frame, recessed 0.05 studs
+-- Side windows: Glass Parts with frames
+-- Headlights: Glass Parts + SpotLight (Brightness=2, Range=40, white)
+-- Taillights: Neon red Parts + small red PointLight
 -- Bumpers: front + rear, slightly protruding Metal Parts
 -- Door lines: thin dark strips on body sides indicating doors
 -- Mirrors: 2 small Parts on stalks
--- Interior visible through windows: seats (2 Parts each), steering wheel (Cyl)
--- VehicleSeat for driving (set MaxSpeed, TurnSpeed, Torque)`,
+-- Interior: dashboard (SurfaceGui speedometer), steering wheel, seats (Fabric), console
+-- Undercarriage: exhaust pipe Cyl, axles, engine block
+-- DRIVING (CRITICAL — static vehicle = FAILURE):
+-- VehicleSeat as PrimaryPart (MaxSpeed=50, Torque=10000, TurnSpeed=2)
+-- All body parts: Anchored=false, welded to chassis with WeldConstraint
+-- Wheels: HingeConstraint (spin freely on axis)
+-- CustomPhysicalProperties on wheels (0.5, 0.3, 0.5, 1, 1) for grip
+-- Engine Sound (Looped=true, Volume=0.3)
+-- For boats: low density hull + BodyForce buoyancy
+-- For planes/helis: BodyVelocity + BodyGyro flight controls
+-- For spaceships: full 6DOF (BodyVelocity + BodyGyro)`,
 
   tree: `-- EXACT TREE PATTERN (DevForum technique — copy EXACTLY, do NOT modify shapes):
 -- TRUNK: tall brown Cylinder, Wood material

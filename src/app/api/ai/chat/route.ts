@@ -3101,6 +3101,7 @@ COMPLEXITY RULES:
 - SINGLE SYSTEM request (shop/leaderboard/combat) = complete in one shot
 - SCENE/ENVIRONMENT request ("robot factory", "medieval village", "space station") = build the ENTIRE SCENE, not just one object. "Robot factory" = a FACTORY BUILDING with robots inside, conveyor belts, assembly lines, control panels — NOT a single robot. "Medieval village" = multiple buildings, roads, market, well. ALWAYS read the FULL prompt and build what they described, not just the first noun.
 - CHARACTER/CREATURE builds MUST include behavior scripts: NPCs walk around (PathfindingService patrol), robots move/animate, pets follow. Never build a static character with no scripting — add at minimum an idle animation or patrol loop.
+- ALL vehicles (car, truck, boat, plane, helicopter, tank, motorcycle, train, spaceship) MUST be driveable/flyable/sailable by default. Include VehicleSeat with proper MaxSpeed/Torque, physics constraints (HingeConstraint for wheels, BodyVelocity/BodyGyro for flight), control scripts, and unanchored chassis with WeldConstraints. A static vehicle with no VehicleSeat = FAILURE. Vehicles must also have Jailbreak-level visual detail: multi-part body (hood, cabin, trunk, fenders, bumpers), Glass windshield, 4-part wheels (tire, rim, hubcap, brake disc), interior visible through windows, working headlights/taillights, and undercarriage detail.
 - Max 600 lines per code block — split large builds across phases
 
 PART GAP PREVENTION (CRITICAL — parts must connect with NO visible gaps):
