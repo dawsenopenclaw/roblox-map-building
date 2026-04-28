@@ -2699,19 +2699,20 @@ function EditorInner() {
   // Execute Luau in Studio after AI build
   const handleBuildComplete = useCallback(
     async (luauCode: string, prompt: string, sessionId: string | null) => {
-      if (!studio.jwt) {
-        studio.addActivity('Cannot execute — Studio not authenticated. Reconnect the plugin.')
+      if (!studio.jwt && !studio.sessionId) {
+        studio.addActivity('Cannot execute — Studio not connected. Pair your plugin first.')
         return
       }
       studio.recordCommand(`Executing: ${prompt.slice(0, 60)}${prompt.length > 60 ? '...' : ''}`)
       try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (studio.jwt) {
+          headers['Authorization'] = `Bearer ${studio.jwt}`
+        }
         const res = await fetch('/api/studio/execute', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${studio.jwt}`,
-          },
-          body: JSON.stringify({ code: luauCode, prompt, sessionId }),
+          headers,
+          body: JSON.stringify({ code: luauCode, prompt, sessionId: sessionId || studio.sessionId }),
         })
         if (!res.ok) {
           const data = await res.json().catch(() => ({ error: 'unknown' }))

@@ -12668,7 +12668,18 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
     intent: 'texture',
   },
   {
-    patterns: [/\b(terrain|land|mountain|hill|valley|biome|grass|water|lake|river|flatten|raise|lower|forest|island|volcano|desert|snow|ice|cave|cliff|beach|ocean|pond|swamp|jungle|arctic|savanna|mesa|canyon)\b/i],
+    patterns: [
+      // Only trigger terrain for explicit terrain manipulation requests.
+      // Generic nature words (grass, water, forest, island, hill etc.) should NOT
+      // trigger terrain when used as part of a building request like "build a
+      // house on a hill" or "make a forest cabin". Require terrain-specific verbs
+      // or the word "terrain" itself.
+      /\b(terrain)\b/i,
+      /\b(generate|create|make|build)\s+(a\s+)?(landscape|biome|terrain|topography)\b/i,
+      /\b(flatten|raise|lower|erode|smooth)\s+(the\s+)?(terrain|ground|land)\b/i,
+      /\b(paint|sculpt)\s+(terrain|ground|land)\b/i,
+      /\b(add|generate|create)\s+(mountains?|valleys?|rivers?|lakes?|oceans?|volcanos?|volcanoes?|canyons?|cliffs?|deserts?|beaches?|swamps?|mesas?)\b/i,
+    ],
     intent: 'terrain',
   },
   {
@@ -12974,12 +12985,26 @@ async function brainClassifyIntent(
 function detectIntent(message: string): IntentKey {
   const trimmed = message.trim()
 
+  // 0. Pre-check: if the message explicitly asks for a "script", "code", or "system",
+  //    it should go to the script path — even if it mentions building keywords like "shop"
+  //    or "leaderboard". "make me a shop script" = script, NOT building.
+  const hasExplicitScriptWord = /\b(script|code|system|function|module|handler|controller|manager|service)\b/i.test(trimmed)
+  const hasScriptKeyword = SCRIPT_KEYWORDS.test(trimmed)
+  if (hasExplicitScriptWord && hasScriptKeyword) {
+    return 'script'
+  }
+
   // 1. Check all keyword patterns FIRST — specific intents always win
   for (const entry of KEYWORD_INTENT_MAP) {
     if (entry.patterns.some((p) => p.test(trimmed))) {
       // For build intents, require a build verb OR a strong object noun
       const isBuildIntent = ['terrain', 'building', 'npc', 'vehicle', 'particle', 'fullgame', 'mesh', 'texture', 'weather', 'animate', 'datasave', 'networking'].includes(entry.intent)
       if (!isBuildIntent) return entry.intent // Non-build intents (undo, help, debug, modify, cleanup, education, performance, etc.) pass through
+      // If user explicitly said "script"/"code" alongside a build keyword (e.g. "door script"),
+      // prefer the script path over the build path
+      if (hasExplicitScriptWord && entry.intent === 'building') {
+        return 'script'
+      }
       const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design|drop|throw down|put|stick|plop|slap|give me|i want|i need|can you|could you|let'?s|we should|make it|scale it|resize it|move it|rotate it|change the|change its)\b/i.test(trimmed)
       const hasStrongNoun = /\b(castle|city|house|town|map|arena|shop|tower|mountain|island|forest|street|road|park|village|lobby|spawn|hub|fountain|bridge|dungeon|lamp\s*post|street\s*light|lamp|tree|bush|bench|sign|pillar|column|stairs|steps|arch|fence|railing)\b/i.test(trimmed)
       if (hasBuildVerb || hasStrongNoun) return entry.intent

@@ -17,7 +17,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getDbUserOrUnauthorized } from '@/lib/auth/get-db-user'
-import { spendTokens } from '@/lib/tokens-server'
+import { spendTokens, earnTokens } from '@/lib/tokens-server'
 import { generateImage, detectImageStyle, type ImageStyle } from '@/lib/ai/image-engine'
 
 export const maxDuration = 90
@@ -53,10 +53,13 @@ export async function POST(req: NextRequest) {
   const resolvedStyle = style || detectImageStyle(prompt)
 
   // Pre-charge tokens (refund on failure)
+  // spendTokens throws on insufficient balance — catch and return 402
   const maxCost = provider === 'gpt' ? 5 : provider === 'fal' ? 5 : 3
-  const spend = await spendTokens(user.id, maxCost, `Image: ${prompt.slice(0, 50)}`)
-  if (!spend.success) {
-    return NextResponse.json({ error: 'Insufficient tokens', redirect: '/tokens' }, { status: 402 })
+  try {
+    await spendTokens(user.id, maxCost, `Image: ${prompt.slice(0, 50)}`)
+  } catch (spendErr) {
+    const msg = spendErr instanceof Error ? spendErr.message : 'Token charge failed'
+    return NextResponse.json({ error: msg.includes('Insufficient') ? 'Insufficient tokens' : msg, redirect: '/tokens' }, { status: 402 })
   }
 
   try {
@@ -69,7 +72,9 @@ export async function POST(req: NextRequest) {
 
     // Refund difference if cheaper provider was used
     if (result.cost < maxCost) {
-      await spendTokens(user.id, -(maxCost - result.cost), 'Refund: cheaper provider used')
+      try {
+        await earnTokens(user.id, maxCost - result.cost, 'REFUND', 'Refund: cheaper provider used')
+      } catch { /* best-effort refund */ }
     }
 
     return NextResponse.json({
@@ -84,7 +89,9 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     // Refund on failure
-    await spendTokens(user.id, -maxCost, 'Refund: image generation failed')
+    try {
+      await earnTokens(user.id, maxCost, 'REFUND', 'Refund: image generation failed')
+    } catch { /* best-effort refund */ }
     return NextResponse.json({
       error: `Generation failed: ${err instanceof Error ? err.message : 'All providers failed'}`,
     }, { status: 502 })

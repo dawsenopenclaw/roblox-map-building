@@ -521,15 +521,16 @@ local function init()
           if uiRefs.showError then uiRefs.showError("Connect first — enter your code above") end
           return
         end
-        if History then History.beginWaypoint("GenerateTerrain") end
-        if Sync then
-          Sync.queueChange("quick_action", {
-            action  = "generate_terrain",
-            placeId = game.PlaceId,
-            placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
-          })
+        if Sync and Sync.sendChat then
+          if uiRefs.showStatus then uiRefs.showStatus("Generating terrain...") end
+          Sync.sendChat("Generate realistic terrain with mountains, valleys, grass, and a river", function(result)
+            if result and result.success then
+              if uiRefs.showStatus then uiRefs.showStatus("Terrain generated!") end
+            else
+              if uiRefs.showError then uiRefs.showError("Terrain generation failed — try from the web editor") end
+            end
+          end)
         end
-        if History then History.endWaypoint("GenerateTerrain") end
       end)
     end
 
@@ -539,15 +540,16 @@ local function init()
           if uiRefs.showError then uiRefs.showError("Connect first — enter your code above") end
           return
         end
-        if History then History.beginWaypoint("GenerateCity") end
-        if Sync then
-          Sync.queueChange("quick_action", {
-            action  = "generate_city",
-            placeId = game.PlaceId,
-            placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
-          })
+        if Sync and Sync.sendChat then
+          if uiRefs.showStatus then uiRefs.showStatus("Generating city...") end
+          Sync.sendChat("Build a detailed city block with buildings, streets, lamp posts, and sidewalks", function(result)
+            if result and result.success then
+              if uiRefs.showStatus then uiRefs.showStatus("City generated!") end
+            else
+              if uiRefs.showError then uiRefs.showError("City generation failed — try from the web editor") end
+            end
+          end)
         end
-        if History then History.endWaypoint("GenerateCity") end
       end)
     end
 
@@ -557,15 +559,16 @@ local function init()
           if uiRefs.showError then uiRefs.showError("Connect first — enter your code above") end
           return
         end
-        if History then History.beginWaypoint("InsertAsset") end
-        if Sync then
-          Sync.queueChange("quick_action", {
-            action  = "insert_asset",
-            placeId = game.PlaceId,
-            placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
-          })
+        if Sync and Sync.sendChat then
+          if uiRefs.showStatus then uiRefs.showStatus("Generating asset...") end
+          Sync.sendChat("Build a detailed prop or decoration that fits the current scene", function(result)
+            if result and result.success then
+              if uiRefs.showStatus then uiRefs.showStatus("Asset generated!") end
+            else
+              if uiRefs.showError then uiRefs.showError("Asset generation failed — try from the web editor") end
+            end
+          end)
         end
-        if History then History.endWaypoint("InsertAsset") end
       end)
     end
 
