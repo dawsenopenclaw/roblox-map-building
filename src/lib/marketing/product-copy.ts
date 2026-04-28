@@ -6,8 +6,9 @@
  * in a single file without touching component JSX. Each page consumes the
  * matching entry via `PRODUCT_COPY[key]`.
  *
- * NOTE: Testimonials use placeholder names. Replace with verified reviews
- * before production launch. Revenue claims are marked as user-reported.
+ * NOTE: Testimonials are now fetched from the database via /api/reviews.
+ * The testimonials arrays below are kept empty — product pages should
+ * fetch live reviews instead of using hardcoded copy.
  */
 
 export type ProductKey =
@@ -107,50 +108,7 @@ const iconStudio: ProductCopy = {
       { label: 'Upload-ready 512×512 PNG', forje: true, alternative: 'Sometimes' },
     ],
   },
-  testimonials: [
-    {
-      name: 'Jake M.',
-      role: 'Obby dev, 2.4M visits',
-      avatar: 'JM',
-      quote: 'Switched to Icon Studio and my CTR jumped 38% overnight. I was burning $200/week on freelance icons. Now it is $2.',
-      rating: 5,
-    },
-    {
-      name: 'Priya S.',
-      role: 'Tycoon game creator',
-      avatar: 'PS',
-      quote: 'I A/B tested 12 icons in an afternoon for under a dollar. That would have been two grand with an artist.',
-      rating: 5,
-    },
-    {
-      name: 'Marco T.',
-      role: 'Sim game studio',
-      avatar: 'MT',
-      quote: 'The anime preset is genuinely better than the artist I was paying. I cancelled my Fiverr account.',
-      rating: 5,
-    },
-    {
-      name: 'Ashley R.',
-      role: 'Horror game dev',
-      avatar: 'AR',
-      quote: 'Finally an AI tool that understands Roblox icon composition. The characters actually fit the thumbnail frame.',
-      rating: 5,
-    },
-    {
-      name: 'Devon K.',
-      role: 'RPG creator',
-      avatar: 'DK',
-      quote: 'Generated 80 icons for a launch campaign in a single coffee break. Would have taken two weeks the old way.',
-      rating: 5,
-    },
-    {
-      name: 'Luna H.',
-      role: 'Roleplay game dev',
-      avatar: 'LH',
-      quote: 'My discovery page impressions went from 40k to 210k in a week after switching icons. This paid for my whole year.',
-      rating: 5,
-    },
-  ],
+  testimonials: [], // Fetched live from /api/reviews
   faqs: [
     {
       q: 'How much does Icon Studio cost?',
@@ -238,50 +196,7 @@ const thumbnailStudio: ProductCopy = {
       { label: 'Cost', forje: 'From free', alternative: '$20 – $60/mo + learning curve' },
     ],
   },
-  testimonials: [
-    {
-      name: 'Kai P.',
-      role: 'Sim creator, 8M visits',
-      avatar: 'KP',
-      quote: 'My thumbnail CTR went from 4% to 11% in two weeks. Thumbnail Studio is the highest ROI tool in my stack.',
-      rating: 5,
-    },
-    {
-      name: 'Zoe W.',
-      role: 'Obby dev',
-      avatar: 'ZW',
-      quote: 'I made 40 thumbnails in one afternoon and tested them all. The winner tripled my daily active users.',
-      rating: 5,
-    },
-    {
-      name: 'Sam L.',
-      role: 'RPG studio lead',
-      avatar: 'SL',
-      quote: 'The 5 rules section alone is worth the subscription. I had no idea I was breaking half of them.',
-      rating: 5,
-    },
-    {
-      name: 'Ines G.',
-      role: 'Roleplay game dev',
-      avatar: 'IG',
-      quote: 'Before: grinding in Photoshop for 6 hours. After: 10 polished thumbnails in one coffee break.',
-      rating: 5,
-    },
-    {
-      name: 'Tyler B.',
-      role: 'Horror game creator',
-      avatar: 'TB',
-      quote: 'The before-after CTR predictor was dead accurate. It told me my old thumbnail was tanking and it was.',
-      rating: 5,
-    },
-    {
-      name: 'Mei R.',
-      role: 'Tycoon creator',
-      avatar: 'MR',
-      quote: 'I cancelled Canva after two weeks of Thumbnail Studio. The Roblox-specific presets are game-changing.',
-      rating: 5,
-    },
-  ],
+  testimonials: [], // Fetched live from /api/reviews
   faqs: [
     {
       q: 'What sizes does Thumbnail Studio export?',
@@ -369,50 +284,7 @@ const ideaGenerator: ProductCopy = {
       { label: 'Cost', forje: 'From free', alternative: 'Unlimited coffee' },
     ],
   },
-  testimonials: [
-    {
-      name: 'Alex D.',
-      role: 'Indie dev, 1.2M visits',
-      avatar: 'AD',
-      quote: 'Found my current hit game in the Idea Generator. It has done over $18k Robux revenue in the last 90 days (self-reported).',
-      rating: 5,
-    },
-    {
-      name: 'Nora V.',
-      role: 'Sim creator',
-      avatar: 'NV',
-      quote: 'I used to burn weeks chasing dead ideas. Now I validate ten concepts in one sitting and only build the ones with real signal.',
-      rating: 5,
-    },
-    {
-      name: 'Ravi C.',
-      role: 'RPG studio',
-      avatar: 'RC',
-      quote: 'The trend scraper flagged a mechanic two weeks before it blew up. We shipped early and rode the wave (creator-reported numbers).',
-      rating: 5,
-    },
-    {
-      name: 'Maya F.',
-      role: 'Obby creator',
-      avatar: 'MF',
-      quote: 'The build briefs are the unlock. Each idea comes with a full one-pager I can hand to my team.',
-      rating: 5,
-    },
-    {
-      name: 'Jordan H.',
-      role: 'Tycoon dev',
-      avatar: 'JH',
-      quote: 'I pay for Pro just for the monetization hints. Every idea comes with a plausible revenue model baked in.',
-      rating: 5,
-    },
-    {
-      name: 'Sana K.',
-      role: 'Horror game dev',
-      avatar: 'SK',
-      quote: 'Hit front page within a week of launching an idea I found here. The genre filter on horror sub-niches was the key.',
-      rating: 5,
-    },
-  ],
+  testimonials: [], // Fetched live from /api/reviews
   faqs: [
     {
       q: 'Where do the ideas come from?',
@@ -493,50 +365,7 @@ const gfxStudio: ProductCopy = {
       { label: 'Bulk export', forje: true, alternative: false },
     ],
   },
-  testimonials: [
-    {
-      name: 'Oskar L.',
-      role: 'Indie studio lead',
-      avatar: 'OL',
-      quote: 'I scrapped my $500/mo designer retainer. GFX Studio does the same work for $29 and is faster.',
-      rating: 5,
-    },
-    {
-      name: 'Halima J.',
-      role: 'Sim dev',
-      avatar: 'HJ',
-      quote: 'Generated 30 badges for my launch event in 4 minutes. Would have cost me $900 freelance.',
-      rating: 5,
-    },
-    {
-      name: 'Finn B.',
-      role: 'Obby creator',
-      avatar: 'FB',
-      quote: 'The character render preset is absurd. My Roblox avatar has never looked better.',
-      rating: 5,
-    },
-    {
-      name: 'Sofia M.',
-      role: 'Roleplay dev',
-      avatar: 'SM',
-      quote: 'Brand kit is the killer feature. My whole game finally looks cohesive across every touchpoint.',
-      rating: 5,
-    },
-    {
-      name: 'Ethan R.',
-      role: 'Horror studio',
-      avatar: 'ER',
-      quote: 'I ran an ad campaign with GFX-generated creatives and hit a 3.2% CTR. Industry average is 0.8%.',
-      rating: 5,
-    },
-    {
-      name: 'Yui T.',
-      role: 'RPG creator',
-      avatar: 'YT',
-      quote: 'Bulk export saved me from a nervous breakdown during launch week. Used it to ship 50 gamepass icons overnight.',
-      rating: 5,
-    },
-  ],
+  testimonials: [], // Fetched live from /api/reviews
   faqs: [
     {
       q: 'What graphic types does GFX Studio support?',

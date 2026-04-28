@@ -1,68 +1,21 @@
 'use client'
 
-const TIER_STYLES: Record<string, { label: string; bg: string; color: string; border: string }> = {
-  FREE:    { label: 'FREE',    bg: 'rgba(255,255,255,0.05)', color: '#8B95B0', border: '1px solid rgba(255,255,255,0.10)' },
-  HOBBY:   { label: 'HOBBY',   bg: 'rgba(99,102,241,0.12)', color: '#818CF8', border: '1px solid rgba(99,102,241,0.25)' },
-  CREATOR: { label: 'CREATOR', bg: 'rgba(212,175,55,0.10)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.25)' },
-  STUDIO:  { label: 'STUDIO',  bg: 'rgba(16,185,129,0.10)', color: '#34D399', border: '1px solid rgba(16,185,129,0.25)' },
-}
+import { useState, useEffect } from 'react'
 
-const TESTIMONIALS = [
-  {
-    name: 'Maya Chen',
-    role: 'Indie Roblox Dev',
-    initials: 'MC',
-    tier: 'CREATOR',
-    stars: 5,
-    quote: 'ForjeGames cut my prototyping time in half — went from 3 weeks to 4 days for our tycoon launch.',
-  },
-  {
-    name: 'Daniel Okafor',
-    role: 'Solo Creator, 2.1M visits',
-    initials: 'DO',
-    tier: 'CREATOR',
-    stars: 5,
-    quote: 'I shipped a working obby in an afternoon. The Studio sync is the part I never knew I needed.',
-  },
-  {
-    name: 'Priya Ramanathan',
-    role: 'Student dev, Grade 11',
-    initials: 'PR',
-    tier: 'FREE',
-    stars: 5,
-    quote: 'The free tier actually works. I built my first published game without touching a single line of Luau.',
-  },
-  {
-    name: 'Jordan Whitfield',
-    role: 'Studio lead, 8-person team',
-    initials: 'JW',
-    tier: 'STUDIO',
-    stars: 5,
-    quote: 'Our team ships 3x faster. The collaboration features and shared build history paid for themselves in a week.',
-  },
-  {
-    name: 'Elena Moretti',
-    role: 'Former Unity dev',
-    initials: 'EM',
-    tier: 'CREATOR',
-    stars: 5,
-    quote: 'I came from Unity and expected rough edges. ForjeGames is cleaner than most pro tools I pay 10x more for.',
-  },
-  {
-    name: 'Marcus Reyes',
-    role: 'Roblox UGC creator',
-    initials: 'MR',
-    tier: 'HOBBY',
-    stars: 5,
-    quote: 'Image-to-map is uncanny. I uploaded a concept sketch and had a playable village running in about two minutes.',
-  },
-]
+type LiveReview = {
+  id: string
+  name: string
+  review: string
+  stars: number
+  avatarUrl: string | null
+  createdAt: string
+}
 
 function StarRating({ count }: { count: number }) {
   return (
     <div className="flex gap-0.5">
-      {Array.from({ length: count }).map((_, i) => (
-        <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill="#D4AF37" stroke="none">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill={i < count ? '#D4AF37' : 'rgba(212,175,55,0.15)'} stroke="none">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
         </svg>
       ))}
@@ -70,19 +23,18 @@ function StarRating({ count }: { count: number }) {
   )
 }
 
-function TierBadge({ tier }: { tier: string }) {
-  const style = TIER_STYLES[tier] ?? TIER_STYLES.FREE
-  return (
-    <span
-      className="text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full"
-      style={{ background: style.bg, color: style.color, border: style.border }}
-    >
-      {style.label}
-    </span>
-  )
+function getInitials(name: string): string {
+  return name
+    .split(/[\s.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(s => s[0]?.toUpperCase() ?? '')
+    .join('')
 }
 
-function TestimonialCard({ testimonial }: { testimonial: typeof TESTIMONIALS[number] }) {
+function TestimonialCard({ review }: { review: LiveReview }) {
+  const hasAvatar = !!review.avatarUrl
+
   return (
     <div
       className="group h-full flex flex-col gap-5 rounded-xl p-6 relative transition-all duration-150"
@@ -116,40 +68,58 @@ function TestimonialCard({ testimonial }: { testimonial: typeof TESTIMONIALS[num
       </span>
 
       {/* Stars */}
-      <StarRating count={testimonial.stars} />
+      <StarRating count={review.stars} />
 
       {/* Quote */}
       <p className="text-[15px] leading-relaxed flex-1" style={{ color: 'rgba(255,255,255,0.82)' }}>
-        &ldquo;{testimonial.quote}&rdquo;
+        &ldquo;{review.review}&rdquo;
       </p>
 
-      {/* Footer — name + role + tier */}
+      {/* Footer */}
       <div className="flex items-center gap-3 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden"
           style={{
-            background: 'linear-gradient(135deg, rgba(212,175,55,0.25) 0%, rgba(255,184,28,0.15) 100%)',
+            background: hasAvatar ? 'rgba(10,14,25,0.8)' : 'linear-gradient(135deg, rgba(212,175,55,0.25) 0%, rgba(255,184,28,0.15) 100%)',
             border: '1px solid rgba(212,175,55,0.35)',
             color: '#D4AF37',
           }}
         >
-          {testimonial.initials}
+          {hasAvatar ? (
+            <img src={review.avatarUrl!} alt={review.name} width={40} height={40} className="w-full h-full object-cover" />
+          ) : (
+            getInitials(review.name)
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary, rgba(255,255,255,0.9))' }}>
-            {testimonial.name}
+            {review.name}
           </p>
-          <p className="text-[11px] truncate" style={{ color: '#8B95B0' }}>
-            {testimonial.role}
+          <p className="text-[11px] truncate" style={{ color: '#D4AF37' }}>
+            Verified Builder
           </p>
         </div>
-        <TierBadge tier={testimonial.tier} />
       </div>
     </div>
   )
 }
 
 export default function TestimonialsSection() {
+  const [reviews, setReviews] = useState<LiveReview[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/reviews')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { setReviews(data); setLoaded(true) })
+      .catch(() => setLoaded(true))
+  }, [])
+
+  // Don't render the section at all if no reviews
+  if (loaded && reviews.length === 0) return null
+  // Don't render until loaded to avoid flash
+  if (!loaded) return null
+
   return (
     <section className="py-16 sm:py-20 px-6" style={{ background: 'var(--background, #050810)' }}>
       <div className="max-w-6xl mx-auto">
@@ -166,23 +136,23 @@ export default function TestimonialsSection() {
             <span style={{ color: 'var(--gold, #D4AF37)' }}>creators</span>
           </h2>
           <p className="text-base sm:text-lg" style={{ color: '#8B95B0' }}>
-            Thousands of builders shipping faster with ForjeGames.
+            Real feedback from builders using ForjeGames.
           </p>
         </div>
 
         {/* 2-col tablet / 3-col desktop grid */}
         <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((t, i) => (
-            <TestimonialCard key={i} testimonial={t} />
+          {reviews.slice(0, 6).map((r) => (
+            <TestimonialCard key={r.id} review={r} />
           ))}
         </div>
 
         {/* Mobile: single horizontal scroll row */}
         <div className="sm:hidden flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-6 px-6"
           style={{ scrollbarWidth: 'none' }}>
-          {TESTIMONIALS.map((t, i) => (
-            <div key={i} className="flex-shrink-0 w-[85vw] max-w-xs snap-start">
-              <TestimonialCard testimonial={t} />
+          {reviews.slice(0, 6).map((r) => (
+            <div key={r.id} className="flex-shrink-0 w-[85vw] max-w-xs snap-start">
+              <TestimonialCard review={r} />
             </div>
           ))}
         </div>
