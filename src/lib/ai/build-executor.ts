@@ -1036,9 +1036,11 @@ This task is chunk ${chunkIndex ?? 0} of a larger build called "${parentName}".
   }
 
   // Inject deep building knowledge for building/terrain/prop tasks (the types that construct geometry)
+  // TRIMMED to 12K chars each to prevent prompt bloat that causes rate limit / timeout issues.
+  // The full knowledge is 100K+ chars — injecting all of it makes prompts too large and slow.
   const needsBuildingKnowledge = ['building', 'terrain', 'prop', 'npc'].includes(task.type)
   const buildingKnowledgeChunk = needsBuildingKnowledge
-    ? `\n\n--- DEEP BUILDING KNOWLEDGE REFERENCE ---\n${DEEP_BUILDING_KNOWLEDGE}\n--- END BUILDING KNOWLEDGE ---\n\n--- BUILDING BIBLE (150+ OBJECT GUIDES) ---\n${BUILDING_BIBLE}\n--- END BUILDING BIBLE ---\n`
+    ? `\n\n--- BUILDING KNOWLEDGE ---\n${DEEP_BUILDING_KNOWLEDGE.slice(0, 12000)}\n--- END ---\n\n--- BUILD GUIDES ---\n${BUILDING_BIBLE.slice(0, 12000)}\n--- END ---\n`
     : ''
 
   // Inject deep game design knowledge for script/economy/ui/npc tasks
@@ -1049,9 +1051,9 @@ This task is chunk ${chunkIndex ?? 0} of a larger build called "${parentName}".
   // Inject advanced Roblox knowledge — section matched to task type for maximum relevance
   let advancedKnowledge = ''
   if (['building', 'terrain', 'prop'].includes(task.type)) {
-    advancedKnowledge = `\n\n--- ADVANCED ROBLOX TECHNIQUES ---\n${getAdvancedBuildingKnowledge()}\n--- END ADVANCED TECHNIQUES ---\n`
+    advancedKnowledge = `\n\n--- ADVANCED TECHNIQUES ---\n${getAdvancedBuildingKnowledge().slice(0, 6000)}\n--- END ---\n`
   } else if (['script', 'economy'].includes(task.type)) {
-    advancedKnowledge = `\n\n--- ADVANCED SCRIPTING ARCHITECTURE ---\n${getAdvancedScriptingKnowledge()}\n${getExploitPreventionKnowledge()}\n--- END ADVANCED ARCHITECTURE ---\n`
+    advancedKnowledge = `\n\n--- ADVANCED SCRIPTING ---\n${getAdvancedScriptingKnowledge().slice(0, 6000)}\n${getExploitPreventionKnowledge().slice(0, 3000)}\n--- END ---\n`
   } else if (task.type === 'npc') {
     advancedKnowledge = `\n\n--- ADVANCED NPC TECHNIQUES ---\n${getAdvancedScriptingKnowledge().slice(0, 2000)}\n${getPerformanceKnowledge().slice(0, 1500)}\n--- END ADVANCED NPC ---\n`
   } else if (task.type === 'lighting') {
