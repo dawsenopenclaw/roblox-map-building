@@ -103,7 +103,16 @@ type BuildPlanOutput = z.infer<typeof buildPlanOutputSchema>
  * - 'medium'  → 2-3 sub-tasks (house with garden, shop with interior)
  * - 'complex' → 4-6 sub-tasks (castle, city, school, stadium)
  */
-export type ComplexityTier = 'simple' | 'medium' | 'complex'
+export type ComplexityTier = 'simple' | 'medium' | 'complex' | 'game'
+
+const GAME_KEYWORDS = [
+  'game', 'tycoon', 'simulator', 'rpg', 'obby', 'roleplay', 'tower defense',
+  'battle royale', 'survival', 'horror game', 'racing game', 'fighting game',
+  'puzzle game', 'clicker', 'idle game', 'cooking game', 'pet simulator',
+  'adventure game', 'sandbox', 'murder mystery', 'hide and seek', 'cops and robbers',
+  'zombie', 'escape room', 'dungeon', 'quest', 'mmorpg', 'fps', 'pvp', 'pve',
+  'build me a game', 'make me a game', 'create a game', 'full game',
+]
 
 const COMPLEX_KEYWORDS = [
   'castle', 'city', 'town', 'mansion', 'school', 'hospital', 'factory',
@@ -125,6 +134,11 @@ const MEDIUM_KEYWORDS = [
 
 export function detectComplexity(prompt: string): ComplexityTier {
   const lower = prompt.toLowerCase()
+
+  // Check for full game requests first (highest tier)
+  for (const kw of GAME_KEYWORDS) {
+    if (lower.includes(kw)) return 'game'
+  }
 
   // Check for explicit multi-structure requests
   const multiStructurePatterns = [
@@ -166,6 +180,45 @@ export function detectComplexity(prompt: string): ComplexityTier {
  */
 function getChunkingInstructions(complexity: ComplexityTier, prompt: string): string {
   if (complexity === 'simple') return ''
+
+  if (complexity === 'game') {
+    return `
+This is a FULL GAME build. Generate 15-30 tasks covering ALL aspects:
+
+WAVE 0 (no dependencies):
+- Terrain: Full map with biome, paths, water, elevation
+- Lighting: Atmosphere, bloom, time of day, fog
+
+WAVE 1 (depends on terrain):
+- 3-6 buildings: Each with interior, foundation, walls, roof, details
+- Economy system script: Currency, DataStore, leaderstats
+- Audio: Background music, ambient sounds
+
+WAVE 2 (depends on buildings):
+- Interior props: Furniture, decorations per building
+- Exterior props: Trees, lamps, benches, signs
+- Game scripts: Core loop, combat, collecting, quests
+- NPCs: Merchants, quest givers, enemies
+
+WAVE 3 (depends on scripts + NPCs):
+- UI: HUD, shop, inventory, settings menus
+- Polish: Particle effects, sounds, animations
+
+Each building task gets 100+ parts with full interior detail.
+Each script task generates 100-300 lines of production Luau.
+Each UI task generates complete, interactive GUI systems.
+NPCs have real behavior (patrol, dialog, combat).
+
+CHUNKED BUILDING — CRITICAL INSTRUCTIONS:
+- For complex structures, break into 3-6 sub-tasks. Each sub-task should be a self-contained build that references the same parent model.
+- Never try to build more than 80 parts in a single task. Split into chunks.
+- Each chunk MUST set templateParams.parentName to a shared root model name (e.g., "MyCastle" or "CityBlock1") so all chunks end up under one parent Model in Studio.
+- Each chunk should use templateParams.chunkIndex (0, 1, 2, ...) so the executor can order them.
+- Each chunk's prompt MUST specify a CFrame offset so parts don't overlap between chunks.
+- Each chunk uses parentName to attach to the same root model.
+
+For the user prompt "${prompt.slice(0, 200)}", generate 15-30 tasks that together form the COMPLETE game. Cover terrain, lighting, buildings, props, scripts, economy, NPCs, UI, and audio.`
+  }
 
   const shared = `
 CHUNKED BUILDING — CRITICAL INSTRUCTIONS:
@@ -331,7 +384,7 @@ You must respond with ONLY a valid JSON object matching this exact structure. No
   ]
 }
 
-Always produce 10–30 tasks for a full game. More complex games deserve more tasks. Ensure all dependency IDs reference real task IDs in your plan.`
+Always produce 10–30 tasks for a full game (15-30 for full games with scripts, NPCs, UI, and economy systems). More complex games deserve more tasks. Ensure all dependency IDs reference real task IDs in your plan.`
 
 // ── Wave assignment validator/fixer ──────────────────────────────────────────
 
