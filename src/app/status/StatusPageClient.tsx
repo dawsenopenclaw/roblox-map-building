@@ -79,8 +79,8 @@ export function StatusPageClient() {
         const json = (await res.json()) as PublicStatusResponse
         setData(json)
       }
-    } catch {
-      // Silently ignore — the previous snapshot stays on screen.
+    } catch (err) {
+      console.error('[StatusPage] Failed to fetch system status:', err instanceof Error ? err.message : err)
     } finally {
       if (isInitial) setLoading(false)
       setRefreshing(false)

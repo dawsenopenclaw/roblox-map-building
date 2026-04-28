@@ -208,7 +208,19 @@ function CopyButton({ text }: { text: string }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // clipboard unavailable
+      // Fallback for non-secure contexts
+      try {
+        const el = document.createElement('textarea')
+        el.value = text
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      } catch (fallbackErr) {
+        console.error('[AssetGenerator] Clipboard copy failed:', fallbackErr)
+      }
     }
   }
 
@@ -380,8 +392,9 @@ export function AssetGenerator({ className = '', onSendToStudio }: AssetGenerato
             status: uiStatus as GeneratedAsset['status'],
           } : prev)
         }
-      } catch {
-        // Non-fatal — keep polling
+      } catch (pollErr) {
+        console.error('[AssetGenerator] 3D asset poll failed:', pollErr)
+        // Non-fatal — keep polling but log for debugging
       }
     }, 5000)
 

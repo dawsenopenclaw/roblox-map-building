@@ -57,7 +57,10 @@ export default function ConsolePanel({ sessionId, isConnected, active = true, on
           })
         }
       }
-    } catch { setFetchFailed(true) }
+    } catch (err) {
+      console.error('[ConsolePanel] Failed to fetch logs:', err instanceof Error ? err.message : err)
+      setFetchFailed(true)
+    }
   }, [sessionId, isConnected, active, autoScroll])
 
   useEffect(() => {

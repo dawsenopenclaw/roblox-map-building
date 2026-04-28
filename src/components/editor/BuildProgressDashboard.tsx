@@ -389,8 +389,8 @@ export function BuildProgressDashboard({ buildId, directStatus, onComplete, onCa
           announceToScreenReader('Build failed. Please try again.')
         }
       }
-    } catch {
-      // network error — keep polling
+    } catch (pollErr) {
+      console.error('[BuildProgress] Poll failed — will retry:', pollErr instanceof Error ? pollErr.message : pollErr)
     }
   }, [buildId, onComplete])
 

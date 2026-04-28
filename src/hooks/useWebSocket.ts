@@ -75,8 +75,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         if (token) {
           await ws.connect(token)
         }
-      } catch {
-        // Connection failed — will auto-retry via exponential backoff
+      } catch (err) {
+        console.error('[WebSocket] Initial connection failed (will auto-retry):', err instanceof Error ? err.message : err)
       }
     }
 
@@ -152,8 +152,8 @@ export function useWebSocket(): WebSocketContextValue {
         if (token) {
           await ws.connect(token)
         }
-      } catch {
-        // Connection failed — auto-retry handles reconnection
+      } catch (err) {
+        console.error('[WebSocket] Standalone connection failed (auto-retry handles reconnection):', err instanceof Error ? err.message : err)
       }
     }
 

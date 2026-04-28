@@ -546,7 +546,8 @@ export default function AdminUsersPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setData(await res.json())
       setIsDemo(false)
-    } catch {
+    } catch (err) {
+      console.error('[Admin/Users] Failed to fetch users, falling back to demo data:', err instanceof Error ? err.message : err)
       const filtered = DEMO_USERS.filter((u) => {
         const matchSearch =
           !search ||

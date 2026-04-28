@@ -82,7 +82,8 @@ export default function AdminTemplatesPage() {
       if (!res.ok) throw new Error(`${res.status}`)
       setData(await res.json())
       setIsDemo(false)
-    } catch {
+    } catch (err) {
+      console.error('[Admin/Templates] Failed to fetch template queue, falling back to demo:', err instanceof Error ? err.message : err)
       const demoQueue = makeDemoQueue()
       setData({ templates: demoQueue, total: demoQueue.length })
       setIsDemo(true)

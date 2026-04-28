@@ -632,7 +632,8 @@ Output the COMPLETE enhanced code in a \`\`\`lua block. Keep everything that wor
       return { code: enhanced, durationMs: Date.now() - start }
     }
     return { code, durationMs: Date.now() - start }
-  } catch {
+  } catch (err) {
+    console.error('[StagedPipeline/ENHANCE] Enhancement stage failed, using original code:', err instanceof Error ? err.message : err)
     return { code, durationMs: Date.now() - start }
   }
 }
@@ -657,7 +658,9 @@ async function stageShip(code: string, prompt: string): Promise<{
       response: finalCode,
       mode: 'build',
     })
-  } catch {}
+  } catch (err) {
+    console.error('[StagedPipeline/SHIP] Quality scoring failed:', err instanceof Error ? err.message : err)
+  }
 
   return {
     finalCode,

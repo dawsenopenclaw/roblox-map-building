@@ -360,7 +360,8 @@ function ReviewSubmitForm() {
       setStatus('success')
       setText('')
       setStars(0)
-    } catch {
+    } catch (err) {
+      console.error('[ReviewMarquee] Review submission failed:', err instanceof Error ? err.message : err)
       setStatus('error')
       setErrorMsg('Something went wrong. Try again.')
     }

@@ -376,8 +376,8 @@ export default clerkMiddleware(async (auth, req) => {
         const sessionClaims = session.sessionClaims as Record<string, unknown> | null
         // Clerk surfaces the primary email on the session claims as `email`.
         primaryEmail = (sessionClaims?.email as string | undefined) ?? null
-      } catch {
-        // Clerk unavailable — deny bypass, redirect to maintenance page.
+      } catch (err) {
+        console.error('[Middleware] Clerk unavailable during maintenance check:', err instanceof Error ? err.message : err)
         primaryEmail = null
       }
 

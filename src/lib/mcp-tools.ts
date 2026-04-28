@@ -326,7 +326,8 @@ async function enrichPrompt(description: string): Promise<string> {
       300,
     )
     return text.length > 10 ? text : description
-  } catch {
+  } catch (err) {
+    console.error('[MCP/enrichPrompt] AI prompt enrichment failed, using original:', err instanceof Error ? err.message : err)
     return description
   }
 }
@@ -633,7 +634,8 @@ All coordinates are Roblox studs. The map fits within ${studs}x${studs} studs. I
   try {
     const raw = await aiGenerate(system, user, 2000)
     return parseAiJson<Record<string, unknown>>(raw)
-  } catch {
+  } catch (err) {
+    console.error('[MCP/cityPlan] AI city planning failed, using algorithmic fallback:', err instanceof Error ? err.message : err)
     // Algorithmic fallback
     const bounds = { width: studs, height: studs }
     const { roads, zones } = createUrbanGrid(bounds, style)
@@ -673,7 +675,8 @@ All dimensions in Roblox studs. meshPrompt should be a 1-2 sentence Meshy-ready 
   try {
     const raw = await aiGenerate(system, `Design a ${buildingType} in ${style} style.`, 800)
     spec = parseAiJson<Record<string, unknown>>(raw)
-  } catch {
+  } catch (err) {
+    console.error('[MCP/generateBuilding] AI building spec failed, using minimal fallback:', err instanceof Error ? err.message : err)
     spec = { buildingType, style }
   }
 
@@ -691,7 +694,8 @@ All dimensions in Roblox studs. meshPrompt should be a 1-2 sentence Meshy-ready 
         spec.meshTaskId = data.result
         spec.meshStatus = 'IN_PROGRESS'
       }
-    } catch {
+    } catch (meshErr) {
+      console.error('[MCP/generateBuilding] Meshy 3D mesh generation failed:', meshErr instanceof Error ? meshErr.message : meshErr)
       spec.meshStatus = 'skipped'
     }
   }

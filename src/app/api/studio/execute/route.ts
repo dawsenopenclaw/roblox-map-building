@@ -288,7 +288,9 @@ export async function POST(req: NextRequest) {
             { status: 200, headers: CORS_HEADERS },
           )
         }
-      } catch { /* Postgres also failed */ }
+      } catch (pgErr) {
+        console.error('[studio/execute] Postgres fallback also failed:', pgErr instanceof Error ? pgErr.message : pgErr)
+      }
 
       return NextResponse.json(
         { ok: false, error: result.error },

@@ -28,11 +28,12 @@ export async function POST(req: NextRequest) {
         returnUrl: `${clientEnv.NEXT_PUBLIC_APP_URL}/dashboard`,
       })
       return NextResponse.json({ url: session.url })
-    } catch {
-      // DB or Stripe not connected — demo fallback
+    } catch (err) {
+      console.error('[billing/portal] DB or Stripe error, falling back to demo:', err instanceof Error ? err.message : err)
       return NextResponse.json({ url: '/billing?demo=true', demo: true })
     }
-  } catch {
+  } catch (err) {
+    console.error('[billing/portal] Auth error, falling back to demo:', err instanceof Error ? err.message : err)
     return NextResponse.json({ url: '/billing?demo=true', demo: true })
   }
 }

@@ -90,8 +90,8 @@ export function useStudioDetection(
         lastHeartbeat: data.lastHeartbeat ?? null,
         sessionId: data.sessionId ?? null,
       })
-    } catch {
-      // Network error — mark as disconnected, keep polling (auto-reconnect)
+    } catch (err) {
+      console.error('[StudioDetection] Status poll failed:', err instanceof Error ? err.message : err)
       setState((prev) => ({ ...prev, isConnected: false }))
     }
   }, [])

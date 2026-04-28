@@ -304,7 +304,8 @@ export function GameTree({ onSelect, className = '', sessionId }: GameTreeProps)
           setIsLive(false)
           // Keep current tree structure if we previously had live data
         }
-      } catch {
+      } catch (err) {
+        console.error('[GameTree] Failed to fetch game state:', err instanceof Error ? err.message : err)
         setIsLive(false)
       }
     }

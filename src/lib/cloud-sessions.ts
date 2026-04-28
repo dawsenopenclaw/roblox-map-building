@@ -152,7 +152,8 @@ export async function loadSession(
 
   try {
     return typeof data === 'string' ? JSON.parse(data) : (data as unknown as CloudSession)
-  } catch {
+  } catch (err) {
+    console.error('[CloudSessions] Failed to parse session data:', err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -211,7 +212,8 @@ export async function listSessions(
         title: parsed.title,
         updatedAt: parsed.updatedAt,
       })
-    } catch {
+    } catch (parseErr) {
+      console.error('[CloudSessions] Failed to parse session in list, marking as expired:', parseErr instanceof Error ? parseErr.message : parseErr)
       expiredIds.push(sessionIds[i])
     }
   }

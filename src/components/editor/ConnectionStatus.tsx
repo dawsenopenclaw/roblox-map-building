@@ -71,7 +71,8 @@ export function ConnectionStatus({ compact = false, overrideState, sessionId, cl
         const data = (await res.json()) as StatusResponse
         setStatus(data)
         setState(data.connected ? 'connected' : 'disconnected')
-      } catch {
+      } catch (err) {
+        console.error('[ConnectionStatus] Studio status check failed:', err instanceof Error ? err.message : err)
         setState('disconnected')
       }
     }
