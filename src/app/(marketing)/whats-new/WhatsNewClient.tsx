@@ -255,7 +255,7 @@ export function WhatsNewClient() {
 
           <div className="mt-10 text-center">
             <Link
-              href="/beta"
+              href="/beta/invite"
               className="inline-flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/5"
               style={{ borderColor: 'rgba(255,255,255,0.12)' }}
             >

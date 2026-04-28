@@ -70,7 +70,7 @@ export default function ApiPage() {
 
         <h2 id="auth">Authentication</h2>
         <p>
-          Create an API key at <a href="/dashboard/api-keys">dashboard/api-keys</a>. Pass
+          Create an API key at <a href="/settings/api-keys">Settings &rarr; API Keys</a>. Pass
           it as a Bearer token in the <code>Authorization</code> header:
         </p>
         <CodeBlock

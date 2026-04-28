@@ -79,7 +79,7 @@ export default function McpPage() {
       <ol>
         <li>
           <strong>Create an API key</strong> — Go to{' '}
-          <a href="/settings?tab=api-keys">Settings &rarr; API Keys</a> and generate a new
+          <a href="/settings/api-keys">Settings &rarr; API Keys</a> and generate a new
           key. Copy it immediately — it&apos;s only shown once.
         </li>
         <li>

@@ -213,7 +213,7 @@ export default function TeamSettingsPage() {
           Create a team to invite collaborators and manage roles.
         </p>
         <Link
-          href="/team/create"
+          href="/team"
           className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E5A619] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors mb-4"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

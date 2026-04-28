@@ -812,7 +812,7 @@ function BillingTab() {
         </div>
 
         <Link
-          href="/billing#tokens"
+          href="/tokens"
           className="inline-flex items-center gap-2 text-sm font-semibold border border-[#D4AF37]/30 hover:border-[#D4AF37]/60 hover:bg-[#D4AF37]/5 text-[#D4AF37] px-4 py-2.5 rounded-xl transition-colors"
         >
           <Zap size={14} />
