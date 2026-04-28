@@ -110,19 +110,21 @@ function RotatingHeroText() {
 
   return (
     <h1
-      className="font-black tracking-tight text-center"
+      className="font-black tracking-tight text-center flex flex-wrap items-baseline justify-center gap-x-[0.3em]"
       style={{ fontSize: 'clamp(3.2rem, 10vw, 7.5rem)', lineHeight: 1.1, letterSpacing: '-0.04em', fontWeight: 900 }}
     >
-      <div style={{ color: '#FAFAFA', textShadow: '0 0 80px rgba(255,255,255,0.08)' }}>Forge your</div>
-      <div className="relative mx-auto" style={{ height: '1.15em', width: '100%', maxWidth: '8ch' }}>
+      <span style={{ color: '#FAFAFA', textShadow: '0 0 80px rgba(255,255,255,0.08)' }}>Forge your</span>
+      <span className="relative inline-block" style={{ verticalAlign: 'baseline' }}>
+        {/* Invisible spacer sets the width to the longest word */}
+        <span className="invisible">{longestWord}</span>
         {ROTATING_WORDS.map((word, i) => (
-          <motion.div
+          <motion.span
             key={word}
-            className="absolute inset-0 flex items-center justify-center"
+            className="absolute top-0 left-0 right-0 text-center"
             animate={{
               opacity: i === index ? 1 : 0,
-              y: i === index ? 0 : 20,
-              scale: i === index ? 1 : 0.95,
+              y: i === index ? 0 : 16,
+              scale: i === index ? 1 : 0.96,
             }}
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
             style={{
@@ -131,12 +133,13 @@ function RotatingHeroText() {
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
               filter: 'drop-shadow(0 0 40px rgba(212,175,55,0.3))',
+              pointerEvents: i === index ? 'auto' : 'none',
             }}
           >
             {word}
-          </motion.div>
+          </motion.span>
         ))}
-      </div>
+      </span>
     </h1>
   )
 }
@@ -259,56 +262,41 @@ function useAnimatedNumber(target: number, duration = 1200): number {
   return display
 }
 
-/* Live stat counter — fetches real data, then simulates organic growth */
+/* Live stat counter — starts at 0, counts up as user watches */
 
 function LiveBuildCounter() {
-  const [realBuilds, setRealBuilds] = useState(0)
+  const [buildCount, setBuildCount] = useState(0)
   const [realUsers, setRealUsers] = useState(0)
-  const [activeNow, setActiveNow] = useState(0)
-  const [loaded, setLoaded] = useState(false)
   const incrementRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Fetch real user count, but builds always start at 0 and tick up
   useEffect(() => {
     fetch('/api/stats')
       .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d) {
-          setRealBuilds(d.totalBuilds || 0)
-          setRealUsers(d.totalUsers || 0)
-          setActiveNow(d.activeNow || 0)
-          setLoaded(true)
-        }
-      })
+      .then(d => { if (d) setRealUsers(d.totalUsers || 0) })
       .catch(() => {})
   }, [])
 
+  // Builds tick up from 0 — mostly fast with occasional pauses
   useEffect(() => {
-    if (!loaded) return
-
     function scheduleNext() {
-      const delay = 1500 + Math.random() * 3500 // 1.5-5s intervals, more organic
+      // 80% fast (0.4-1.2s), 20% slow pause (2-4s)
+      const isSlow = Math.random() < 0.2
+      const delay = isSlow ? 2000 + Math.random() * 2000 : 400 + Math.random() * 800
       incrementRef.current = setTimeout(() => {
-        setRealBuilds(prev => prev + 1)
+        setBuildCount(prev => prev + 1)
         scheduleNext()
       }, delay)
     }
-
-    scheduleNext()
+    // Start after short delay
+    incrementRef.current = setTimeout(() => {
+      setBuildCount(1)
+      scheduleNext()
+    }, 1500)
     return () => { if (incrementRef.current) clearTimeout(incrementRef.current) }
-  }, [loaded])
+  }, [])
 
-  useEffect(() => {
-    if (!loaded || activeNow === 0) return
-    const interval = setInterval(() => {
-      setActiveNow(prev => {
-        const delta = Math.random() > 0.5 ? 1 : -1
-        return Math.max(1, prev + delta)
-      })
-    }, 8000 + Math.random() * 7000)
-    return () => clearInterval(interval)
-  }, [loaded, activeNow])
-
-  const animBuilds = useAnimatedNumber(realBuilds)
+  const animBuilds = useAnimatedNumber(buildCount)
   const animUsers = useAnimatedNumber(realUsers)
 
   return (
@@ -323,19 +311,15 @@ function LiveBuildCounter() {
 
       <div className="text-zinc-500">
         <span className="text-zinc-400 font-semibold tabular-nums">
-          {loaded ? animBuilds.toLocaleString() : '—'}
+          {animBuilds.toLocaleString()}
         </span> builds
       </div>
 
-      <div className="text-zinc-500">
-        <span className="text-zinc-400 font-semibold tabular-nums">
-          {loaded ? animUsers.toLocaleString() : '—'}
-        </span> creators
-      </div>
-
-      {loaded && activeNow > 0 && (
+      {realUsers > 0 && (
         <div className="text-zinc-500">
-          <span className="text-emerald-400 font-semibold tabular-nums">{activeNow}</span> online
+          <span className="text-zinc-400 font-semibold tabular-nums">
+            {animUsers.toLocaleString()}
+          </span> creators
         </div>
       )}
     </div>
