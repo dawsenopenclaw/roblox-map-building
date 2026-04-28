@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordFeedback, type BuildFeedback } from '@/lib/ai/luau-verifier'
 import { db } from '@/lib/db'
+import { learnFromFeedback } from '@/lib/ai/self-improve'
 
 // ── Request schema ────────────────────────────��─────────────────────────────
 
@@ -66,6 +67,16 @@ export async function POST(req: NextRequest) {
     timestamp: Date.now(),
   }
   recordFeedback(feedback)
+
+  // Feed user votes into self-improvement engine (strongest learning signal)
+  if (userVote !== undefined) {
+    void learnFromFeedback(
+      prompt || '',
+      code,
+      userVote,
+      category || null,
+    ).catch((e) => console.warn('[BuildFeedback] learnFromFeedback error:', e instanceof Error ? e.message : e))
+  }
 
   // Persist to DB with learning fields (fire-and-forget for speed)
   try {

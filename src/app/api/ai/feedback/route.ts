@@ -14,7 +14,8 @@ import { z } from 'zod'
 import { feedbackBodySchema } from '@/lib/validations'
 import { applyFeedback, getOptimizerStats, type FeedbackInput, getRecord } from '@/lib/ai/prompt-optimizer'
 import { getQualityStats, getDegradingIntents } from '@/lib/ai/response-quality'
-import { recordBuildOutcome } from '@/lib/ai/experience-memory'
+import { recordBuildOutcome, detectCategory } from '@/lib/ai/experience-memory'
+import { learnFromFeedback } from '@/lib/ai/self-improve'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -120,6 +121,16 @@ export async function POST(req: NextRequest): Promise<NextResponse<FeedbackRespo
         { userVote: feedback.type === 'thumbs' ? feedback.value : feedback.value >= 4 }
       )
       console.log(`[Feedback] Recorded user ${feedback.type === 'thumbs' ? (feedback.value ? 'thumbs-up' : 'thumbs-down') : `rating=${feedback.value}`} to experience-memory for: "${record.userPrompt.slice(0, 60)}"`)
+
+      // Feed into self-improvement engine — user votes are the strongest signal
+      const isPositive = feedback.type === 'thumbs' ? !!feedback.value : feedback.value >= 4
+      const category = detectCategory(record.userPrompt)
+      void learnFromFeedback(
+        record.userPrompt,
+        '', // code not available from prompt-optimizer records — build-feedback route has full code
+        isPositive,
+        category,
+      ).catch((e) => console.warn('[Feedback] learnFromFeedback error:', e instanceof Error ? e.message : e))
     }
   } catch (expErr) {
     console.warn('[Feedback] Non-blocking experience-memory error:', expErr instanceof Error ? expErr.message : expErr)

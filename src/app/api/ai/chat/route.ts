@@ -43,7 +43,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/lib/ai/game-knowledge'
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
 import { findSimilarSuccesses, findAntiPatterns, formatAsExamples, formatAntiPatterns, recordBuildOutcome, detectCategory, detectBuildType, countPartsInCode, getAggregatePatterns, getConfidence } from '@/lib/ai/experience-memory'
-import { getLearnedRules, learnFromFailure, learnFromStudioError, learnFromPromptPopularity } from '@/lib/ai/self-improve'
+import { getLearnedRules, learnFromFailure, learnFromStudioError, learnFromPromptPopularity, learnFromFeedback, learnFromIteration } from '@/lib/ai/self-improve'
 import { awardXP } from '@/lib/ai/ai-xp'
 import { findAllRelevantSystems, formatSystemKnowledge } from '@/lib/ai/game-systems-knowledge'
 import { getArchitectureKnowledge, detectGameType } from '@/lib/ai/roblox-architecture'
@@ -15324,6 +15324,46 @@ async function recordUniversalOutcome(text: string, meta: StreamResponseMeta): P
       // AI XP: award experience for every build
       void awardXP(score, partCount, category).catch(() => {})
 
+      // ── Iteration learning: when user is refining a previous build, learn what "better" means ──
+      const userMsg = meta._userMessage ?? ''
+      const sessionIdForCtx = meta._sessionId
+      const isIteration = /\b(again|redo|fix that|make it (?:bigger|smaller|taller|shorter|wider|better)|change the|add more|too small|not enough|more detail|try again)\b/i.test(userMsg)
+      if (isIteration && sessionIdForCtx && score > 0) {
+        try {
+          const prevCtx = await getBuildContext(sessionIdForCtx)
+          if (prevCtx && prevCtx.lastCode) {
+            const prevScore = prevCtx.partCount > 0 ? Math.min(80, prevCtx.partCount * 2) : 40 // estimate
+            void learnFromIteration(
+              prevCtx.lastPrompt,
+              prevScore,
+              text,
+              score,
+              code,
+              category,
+            ).catch(() => {})
+            console.log(`[IterationLearning] Detected iteration: prev="${prevCtx.lastPrompt.slice(0, 40)}" (est. score ${prevScore}) → current score ${score}`)
+          }
+        } catch { /* non-blocking */ }
+      }
+
+      // ── Feedback learning: when user praises or rejects a build in chat ──
+      const positiveFeedback = /\b(that was good|perfect|love it|great build|amazing|awesome|looks great|nice|well done|beautiful|exactly what i wanted|nailed it)\b/i.test(userMsg)
+      const negativeFeedback = /\b(that sucks|too small|bad|ugly|wrong|terrible|awful|not what i wanted|looks bad|broken|worst|horrible|hate it|disappointing)\b/i.test(userMsg)
+      if ((positiveFeedback || negativeFeedback) && sessionIdForCtx) {
+        try {
+          const prevCtx = await getBuildContext(sessionIdForCtx)
+          if (prevCtx && prevCtx.lastCode) {
+            void learnFromFeedback(
+              prevCtx.lastPrompt,
+              prevCtx.lastCode,
+              positiveFeedback,
+              category,
+            ).catch(() => {})
+            console.log(`[ChatFeedback] Detected ${positiveFeedback ? 'positive' : 'negative'} feedback for: "${prevCtx.lastPrompt.slice(0, 50)}"`)
+          }
+        } catch { /* non-blocking */ }
+      }
+
       console.log(`[UniversalLearning] Recorded ${buildType} outcome: score=${score}, model=${model}, parts=${partCount}, intent=${intent}`)
     }
   } catch {
@@ -16213,6 +16253,27 @@ FOLDER AWARENESS (CRITICAL):
 - Scripts go in ServerScriptService, GUIs in StarterGui, shared modules in ReplicatedStorage.
 - Match naming patterns of nearby objects — if they use "Tree_1", "Tree_2", continue the sequence.
 - If user references something near an existing object, position relative to that object, not just at camera.`
+
+        // ── Save workspace summary to user memory so future sessions know the game state ──
+        if (authedUserId) {
+          try {
+            const wsTotalParts = stats.totalParts ?? stats.parts ?? stats.total ?? objects.length
+            if (wsTotalParts > 0) {
+              void saveUserPreference(authedUserId, 'workspace_total_parts', String(wsTotalParts)).catch(() => {})
+            }
+            const wsTotalScripts = scripts ? (scripts.server + scripts.local_ + scripts.module) : 0
+            if (wsTotalScripts > 0) {
+              void saveUserPreference(authedUserId, 'workspace_total_scripts', String(wsTotalScripts)).catch(() => {})
+            }
+            if (objects.length > 0) {
+              const wsTopObjects = objects.slice(0, 10).map(o => o.n).join(', ')
+              void saveUserPreference(authedUserId, 'workspace_top_objects', wsTopObjects).catch(() => {})
+            }
+            if (place?.name) {
+              void saveUserPreference(authedUserId, 'workspace_place_name', place.name).catch(() => {})
+            }
+          } catch { /* non-blocking */ }
+        }
       }
 
     } catch {

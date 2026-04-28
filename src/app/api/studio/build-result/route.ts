@@ -127,6 +127,38 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── Save workspace facts to user memory for long-term learning ──
+    // Uses sessionId as the user key since Studio sessions don't carry userId
+    try {
+      const { saveUserPreference } = await import('@/lib/ai/user-memory')
+      const memoryKey = sessionId
+
+      // Total parts after this build
+      if (delta.partCountAfter != null) {
+        void saveUserPreference(memoryKey, 'workspace_total_parts', String(delta.partCountAfter)).catch(() => {})
+      }
+
+      // Last successful build type
+      if (errors.length === 0 && body.buildCategory) {
+        void saveUserPreference(memoryKey, 'last_successful_build_type', body.buildCategory).catch(() => {})
+      }
+
+      // Parts added in this build (for averaging)
+      const partsAdded = (delta.partCountAfter ?? 0) - (delta.partCountBefore ?? 0)
+      if (partsAdded > 0) {
+        void saveUserPreference(memoryKey, 'last_build_parts_added', String(partsAdded)).catch(() => {})
+        void saveUserPreference(memoryKey, 'last_build_timestamp', String(Date.now())).catch(() => {})
+      }
+
+      // Track new objects added (top-level summary)
+      if (delta.newParts && delta.newParts.length > 0) {
+        const topNames = delta.newParts.slice(0, 5).map(p => p.name).join(', ')
+        void saveUserPreference(memoryKey, 'last_build_objects', topNames).catch(() => {})
+      }
+    } catch {
+      // user-memory module unavailable — non-critical
+    }
+
     return NextResponse.json(
       {
         recorded: true,
