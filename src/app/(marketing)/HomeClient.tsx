@@ -16,11 +16,12 @@ const FaqSection = dynamic(() => import('@/components/marketing/FaqSection'))
 
 const glass = {
   card: {
-    background: 'rgba(12,16,32,0.55)',
-    backdropFilter: 'blur(24px)',
-    WebkitBackdropFilter: 'blur(24px)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(8,12,28,0.75)',
+    backdropFilter: 'blur(40px)',
+    WebkitBackdropFilter: 'blur(40px)',
+    border: '1px solid rgba(255,255,255,0.07)',
     borderRadius: '16px',
+    isolation: 'isolate',  // prevents background bleed-through
   } as React.CSSProperties,
   cardHover: {
     border: '1px solid rgba(212,175,55,0.2)',
@@ -117,28 +118,34 @@ function RotatingHeroText() {
       <span className="relative inline-block" style={{ verticalAlign: 'baseline' }}>
         {/* Invisible spacer sets the width to the longest word */}
         <span className="invisible">{longestWord}</span>
-        {ROTATING_WORDS.map((word, i) => (
-          <motion.span
-            key={word}
-            className="absolute top-0 left-0 right-0 text-center"
-            animate={{
-              opacity: i === index ? 1 : 0,
-              y: i === index ? 0 : 16,
-              scale: i === index ? 1 : 0.96,
-            }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            style={{
-              background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 45%, #D4AF37 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              filter: 'drop-shadow(0 0 40px rgba(212,175,55,0.3))',
-              pointerEvents: i === index ? 'auto' : 'none',
-            }}
-          >
-            {word}
-          </motion.span>
-        ))}
+        {ROTATING_WORDS.map((word, i) => {
+          const isActive = i === index
+          return (
+            <motion.span
+              key={word}
+              className="absolute top-0 left-0 right-0 text-center"
+              initial={false}
+              animate={{
+                opacity: isActive ? 1 : 0,
+                y: isActive ? 0 : -12,
+              }}
+              transition={isActive
+                ? { duration: 0.7, ease: [0.16, 1, 0.3, 1] }  // incoming: smooth fade in
+                : { duration: 0.15, ease: 'easeOut' }           // outgoing: disappear fast
+              }
+              style={{
+                background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 45%, #D4AF37 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                filter: 'drop-shadow(0 0 40px rgba(212,175,55,0.3))',
+                pointerEvents: isActive ? 'auto' : 'none',
+              }}
+            >
+              {word}
+            </motion.span>
+          )
+        })}
       </span>
     </h1>
   )
@@ -331,10 +338,10 @@ function HeroSection() {
 
   return (
     <section className="relative flex flex-col items-center justify-center text-center overflow-hidden min-h-screen px-6" style={{ paddingTop: '14vh', paddingBottom: '10vh' }}>
-      {/* Background glow — contained, won't overlap content — parallax */}
-      <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: `translateX(-50%) translateY(${parallaxOffset}px)`, width: '120%', height: '70%', background: 'radial-gradient(ellipse 60% 45% at 50% 15%, rgba(212,175,55,0.10) 0%, transparent 65%)', filter: 'blur(40px)', willChange: 'transform' }} />
-        <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.2 }} />
+      {/* Background glow — z-0, sits behind all content */}
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+        <div style={{ position: 'absolute', top: '-5%', left: '50%', transform: `translateX(-50%) translateY(${parallaxOffset}px)`, width: '90%', height: '50%', background: 'radial-gradient(ellipse 50% 40% at 50% 20%, rgba(212,175,55,0.07) 0%, transparent 55%)', filter: 'blur(60px)', willChange: 'transform' }} />
+        <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.15 }} />
       </div>
 
       <motion.div className="relative max-w-4xl mx-auto w-full z-10" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}>
@@ -716,7 +723,7 @@ function FinalCTA() {
   return (
     <section ref={ref} className="relative py-24 sm:py-32 px-6 text-center" style={{ background: '#040712' }}>
       <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div style={{ position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)', width: '60%', height: '50%', background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.05) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+        <div style={{ position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)', width: '50%', height: '40%', background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.04) 0%, transparent 55%)', filter: 'blur(60px)', zIndex: 0 }} />
       </div>
 
       <motion.div className="relative max-w-2xl mx-auto" variants={fadeUp} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
@@ -747,7 +754,11 @@ export default function HomeClient() {
   const pageRef = useReveal()
 
   return (
-    <div ref={pageRef} className="min-h-screen" style={{ background: '#050810', color: '#FAFAFA', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)' }}>
+    <div ref={pageRef} className="min-h-screen relative" style={{ background: '#050810', color: '#FAFAFA', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)' }}>
+      {/* Fixed star field background — persists through entire scroll */}
+      <div aria-hidden="true" className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+        <div className="grid-overlay" style={{ position: 'absolute', inset: 0, opacity: 0.12 }} />
+      </div>
 
       {/* 1 — Hero (full screen) */}
       <HeroSection />
