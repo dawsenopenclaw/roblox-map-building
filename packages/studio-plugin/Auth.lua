@@ -124,10 +124,22 @@ function Auth.exchangeCode(code, pluginRef, callback)
 
     local encoded
     local encOk = pcall(function()
+      -- Include pluginVersion so the JWT has the correct version embedded.
+      -- Sync.PLUGIN_VERSION is the canonical version string; fall back to
+      -- a hardcoded value if Sync hasn't been loaded yet.
+      local pv = "4.8.0"
+      pcall(function()
+        local syncMod = script and script.Parent and script.Parent:FindFirstChild("Sync")
+        if syncMod then
+          local s = require(syncMod)
+          if s and s.PLUGIN_VERSION then pv = s.PLUGIN_VERSION end
+        end
+      end)
       encoded = HttpService:JSONEncode({
-        code      = trimmed,
-        placeId   = tostring(game.PlaceId),
-        placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
+        code          = trimmed,
+        placeId       = tostring(game.PlaceId),
+        placeName     = game.Name ~= "" and game.Name or tostring(game.PlaceId),
+        pluginVersion = pv,
       })
     end)
     if not encOk then
