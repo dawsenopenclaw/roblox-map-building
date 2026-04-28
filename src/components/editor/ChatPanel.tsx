@@ -33,6 +33,7 @@ import { PlaytestIndicator } from './PlaytestIndicator'
 import { ManualBuildPanel } from './ManualBuildPanel'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { findFix } from '@/lib/ai/error-fix-map'
+import { BuildProgressIndicator } from './BuildProgressIndicator'
 
 // ─── Empty-state rotating headline (matches marketing site) ───────────────────
 // Cycled by EmptyState every 2.4s. Intentionally a different word set than the
@@ -5328,6 +5329,14 @@ export function ChatPanel({
               <div style={{ maxWidth: 460, width: '100%' }}>
                 <ThinkingIndicator mode={aiMode} thinkingText={thinkingText} />
                 <PriorityQueueNudge isThinking={isThinking} />
+              </div>
+            </div>
+          )}
+
+          {loading && !isThinking && (
+            <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
+              <div style={{ maxWidth: 480, width: '100%' }}>
+                <BuildProgressIndicator />
               </div>
             </div>
           )}

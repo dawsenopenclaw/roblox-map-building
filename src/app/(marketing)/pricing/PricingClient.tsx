@@ -85,7 +85,9 @@ const TIERS = [
     badge: 'FREE',
     cta: 'Start Building Free',
     ctaHref: '/sign-up?plan=free',
+    gameDepth: 'Small builds & props',
     features: [
+      'Small builds & props',
       '1,000 tokens (one-time, never expires)',
       '50 builds per month',
       '5 AI models included',
@@ -107,7 +109,9 @@ const TIERS = [
     badge: 'Most Popular',
     cta: 'Start Building',
     ctaHref: '/sign-up?plan=builder',
+    gameDepth: '25% game completion / month',
     features: [
+      '25% game completion / month',
       '15,000 tokens / month',
       '50 builds per day',
       'All AI build modes',
@@ -130,7 +134,9 @@ const TIERS = [
     badge: null,
     cta: 'Get Creator',
     ctaHref: '/sign-up?plan=creator',
+    gameDepth: '50% game completion / month',
     features: [
+      '50% game completion / month',
       '40,000 tokens / month',
       'Unlimited builds',
       'All Builder features',
@@ -154,7 +160,9 @@ const TIERS = [
     badge: null,
     cta: 'Go Pro',
     ctaHref: '/sign-up?plan=pro',
+    gameDepth: '75% game completion / month',
     features: [
+      '75% game completion / month',
       '100,000 tokens / month',
       'Unlimited everything',
       'All Creator features',
@@ -178,7 +186,9 @@ const TIERS = [
     badge: null,
     cta: 'Get Studio',
     ctaHref: '/sign-up?plan=studio',
+    gameDepth: '100% — unlimited full game building',
     features: [
+      '100% — unlimited full game building',
       '200,000 tokens / month',
       'Unlimited everything',
       'All Pro features',
@@ -195,6 +205,7 @@ const TIERS = [
 // Feature matrix for comparison table (all tiers including FREE)
 const COMPARE_FEATURES = [
   { label: 'Price',              free: '$0',          builder: '$25/mo',    creator: '$50/mo',    pro: '$150/mo',   studio: '$200/mo'   },
+  { label: 'Game Building Depth', free: 'Props only', builder: '25%',       creator: '50%',       pro: '75%',       studio: '100%'      },
   { label: 'Tokens / month',    free: '1,000',       builder: '15,000',    creator: '40,000',    pro: '100,000',   studio: '200,000'   },
   { label: 'Builds',            free: '50/month',    builder: '50/day',    creator: 'Unlimited', pro: 'Unlimited', studio: 'Unlimited' },
   { label: 'AI Models',         free: '5',           builder: 'All',       creator: 'All',       pro: 'All',       studio: 'All'       },
@@ -1290,28 +1301,57 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
 
                   {/* Features list */}
                   <ul className="space-y-3.5 flex-1">
-                    {tier.features.map((f) => (
-                      <li key={f} className="flex items-start gap-3">
-                        <div
-                          className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
-                            tier.key === 'FREE' || tier.highlight ? 'bg-[#D4AF37]/15' : 'bg-white/[0.06]'
-                          }`}
-                        >
-                          <Check
-                            className={`w-3 h-3 ${
-                              tier.key === 'FREE' || tier.highlight ? 'text-[#D4AF37]' : 'text-[#6B7699]'
+                    {tier.features.map((f) => {
+                      const isGameDepth = f === tier.gameDepth
+                      return (
+                        <li key={f} className={`flex items-start gap-3 ${isGameDepth ? 'mb-1' : ''}`}>
+                          <div
+                            className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
+                              isGameDepth
+                                ? 'bg-[#D4AF37]/20'
+                                : tier.key === 'FREE' || tier.highlight ? 'bg-[#D4AF37]/15' : 'bg-white/[0.06]'
                             }`}
-                          />
-                        </div>
-                        <span
-                          className={`text-[15px] leading-snug ${
-                            tier.key === 'FREE' || tier.highlight ? 'text-[#E8EBF5]' : 'text-[#8B95B0]'
-                          }`}
-                        >
-                          {f}
-                        </span>
-                      </li>
-                    ))}
+                          >
+                            {isGameDepth ? (
+                              <Rocket className="w-3 h-3 text-[#D4AF37]" />
+                            ) : (
+                              <Check
+                                className={`w-3 h-3 ${
+                                  tier.key === 'FREE' || tier.highlight ? 'text-[#D4AF37]' : 'text-[#6B7699]'
+                                }`}
+                              />
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-1 flex-1 min-w-0">
+                            <span
+                              className={`text-[15px] leading-snug ${
+                                isGameDepth
+                                  ? 'text-[#D4AF37] font-semibold'
+                                  : tier.key === 'FREE' || tier.highlight ? 'text-[#E8EBF5]' : 'text-[#8B95B0]'
+                              }`}
+                            >
+                              {isGameDepth ? (
+                                <>
+                                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#D4AF37]/60 block mb-0.5">Game Depth</span>
+                                  {f}
+                                </>
+                              ) : f}
+                            </span>
+                            {isGameDepth && tier.key !== 'FREE' && (
+                              <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden w-full max-w-[120px]">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    width: tier.key === 'STUDIO' ? '100%' : tier.key === 'PRO' ? '75%' : tier.key === 'CREATOR' ? '50%' : '25%',
+                                    background: 'linear-gradient(90deg, #B8941F, #D4AF37, #FFD966)',
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </li>
+                      )
+                    })}
                   </ul>
                 </div>
               </div>
