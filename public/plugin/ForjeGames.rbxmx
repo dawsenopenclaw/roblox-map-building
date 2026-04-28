@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
   <!-- ForjeGames Studio Plugin v1.0.0 -->
-  <!-- Built by build-plugin.js on 2026-04-28T03:08:43.205Z -->
+  <!-- Built by build-plugin.js on 2026-04-28T03:15:34.211Z -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -502,6 +502,19 @@ local function init()
   -- Wire up auth button
   if uiRefs.authBtn then
     uiRefs.authBtn.MouseButton1Click:Connect(handleAuthButton)
+  end
+
+  -- Wire up chat submit → Sync.sendChat
+  state.onChatSubmit = function(prompt, callback)
+    if not state.authenticated then
+      callback({ success = false, error = "Not connected" })
+      return
+    end
+    if Sync and Sync.sendChat then
+      Sync.sendChat(prompt, callback)
+    else
+      callback({ success = false, error = "Sync module not loaded" })
+    end
   end
 
   -- Wire up action buttons
@@ -1053,11 +1066,11 @@ function UI.build(widget, state, COLORS, pluginRef)
     end
   end)
 
-  -- ── Content container (centered vertically) ───────────────
+  -- ── Content container (fills most of the widget) ──────────
   local content = Instance.new("Frame")
   content.Name             = "Content"
-  content.Size             = UDim2.new(1, -40, 0, 340)
-  content.Position         = UDim2.new(0, 20, 0.5, -170)
+  content.Size             = UDim2.new(1, -24, 1, -24)
+  content.Position         = UDim2.new(0, 12, 0, 12)
   content.BackgroundTransparency = 1
   content.BorderSizePixel  = 0
   content.ZIndex           = 10
@@ -1344,6 +1357,361 @@ function UI.build(widget, state, COLORS, pluginRef)
   errorLabel.ZIndex                = 10
   errorLabel.Parent                = content
 
+  -- ════════════════════════════════════════════════════════════
+  -- ── CHAT PANEL (visible when authenticated) ─────────────────
+  -- ════════════════════════════════════════════════════════════
+  local chatPanel = Instance.new("Frame")
+  chatPanel.Name                  = "ChatPanel"
+  chatPanel.Size                  = UDim2.new(1, 0, 1, -310)
+  chatPanel.Position              = UDim2.new(0, 0, 0, 310)
+  chatPanel.BackgroundTransparency = 1
+  chatPanel.BorderSizePixel       = 0
+  chatPanel.Visible               = state.authenticated
+  chatPanel.ZIndex                = 10
+  chatPanel.ClipsDescendants      = true
+  chatPanel.Parent                = content
+
+  -- Separator line
+  local chatSep = Instance.new("Frame")
+  chatSep.Name                  = "ChatSep"
+  chatSep.Size                  = UDim2.new(1, 0, 0, 1)
+  chatSep.Position              = UDim2.new(0, 0, 0, 0)
+  chatSep.BackgroundColor3      = C.border
+  chatSep.BackgroundTransparency = 0.3
+  chatSep.BorderSizePixel       = 0
+  chatSep.ZIndex                = 10
+  chatSep.Parent                = chatPanel
+
+  -- Chat title
+  local chatTitle = Instance.new("TextLabel")
+  chatTitle.Name                  = "ChatTitle"
+  chatTitle.Text                  = "Build with AI"
+  chatTitle.Font                  = Enum.Font.GothamBold
+  chatTitle.TextSize              = 13
+  chatTitle.TextColor3            = C.gold
+  chatTitle.BackgroundTransparency = 1
+  chatTitle.Size                  = UDim2.new(1, 0, 0, 20)
+  chatTitle.Position              = UDim2.new(0, 0, 0, 10)
+  chatTitle.TextXAlignment        = Enum.TextXAlignment.Left
+  chatTitle.ZIndex                = 10
+  chatTitle.Parent                = chatPanel
+
+  -- Chat message history (scrolling)
+  local chatScroll = Instance.new("ScrollingFrame")
+  chatScroll.Name                  = "ChatScroll"
+  chatScroll.Size                  = UDim2.new(1, 0, 1, -90)
+  chatScroll.Position              = UDim2.new(0, 0, 0, 34)
+  chatScroll.BackgroundTransparency = 1
+  chatScroll.BorderSizePixel       = 0
+  chatScroll.ScrollBarThickness    = 4
+  chatScroll.ScrollBarImageColor3  = C.gold
+  chatScroll.ScrollBarImageTransparency = 0.5
+  chatScroll.CanvasSize            = UDim2.new(0, 0, 0, 0)
+  chatScroll.AutomaticCanvasSize   = Enum.AutomaticSize.Y
+  chatScroll.ZIndex                = 10
+  chatScroll.ClipsDescendants      = true
+  chatScroll.Parent                = chatPanel
+
+  local chatLayout = Instance.new("UIListLayout")
+  chatLayout.FillDirection = Enum.FillDirection.Vertical
+  chatLayout.Padding       = UDim.new(0, 6)
+  chatLayout.SortOrder     = Enum.SortOrder.LayoutOrder
+  chatLayout.Parent        = chatScroll
+
+  local chatPadding = Instance.new("UIPadding")
+  chatPadding.PaddingTop    = UDim.new(0, 4)
+  chatPadding.PaddingBottom = UDim.new(0, 4)
+  chatPadding.Parent        = chatScroll
+
+  -- Welcome message
+  local welcomeMsg = Instance.new("TextLabel")
+  welcomeMsg.Name                  = "WelcomeMsg"
+  welcomeMsg.Text                  = "Describe what to build and it will appear in Studio. Try: \"build me a medieval castle\""
+  welcomeMsg.Font                  = Enum.Font.Gotham
+  welcomeMsg.TextSize              = 11
+  welcomeMsg.TextColor3            = C.textDim
+  welcomeMsg.BackgroundTransparency = 1
+  welcomeMsg.Size                  = UDim2.new(1, -8, 0, 0)
+  welcomeMsg.AutomaticSize         = Enum.AutomaticSize.Y
+  welcomeMsg.TextWrapped           = true
+  welcomeMsg.TextXAlignment        = Enum.TextXAlignment.Left
+  welcomeMsg.ZIndex                = 10
+  welcomeMsg.LayoutOrder           = 0
+  welcomeMsg.Parent                = chatScroll
+
+  local _chatMsgCount = 0
+
+  -- Input area (bottom of chat panel)
+  local chatInputFrame = Instance.new("Frame")
+  chatInputFrame.Name                  = "ChatInputFrame"
+  chatInputFrame.Size                  = UDim2.new(1, 0, 0, 42)
+  chatInputFrame.Position              = UDim2.new(0, 0, 1, -48)
+  chatInputFrame.BackgroundColor3      = C.input
+  chatInputFrame.BackgroundTransparency = 0.15
+  chatInputFrame.BorderSizePixel       = 0
+  chatInputFrame.ZIndex                = 12
+  chatInputFrame.Parent                = chatPanel
+
+  local chatInputCorner = Instance.new("UICorner")
+  chatInputCorner.CornerRadius = UDim.new(0, 10)
+  chatInputCorner.Parent       = chatInputFrame
+
+  local chatInputStroke = Instance.new("UIStroke")
+  chatInputStroke.Color        = C.border
+  chatInputStroke.Thickness    = 1.5
+  chatInputStroke.Transparency = 0.2
+  chatInputStroke.Parent       = chatInputFrame
+
+  local chatInput = Instance.new("TextBox")
+  chatInput.Name                  = "ChatInput"
+  chatInput.PlaceholderText       = "Describe what to build..."
+  chatInput.PlaceholderColor3     = C.textDim
+  chatInput.Text                  = ""
+  chatInput.Font                  = Enum.Font.Gotham
+  chatInput.TextSize              = 13
+  chatInput.TextColor3            = C.text
+  chatInput.BackgroundTransparency = 1
+  chatInput.Size                  = UDim2.new(1, -50, 1, 0)
+  chatInput.Position              = UDim2.new(0, 10, 0, 0)
+  chatInput.TextXAlignment        = Enum.TextXAlignment.Left
+  chatInput.ClearTextOnFocus      = false
+  chatInput.TextWrapped           = false
+  chatInput.TextTruncate          = Enum.TextTruncate.AtEnd
+  chatInput.ZIndex                = 13
+  chatInput.Parent                = chatInputFrame
+
+  -- Gold focus ring
+  chatInput.Focused:Connect(function()
+    TweenService:Create(chatInputStroke, TweenInfo.new(0.2), {
+      Color = C.gold, Thickness = 2
+    }):Play()
+  end)
+  chatInput.FocusLost:Connect(function()
+    TweenService:Create(chatInputStroke, TweenInfo.new(0.2), {
+      Color = C.border, Thickness = 1.5
+    }):Play()
+  end)
+
+  -- Send button
+  local chatSendBtn = Instance.new("TextButton")
+  chatSendBtn.Name                  = "ChatSendBtn"
+  chatSendBtn.Text                  = "\226\156\166"  -- ✦
+  chatSendBtn.Font                  = Enum.Font.SourceSans
+  chatSendBtn.TextSize              = 18
+  chatSendBtn.TextColor3            = C.bg
+  chatSendBtn.BackgroundColor3      = C.gold
+  chatSendBtn.Size                  = UDim2.new(0, 32, 0, 32)
+  chatSendBtn.Position              = UDim2.new(1, -38, 0.5, -16)
+  chatSendBtn.AutoButtonColor       = false
+  chatSendBtn.BorderSizePixel       = 0
+  chatSendBtn.ZIndex                = 13
+  chatSendBtn.Parent                = chatInputFrame
+
+  local sendBtnCorner = Instance.new("UICorner")
+  sendBtnCorner.CornerRadius = UDim.new(0, 8)
+  sendBtnCorner.Parent       = chatSendBtn
+
+  chatSendBtn.MouseEnter:Connect(function()
+    chatSendBtn.BackgroundColor3 = C.goldLight
+  end)
+  chatSendBtn.MouseLeave:Connect(function()
+    chatSendBtn.BackgroundColor3 = C.gold
+  end)
+
+  -- Sending state
+  local _chatSending = false
+
+  -- Add a message bubble to the chat
+  local function addChatBubble(text, sender, isError)
+    _chatMsgCount = _chatMsgCount + 1
+    local isUser = (sender == "user")
+
+    local bubble = Instance.new("Frame")
+    bubble.Name                  = "Msg_" .. _chatMsgCount
+    bubble.BackgroundColor3      = isUser and C.surface2 or (isError and Color3.fromHex("1f0707") or Color3.fromHex("0d1a0d"))
+    bubble.BackgroundTransparency = 0.3
+    bubble.BorderSizePixel       = 0
+    bubble.Size                  = UDim2.new(1, -8, 0, 0)
+    bubble.AutomaticSize         = Enum.AutomaticSize.Y
+    bubble.ZIndex                = 10
+    bubble.LayoutOrder           = _chatMsgCount
+    bubble.Parent                = chatScroll
+
+    local bubbleCorner = Instance.new("UICorner")
+    bubbleCorner.CornerRadius = UDim.new(0, 8)
+    bubbleCorner.Parent       = bubble
+
+    local bubbleStroke = Instance.new("UIStroke")
+    bubbleStroke.Color        = isUser and C.border or (isError and C.error or Color3.fromHex("1a3d1a"))
+    bubbleStroke.Thickness    = 1
+    bubbleStroke.Transparency = 0.5
+    bubbleStroke.Parent       = bubble
+
+    local bubblePad = Instance.new("UIPadding")
+    bubblePad.PaddingTop    = UDim.new(0, 6)
+    bubblePad.PaddingBottom = UDim.new(0, 6)
+    bubblePad.PaddingLeft   = UDim.new(0, 8)
+    bubblePad.PaddingRight  = UDim.new(0, 8)
+    bubblePad.Parent        = bubble
+
+    -- Sender label
+    local senderLabel = Instance.new("TextLabel")
+    senderLabel.Name                  = "Sender"
+    senderLabel.Text                  = isUser and "You" or (isError and "Error" or "ForjeAI")
+    senderLabel.Font                  = Enum.Font.GothamBold
+    senderLabel.TextSize              = 10
+    senderLabel.TextColor3            = isUser and C.textDim or (isError and C.error or C.gold)
+    senderLabel.BackgroundTransparency = 1
+    senderLabel.Size                  = UDim2.new(1, 0, 0, 12)
+    senderLabel.TextXAlignment        = Enum.TextXAlignment.Left
+    senderLabel.ZIndex                = 11
+    senderLabel.LayoutOrder           = 1
+    senderLabel.Parent                = bubble
+
+    local msgLabel = Instance.new("TextLabel")
+    msgLabel.Name                  = "MsgText"
+    msgLabel.Text                  = text
+    msgLabel.Font                  = Enum.Font.Gotham
+    msgLabel.TextSize              = 12
+    msgLabel.TextColor3            = isError and C.error or C.textSec
+    msgLabel.BackgroundTransparency = 1
+    msgLabel.Size                  = UDim2.new(1, 0, 0, 0)
+    msgLabel.AutomaticSize         = Enum.AutomaticSize.Y
+    msgLabel.TextWrapped           = true
+    msgLabel.TextXAlignment        = Enum.TextXAlignment.Left
+    msgLabel.ZIndex                = 11
+    msgLabel.LayoutOrder           = 2
+    msgLabel.Parent                = bubble
+
+    local bubbleLayout = Instance.new("UIListLayout")
+    bubbleLayout.FillDirection = Enum.FillDirection.Vertical
+    bubbleLayout.Padding       = UDim.new(0, 2)
+    bubbleLayout.SortOrder     = Enum.SortOrder.LayoutOrder
+    bubbleLayout.Parent        = bubble
+
+    -- Auto-scroll to bottom
+    task.defer(function()
+      chatScroll.CanvasPosition = Vector2.new(0, chatScroll.AbsoluteCanvasSize.Y)
+    end)
+
+    return bubble
+  end
+
+  -- Handle chat submit
+  local function onChatSubmit()
+    if _chatSending then return end
+    local text = chatInput.Text:match("^%s*(.-)%s*$") -- trim
+    if not text or text == "" then return end
+
+    chatInput.Text = ""
+    _chatSending = true
+    chatSendBtn.BackgroundColor3 = C.textDim
+    chatSendBtn.Text = "..."
+
+    -- Show user message
+    addChatBubble(text, "user")
+
+    -- Show thinking indicator
+    local thinkingBubble = addChatBubble("Thinking...", "ai")
+
+    -- Call API via Sync module (will be wired in Plugin.lua)
+    if state.onChatSubmit then
+      state.onChatSubmit(text, function(result)
+        -- Remove thinking bubble
+        thinkingBubble:Destroy()
+
+        if result and result.success then
+          -- Truncate long messages for the bubble
+          local msg = result.message or "Build sent to Studio!"
+          if #msg > 300 then
+            msg = msg:sub(1, 297) .. "..."
+          end
+          addChatBubble(msg, "ai")
+          if result.tokensUsed then
+            -- Small token usage note
+            addChatBubble(tostring(result.tokensUsed) .. " tokens used", "ai")
+          end
+        else
+          addChatBubble(result and result.error or "Something went wrong", "ai", true)
+        end
+
+        _chatSending = false
+        chatSendBtn.BackgroundColor3 = C.gold
+        chatSendBtn.Text = "\226\156\166"
+      end)
+    else
+      thinkingBubble:Destroy()
+      addChatBubble("Chat not connected — restart plugin", "ai", true)
+      _chatSending = false
+      chatSendBtn.BackgroundColor3 = C.gold
+      chatSendBtn.Text = "\226\156\166"
+    end
+  end
+
+  chatSendBtn.MouseButton1Click:Connect(onChatSubmit)
+  chatInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+      onChatSubmit()
+    end
+  end)
+
+  -- Quick prompt chips
+  local chipFrame = Instance.new("Frame")
+  chipFrame.Name                  = "ChipFrame"
+  chipFrame.Size                  = UDim2.new(1, 0, 0, 24)
+  chipFrame.Position              = UDim2.new(0, 0, 1, -88)
+  chipFrame.BackgroundTransparency = 1
+  chipFrame.BorderSizePixel       = 0
+  chipFrame.ZIndex                = 11
+  chipFrame.ClipsDescendants      = true
+  chipFrame.Visible               = state.authenticated
+  chipFrame.Parent                = chatPanel
+
+  local chipLayout = Instance.new("UIListLayout")
+  chipLayout.FillDirection = Enum.FillDirection.Horizontal
+  chipLayout.Padding       = UDim.new(0, 6)
+  chipLayout.Parent        = chipFrame
+
+  local CHIPS = { "Castle", "House", "Spaceship", "Obby" }
+  for _, label in ipairs(CHIPS) do
+    local chip = Instance.new("TextButton")
+    chip.Name                  = "Chip_" .. label
+    chip.Text                  = label
+    chip.Font                  = Enum.Font.Gotham
+    chip.TextSize              = 11
+    chip.TextColor3            = C.textDim
+    chip.BackgroundColor3      = C.surface
+    chip.BackgroundTransparency = 0.4
+    chip.Size                  = UDim2.new(0, 0, 1, 0)
+    chip.AutomaticSize         = Enum.AutomaticSize.X
+    chip.BorderSizePixel       = 0
+    chip.AutoButtonColor       = false
+    chip.ZIndex                = 12
+    chip.Parent                = chipFrame
+
+    local chipPad = Instance.new("UIPadding")
+    chipPad.PaddingLeft  = UDim.new(0, 10)
+    chipPad.PaddingRight = UDim.new(0, 10)
+    chipPad.Parent       = chip
+
+    local chipCorner = Instance.new("UICorner")
+    chipCorner.CornerRadius = UDim.new(0, 6)
+    chipCorner.Parent       = chip
+
+    chip.MouseEnter:Connect(function()
+      chip.BackgroundTransparency = 0.2
+      chip.TextColor3 = C.gold
+    end)
+    chip.MouseLeave:Connect(function()
+      chip.BackgroundTransparency = 0.4
+      chip.TextColor3 = C.textDim
+    end)
+    chip.MouseButton1Click:Connect(function()
+      chatInput.Text = "Build me a " .. label:lower()
+      chatInput:CaptureFocus()
+    end)
+  end
+
   -- ── Footer ────────────────────────────────────────────────
   local footer = Instance.new("TextLabel")
   footer.Name                  = "Footer"
@@ -1353,7 +1721,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   footer.TextColor3            = C.textDim
   footer.BackgroundTransparency = 1
   footer.Size                  = UDim2.new(1, 0, 0, 16)
-  footer.Position              = UDim2.new(0, 0, 1, -24)
+  footer.Position              = UDim2.new(0, 0, 1, -12)
   footer.TextXAlignment        = Enum.TextXAlignment.Center
   footer.ZIndex                = 10
   footer.Parent                = root
@@ -1508,6 +1876,9 @@ function UI.build(widget, state, COLORS, pluginRef)
     recentList      = recentList,
     recentCard      = recentCard,
     emptyLabel      = emptyLabel,
+    chatPanel       = chatPanel,
+    chatInput       = chatInput,
+    addChatBubble   = addChatBubble,
     COLORS          = C,
   }
 
@@ -1555,6 +1926,7 @@ function UI.build(widget, state, COLORS, pluginRef)
     codeInputFrame.Visible = false
     instrLabel.Visible     = false
     errorLabel.Visible     = false
+    chatPanel.Visible      = true
     statusDot.BackgroundColor3   = C.success
     dotGlow.BackgroundColor3     = C.success
     statusText.Text              = "Online"
@@ -1577,6 +1949,7 @@ function UI.build(widget, state, COLORS, pluginRef)
     codeInputFrame.Visible = true
     instrLabel.Visible     = true
     errorLabel.Visible     = false
+    chatPanel.Visible      = false
     statusDot.BackgroundColor3   = C.textDim
     dotGlow.BackgroundColor3     = C.textDim
     statusText.Text              = "Offline"
@@ -5102,6 +5475,72 @@ end
 --   onStatusMessage fn(message: string, level: "info"|"warn"|"error")
 --   onReAuthNeeded  fn()     — called when the plugin must re-authenticate
 -- ============================================================
+-- ============================================================
+-- Send a chat prompt to the ForjeGames AI API
+-- Returns: { success: bool, message: string?, error: string? }
+-- ============================================================
+function Sync.sendChat(prompt, callback)
+  if not _token then
+    if callback then callback({ success = false, error = "Not connected" }) end
+    return
+  end
+
+  task.spawn(function()
+    local placeName = "Studio"
+    pcall(function()
+      local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+      if info and info.Name and info.Name ~= "" then
+        placeName = info.Name
+      end
+    end)
+
+    local body = {
+      message = prompt,
+      stream = false,
+      studioContext = {
+        placeId = tostring(game.PlaceId),
+        placeName = placeName,
+      },
+    }
+
+    local result, netErr = httpPost("/api/ai/chat", body)
+    if not result or netErr then
+      if callback then
+        callback({ success = false, error = netErr or "Network error" })
+      end
+      return
+    end
+
+    if result.StatusCode == 200 then
+      local parseOk, parsed = pcall(function()
+        return HttpService:JSONDecode(result.Body)
+      end)
+      if parseOk and parsed then
+        if callback then
+          callback({
+            success = true,
+            message = parsed.message or "Build sent!",
+            tokensUsed = parsed.tokensUsed,
+          })
+        end
+      else
+        if callback then
+          callback({ success = false, error = "Failed to parse response" })
+        end
+      end
+    else
+      local errMsg = "Server error " .. tostring(result.StatusCode)
+      pcall(function()
+        local errBody = HttpService:JSONDecode(result.Body)
+        if errBody.error then errMsg = errBody.error end
+      end)
+      if callback then
+        callback({ success = false, error = errMsg })
+      end
+    end
+  end)
+end
+
 function Sync.start(opts)
   if _running then return end
 

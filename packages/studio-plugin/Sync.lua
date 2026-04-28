@@ -3456,6 +3456,72 @@ end
 --   onStatusMessage fn(message: string, level: "info"|"warn"|"error")
 --   onReAuthNeeded  fn()     — called when the plugin must re-authenticate
 -- ============================================================
+-- ============================================================
+-- Send a chat prompt to the ForjeGames AI API
+-- Returns: { success: bool, message: string?, error: string? }
+-- ============================================================
+function Sync.sendChat(prompt, callback)
+  if not _token then
+    if callback then callback({ success = false, error = "Not connected" }) end
+    return
+  end
+
+  task.spawn(function()
+    local placeName = "Studio"
+    pcall(function()
+      local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+      if info and info.Name and info.Name ~= "" then
+        placeName = info.Name
+      end
+    end)
+
+    local body = {
+      message = prompt,
+      stream = false,
+      studioContext = {
+        placeId = tostring(game.PlaceId),
+        placeName = placeName,
+      },
+    }
+
+    local result, netErr = httpPost("/api/ai/chat", body)
+    if not result or netErr then
+      if callback then
+        callback({ success = false, error = netErr or "Network error" })
+      end
+      return
+    end
+
+    if result.StatusCode == 200 then
+      local parseOk, parsed = pcall(function()
+        return HttpService:JSONDecode(result.Body)
+      end)
+      if parseOk and parsed then
+        if callback then
+          callback({
+            success = true,
+            message = parsed.message or "Build sent!",
+            tokensUsed = parsed.tokensUsed,
+          })
+        end
+      else
+        if callback then
+          callback({ success = false, error = "Failed to parse response" })
+        end
+      end
+    else
+      local errMsg = "Server error " .. tostring(result.StatusCode)
+      pcall(function()
+        local errBody = HttpService:JSONDecode(result.Body)
+        if errBody.error then errMsg = errBody.error end
+      end)
+      if callback then
+        callback({ success = false, error = errMsg })
+      end
+    end
+  end)
+end
+
 function Sync.start(opts)
   if _running then return end
 

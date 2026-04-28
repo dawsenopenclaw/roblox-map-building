@@ -498,6 +498,19 @@ local function init()
     uiRefs.authBtn.MouseButton1Click:Connect(handleAuthButton)
   end
 
+  -- Wire up chat submit → Sync.sendChat
+  state.onChatSubmit = function(prompt, callback)
+    if not state.authenticated then
+      callback({ success = false, error = "Not connected" })
+      return
+    end
+    if Sync and Sync.sendChat then
+      Sync.sendChat(prompt, callback)
+    else
+      callback({ success = false, error = "Sync module not loaded" })
+    end
+  end
+
   -- Wire up action buttons
   if uiRefs.actionButtons then
     local btns = uiRefs.actionButtons
