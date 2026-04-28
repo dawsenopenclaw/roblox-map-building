@@ -91,6 +91,18 @@ import { getContextualEnhancements } from '@/lib/ai/build-enhancer'
 import { saveBuildContext, getBuildContext, isModificationRequest, formatModificationPrompt } from '@/lib/ai/build-context'
 import { getStudioMechanicsKnowledge } from '@/lib/ai/studio-mechanics'
 import { moderateContent, getModerationMessage, MODERATION_SUGGESTIONS } from '@/lib/content-moderation'
+import {
+  formatPreferencesForPrompt,
+  extractPreferencesFromMessage,
+  saveUserPreference,
+  loadGameState,
+  saveGameState,
+  formatGameStateForPrompt,
+  extractPhasesFromPlan,
+  extractGameInfoFromPlan,
+  extractGameStateFromResponse,
+  type GameState,
+} from '@/lib/ai/user-memory'
 
 // ─── Auto-log conversation to DB (fire-and-forget) ──────────────────────────
 // Persists every user→assistant exchange so admin can review beta tester chats.
@@ -5796,6 +5808,7 @@ async function freeModelTwoPass(
   history: Array<{ role: string; content: string }>,
   cameraContext: string,
   sessionId: string | null,
+  userId?: string | null,
 ): Promise<{
   conversationText: string
   luauCode: string | null
@@ -5815,6 +5828,32 @@ async function freeModelTwoPass(
   const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace', 'gameplan'].includes(intent)
   // Opaque model names — don't leak provider details to the client
   const modelNames = ['forje-flash', 'forje-turbo', 'forje-pro']
+
+  // ── USER MEMORY: load persistent preferences (early — needed by gameplan) ──
+  let userPreferencesPrompt = ''
+  if (userId) {
+    try {
+      userPreferencesPrompt = await formatPreferencesForPrompt(userId)
+      if (userPreferencesPrompt) console.log(`[user-memory] Loaded preferences for user ${userId.slice(0, 8)}...`)
+    } catch (err) {
+      console.warn('[user-memory] Non-blocking preference load:', err instanceof Error ? err.message : err)
+    }
+  }
+
+  // ── GAME STATE: load multi-turn project state for fullgame/gameplan ────────
+  let gameStatePrompt = ''
+  let currentGameState: GameState | null = null
+  if (userId && sessionId && (intent === 'fullgame' || intent === 'gameplan')) {
+    try {
+      currentGameState = await loadGameState(userId, sessionId)
+      if (currentGameState && currentGameState.completedPhases.length > 0) {
+        gameStatePrompt = formatGameStateForPrompt(currentGameState)
+        console.log(`[user-memory] Loaded game state: ${currentGameState.projectName} (${currentGameState.completedPhases.length} phases done)`)
+      }
+    } catch (err) {
+      console.warn('[user-memory] Non-blocking game state load:', err instanceof Error ? err.message : err)
+    }
+  }
 
   // ── INSTANT TEMPLATES: zero API calls, always works, <100ms ─────────────
   // The #1 reliability fix. Common builds return pre-written Luau code
@@ -5902,6 +5941,7 @@ async function freeModelTwoPass(
   // ── GAMEPLAN INTENT: conversational game planning, no code generation ──────
   if (intent === 'gameplan') {
     const gameplanPrompt = `You are ForjeAI, an expert Roblox game designer and planner. The user wants to plan a full game before building it.
+${userPreferencesPrompt}${gameStatePrompt}
 
 Your job is to have a CONVERSATION to understand what they want, then output a structured GAME PLAN.
 
@@ -5953,6 +5993,28 @@ Use your knowledge of what makes popular Roblox games successful.`
     )
     if (!planRace) return null
     const { message: cleanPlan, suggestions } = extractSuggestions(planRace.result)
+
+    // ── Save game plan to persistent state (fire-and-forget) ──
+    if (userId && sessionId && cleanPlan) {
+      try {
+        const phases = extractPhasesFromPlan(cleanPlan)
+        const { gameType, theme, projectName } = extractGameInfoFromPlan(cleanPlan)
+        if (phases.length > 0) {
+          void saveGameState(userId, sessionId, {
+            projectName,
+            gameType,
+            theme,
+            phases,
+            completedPhases: currentGameState?.completedPhases ?? [],
+            totalParts: currentGameState?.totalParts ?? 0,
+            stylePreferences: currentGameState?.stylePreferences ?? {},
+            conversationSummary: cleanPlan.slice(0, 2000),
+          }).catch(() => {})
+          console.log(`[user-memory] Saved game plan: "${projectName}" with ${phases.length} phases`)
+        }
+      } catch { /* non-blocking */ }
+    }
+
     return {
       conversationText: cleanPlan,
       luauCode: null,
@@ -6065,7 +6127,7 @@ Use your knowledge of what makes popular Roblox games successful.`
   const gameKnowledge = buildGameKnowledgePrompt(message)
 
   const studioMechanics = getStudioMechanicsKnowledge()
-  const codePrompt = studioMechanics + specialistPrefix + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
+  const codePrompt = studioMechanics + specialistPrefix + userPreferencesPrompt + gameStatePrompt + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
 
 HOW TO TALK:
 - Talk like a real person. "Alright, check this out —" not "Create a detailed Roblox tree model with the following specifications:"
@@ -8967,6 +9029,33 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
     if (luauCode && finalVerificationScore >= 50 && history.length === 0) {
       setCachedBuild(message, finalConv, luauCode)
       console.log(`[BuildCache] SAVED "${message.slice(0, 40)}" (score: ${finalVerificationScore})`)
+    }
+
+    // ── User Memory: update game state after fullgame builds (fire-and-forget) ──
+    if (userId && sessionId && (intent === 'fullgame' || intent === 'gameplan') && luauCode) {
+      try {
+        const stateUpdates = extractGameStateFromResponse(finalConv, currentGameState, partCount)
+        if (currentGameState) {
+          void saveGameState(userId, sessionId, {
+            ...currentGameState,
+            completedPhases: stateUpdates.completedPhases ?? currentGameState.completedPhases,
+            totalParts: stateUpdates.totalParts ?? currentGameState.totalParts,
+            conversationSummary: finalConv.slice(0, 2000),
+          }).catch(() => {})
+        } else {
+          // First build — create initial game state
+          void saveGameState(userId, sessionId, {
+            projectName: 'Untitled Game',
+            gameType: null,
+            theme: null,
+            phases: [],
+            completedPhases: [],
+            totalParts: partCount > 0 ? partCount : 0,
+            stylePreferences: {},
+            conversationSummary: finalConv.slice(0, 2000),
+          }).catch(() => {})
+        }
+      } catch { /* non-blocking */ }
     }
 
     return {
@@ -15055,6 +15144,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
+  // ── User Memory: extract and save preferences from message (fire-and-forget) ──
+  if (authedUserId) {
+    try {
+      const extractedPrefs = extractPreferencesFromMessage(message)
+      for (const pref of extractedPrefs) {
+        void saveUserPreference(authedUserId, pref.key, pref.value).catch(() => {})
+      }
+      if (extractedPrefs.length > 0) {
+        console.log(`[user-memory] Extracted ${extractedPrefs.length} preferences from message`)
+      }
+    } catch { /* non-blocking */ }
+  }
+
   // ── Optional auto-delegate to the 9-agent orchestrator ────────────────
   // Clients that want the "Think → Ideas → Plan → Build/Terrain/Script/..."
   // multi-agent experience can set `autoDelegate: true` in the body. We
@@ -15973,7 +16075,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   // Bypasses the cascade and goes straight to Gemini.
   if (rawRequestedModel === 'gemini-flash' && !isAutoMode) {
     const historyForGemini = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
-    const twoPassResult = await freeModelTwoPass(message, intent, historyForGemini, cameraContext, sessionId)
+    const twoPassResult = await freeModelTwoPass(message, intent, historyForGemini, cameraContext, sessionId, authedUserId)
     if (twoPassResult) {
       // Spend tokens for this generation (skip for free intents, demo, admins)
       const tokenCostFree = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
@@ -16577,7 +16679,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
               // Attempt Gemini → Groq fallback inside the already-open stream
               try {
                 const historyForFallback = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
-                const fallback = await freeModelTwoPass(message, intent, historyForFallback, cameraContext, sessionId)
+                const fallback = await freeModelTwoPass(message, intent, historyForFallback, cameraContext, sessionId, authedUserId)
                 if (fallback) {
                   // Write only conversation text — code already sent to Studio
                   await writer.write(enc.encode(fallback.conversationText))
@@ -16768,7 +16870,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   // This produces dramatically better results than the old single-pass approach.
   {
     const historyForFree = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
-    const twoPassResult = await freeModelTwoPass(message, intent, historyForFree, cameraContext, sessionId)
+    const twoPassResult = await freeModelTwoPass(message, intent, historyForFree, cameraContext, sessionId, authedUserId)
 
     if (twoPassResult) {
       // Spend tokens for this generation
