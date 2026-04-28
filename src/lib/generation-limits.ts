@@ -20,13 +20,16 @@ import { db } from '@/lib/db'
 // ── Limit table ───────────────────────────────────────────────────────────────
 
 type OperationType = 'mesh' | 'build' | 'texture'
-type TierKey = 'FREE' | 'HOBBY' | 'CREATOR' | 'STUDIO'
+type TierKey = 'FREE' | 'STARTER' | 'HOBBY' | 'BUILDER' | 'CREATOR' | 'PRO' | 'STUDIO'
 
 const DAILY_LIMITS: Record<TierKey, Record<OperationType, number>> = {
-  FREE:    { mesh: 5,   build: 5,   texture: 10  },  // Bumped from 1 build/day — users need enough to build habits
-  HOBBY:   { mesh: 20,  build: 15,  texture: 50  },
-  CREATOR: { mesh: 75,  build: 30,  texture: 150 },
-  STUDIO:  { mesh: -1,  build: -1,  texture: -1  }, // -1 = unlimited
+  FREE:    { mesh: 5,   build: 10,  texture: 10  },  // Raised build from 5→10 so free users can try a game
+  STARTER: { mesh: 20,  build: 30,  texture: 50  },  // Entry paid tier
+  HOBBY:   { mesh: 20,  build: 30,  texture: 50  },  // Backward compat alias for STARTER
+  BUILDER: { mesh: 50,  build: 75,  texture: 100 },  // Enough for 2-3 full games/day
+  CREATOR: { mesh: 75,  build: 150, texture: 150 },  // Raised build from 30→150
+  PRO:     { mesh: -1,  build: -1,  texture: -1  },  // Unlimited
+  STUDIO:  { mesh: -1,  build: -1,  texture: -1  },  // Unlimited
 }
 
 // Unlimited sentinel
@@ -145,7 +148,9 @@ async function getUserTier(userId: string): Promise<TierKey> {
   })
 
   const isActive = sub?.status === 'ACTIVE' || sub?.status === 'TRIALING'
-  const tier     = (isActive ? (sub?.tier ?? 'FREE') : 'FREE') as TierKey
+  const rawTier  = isActive ? (sub?.tier ?? 'FREE') : 'FREE'
+  // Normalize: ensure the tier exists in DAILY_LIMITS (handles any future tier names gracefully)
+  const tier     = (rawTier in DAILY_LIMITS ? rawTier : 'FREE') as TierKey
 
   tierCache.set(userId, { tier, expiresAt: Date.now() + TIER_CACHE_TTL_MS })
   return tier

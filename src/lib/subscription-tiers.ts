@@ -6,7 +6,7 @@ export const SUBSCRIPTION_TIERS = {
     priceMonthly: 0,
     priceYearly: 0,
     tokensPerMonth: 1000,
-    features: ['1,000 tokens/month', '5 builds per day', 'Basic terrain', 'Community support'],
+    features: ['1,000 tokens/month', '10 builds per day', 'Basic terrain', 'Single builds only', 'Community support'],
     stripePriceIdMonthly: serverEnv.STRIPE_FREE_PRICE_ID || '',
     stripePriceIdYearly: '',
   },
@@ -15,7 +15,7 @@ export const SUBSCRIPTION_TIERS = {
     priceMonthly: 1000, // $10
     priceYearly: 9600, // $96/yr ($8/mo)
     tokensPerMonth: 5000,
-    features: ['5,000 tokens/month', '25 builds per day', 'Voice-to-game', 'Image-to-map', '3D asset gen', 'Email support'],
+    features: ['5,000 tokens/month', '30 builds per day', 'Voice-to-game', 'Image-to-map', '3D asset gen', 'Step-by-step game builder (basic)', 'Email support'],
     stripePriceIdMonthly: serverEnv.STRIPE_HOBBY_PRICE_ID || '',
     stripePriceIdYearly: serverEnv.STRIPE_HOBBY_YEARLY_PRICE_ID || '',
   },
@@ -24,7 +24,7 @@ export const SUBSCRIPTION_TIERS = {
     priceMonthly: 2500, // $25
     priceYearly: 24000, // $240/yr ($20/mo)
     tokensPerMonth: 15000,
-    features: ['15,000 tokens/month', '50 builds per day', 'All Starter features', 'UI builder', 'Game system templates', 'Script generation', 'Priority support'],
+    features: ['15,000 tokens/month', '75 builds per day', 'All Starter features', 'UI builder', 'Game system templates', 'Full game builder', 'Script generation', 'Priority support'],
     stripePriceIdMonthly: serverEnv.STRIPE_BUILDER_PRICE_ID || '',
     stripePriceIdYearly: serverEnv.STRIPE_BUILDER_YEARLY_PRICE_ID || '',
   },
@@ -33,7 +33,7 @@ export const SUBSCRIPTION_TIERS = {
     priceMonthly: 5000, // $50
     priceYearly: 48000, // $480/yr ($40/mo)
     tokensPerMonth: 40000,
-    features: ['40,000 tokens/month', 'Unlimited builds', 'All Builder features', 'Marketplace access', 'Game DNA scanner', 'Team collab (3 members)', 'Full game orchestrator'],
+    features: ['40,000 tokens/month', 'Unlimited builds', 'All Builder features', 'Marketplace access', 'Unlimited game builds', 'Game DNA scanner', 'Team collab (3 members)', 'Full game orchestrator'],
     stripePriceIdMonthly: serverEnv.STRIPE_CREATOR_PRICE_ID || '',
     stripePriceIdYearly: serverEnv.STRIPE_CREATOR_YEARLY_PRICE_ID || '',
   },
