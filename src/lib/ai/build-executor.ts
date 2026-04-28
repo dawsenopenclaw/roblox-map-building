@@ -202,6 +202,65 @@ LIGHTING:
 
 SCALE: Doors 4x7 studs. Windows 3x4 studs. Ceiling height 12 studs. Wall thickness 0.5-1 stud. Character is 5 studs tall.
 
+CRITICAL — 3D POSITIONING MATH (this is what prevents z-fighting and makes builds look real):
+
+Parts are positioned at their CENTER. A wall at X=10 with Size.X=0.5 occupies X=9.75 to X=10.25.
+To place something ON a wall's outer surface, you must offset by HALF the wall thickness + HALF the new part's thickness.
+
+WINDOW ASSEMBLY (5+ parts, positioned relative to the wall they're in):
+  Given: wallX, wallY, wallZ, wallThickness (0.5), wallHeight (12)
+  -- Cut a hole conceptually, then fill it with window parts:
+  local windowY = wallY + 2  -- 2 studs above floor level
+  local outerSurface = wallX + wallThickness/2  -- outer face of wall
+  -- Frame (sits PROUD of wall surface, 0.1 studs out):
+  P(m,"WinFrame", Vector3.new(0.15, 4.5, 3.5), CFrame.new(outerSurface + 0.075, windowY, wallZ), trimColor, "Metal")
+  -- Glass (recessed 0.1 studs INTO the frame):
+  local glass = P(m,"WinGlass", Vector3.new(0.05, 4, 3), CFrame.new(outerSurface - 0.05, windowY, wallZ), Color3.fromRGB(180,210,235), "Glass")
+  glass.Transparency = 0.5
+  -- Sill (extends OUTWARD 0.4 studs from wall):
+  P(m,"WinSill", Vector3.new(0.4, 0.15, 3.8), CFrame.new(outerSurface + 0.2, windowY - 2.1, wallZ), trimColor, "Concrete")
+  -- Lintel/header (extends OUTWARD 0.2 studs):
+  P(m,"WinLintel", Vector3.new(0.25, 0.3, 3.8), CFrame.new(outerSurface + 0.125, windowY + 2.3, wallZ), trimColor, "Concrete")
+
+DOOR ASSEMBLY (8+ parts):
+  local outerSurface = wallX + wallThickness/2
+  -- Door frame left post (proud of wall 0.08 studs):
+  P(m,"DoorFrameL", Vector3.new(0.12, 7, 0.5), CFrame.new(outerSurface + 0.06, wallY - wallHeight/2 + 3.5, doorZ - 2.25), trimColor, "Wood")
+  -- Door frame right post:
+  P(m,"DoorFrameR", Vector3.new(0.12, 7, 0.5), CFrame.new(outerSurface + 0.06, wallY - wallHeight/2 + 3.5, doorZ + 2.25), trimColor, "Wood")
+  -- Door frame header:
+  P(m,"DoorHeader", Vector3.new(0.12, 0.5, 5), CFrame.new(outerSurface + 0.06, wallY - wallHeight/2 + 7.25, doorZ), trimColor, "Wood")
+  -- Door panel (recessed 0.05 studs from frame):
+  P(m,"DoorPanel", Vector3.new(0.08, 6.8, 4), CFrame.new(outerSurface - 0.02, wallY - wallHeight/2 + 3.4, doorZ), accentColor, "WoodPlanks")
+  -- Door handle (0.15 studs proud):
+  P(m,"Handle", Vector3.new(0.15, 0.15, 0.5), CFrame.new(outerSurface + 0.15, wallY - wallHeight/2 + 3.5, doorZ + 1.5), Color3.fromRGB(180,160,60), "Metal")
+
+ROOF WITH OVERHANG (the roof MUST extend past walls):
+  -- Roof panels overhang walls by 1.5 studs on each side:
+  local roofWidth = buildingWidth + 3  -- 1.5 stud overhang each side
+  local roofDepth = buildingDepth + 2  -- 1 stud overhang front and back
+  -- Fascia board (hangs vertically at the edge of the overhang):
+  P(m,"Fascia", Vector3.new(roofWidth, 0.4, 0.15), CFrame.new(cx, roofY - 0.2, cz + roofDepth/2 + 0.075), roofTrimColor, "Wood")
+  -- Soffit (horizontal underside of overhang):
+  P(m,"Soffit", Vector3.new(1.5, 0.1, roofDepth), CFrame.new(cx + buildingWidth/2 + 0.75, roofY - 0.35, cz), trimColor, "WoodPlanks")
+
+WALL TRIM DEPTH (all trim is PROUD of the wall surface):
+  local outerSurface = wallX + wallThickness/2
+  -- Corner quoin (0.15 studs proud):
+  P(m,"Quoin", Vector3.new(0.15, 1.2, 1.2), CFrame.new(outerSurface + 0.075, quoinY, cornerZ), trimColor, "Brick")
+  -- Horizontal band (0.08 studs proud, runs full wall width):
+  P(m,"Band", Vector3.new(0.08, 0.3, wallWidth), CFrame.new(outerSurface + 0.04, bandY, wallCenterZ), trimColor, "Concrete")
+  -- Foundation ledge (foundation is 1 stud wider than walls = 0.5 stud ledge on each side):
+  P(m,"Foundation", Vector3.new(buildingWidth + 2, 2, buildingDepth + 2), CFrame.new(cx, -1, cz), Color3.fromRGB(120,115,110), "Concrete")
+
+Z-FIGHTING PREVENTION RULES:
+- NEVER place two parts at the exact same position with overlapping sizes
+- Decorative elements must be offset by AT LEAST 0.05 studs from the surface they sit on
+- Window glass must be 0.05-0.1 studs BEHIND the window frame (recessed)
+- Use outerSurface + halfPartThickness for parts that sit ON a wall
+- Use outerSurface - depth for parts that are RECESSED into a wall
+- Test: if partA.Position.X == partB.Position.X and their sizes overlap, they WILL z-fight. Offset one.
+
 ORGANIZATION: Group ALL parts in a named Model. Use Folders: Foundation, Walls, WallDetail, Windows, Doors, Roof, Interior, Furniture, Exterior, Lights. Anchor ALL parts. Wrap in ChangeHistoryService.
 
 Output ONLY runnable Luau code. No explanation. Generate as many parts as needed — DO NOT cut corners. A good building has 80-200+ parts.`,

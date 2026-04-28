@@ -3100,8 +3100,8 @@ DEVFORUM PRO BUILDER RULES (from top showcase builders — FOLLOW ALL):
 3. FOUNDATION: Every building on visible foundation (0.5-1.0 thick, extends 0.5-1.0 past walls, Concrete/Cobblestone).
 4. COLOR VARIATION: NEVER one flat color on large surfaces. Vary ±10-15 RGB per part. Max 3 variations per material type.
 5. TRIM ON EVERYTHING: Baseboard (0.3h at floor, darker wood), crown molding (0.2h at ceiling), corner posts (0.4x0.4 at wall edges).
-6. WINDOW FRAMES: 4-piece frame (top, bottom/sill, left, right) around every window. Glass recessed 0.1 from wall face. Sill sticks out 0.3.
-7. DOOR DETAIL: Panel + frame (4 sides) + handle (cylinder 0.15 dia) + threshold. Never a bare rectangle.
+6. WINDOW FRAMES: 4-piece frame (top, bottom/sill, left, right) around every window. Frame is 0.1 studs PROUD of wall surface (outerX = wallX + wallThickness/2 + 0.05). Glass is 0.1 studs RECESSED behind frame (glassX = wallX + wallThickness/2 - 0.05). Sill extends 0.4 studs OUTWARD from wall. NEVER place window parts at the same X as the wall — they WILL z-fight.
+7. DOOR DETAIL: Frame is 0.08 studs PROUD of wall (outerX = wallX + wallThickness/2 + 0.04). Door panel is 0.05 studs BEHIND frame. Handle is 0.15 studs PROUD of door. Never a bare rectangle. CRITICAL: door/window X must NOT equal wall X.
 8. INTERIOR LIGHTING: PointLight in EVERY enclosed room. Warm=RGB(255,220,180) Brightness=1.5 Range=16. Cold=RGB(200,220,255).
 9. ROTATION VARIATION: Rotate detail elements (stones, planks, shingles) randomly ±5-15° to break grid look.
 10. FURNITURE SCALE: Table top at 3 studs (waist), chair seat at 2.5, counter at 3. Character is 5 studs tall.
@@ -3117,11 +3117,13 @@ HOUSE (60-100 parts):
   Walls (4): Each wall = 1 Part(Brick or Concrete), Size(wallLength, 11, 0.8). Position flush with foundation edges.
     - Front wall: cut opening for door (use 3 parts: left section + right section + header above door)
     - Side walls: cut openings for windows (3 parts per window wall: below + above + sides)
-  Windows: Glass Part(Glass, Transparency 0.4) inside window opening + Frame Parts(Wood, dark) around it (4 frame pieces per window)
-  Door: Part(Wood, brown, 4x7.5x0.3) in door opening + DoorFrame Parts(Wood) around it + ProximityPrompt
-  Roof: 2 WedgeParts meeting at ridge, extending 1.5 studs past walls. Material=Slate or Brick.
-    - Add ridge cap (thin Part along top edge)
-    - Add fascia boards (thin Parts along roof edges)
+  Windows (5 parts EACH): Use wallThickness (wt) for offset math. Frame outer at wallX+wt/2+0.05 (proud). Glass at wallX+wt/2-0.05 (recessed). Sill at wallX+wt/2+0.2 (extends out). Lintel above at wallX+wt/2+0.1. NEVER same X as wall.
+  Door (8 parts): Frame at wallX+wt/2+0.04 (proud). Panel at wallX+wt/2-0.02 (recessed). Handle at wallX+wt/2+0.15. Threshold step at floor level, 0.3 studs proud.
+  Roof: 2 WedgeParts meeting at ridge, MUST overhang walls by 1.5 studs each side. Material=Slate or Brick.
+    - Fascia boards (0.15 thick, hang vertically at overhang edge)
+    - Soffit (horizontal underside of overhang, 0.1 thick)
+    - Ridge cap (thin Part along peak)
+    - Gutter (0.1 stud strip at bottom edge of roof)
   Floor: Part(WoodPlanks) inside walls, slightly above foundation
   Ceiling: Part(Concrete or Plaster) at wall top height
   Interior walls: thinner Parts (0.5 studs) dividing rooms
