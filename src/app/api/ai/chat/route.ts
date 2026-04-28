@@ -4120,7 +4120,7 @@ Ball(m,"Flower3",Vector3.new(0.55,0.55,0.55),sp+Vector3.new(3,0.75,5.5),Color3.f
   }
 
   // ── HOUSE ────────────────────────────────────────────────────────────
-  if (/\b(house|home|cabin|cottage)\b/.test(m) && !/mansion|hotel|apartment/.test(m)) {
+  if (/\b(house|home|cabin|cottage|bungalow|shack|hut)\b/.test(m) && !/mansion|hotel|apartment/.test(m)) {
     return {
       name: 'House',
       response: "Alright, here's a cozy house — brick walls with a dark slate pitched roof, two big front windows with warm light glowing through them, a proper front door with a handle, and a stone foundation. I added a chimney on top and a little porch out front. Your players are gonna want to live here.\n\nWant me to add furniture inside or a backyard?",
@@ -4157,7 +4157,7 @@ P(m,"PorchRailing",Vector3.new(11,0.3,0.3),sp+Vector3.new(0,4,13.5),Color3.fromR
   }
 
   // ── CAR ──────────────────────────────────────────────────────────────
-  if (/\b(car|vehicle|sports car|sedan)\b/.test(m) && !/truck|bus|tank/.test(m)) {
+  if (/\b(car|vehicle|sports car|sedan|automobile)\b/.test(m) && !/truck|bus|tank/.test(m)) {
     return {
       name: 'Car',
       response: "Here's a clean car — smooth body with a hood, trunk, and curved roof. Four wheels, glass windshield, neon headlights, and a VehicleSeat so players can actually drive it. I even added a license plate on the back.\n\nTake it for a spin! Want me to add a racing script?",
@@ -4192,7 +4192,7 @@ P(m,"Plate",Vector3.new(2,0.8,0.1),sp+Vector3.new(0,2.5,-6.1),Color3.fromRGB(240
   }
 
   // ── SWORD ───────────────────────────────────────────────────────────
-  if (/\b(sword|blade|katana)\b/.test(m)) {
+  if (/\b(sword|blade|katana|dagger|weapon)\b/.test(m) && !/gun|rifle|pistol/.test(m)) {
     return {
       name: 'Sword',
       response: "Here's an epic sword — polished metal blade with a sharp taper and a glowing neon edge that pulses with energy. Gold-inlaid crossguard with ornamental curls on each end, leather-wrapped grip with a gemstone pommel at the base. I put it on a display pedestal with a spotlight so it looks like a legendary drop. Pickup-ready.\n\nWant me to add a damage script, or make a whole weapon rack?",
@@ -4525,6 +4525,1039 @@ P(m,"RunLight4",Vector3.new(0.3,0.15,0.3),sp+Vector3.new(-3.5,4.5,8),Color3.from
 ` + BOILERPLATE_BOT,
       suggestions: ['Add a flying script', 'Build a space station', 'Add laser weapons'],
       partCount: 55,
+    }
+  }
+
+  // ── TABLE ────────────────────────────────────────────────────────────
+  if (/\b(table|dining table|kitchen table|desk)\b/.test(m) && !/pool table|table tennis|side table/.test(m)) {
+    return {
+      name: 'Table',
+      response: "Here's a solid dining table — thick wooden top with beveled edges, four sturdy turned legs with crossbars for support, and I set it up with placemats, plates, cups, and a centerpiece vase with flowers. Ready for a dinner party in your game.\n\nWant me to add chairs around it or build a full dining room?",
+      code: BOILERPLATE_TOP + `
+-- Table top
+P(m,"TableTop",Vector3.new(14,0.6,8),sp+Vector3.new(0,4.3,0),Color3.fromRGB(130,82,40),"Wood")
+-- Edge trim (darker border around top)
+P(m,"EdgeF",Vector3.new(14.2,0.3,0.3),sp+Vector3.new(0,4.15,4),Color3.fromRGB(100,60,28),"Wood")
+P(m,"EdgeB",Vector3.new(14.2,0.3,0.3),sp+Vector3.new(0,4.15,-4),Color3.fromRGB(100,60,28),"Wood")
+P(m,"EdgeL",Vector3.new(0.3,0.3,8),sp+Vector3.new(-7,4.15,0),Color3.fromRGB(100,60,28),"Wood")
+P(m,"EdgeR",Vector3.new(0.3,0.3,8),sp+Vector3.new(7,4.15,0),Color3.fromRGB(100,60,28),"Wood")
+-- Legs (4 turned)
+Cyl(m,"Leg1",Vector3.new(4,0.7,0.7),sp+Vector3.new(-6,2,3),Color3.fromRGB(115,72,34),"Wood")
+Cyl(m,"Leg2",Vector3.new(4,0.7,0.7),sp+Vector3.new(6,2,3),Color3.fromRGB(115,72,34),"Wood")
+Cyl(m,"Leg3",Vector3.new(4,0.7,0.7),sp+Vector3.new(-6,2,-3),Color3.fromRGB(115,72,34),"Wood")
+Cyl(m,"Leg4",Vector3.new(4,0.7,0.7),sp+Vector3.new(6,2,-3),Color3.fromRGB(115,72,34),"Wood")
+-- Crossbars
+P(m,"CrossF",Vector3.new(12,0.3,0.3),sp+Vector3.new(0,1.5,3),Color3.fromRGB(110,68,32),"Wood")
+P(m,"CrossB",Vector3.new(12,0.3,0.3),sp+Vector3.new(0,1.5,-3),Color3.fromRGB(110,68,32),"Wood")
+-- Place settings (2 plates + cups)
+Cyl(m,"Plate1",Vector3.new(0.15,3,3),sp+Vector3.new(-4,4.7,0),Color3.fromRGB(240,238,230),"Marble")
+Cyl(m,"Plate2",Vector3.new(0.15,3,3),sp+Vector3.new(4,4.7,0),Color3.fromRGB(240,238,230),"Marble")
+Cyl(m,"Cup1",Vector3.new(1.2,0.8,0.8),sp+Vector3.new(-4,5.2,2.5),Color3.fromRGB(220,215,200),"Marble")
+Cyl(m,"Cup2",Vector3.new(1.2,0.8,0.8),sp+Vector3.new(4,5.2,2.5),Color3.fromRGB(220,215,200),"Marble")
+-- Placemats
+P(m,"Mat1",Vector3.new(4,0.05,3),sp+Vector3.new(-4,4.65,0),Color3.fromRGB(120,40,40),"Fabric")
+P(m,"Mat2",Vector3.new(4,0.05,3),sp+Vector3.new(4,4.65,0),Color3.fromRGB(120,40,40),"Fabric")
+-- Centerpiece vase
+Cyl(m,"Vase",Vector3.new(2.5,1.2,1.2),sp+Vector3.new(0,5.8,0),Color3.fromRGB(60,120,160),"Glass")
+Ball(m,"Flowers",Vector3.new(2.5,2,2.5),sp+Vector3.new(0,7.5,0),Color3.fromRGB(220,80,100),"LeafyGrass")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add chairs around it', 'Build a full dining room', 'Add a chandelier above'],
+      partCount: 22,
+    }
+  }
+
+  // ── BED ──────────────────────────────────────────────────────────────
+  if (/\b(bed|bedroom|mattress|bunk bed)\b/.test(m) && !/flower bed|bed rock/.test(m)) {
+    return {
+      name: 'Bed',
+      response: "Here's a cozy bed setup — wooden frame with a tall carved headboard, thick mattress, two fluffy pillows, a draped blanket, and matching nightstands on each side with little lamps. Players are gonna want to sleep in this thing.\n\nWant me to build a full bedroom around it?",
+      code: BOILERPLATE_TOP + `
+-- Bed frame base
+P(m,"Frame",Vector3.new(8,1.5,12),sp+Vector3.new(0,0.75,0),Color3.fromRGB(110,68,32),"Wood")
+-- Headboard
+P(m,"Headboard",Vector3.new(8,6,0.8),sp+Vector3.new(0,4.5,-5.8),Color3.fromRGB(100,62,28),"Wood")
+P(m,"HeadDetail",Vector3.new(6,4,0.3),sp+Vector3.new(0,5,-5.5),Color3.fromRGB(90,55,25),"Wood")
+-- Footboard
+P(m,"Footboard",Vector3.new(8,3,0.8),sp+Vector3.new(0,3,5.8),Color3.fromRGB(105,65,30),"Wood")
+-- Mattress
+P(m,"Mattress",Vector3.new(7.2,1.5,11),sp+Vector3.new(0,2.25,0),Color3.fromRGB(235,230,220),"Fabric")
+-- Pillows
+P(m,"Pillow1",Vector3.new(3,1,2),sp+Vector3.new(-1.8,3.3,-4),Color3.fromRGB(245,240,235),"Fabric")
+P(m,"Pillow2",Vector3.new(3,1,2),sp+Vector3.new(1.8,3.3,-4),Color3.fromRGB(245,240,235),"Fabric")
+-- Blanket (draped over mattress)
+P(m,"Blanket",Vector3.new(7,0.4,7),sp+Vector3.new(0,3.2,1.5),Color3.fromRGB(60,80,140),"Fabric")
+P(m,"BlanketFold",Vector3.new(7,0.6,1),sp+Vector3.new(0,3.3,-1.5),Color3.fromRGB(55,75,130),"Fabric")
+-- Side rails
+P(m,"RailL",Vector3.new(0.5,2,12),sp+Vector3.new(-3.8,1.5,0),Color3.fromRGB(108,66,31),"Wood")
+P(m,"RailR",Vector3.new(0.5,2,12),sp+Vector3.new(3.8,1.5,0),Color3.fromRGB(108,66,31),"Wood")
+-- Nightstand left
+P(m,"NightL",Vector3.new(3,2.5,3),sp+Vector3.new(-6,1.25,-4),Color3.fromRGB(115,72,34),"Wood")
+P(m,"NightLTop",Vector3.new(3.2,0.2,3.2),sp+Vector3.new(-6,2.6,-4),Color3.fromRGB(105,65,30),"Wood")
+-- Nightstand right
+P(m,"NightR",Vector3.new(3,2.5,3),sp+Vector3.new(6,1.25,-4),Color3.fromRGB(115,72,34),"Wood")
+P(m,"NightRTop",Vector3.new(3.2,0.2,3.2),sp+Vector3.new(6,2.6,-4),Color3.fromRGB(105,65,30),"Wood")
+-- Lamps on nightstands
+Cyl(m,"LampL",Vector3.new(2,0.2,0.2),sp+Vector3.new(-6,3.7,-4),Color3.fromRGB(180,150,50),"Metal")
+Ball(m,"ShadeL",Vector3.new(2,1.5,2),sp+Vector3.new(-6,4.8,-4),Color3.fromRGB(240,230,190),"Fabric")
+Cyl(m,"LampR",Vector3.new(2,0.2,0.2),sp+Vector3.new(6,3.7,-4),Color3.fromRGB(180,150,50),"Metal")
+Ball(m,"ShadeR",Vector3.new(2,1.5,2),sp+Vector3.new(6,4.8,-4),Color3.fromRGB(240,230,190),"Fabric")
+-- Rug under bed
+P(m,"Rug",Vector3.new(10,0.1,14),sp+Vector3.new(0,0.05,0),Color3.fromRGB(140,55,50),"Fabric")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a full bedroom', 'Add a wardrobe and dresser', 'Make it a bunk bed'],
+      partCount: 22,
+    }
+  }
+
+  // ── LAMP POST ───────────────────────────────────────────────────────
+  if (/\b(lamp\s?post|street\s?lamp|street\s?light|lantern\s?post)\b/.test(m)) {
+    return {
+      name: 'Lamp Post',
+      response: "Classic Victorian-style lamp post — iron base with a decorative flared foot, tall pole with ornamental rings, curved arm holding a glass lamp housing with a warm PointLight inside. This is the kind of thing that makes a town scene feel alive at night.\n\nWant me to line a whole street with these?",
+      code: BOILERPLATE_TOP + `
+-- Base (flared foot)
+Cyl(m,"Base",Vector3.new(0.6,4,4),sp+Vector3.new(0,0.3,0),Color3.fromRGB(50,50,55),"Metal")
+Cyl(m,"BaseRing",Vector3.new(0.4,3.2,3.2),sp+Vector3.new(0,0.7,0),Color3.fromRGB(60,60,65),"Metal")
+-- Pole
+Cyl(m,"Pole",Vector3.new(14,0.6,0.6),sp+Vector3.new(0,7.5,0),Color3.fromRGB(45,45,50),"Metal")
+-- Decorative rings on pole
+Cyl(m,"Ring1",Vector3.new(0.3,1,1),sp+Vector3.new(0,3,0),Color3.fromRGB(55,55,60),"Metal")
+Cyl(m,"Ring2",Vector3.new(0.3,1,1),sp+Vector3.new(0,6,0),Color3.fromRGB(55,55,60),"Metal")
+Cyl(m,"Ring3",Vector3.new(0.3,1.2,1.2),sp+Vector3.new(0,12,0),Color3.fromRGB(55,55,60),"Metal")
+-- Curved arm
+P(m,"ArmV",Vector3.new(0.4,2,0.4),sp+Vector3.new(0,13.5,0),Color3.fromRGB(48,48,52),"Metal")
+P(m,"ArmH",Vector3.new(0.4,0.4,3),sp+Vector3.new(0,14.5,1.5),Color3.fromRGB(48,48,52),"Metal")
+P(m,"ArmCurve",Vector3.new(0.4,1,0.4),sp+Vector3.new(0,14,0.5),Color3.fromRGB(48,48,52),"Metal")
+-- Lamp housing
+P(m,"LampBox",Vector3.new(2,2.5,2),sp+Vector3.new(0,13.5,3),Color3.fromRGB(40,40,45),"Metal")
+P(m,"LampTop",Vector3.new(2.5,0.3,2.5),sp+Vector3.new(0,14.9,3),Color3.fromRGB(50,50,55),"Metal")
+-- Glass panels
+P(m,"Glass1",Vector3.new(0.1,1.8,1.6),sp+Vector3.new(1,13.5,3),Color3.fromRGB(255,240,180),"Glass")
+P(m,"Glass2",Vector3.new(0.1,1.8,1.6),sp+Vector3.new(-1,13.5,3),Color3.fromRGB(255,240,180),"Glass")
+P(m,"Glass3",Vector3.new(1.6,1.8,0.1),sp+Vector3.new(0,13.5,3.9),Color3.fromRGB(255,240,180),"Glass")
+P(m,"Glass4",Vector3.new(1.6,1.8,0.1),sp+Vector3.new(0,13.5,2.1),Color3.fromRGB(255,240,180),"Glass")
+-- PointLight inside
+local lt = Instance.new("PointLight") lt.Color=Color3.fromRGB(255,220,150) lt.Range=30 lt.Brightness=1.5 lt.Parent=m:FindFirstChild("Glass1")
+` + BOILERPLATE_BOT,
+      suggestions: ['Line a street with these', 'Build a park around it', 'Add a bench underneath'],
+      partCount: 16,
+    }
+  }
+
+  // ── BENCH (park bench) ──────────────────────────────────────────────
+  if (/\b(park bench|garden bench|outdoor bench|wooden bench)\b/.test(m)) {
+    return {
+      name: 'Park Bench',
+      response: "Classic park bench — five wooden seat slats on a cast iron frame, curved backrest with matching slats, decorative iron armrests on both sides, and sturdy legs with scroll detail. I put it on a little stone pad. Perfect for NPCs or player rest areas.\n\nWant me to build a park around it?",
+      code: BOILERPLATE_TOP + `
+-- Stone pad underneath
+P(m,"Pad",Vector3.new(8,0.3,5),sp+Vector3.new(0,0.15,0),Color3.fromRGB(160,155,148),"Cobblestone")
+-- Iron frame legs
+P(m,"LegL",Vector3.new(0.4,3,3),sp+Vector3.new(-3,1.5,0),Color3.fromRGB(45,45,50),"Metal")
+P(m,"LegR",Vector3.new(0.4,3,3),sp+Vector3.new(3,1.5,0),Color3.fromRGB(45,45,50),"Metal")
+-- Scroll detail on legs
+Ball(m,"ScrollL",Vector3.new(0.8,0.8,0.8),sp+Vector3.new(-3,0.6,1.2),Color3.fromRGB(55,55,60),"Metal")
+Ball(m,"ScrollR",Vector3.new(0.8,0.8,0.8),sp+Vector3.new(3,0.6,1.2),Color3.fromRGB(55,55,60),"Metal")
+-- Seat slats (5)
+P(m,"Slat1",Vector3.new(7,0.25,0.8),sp+Vector3.new(0,2.8,-1.2),Color3.fromRGB(130,85,40),"Wood")
+P(m,"Slat2",Vector3.new(7,0.25,0.8),sp+Vector3.new(0,2.8,-0.3),Color3.fromRGB(125,80,38),"Wood")
+P(m,"Slat3",Vector3.new(7,0.25,0.8),sp+Vector3.new(0,2.8,0.6),Color3.fromRGB(130,85,40),"Wood")
+P(m,"Slat4",Vector3.new(7,0.25,0.8),sp+Vector3.new(0,2.8,1.5),Color3.fromRGB(125,80,38),"Wood")
+P(m,"Slat5",Vector3.new(7,0.25,0.8),sp+Vector3.new(0,2.85,2.3),Color3.fromRGB(130,85,40),"Wood")
+-- Backrest slats (4)
+P(m,"Back1",Vector3.new(7,0.8,0.25),sp+Vector3.new(0,3.5,-1.3),Color3.fromRGB(128,82,38),"Wood")
+P(m,"Back2",Vector3.new(7,0.8,0.25),sp+Vector3.new(0,4.4,-1.3),Color3.fromRGB(132,86,42),"Wood")
+P(m,"Back3",Vector3.new(7,0.8,0.25),sp+Vector3.new(0,5.3,-1.3),Color3.fromRGB(128,82,38),"Wood")
+P(m,"Back4",Vector3.new(7,0.8,0.25),sp+Vector3.new(0,6.1,-1.3),Color3.fromRGB(132,86,42),"Wood")
+-- Armrests
+P(m,"ArmL",Vector3.new(0.3,0.4,3),sp+Vector3.new(-3.2,3.5,0.5),Color3.fromRGB(50,50,55),"Metal")
+P(m,"ArmR",Vector3.new(0.3,0.4,3),sp+Vector3.new(3.2,3.5,0.5),Color3.fromRGB(50,50,55),"Metal")
+-- Backrest frame
+P(m,"BackFrame",Vector3.new(0.3,4,0.3),sp+Vector3.new(-3.2,4.5,-1.3),Color3.fromRGB(48,48,52),"Metal")
+P(m,"BackFrameR",Vector3.new(0.3,4,0.3),sp+Vector3.new(3.2,4.5,-1.3),Color3.fromRGB(48,48,52),"Metal")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a park around it', 'Add a lamp post next to it', 'Make a row of benches'],
+      partCount: 19,
+    }
+  }
+
+  // ── FOUNTAIN ────────────────────────────────────────────────────────
+  if (/\b(fountain|water feature|garden fountain)\b/.test(m)) {
+    return {
+      name: 'Fountain',
+      response: "Beautiful multi-tier fountain — wide stone basin at the bottom, medium basin in the middle, and a small top bowl with water cascading down. Transparent blue water in each tier, decorative rim, and a central pillar with carved details. I added a PointLight so the water glows at night. This is the kind of centerpiece that makes a whole town square look good.\n\nWant me to build a plaza around it?",
+      code: BOILERPLATE_TOP + `
+-- Ground stone pad
+Cyl(m,"Pad",Vector3.new(0.4,18,18),sp+Vector3.new(0,0.2,0),Color3.fromRGB(155,150,142),"Cobblestone")
+-- Bottom basin (largest)
+Cyl(m,"Basin1",Vector3.new(2,14,14),sp+Vector3.new(0,1.2,0),Color3.fromRGB(170,165,155),"Granite")
+Cyl(m,"Basin1Inner",Vector3.new(1.5,12,12),sp+Vector3.new(0,1.5,0),Color3.fromRGB(150,145,138),"Granite")
+-- Water in bottom basin
+Cyl(m,"Water1",Vector3.new(0.3,11.5,11.5),sp+Vector3.new(0,1.8,0),Color3.fromRGB(60,140,200),"Glass")
+-- Rim on bottom basin
+Cyl(m,"Rim1",Vector3.new(0.5,14.5,14.5),sp+Vector3.new(0,2.3,0),Color3.fromRGB(175,170,160),"Granite")
+-- Central pillar
+Cyl(m,"Pillar",Vector3.new(8,1.5,1.5),sp+Vector3.new(0,6.2,0),Color3.fromRGB(165,160,150),"Granite")
+-- Decorative ring on pillar
+Cyl(m,"PillarRing1",Vector3.new(0.4,2.2,2.2),sp+Vector3.new(0,4,0),Color3.fromRGB(175,170,160),"Granite")
+Cyl(m,"PillarRing2",Vector3.new(0.4,2,2),sp+Vector3.new(0,7,0),Color3.fromRGB(175,170,160),"Granite")
+-- Middle basin
+Cyl(m,"Basin2",Vector3.new(1.5,8,8),sp+Vector3.new(0,5.5,0),Color3.fromRGB(168,163,153),"Granite")
+Cyl(m,"Water2",Vector3.new(0.3,7,7),sp+Vector3.new(0,6,0),Color3.fromRGB(55,135,195),"Glass")
+Cyl(m,"Rim2",Vector3.new(0.4,8.5,8.5),sp+Vector3.new(0,6.3,0),Color3.fromRGB(172,167,157),"Granite")
+-- Top bowl
+Cyl(m,"Basin3",Vector3.new(1.2,4,4),sp+Vector3.new(0,9,0),Color3.fromRGB(170,165,155),"Granite")
+Cyl(m,"Water3",Vector3.new(0.3,3.5,3.5),sp+Vector3.new(0,9.3,0),Color3.fromRGB(50,130,190),"Glass")
+-- Top spout
+Ball(m,"Spout",Vector3.new(1.5,1.5,1.5),sp+Vector3.new(0,10.2,0),Color3.fromRGB(165,160,150),"Granite")
+-- Water glow
+local fl = Instance.new("PointLight") fl.Color=Color3.fromRGB(100,180,255) fl.Range=20 fl.Brightness=0.8 fl.Parent=m:FindFirstChild("Water1")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a plaza around it', 'Add benches nearby', 'Make a garden setting'],
+      partCount: 16,
+    }
+  }
+
+  // ── BRIDGE ──────────────────────────────────────────────────────────
+  if (/\b(bridge|overpass|walkway bridge)\b/.test(m) && !/drawbridge/.test(m)) {
+    return {
+      name: 'Bridge',
+      response: "Stone arch bridge — wide road surface with cobblestone texture, two arched supports underneath, stone railings on both sides with decorative posts, and lamp posts at each corner. Perfect for spanning a river or canyon in your game.\n\nWant me to add a river underneath or extend the road?",
+      code: BOILERPLATE_TOP + `
+-- Road surface
+P(m,"Road",Vector3.new(10,0.8,30),sp+Vector3.new(0,8.4,0),Color3.fromRGB(140,135,128),"Cobblestone")
+-- Road edge trim
+P(m,"TrimL",Vector3.new(0.4,0.5,30),sp+Vector3.new(-5.2,8.6,0),Color3.fromRGB(160,155,148),"Granite")
+P(m,"TrimR",Vector3.new(0.4,0.5,30),sp+Vector3.new(5.2,8.6,0),Color3.fromRGB(160,155,148),"Granite")
+-- Arch support 1
+P(m,"Arch1L",Vector3.new(2,8,3),sp+Vector3.new(-3,4,6),Color3.fromRGB(150,145,135),"Granite")
+P(m,"Arch1R",Vector3.new(2,8,3),sp+Vector3.new(3,4,6),Color3.fromRGB(150,145,135),"Granite")
+P(m,"Arch1Top",Vector3.new(10,2,3),sp+Vector3.new(0,7.5,6),Color3.fromRGB(155,150,140),"Granite")
+-- Arch support 2
+P(m,"Arch2L",Vector3.new(2,8,3),sp+Vector3.new(-3,4,-6),Color3.fromRGB(148,143,133),"Granite")
+P(m,"Arch2R",Vector3.new(2,8,3),sp+Vector3.new(3,4,-6),Color3.fromRGB(148,143,133),"Granite")
+P(m,"Arch2Top",Vector3.new(10,2,3),sp+Vector3.new(0,7.5,-6),Color3.fromRGB(152,147,137),"Granite")
+-- Left railing + posts
+P(m,"RailL",Vector3.new(0.5,3,30),sp+Vector3.new(-5.5,10,0),Color3.fromRGB(155,150,142),"Granite")
+P(m,"PostL1",Vector3.new(0.8,3.5,0.8),sp+Vector3.new(-5.5,10,-14),Color3.fromRGB(160,155,148),"Granite")
+P(m,"PostL2",Vector3.new(0.8,3.5,0.8),sp+Vector3.new(-5.5,10,-7),Color3.fromRGB(160,155,148),"Granite")
+P(m,"PostL3",Vector3.new(0.8,3.5,0.8),sp+Vector3.new(-5.5,10,0),Color3.fromRGB(160,155,148),"Granite")
+P(m,"PostL4",Vector3.new(0.8,3.5,0.8),sp+Vector3.new(-5.5,10,7),Color3.fromRGB(160,155,148),"Granite")
+P(m,"PostL5",Vector3.new(0.8,3.5,0.8),sp+Vector3.new(-5.5,10,14),Color3.fromRGB(160,155,148),"Granite")
+-- Right railing + posts
+P(m,"RailR",Vector3.new(0.5,3,30),sp+Vector3.new(5.5,10,0),Color3.fromRGB(155,150,142),"Granite")
+P(m,"PostR1",Vector3.new(0.8,3.5,0.8),sp+Vector3.new(5.5,10,-14),Color3.fromRGB(160,155,148),"Granite")
+P(m,"PostR2",Vector3.new(0.8,3.5,0.8),sp+Vector3.new(5.5,10,-7),Color3.fromRGB(160,155,148),"Granite")
+P(m,"PostR3",Vector3.new(0.8,3.5,0.8),sp+Vector3.new(5.5,10,0),Color3.fromRGB(160,155,148),"Granite")
+P(m,"PostR4",Vector3.new(0.8,3.5,0.8),sp+Vector3.new(5.5,10,7),Color3.fromRGB(160,155,148),"Granite")
+P(m,"PostR5",Vector3.new(0.8,3.5,0.8),sp+Vector3.new(5.5,10,14),Color3.fromRGB(160,155,148),"Granite")
+-- Corner lamps
+P(m,"LampPole1",Vector3.new(0.3,4,0.3),sp+Vector3.new(-5.5,13.5,-14),Color3.fromRGB(50,50,55),"Metal")
+P(m,"LampGlow1",Vector3.new(1,1,1),sp+Vector3.new(-5.5,15.5,-14),Color3.fromRGB(255,220,150),"Neon")
+P(m,"LampPole2",Vector3.new(0.3,4,0.3),sp+Vector3.new(5.5,13.5,14),Color3.fromRGB(50,50,55),"Metal")
+P(m,"LampGlow2",Vector3.new(1,1,1),sp+Vector3.new(5.5,15.5,14),Color3.fromRGB(255,220,150),"Neon")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a river underneath', 'Extend the road on both sides', 'Build a village at one end'],
+      partCount: 26,
+    }
+  }
+
+  // ── TOWER ───────────────────────────────────────────────────────────
+  if (/\b(tower|watchtower|guard tower|lookout tower)\b/.test(m) && !/castle|clock tower/.test(m)) {
+    return {
+      name: 'Tower',
+      response: "Medieval watchtower — thick stone walls forming a square base, arrow slit windows on each side, wooden door with iron bands, interior stairs hinted at, walkable top platform with crenellations, and a flag pole with a banner. Torch brackets on the outside walls for that authentic look.\n\nWant me to build a wall section connecting to it, or add a whole guard outpost?",
+      code: BOILERPLATE_TOP + `
+-- Base (slightly wider for stability look)
+P(m,"Base",Vector3.new(10,1,10),sp+Vector3.new(0,0.5,0),Color3.fromRGB(120,115,108),"Cobblestone")
+-- Walls (4 sides)
+P(m,"WallN",Vector3.new(8,18,1),sp+Vector3.new(0,10,3.5),Color3.fromRGB(145,140,130),"Granite")
+P(m,"WallS",Vector3.new(8,18,1),sp+Vector3.new(0,10,-3.5),Color3.fromRGB(140,135,125),"Granite")
+P(m,"WallE",Vector3.new(1,18,8),sp+Vector3.new(3.5,10,0),Color3.fromRGB(142,137,127),"Granite")
+P(m,"WallW",Vector3.new(1,18,8),sp+Vector3.new(-3.5,10,0),Color3.fromRGB(138,133,123),"Granite")
+-- Door
+P(m,"Door",Vector3.new(3,5,0.3),sp+Vector3.new(0,3.5,4),Color3.fromRGB(85,55,28),"Wood")
+P(m,"DoorBand1",Vector3.new(3.2,0.3,0.15),sp+Vector3.new(0,2.5,4.2),Color3.fromRGB(60,60,65),"Metal")
+P(m,"DoorBand2",Vector3.new(3.2,0.3,0.15),sp+Vector3.new(0,4.5,4.2),Color3.fromRGB(60,60,65),"Metal")
+-- Arrow slits (4 sides)
+P(m,"SlitN",Vector3.new(0.3,2.5,0.3),sp+Vector3.new(0,12,4.1),Color3.fromRGB(20,20,22),"Concrete")
+P(m,"SlitS",Vector3.new(0.3,2.5,0.3),sp+Vector3.new(0,12,-4.1),Color3.fromRGB(20,20,22),"Concrete")
+P(m,"SlitE",Vector3.new(0.3,2.5,0.3),sp+Vector3.new(4.1,12,0),Color3.fromRGB(20,20,22),"Concrete")
+P(m,"SlitW",Vector3.new(0.3,2.5,0.3),sp+Vector3.new(-4.1,12,0),Color3.fromRGB(20,20,22),"Concrete")
+-- Top platform
+P(m,"Platform",Vector3.new(9,0.5,9),sp+Vector3.new(0,19.2,0),Color3.fromRGB(125,120,112),"Cobblestone")
+-- Crenellations (8 merlons)
+P(m,"Merlon1",Vector3.new(2,2,1),sp+Vector3.new(-3,20.5,4),Color3.fromRGB(142,137,127),"Granite")
+P(m,"Merlon2",Vector3.new(2,2,1),sp+Vector3.new(3,20.5,4),Color3.fromRGB(142,137,127),"Granite")
+P(m,"Merlon3",Vector3.new(2,2,1),sp+Vector3.new(-3,20.5,-4),Color3.fromRGB(142,137,127),"Granite")
+P(m,"Merlon4",Vector3.new(2,2,1),sp+Vector3.new(3,20.5,-4),Color3.fromRGB(142,137,127),"Granite")
+P(m,"Merlon5",Vector3.new(1,2,2),sp+Vector3.new(4,20.5,-3),Color3.fromRGB(142,137,127),"Granite")
+P(m,"Merlon6",Vector3.new(1,2,2),sp+Vector3.new(4,20.5,3),Color3.fromRGB(142,137,127),"Granite")
+P(m,"Merlon7",Vector3.new(1,2,2),sp+Vector3.new(-4,20.5,-3),Color3.fromRGB(142,137,127),"Granite")
+P(m,"Merlon8",Vector3.new(1,2,2),sp+Vector3.new(-4,20.5,3),Color3.fromRGB(142,137,127),"Granite")
+-- Flag pole + banner
+Cyl(m,"FlagPole",Vector3.new(5,0.2,0.2),sp+Vector3.new(0,22,0),Color3.fromRGB(90,60,30),"Wood")
+P(m,"Banner",Vector3.new(0.1,3,2),sp+Vector3.new(0,23,1),Color3.fromRGB(160,35,35),"Fabric")
+-- Torch brackets (2)
+P(m,"TorchL",Vector3.new(0.2,1.5,0.2),sp+Vector3.new(-4,8,3),Color3.fromRGB(100,65,30),"Wood")
+P(m,"TorchTipL",Vector3.new(0.4,0.4,0.4),sp+Vector3.new(-4,8.9,3),Color3.fromRGB(255,155,45),"Neon")
+P(m,"TorchR",Vector3.new(0.2,1.5,0.2),sp+Vector3.new(4,8,3),Color3.fromRGB(100,65,30),"Wood")
+P(m,"TorchTipR",Vector3.new(0.4,0.4,0.4),sp+Vector3.new(4,8.9,3),Color3.fromRGB(255,155,45),"Neon")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a wall section connecting to it', 'Add a guard outpost', 'Make a castle gate nearby'],
+      partCount: 28,
+    }
+  }
+
+  // ── SHOP / STORE ────────────────────────────────────────────────────
+  if (/\b(shop|store|storefront|market|boutique|bakery)\b/.test(m) && !/castle|stall/.test(m)) {
+    return {
+      name: 'Shop',
+      response: "Here's a small storefront — brick walls with a colorful awning out front, big display window with glass, front door with a bell, hanging wooden sign, sales counter inside, and shelves along the back wall. Ready for an NPC shopkeeper.\n\nWant me to add items on the shelves or build a whole shopping street?",
+      code: BOILERPLATE_TOP + `
+-- Foundation
+P(m,"Foundation",Vector3.new(16,0.5,14),sp+Vector3.new(0,0.25,0),Color3.fromRGB(130,125,118),"Concrete")
+-- Floor
+P(m,"Floor",Vector3.new(14,0.3,12),sp+Vector3.new(0,0.65,0),Color3.fromRGB(160,120,80),"WoodPlanks")
+-- Walls
+P(m,"WallFront",Vector3.new(14,10,0.6),sp+Vector3.new(0,5.8,6),Color3.fromRGB(175,135,95),"Brick")
+P(m,"WallBack",Vector3.new(14,10,0.6),sp+Vector3.new(0,5.8,-6),Color3.fromRGB(172,132,92),"Brick")
+P(m,"WallL",Vector3.new(0.6,10,12),sp+Vector3.new(-7,5.8,0),Color3.fromRGB(170,130,90),"Brick")
+P(m,"WallR",Vector3.new(0.6,10,12),sp+Vector3.new(7,5.8,0),Color3.fromRGB(170,130,90),"Brick")
+-- Display window (big)
+P(m,"DisplayWin",Vector3.new(5,5,0.2),sp+Vector3.new(-3,6,6.2),Color3.fromRGB(200,220,255),"Glass")
+-- Door
+P(m,"Door",Vector3.new(3,7,0.3),sp+Vector3.new(3.5,4.3,6.2),Color3.fromRGB(100,65,35),"Wood")
+Cyl(m,"Knob",Vector3.new(0.2,0.3,0.3),sp+Vector3.new(4.5,4.5,6.4),Color3.fromRGB(200,180,50),"Metal")
+-- Awning
+P(m,"Awning",Vector3.new(14,0.2,4),sp+Vector3.new(0,9.5,8),Color3.fromRGB(180,50,50),"Fabric")
+P(m,"AwningEdge",Vector3.new(14.2,0.3,0.3),sp+Vector3.new(0,9.3,9.8),Color3.fromRGB(160,40,40),"Fabric")
+-- Hanging sign
+P(m,"SignBoard",Vector3.new(5,2,0.3),sp+Vector3.new(0,11,7),Color3.fromRGB(130,85,40),"Wood")
+P(m,"SignBracketL",Vector3.new(0.2,1.5,0.2),sp+Vector3.new(-2.5,11.5,6.5),Color3.fromRGB(50,50,55),"Metal")
+P(m,"SignBracketR",Vector3.new(0.2,1.5,0.2),sp+Vector3.new(2.5,11.5,6.5),Color3.fromRGB(50,50,55),"Metal")
+-- Roof
+P(m,"Roof",Vector3.new(16,0.5,15),sp+Vector3.new(0,11,0),Color3.fromRGB(70,70,70),"Concrete")
+-- Counter inside
+P(m,"Counter",Vector3.new(10,3,1.5),sp+Vector3.new(0,2.3,-3),Color3.fromRGB(120,78,36),"Wood")
+P(m,"CounterTop",Vector3.new(10.5,0.3,2),sp+Vector3.new(0,3.9,-3),Color3.fromRGB(110,70,32),"Wood")
+-- Shelves on back wall
+P(m,"Shelf1",Vector3.new(12,0.3,1.5),sp+Vector3.new(0,4,-5.5),Color3.fromRGB(125,80,38),"Wood")
+P(m,"Shelf2",Vector3.new(12,0.3,1.5),sp+Vector3.new(0,6.5,-5.5),Color3.fromRGB(125,80,38),"Wood")
+P(m,"Shelf3",Vector3.new(12,0.3,1.5),sp+Vector3.new(0,9,-5.5),Color3.fromRGB(125,80,38),"Wood")
+-- Items on shelf (colored boxes)
+P(m,"Item1",Vector3.new(1,1,1),sp+Vector3.new(-4,4.7,-5.5),Color3.fromRGB(200,60,60),"Concrete")
+P(m,"Item2",Vector3.new(1.2,0.8,0.8),sp+Vector3.new(-1,4.5,-5.5),Color3.fromRGB(60,140,200),"Concrete")
+P(m,"Item3",Vector3.new(0.8,1.2,0.8),sp+Vector3.new(3,4.7,-5.5),Color3.fromRGB(60,180,80),"Concrete")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a shopping street', 'Add an NPC shopkeeper', 'Stock the shelves with items'],
+      partCount: 25,
+    }
+  }
+
+  // ── TRUCK ───────────────────────────────────────────────────────────
+  if (/\b(truck|pickup|lorry|semi)\b/.test(m) && !/monster truck|fire truck/.test(m)) {
+    return {
+      name: 'Truck',
+      response: "Here's a solid pickup truck — chunky cab with a windshield, two doors, headlights and taillights, big cargo bed in the back, six wheels (dual rears), side mirrors, and a front bumper. Classic workhorse look. Players can hop in the driver seat.\n\nWant me to add a driving script or fill the cargo bed?",
+      code: BOILERPLATE_TOP + `
+-- Chassis
+P(m,"Chassis",Vector3.new(7,1.5,18),sp+Vector3.new(0,2,0),Color3.fromRGB(35,55,120),"Metal")
+-- Cab
+P(m,"Cab",Vector3.new(7,4,7),sp+Vector3.new(0,5,4),Color3.fromRGB(40,60,130),"Metal")
+-- Cab roof
+P(m,"CabRoof",Vector3.new(7,0.3,7),sp+Vector3.new(0,7,4),Color3.fromRGB(35,55,120),"Metal")
+-- Windshield
+P(m,"Windshield",Vector3.new(6,2.5,0.2),sp+Vector3.new(0,5.5,7.3),Color3.fromRGB(200,220,255),"Glass")
+-- Rear window
+P(m,"RearWin",Vector3.new(6,2,0.2),sp+Vector3.new(0,5.5,0.8),Color3.fromRGB(200,220,255),"Glass")
+-- Side windows
+P(m,"WinL",Vector3.new(0.2,2,4),sp+Vector3.new(-3.6,5.5,4),Color3.fromRGB(200,220,255),"Glass")
+P(m,"WinR",Vector3.new(0.2,2,4),sp+Vector3.new(3.6,5.5,4),Color3.fromRGB(200,220,255),"Glass")
+-- Cargo bed
+P(m,"BedFloor",Vector3.new(6.5,0.3,9),sp+Vector3.new(0,2.8,-4.5),Color3.fromRGB(30,50,110),"Metal")
+P(m,"BedL",Vector3.new(0.3,2.5,9),sp+Vector3.new(-3.3,4,-4.5),Color3.fromRGB(32,52,115),"Metal")
+P(m,"BedR",Vector3.new(0.3,2.5,9),sp+Vector3.new(3.3,4,-4.5),Color3.fromRGB(32,52,115),"Metal")
+P(m,"Tailgate",Vector3.new(6.5,2.5,0.3),sp+Vector3.new(0,4,-9),Color3.fromRGB(34,54,118),"Metal")
+-- Bumpers
+P(m,"BumperF",Vector3.new(7.5,1,1),sp+Vector3.new(0,1.5,8),Color3.fromRGB(180,180,185),"Metal")
+P(m,"BumperR",Vector3.new(7.5,1,0.8),sp+Vector3.new(0,1.5,-9.2),Color3.fromRGB(180,180,185),"Metal")
+-- Wheels (6 — dual rears)
+Cyl(m,"WheelFL",Vector3.new(1,3,3),sp+Vector3.new(-3.8,1.5,5),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"WheelFR",Vector3.new(1,3,3),sp+Vector3.new(3.8,1.5,5),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"WheelRL1",Vector3.new(1,3,3),sp+Vector3.new(-3.8,1.5,-5),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"WheelRR1",Vector3.new(1,3,3),sp+Vector3.new(3.8,1.5,-5),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"WheelRL2",Vector3.new(1,3,3),sp+Vector3.new(-3.8,1.5,-7),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"WheelRR2",Vector3.new(1,3,3),sp+Vector3.new(3.8,1.5,-7),Color3.fromRGB(30,30,30),"Metal")
+-- Headlights
+P(m,"HL1",Vector3.new(1.2,0.8,0.2),sp+Vector3.new(-2.2,3.5,8.5),Color3.fromRGB(255,255,200),"Neon")
+P(m,"HL2",Vector3.new(1.2,0.8,0.2),sp+Vector3.new(2.2,3.5,8.5),Color3.fromRGB(255,255,200),"Neon")
+-- Taillights
+P(m,"TL1",Vector3.new(1,0.6,0.2),sp+Vector3.new(-2.5,3.5,-9.3),Color3.fromRGB(255,0,0),"Neon")
+P(m,"TL2",Vector3.new(1,0.6,0.2),sp+Vector3.new(2.5,3.5,-9.3),Color3.fromRGB(255,0,0),"Neon")
+-- Mirrors
+P(m,"MirrorL",Vector3.new(0.6,0.5,0.3),sp+Vector3.new(-4,5.5,6.5),Color3.fromRGB(160,165,170),"Metal")
+P(m,"MirrorR",Vector3.new(0.6,0.5,0.3),sp+Vector3.new(4,5.5,6.5),Color3.fromRGB(160,165,170),"Metal")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a driving script', 'Fill the cargo bed', 'Build a road for it'],
+      partCount: 27,
+    }
+  }
+
+  // ── TANK ────────────────────────────────────────────────────────────
+  if (/\b(tank|panzer|armored vehicle|military tank)\b/.test(m)) {
+    return {
+      name: 'Tank',
+      response: "Here's a heavy battle tank — thick armored hull with angled front plates, rotating turret on top with a long cannon barrel, track assemblies on each side with road wheels, commander's hatch, and extra armor panels bolted on. This thing looks like it means business.\n\nWant me to add a firing script or build a battlefield?",
+      code: BOILERPLATE_TOP + `
+-- Hull (main body)
+P(m,"Hull",Vector3.new(8,3,14),sp+Vector3.new(0,3,0),Color3.fromRGB(75,80,60),"Metal")
+-- Angled front armor
+W(m,"FrontArmor",Vector3.new(8,2,4),sp+Vector3.new(0,3.5,9),Color3.fromRGB(70,75,55),0)
+-- Hull top
+P(m,"HullTop",Vector3.new(8,0.5,14),sp+Vector3.new(0,4.7,0),Color3.fromRGB(80,85,65),"Metal")
+-- Rear plate
+P(m,"RearPlate",Vector3.new(8,3,0.5),sp+Vector3.new(0,3,-7.2),Color3.fromRGB(72,77,57),"Metal")
+-- Track assemblies (left)
+P(m,"TrackL",Vector3.new(1.5,2.5,15),sp+Vector3.new(-5,1.5,0),Color3.fromRGB(40,40,38),"DiamondPlate")
+P(m,"SkirtL",Vector3.new(0.3,2,14),sp+Vector3.new(-5.8,2.5,0),Color3.fromRGB(78,83,63),"Metal")
+-- Track assemblies (right)
+P(m,"TrackR",Vector3.new(1.5,2.5,15),sp+Vector3.new(5,1.5,0),Color3.fromRGB(40,40,38),"DiamondPlate")
+P(m,"SkirtR",Vector3.new(0.3,2,14),sp+Vector3.new(5.8,2.5,0),Color3.fromRGB(78,83,63),"Metal")
+-- Road wheels (6 per side)
+Cyl(m,"WheelL1",Vector3.new(0.4,1.8,1.8),sp+Vector3.new(-5,1.2,-5),Color3.fromRGB(50,50,48),"Metal")
+Cyl(m,"WheelL2",Vector3.new(0.4,1.8,1.8),sp+Vector3.new(-5,1.2,-2),Color3.fromRGB(50,50,48),"Metal")
+Cyl(m,"WheelL3",Vector3.new(0.4,1.8,1.8),sp+Vector3.new(-5,1.2,1),Color3.fromRGB(50,50,48),"Metal")
+Cyl(m,"WheelL4",Vector3.new(0.4,1.8,1.8),sp+Vector3.new(-5,1.2,4),Color3.fromRGB(50,50,48),"Metal")
+Cyl(m,"WheelR1",Vector3.new(0.4,1.8,1.8),sp+Vector3.new(5,1.2,-5),Color3.fromRGB(50,50,48),"Metal")
+Cyl(m,"WheelR2",Vector3.new(0.4,1.8,1.8),sp+Vector3.new(5,1.2,-2),Color3.fromRGB(50,50,48),"Metal")
+Cyl(m,"WheelR3",Vector3.new(0.4,1.8,1.8),sp+Vector3.new(5,1.2,1),Color3.fromRGB(50,50,48),"Metal")
+Cyl(m,"WheelR4",Vector3.new(0.4,1.8,1.8),sp+Vector3.new(5,1.2,4),Color3.fromRGB(50,50,48),"Metal")
+-- Turret base
+Cyl(m,"TurretBase",Vector3.new(0.8,6,6),sp+Vector3.new(0,5.4,0),Color3.fromRGB(78,83,63),"Metal")
+-- Turret
+P(m,"Turret",Vector3.new(5,2,5),sp+Vector3.new(0,6.5,0),Color3.fromRGB(82,87,67),"Metal")
+-- Gun barrel
+Cyl(m,"Barrel",Vector3.new(8,0.5,0.5),sp+Vector3.new(0,6.5,8),Color3.fromRGB(65,70,52),"Metal")
+-- Barrel tip (muzzle brake)
+Cyl(m,"Muzzle",Vector3.new(0.5,0.8,0.8),sp+Vector3.new(0,6.5,12),Color3.fromRGB(55,60,45),"Metal")
+-- Commander hatch
+Cyl(m,"Hatch",Vector3.new(0.3,2,2),sp+Vector3.new(0,7.8,-1),Color3.fromRGB(85,90,70),"Metal")
+-- Extra armor panels
+P(m,"ArmorL",Vector3.new(0.4,1.5,4),sp+Vector3.new(-4.2,4,3),Color3.fromRGB(68,73,53),"Metal")
+P(m,"ArmorR",Vector3.new(0.4,1.5,4),sp+Vector3.new(4.2,4,3),Color3.fromRGB(68,73,53),"Metal")
+-- Antenna
+P(m,"Antenna",Vector3.new(0.1,3,0.1),sp+Vector3.new(2,9,-2),Color3.fromRGB(60,60,58),"Metal")
+-- Headlights
+P(m,"TankHL",Vector3.new(0.8,0.5,0.2),sp+Vector3.new(-2.5,4,7.5),Color3.fromRGB(255,255,200),"Neon")
+P(m,"TankHR",Vector3.new(0.8,0.5,0.2),sp+Vector3.new(2.5,4,7.5),Color3.fromRGB(255,255,200),"Neon")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a firing script', 'Build a battlefield', 'Make a whole military base'],
+      partCount: 30,
+    }
+  }
+
+  // ── HELICOPTER ──────────────────────────────────────────────────────
+  if (/\b(helicopter|chopper|heli|rotorcraft)\b/.test(m)) {
+    return {
+      name: 'Helicopter',
+      response: "Here's a helicopter — streamlined fuselage, glass cockpit dome, main rotor assembly on top with four blades, tail boom extending back with a tail rotor, landing skids, and navigation lights. Looks ready to take off from any helipad.\n\nWant me to add a flying script or build a helipad?",
+      code: BOILERPLATE_TOP + `
+-- Fuselage (main body)
+P(m,"Body",Vector3.new(5,4,10),sp+Vector3.new(0,4,0),Color3.fromRGB(180,180,185),"Metal")
+P(m,"BodyLower",Vector3.new(4.5,1.5,9),sp+Vector3.new(0,2.5,0),Color3.fromRGB(170,170,175),"Metal")
+-- Tail boom
+P(m,"Tail",Vector3.new(1.5,1.5,10),sp+Vector3.new(0,5,-9.5),Color3.fromRGB(175,175,180),"Metal")
+P(m,"TailFin",Vector3.new(0.2,3,2),sp+Vector3.new(0,6.5,-14),Color3.fromRGB(172,172,177),"Metal")
+-- Cockpit glass
+P(m,"CockpitGlass",Vector3.new(4,3,0.2),sp+Vector3.new(0,4.5,5.2),Color3.fromRGB(180,215,245),"Glass")
+Ball(m,"CockpitDome",Vector3.new(4.5,3.5,4),sp+Vector3.new(0,4.8,4),Color3.fromRGB(175,210,240),"Glass")
+-- Doors (both sides)
+P(m,"DoorL",Vector3.new(0.2,3,3),sp+Vector3.new(-2.6,4,1),Color3.fromRGB(165,165,170),"Metal")
+P(m,"DoorR",Vector3.new(0.2,3,3),sp+Vector3.new(2.6,4,1),Color3.fromRGB(165,165,170),"Metal")
+-- Main rotor hub
+Cyl(m,"RotorHub",Vector3.new(1,1.5,1.5),sp+Vector3.new(0,6.8,0),Color3.fromRGB(80,80,85),"Metal")
+-- Rotor blades (4)
+P(m,"Blade1",Vector3.new(14,0.1,0.8),sp+Vector3.new(0,7.2,0),Color3.fromRGB(60,60,65),"Metal")
+P(m,"Blade2",Vector3.new(0.8,0.1,14),sp+Vector3.new(0,7.2,0),Color3.fromRGB(60,60,65),"Metal")
+-- Tail rotor
+Cyl(m,"TailRotorHub",Vector3.new(0.3,0.6,0.6),sp+Vector3.new(0.8,6,-14),Color3.fromRGB(80,80,85),"Metal")
+P(m,"TailBlade1",Vector3.new(0.1,3,0.4),sp+Vector3.new(1,6,-14),Color3.fromRGB(60,60,65),"Metal")
+P(m,"TailBlade2",Vector3.new(0.1,0.4,3),sp+Vector3.new(1,6,-14),Color3.fromRGB(60,60,65),"Metal")
+-- Landing skids
+P(m,"SkidL",Vector3.new(0.3,0.3,8),sp+Vector3.new(-1.5,0.15,0),Color3.fromRGB(60,60,65),"Metal")
+P(m,"SkidR",Vector3.new(0.3,0.3,8),sp+Vector3.new(1.5,0.15,0),Color3.fromRGB(60,60,65),"Metal")
+P(m,"StrutL1",Vector3.new(0.2,2,0.2),sp+Vector3.new(-1.5,1,2),Color3.fromRGB(65,65,70),"Metal")
+P(m,"StrutL2",Vector3.new(0.2,2,0.2),sp+Vector3.new(-1.5,1,-2),Color3.fromRGB(65,65,70),"Metal")
+P(m,"StrutR1",Vector3.new(0.2,2,0.2),sp+Vector3.new(1.5,1,2),Color3.fromRGB(65,65,70),"Metal")
+P(m,"StrutR2",Vector3.new(0.2,2,0.2),sp+Vector3.new(1.5,1,-2),Color3.fromRGB(65,65,70),"Metal")
+-- Nav lights
+P(m,"NavL",Vector3.new(0.3,0.3,0.3),sp+Vector3.new(-2.5,3.5,4),Color3.fromRGB(255,60,60),"Neon")
+P(m,"NavR",Vector3.new(0.3,0.3,0.3),sp+Vector3.new(2.5,3.5,4),Color3.fromRGB(60,255,60),"Neon")
+P(m,"TailLight",Vector3.new(0.3,0.3,0.3),sp+Vector3.new(0,5,-14.5),Color3.fromRGB(255,255,255),"Neon")
+-- Exhaust
+Cyl(m,"Exhaust",Vector3.new(1,0.5,0.5),sp+Vector3.new(2,5.5,-3),Color3.fromRGB(50,50,55),"Metal")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a flying script', 'Build a helipad', 'Make a military variant'],
+      partCount: 26,
+    }
+  }
+
+  // ── BARREL ──────────────────────────────────────────────────────────
+  if (/\b(barrel|keg|cask|wine barrel)\b/.test(m)) {
+    return {
+      name: 'Barrel',
+      response: "Wooden barrel — classic oak staves with two iron bands around the middle, a lid on top, and nice wood grain detail. Great for medieval taverns, pirate ships, or storage rooms.\n\nWant me to make a stack of these or build a tavern?",
+      code: BOILERPLATE_TOP + `
+-- Main barrel body
+Cyl(m,"Body",Vector3.new(5,3.5,3.5),sp+Vector3.new(0,2.5,0),Color3.fromRGB(130,82,38),"Wood")
+-- Wider middle section (barrel bulge)
+Cyl(m,"Bulge",Vector3.new(1.5,3.8,3.8),sp+Vector3.new(0,2.5,0),Color3.fromRGB(125,78,35),"Wood")
+-- Iron bands
+Cyl(m,"Band1",Vector3.new(0.2,3.9,3.9),sp+Vector3.new(0,1.2,0),Color3.fromRGB(70,70,75),"Metal")
+Cyl(m,"Band2",Vector3.new(0.2,3.9,3.9),sp+Vector3.new(0,3.8,0),Color3.fromRGB(70,70,75),"Metal")
+Cyl(m,"BandMid",Vector3.new(0.15,4,4),sp+Vector3.new(0,2.5,0),Color3.fromRGB(65,65,70),"Metal")
+-- Top lid
+Cyl(m,"Lid",Vector3.new(0.3,3.3,3.3),sp+Vector3.new(0,5.15,0),Color3.fromRGB(135,85,40),"Wood")
+Cyl(m,"LidRim",Vector3.new(0.15,3.6,3.6),sp+Vector3.new(0,5.2,0),Color3.fromRGB(68,68,72),"Metal")
+-- Bottom rim
+Cyl(m,"BottomRim",Vector3.new(0.15,3.6,3.6),sp+Vector3.new(0,0.1,0),Color3.fromRGB(68,68,72),"Metal")
+-- Stave lines (vertical detail)
+P(m,"Stave1",Vector3.new(0.05,5,0.05),sp+Vector3.new(1.6,2.5,0.5),Color3.fromRGB(100,60,28),"Wood")
+P(m,"Stave2",Vector3.new(0.05,5,0.05),sp+Vector3.new(-1.2,2.5,1.1),Color3.fromRGB(100,60,28),"Wood")
+P(m,"Stave3",Vector3.new(0.05,5,0.05),sp+Vector3.new(0.8,2.5,-1.3),Color3.fromRGB(100,60,28),"Wood")
+P(m,"Stave4",Vector3.new(0.05,5,0.05),sp+Vector3.new(-0.5,2.5,-1.5),Color3.fromRGB(100,60,28),"Wood")
+P(m,"Stave5",Vector3.new(0.05,5,0.05),sp+Vector3.new(1.4,2.5,-0.7),Color3.fromRGB(100,60,28),"Wood")
+P(m,"Stave6",Vector3.new(0.05,5,0.05),sp+Vector3.new(-1.5,2.5,-0.3),Color3.fromRGB(100,60,28),"Wood")
+-- Bung hole (small circle on side)
+Cyl(m,"Bung",Vector3.new(0.1,0.5,0.5),sp+Vector3.new(0,2.5,1.9),Color3.fromRGB(90,55,25),"Wood")
+-- Cork
+Cyl(m,"Cork",Vector3.new(0.15,0.35,0.35),sp+Vector3.new(0,2.5,1.95),Color3.fromRGB(180,155,100),"Wood")
+` + BOILERPLATE_BOT,
+      suggestions: ['Make a stack of barrels', 'Build a tavern', 'Add to a pirate ship'],
+      partCount: 17,
+    }
+  }
+
+  // ── CAMPFIRE ────────────────────────────────────────────────────────
+  if (/\b(campfire|bonfire|fire pit|camp fire)\b/.test(m)) {
+    return {
+      name: 'Campfire',
+      response: "Campfire scene — ring of stones surrounding crossed logs, bright orange fire particles shooting up, warm PointLight illuminating everything around it, and some embers glowing on the ground. Perfect for outdoor adventure games or survival bases.\n\nWant me to add log seats around it or build a full campsite?",
+      code: BOILERPLATE_TOP + `
+-- Ground patch (dirt)
+Cyl(m,"Dirt",Vector3.new(0.2,8,8),sp+Vector3.new(0,0.1,0),Color3.fromRGB(100,75,50),"Slate")
+-- Stone ring (8 stones)
+Ball(m,"Stone1",Vector3.new(1.8,1.2,1.5),sp+Vector3.new(2.5,0.6,0),Color3.fromRGB(130,125,118),"Granite")
+Ball(m,"Stone2",Vector3.new(1.6,1.3,1.4),sp+Vector3.new(1.8,0.6,1.8),Color3.fromRGB(125,120,112),"Granite")
+Ball(m,"Stone3",Vector3.new(1.7,1.1,1.6),sp+Vector3.new(0,0.6,2.5),Color3.fromRGB(135,130,122),"Granite")
+Ball(m,"Stone4",Vector3.new(1.5,1.2,1.5),sp+Vector3.new(-1.8,0.6,1.8),Color3.fromRGB(128,123,115),"Granite")
+Ball(m,"Stone5",Vector3.new(1.8,1.3,1.4),sp+Vector3.new(-2.5,0.6,0),Color3.fromRGB(132,127,120),"Granite")
+Ball(m,"Stone6",Vector3.new(1.6,1.1,1.5),sp+Vector3.new(-1.8,0.6,-1.8),Color3.fromRGB(122,118,110),"Granite")
+Ball(m,"Stone7",Vector3.new(1.7,1.2,1.6),sp+Vector3.new(0,0.6,-2.5),Color3.fromRGB(130,125,118),"Granite")
+Ball(m,"Stone8",Vector3.new(1.5,1.3,1.4),sp+Vector3.new(1.8,0.6,-1.8),Color3.fromRGB(126,121,114),"Granite")
+-- Logs (crossed)
+Cyl(m,"Log1",Vector3.new(4,0.6,0.6),sp+Vector3.new(0,0.6,0),Color3.fromRGB(90,55,25),"Wood")
+Cyl(m,"Log2",Vector3.new(4,0.5,0.5),sp+Vector3.new(0.3,0.8,0.3),Color3.fromRGB(85,50,22),"Wood")
+Cyl(m,"Log3",Vector3.new(3.5,0.55,0.55),sp+Vector3.new(-0.2,1,0),Color3.fromRGB(80,48,20),"Wood")
+-- Charred ends
+P(m,"Char1",Vector3.new(0.4,0.4,0.6),sp+Vector3.new(1.5,0.6,0.8),Color3.fromRGB(25,20,18),"Slate")
+P(m,"Char2",Vector3.new(0.5,0.4,0.4),sp+Vector3.new(-1.2,0.7,-0.5),Color3.fromRGB(30,22,20),"Slate")
+-- Fire core (neon glow)
+P(m,"FireCore",Vector3.new(1,2,1),sp+Vector3.new(0,1.8,0),Color3.fromRGB(255,140,30),"Neon")
+P(m,"FireOuter",Vector3.new(1.5,1.5,1.5),sp+Vector3.new(0,1.5,0),Color3.fromRGB(255,80,20),"Neon")
+Ball(m,"Ember1",Vector3.new(0.3,0.3,0.3),sp+Vector3.new(0.5,2.5,0.3),Color3.fromRGB(255,200,50),"Neon")
+Ball(m,"Ember2",Vector3.new(0.25,0.25,0.25),sp+Vector3.new(-0.3,2.8,-0.2),Color3.fromRGB(255,180,40),"Neon")
+-- ParticleEmitter for fire
+local firePart = m:FindFirstChild("FireCore")
+local pe = Instance.new("ParticleEmitter") pe.Color=ColorSequence.new(Color3.fromRGB(255,140,30),Color3.fromRGB(255,40,10)) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,1.5),NumberSequenceKeypoint.new(1,0)}) pe.Lifetime=NumberRange.new(0.5,1.2) pe.Rate=60 pe.Speed=NumberRange.new(3,6) pe.SpreadAngle=Vector2.new(15,15) pe.LightEmission=1 pe.Parent=firePart
+-- Smoke
+local smoke = Instance.new("ParticleEmitter") smoke.Color=ColorSequence.new(Color3.fromRGB(80,80,80)) smoke.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.5),NumberSequenceKeypoint.new(1,3)}) smoke.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.3),NumberSequenceKeypoint.new(1,1)}) smoke.Lifetime=NumberRange.new(2,4) smoke.Rate=15 smoke.Speed=NumberRange.new(2,4) smoke.Parent=firePart
+-- Warm PointLight
+local warmLight = Instance.new("PointLight") warmLight.Color=Color3.fromRGB(255,160,60) warmLight.Range=40 warmLight.Brightness=2 warmLight.Parent=firePart
+` + BOILERPLATE_BOT,
+      suggestions: ['Add log seats around it', 'Build a full campsite', 'Add tents nearby'],
+      partCount: 20,
+    }
+  }
+
+  // ── FENCE ───────────────────────────────────────────────────────────
+  if (/\b(fence|picket fence|garden fence|fencing)\b/.test(m) && !/chain link|electric/.test(m)) {
+    return {
+      name: 'Fence',
+      response: "Classic white picket fence section — two horizontal rails, sturdy posts on each end, and 10 evenly-spaced pickets with pointed tops. Clean suburban look. Want me to extend it around a whole yard?\n\nI can also make a gate to go with it.",
+      code: BOILERPLATE_TOP + `
+-- Left post
+P(m,"PostL",Vector3.new(0.5,5,0.5),sp+Vector3.new(-6,2.5,0),Color3.fromRGB(240,238,230),"Wood")
+P(m,"PostCapL",Vector3.new(0.7,0.3,0.7),sp+Vector3.new(-6,5.15,0),Color3.fromRGB(235,233,225),"Wood")
+-- Right post
+P(m,"PostR",Vector3.new(0.5,5,0.5),sp+Vector3.new(6,2.5,0),Color3.fromRGB(240,238,230),"Wood")
+P(m,"PostCapR",Vector3.new(0.7,0.3,0.7),sp+Vector3.new(6,5.15,0),Color3.fromRGB(235,233,225),"Wood")
+-- Top rail
+P(m,"RailTop",Vector3.new(12,0.3,0.3),sp+Vector3.new(0,4,0),Color3.fromRGB(238,236,228),"Wood")
+-- Bottom rail
+P(m,"RailBot",Vector3.new(12,0.3,0.3),sp+Vector3.new(0,1.5,0),Color3.fromRGB(238,236,228),"Wood")
+-- Pickets (10 evenly spaced)
+for i=0,9 do local x=-5.4+i*1.2 P(m,"Picket"..i,Vector3.new(0.3,4.5,0.15),sp+Vector3.new(x,2.5,0),Color3.fromRGB(242,240,232),"Wood") end
+-- Pointed tops on pickets (wedge hints)
+for i=0,9 do local x=-5.4+i*1.2 W(m,"Tip"..i,Vector3.new(0.3,0.5,0.15),sp+Vector3.new(x,5,0),Color3.fromRGB(242,240,232),0) end
+` + BOILERPLATE_BOT,
+      suggestions: ['Extend it around a yard', 'Add a gate', 'Build a house behind it'],
+      partCount: 26,
+    }
+  }
+
+  // ── DOG / PET ───────────────────────────────────────────────────────
+  if (/\b(dog|puppy|pet dog|doggy|pupper|corgi|golden retriever)\b/.test(m)) {
+    return {
+      name: 'Dog',
+      response: "Blocky pet dog — chunky body, round head with floppy ears, four stubby legs, wagging tail, a little nose, and bright eyes. Adopt Me style. This little guy is ready to follow players around.\n\nWant me to add a follow script or make more pet types?",
+      code: BOILERPLATE_TOP + `
+-- Body
+P(m,"Body",Vector3.new(3,2.5,5),sp+Vector3.new(0,3.2,0),Color3.fromRGB(180,140,80),"Fabric")
+P(m,"Belly",Vector3.new(2.5,1.5,4),sp+Vector3.new(0,2.7,0),Color3.fromRGB(220,190,140),"Fabric")
+-- Head
+P(m,"Head",Vector3.new(2.8,2.5,2.5),sp+Vector3.new(0,5,2.5),Color3.fromRGB(185,145,85),"Fabric")
+-- Snout
+P(m,"Snout",Vector3.new(1.5,1,1.5),sp+Vector3.new(0,4.5,3.8),Color3.fromRGB(190,150,90),"Fabric")
+-- Nose
+Ball(m,"Nose",Vector3.new(0.6,0.5,0.5),sp+Vector3.new(0,4.7,4.5),Color3.fromRGB(30,25,25),"Concrete")
+-- Eyes
+Ball(m,"EyeL",Vector3.new(0.5,0.5,0.3),sp+Vector3.new(-0.7,5.4,3.5),Color3.fromRGB(40,30,20),"Concrete")
+Ball(m,"EyeR",Vector3.new(0.5,0.5,0.3),sp+Vector3.new(0.7,5.4,3.5),Color3.fromRGB(40,30,20),"Concrete")
+-- Eye shine
+Ball(m,"ShineL",Vector3.new(0.15,0.15,0.1),sp+Vector3.new(-0.6,5.5,3.6),Color3.fromRGB(255,255,255),"Neon")
+Ball(m,"ShineR",Vector3.new(0.15,0.15,0.1),sp+Vector3.new(0.8,5.5,3.6),Color3.fromRGB(255,255,255),"Neon")
+-- Ears (floppy)
+P(m,"EarL",Vector3.new(0.8,1.5,0.5),sp+Vector3.new(-1.3,5.2,2),Color3.fromRGB(150,110,60),"Fabric")
+P(m,"EarR",Vector3.new(0.8,1.5,0.5),sp+Vector3.new(1.3,5.2,2),Color3.fromRGB(150,110,60),"Fabric")
+-- Legs (4 stubby)
+P(m,"LegFL",Vector3.new(0.8,2,0.8),sp+Vector3.new(-1,1,1.5),Color3.fromRGB(175,135,75),"Fabric")
+P(m,"LegFR",Vector3.new(0.8,2,0.8),sp+Vector3.new(1,1,1.5),Color3.fromRGB(175,135,75),"Fabric")
+P(m,"LegBL",Vector3.new(0.8,2,0.8),sp+Vector3.new(-1,1,-1.5),Color3.fromRGB(175,135,75),"Fabric")
+P(m,"LegBR",Vector3.new(0.8,2,0.8),sp+Vector3.new(1,1,-1.5),Color3.fromRGB(175,135,75),"Fabric")
+-- Paws (lighter)
+P(m,"PawFL",Vector3.new(0.9,0.3,0.9),sp+Vector3.new(-1,0.15,1.5),Color3.fromRGB(210,180,130),"Fabric")
+P(m,"PawFR",Vector3.new(0.9,0.3,0.9),sp+Vector3.new(1,0.15,1.5),Color3.fromRGB(210,180,130),"Fabric")
+P(m,"PawBL",Vector3.new(0.9,0.3,0.9),sp+Vector3.new(-1,0.15,-1.5),Color3.fromRGB(210,180,130),"Fabric")
+P(m,"PawBR",Vector3.new(0.9,0.3,0.9),sp+Vector3.new(1,0.15,-1.5),Color3.fromRGB(210,180,130),"Fabric")
+-- Tail (angled up)
+P(m,"Tail",Vector3.new(0.5,2,0.5),sp+Vector3.new(0,4.5,-2.8),Color3.fromRGB(170,130,70),"Fabric")
+-- Collar
+P(m,"Collar",Vector3.new(2.9,0.4,2.6),sp+Vector3.new(0,4.2,2.5),Color3.fromRGB(200,40,40),"Fabric")
+Ball(m,"Tag",Vector3.new(0.4,0.4,0.2),sp+Vector3.new(0,3.9,3.8),Color3.fromRGB(200,180,50),"Metal")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a follow script', 'Make a cat too', 'Build a pet shop'],
+      partCount: 23,
+    }
+  }
+
+  // ── ROBOT ───────────────────────────────────────────────────────────
+  if (/\b(robot|mech|android|droid|automaton)\b/.test(m) && !/car|vehicle/.test(m)) {
+    return {
+      name: 'Robot',
+      response: "Blocky robot buddy — boxy metal body with panel lines, cube head with glowing neon eyes and an antenna, articulated arms with claw hands, chunky legs with big feet, and a power core glowing on its chest. Looks like something out of a factory obby.\n\nWant me to add a walking animation or build a robot factory?",
+      code: BOILERPLATE_TOP + `
+-- Body (torso)
+P(m,"Torso",Vector3.new(4,5,3),sp+Vector3.new(0,6.5,0),Color3.fromRGB(160,165,172),"Metal")
+P(m,"ChestPlate",Vector3.new(3.5,4,0.2),sp+Vector3.new(0,6.5,1.6),Color3.fromRGB(150,155,162),"DiamondPlate")
+-- Power core (glowing circle on chest)
+Cyl(m,"Core",Vector3.new(0.2,1.5,1.5),sp+Vector3.new(0,7,1.8),Color3.fromRGB(80,200,255),"Neon")
+-- Head
+P(m,"Head",Vector3.new(3,2.5,2.5),sp+Vector3.new(0,10.2,0),Color3.fromRGB(170,175,182),"Metal")
+-- Eyes (glowing)
+P(m,"EyeL",Vector3.new(0.5,0.5,0.2),sp+Vector3.new(-0.7,10.5,1.3),Color3.fromRGB(80,200,255),"Neon")
+P(m,"EyeR",Vector3.new(0.5,0.5,0.2),sp+Vector3.new(0.7,10.5,1.3),Color3.fromRGB(80,200,255),"Neon")
+-- Mouth (grille)
+P(m,"Mouth",Vector3.new(1.5,0.3,0.2),sp+Vector3.new(0,9.5,1.3),Color3.fromRGB(50,55,60),"Metal")
+-- Antenna
+Cyl(m,"Antenna",Vector3.new(2,0.15,0.15),sp+Vector3.new(0.8,12.5,0),Color3.fromRGB(140,145,150),"Metal")
+Ball(m,"AntTip",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(0.8,13.4,0),Color3.fromRGB(255,60,60),"Neon")
+-- Arms
+P(m,"ArmL",Vector3.new(1,4,1),sp+Vector3.new(-3,6,0),Color3.fromRGB(155,160,168),"Metal")
+P(m,"ArmR",Vector3.new(1,4,1),sp+Vector3.new(3,6,0),Color3.fromRGB(155,160,168),"Metal")
+-- Shoulder joints
+Cyl(m,"ShoulderL",Vector3.new(0.5,1.3,1.3),sp+Vector3.new(-2.5,8.5,0),Color3.fromRGB(130,135,142),"Metal")
+Cyl(m,"ShoulderR",Vector3.new(0.5,1.3,1.3),sp+Vector3.new(2.5,8.5,0),Color3.fromRGB(130,135,142),"Metal")
+-- Claw hands
+P(m,"ClawL1",Vector3.new(0.3,1,0.3),sp+Vector3.new(-3.3,3.8,0.3),Color3.fromRGB(140,145,150),"Metal")
+P(m,"ClawL2",Vector3.new(0.3,1,0.3),sp+Vector3.new(-2.7,3.8,-0.3),Color3.fromRGB(140,145,150),"Metal")
+P(m,"ClawR1",Vector3.new(0.3,1,0.3),sp+Vector3.new(3.3,3.8,0.3),Color3.fromRGB(140,145,150),"Metal")
+P(m,"ClawR2",Vector3.new(0.3,1,0.3),sp+Vector3.new(2.7,3.8,-0.3),Color3.fromRGB(140,145,150),"Metal")
+-- Legs
+P(m,"LegL",Vector3.new(1.5,3,1.5),sp+Vector3.new(-1.2,2.5,0),Color3.fromRGB(150,155,162),"Metal")
+P(m,"LegR",Vector3.new(1.5,3,1.5),sp+Vector3.new(1.2,2.5,0),Color3.fromRGB(150,155,162),"Metal")
+-- Feet (big and flat)
+P(m,"FootL",Vector3.new(2,0.5,2.5),sp+Vector3.new(-1.2,0.8,0.3),Color3.fromRGB(140,145,152),"Metal")
+P(m,"FootR",Vector3.new(2,0.5,2.5),sp+Vector3.new(1.2,0.8,0.3),Color3.fromRGB(140,145,152),"Metal")
+-- Bolts/detail
+Ball(m,"Bolt1",Vector3.new(0.3,0.3,0.3),sp+Vector3.new(-1.5,8,1.6),Color3.fromRGB(100,100,105),"Metal")
+Ball(m,"Bolt2",Vector3.new(0.3,0.3,0.3),sp+Vector3.new(1.5,8,1.6),Color3.fromRGB(100,100,105),"Metal")
+Ball(m,"Bolt3",Vector3.new(0.3,0.3,0.3),sp+Vector3.new(-1.5,5.5,1.6),Color3.fromRGB(100,100,105),"Metal")
+Ball(m,"Bolt4",Vector3.new(0.3,0.3,0.3),sp+Vector3.new(1.5,5.5,1.6),Color3.fromRGB(100,100,105),"Metal")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a walking animation', 'Build a robot factory', 'Make a giant mech version'],
+      partCount: 27,
+    }
+  }
+
+  // ── MOTORCYCLE ──────────────────────────────────────────────────────
+  if (/\b(motorcycle|motorbike|bike|chopper bike|dirt bike)\b/.test(m) && !/bicycle|mountain bike/.test(m)) {
+    return {
+      name: 'Motorcycle',
+      response: "Here's a motorcycle — sleek frame, two big wheels with rubber tires, curved gas tank, leather seat, handlebars with grips, headlight, exhaust pipe running along the side, and a kickstand. Looks fast standing still.\n\nWant me to add a riding script or build a racetrack?",
+      code: BOILERPLATE_TOP + `
+-- Frame (main spine)
+P(m,"Frame",Vector3.new(0.4,1.5,7),sp+Vector3.new(0,3,0),Color3.fromRGB(30,30,35),"Metal")
+P(m,"FrameDown",Vector3.new(0.4,2,0.4),sp+Vector3.new(0,2,1.5),Color3.fromRGB(30,30,35),"Metal")
+P(m,"FrameRear",Vector3.new(0.4,1.5,0.4),sp+Vector3.new(0,2.5,-2.5),Color3.fromRGB(30,30,35),"Metal")
+-- Gas tank
+P(m,"Tank",Vector3.new(1.8,1.2,2.5),sp+Vector3.new(0,4,0.5),Color3.fromRGB(200,30,30),"Metal")
+P(m,"TankStripe",Vector3.new(0.3,0.15,2.2),sp+Vector3.new(0,4.6,0.5),Color3.fromRGB(240,240,240),"Metal")
+-- Seat
+P(m,"Seat",Vector3.new(1.5,0.5,2.5),sp+Vector3.new(0,3.8,-1.5),Color3.fromRGB(40,35,30),"Fabric")
+-- Front wheel
+Cyl(m,"WheelF",Vector3.new(0.8,3,3),sp+Vector3.new(0,1.5,3.5),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"HubF",Vector3.new(0.3,0.8,0.8),sp+Vector3.new(0,1.5,3.5),Color3.fromRGB(180,180,185),"Metal")
+-- Rear wheel
+Cyl(m,"WheelR",Vector3.new(0.8,3,3),sp+Vector3.new(0,1.5,-3),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"HubR",Vector3.new(0.3,0.8,0.8),sp+Vector3.new(0,1.5,-3),Color3.fromRGB(180,180,185),"Metal")
+-- Forks (front suspension)
+P(m,"ForkL",Vector3.new(0.2,3,0.2),sp+Vector3.new(-0.4,2.5,3.5),Color3.fromRGB(180,180,185),"Metal")
+P(m,"ForkR",Vector3.new(0.2,3,0.2),sp+Vector3.new(0.4,2.5,3.5),Color3.fromRGB(180,180,185),"Metal")
+-- Handlebars
+P(m,"HandleBar",Vector3.new(3,0.2,0.2),sp+Vector3.new(0,4.5,3.2),Color3.fromRGB(180,180,185),"Metal")
+P(m,"GripL",Vector3.new(0.6,0.35,0.35),sp+Vector3.new(-1.5,4.5,3.2),Color3.fromRGB(30,30,30),"Fabric")
+P(m,"GripR",Vector3.new(0.6,0.35,0.35),sp+Vector3.new(1.5,4.5,3.2),Color3.fromRGB(30,30,30),"Fabric")
+-- Headlight
+Ball(m,"Headlight",Vector3.new(1,0.8,0.8),sp+Vector3.new(0,4,4.2),Color3.fromRGB(255,255,220),"Neon")
+-- Taillight
+P(m,"Taillight",Vector3.new(1,0.4,0.2),sp+Vector3.new(0,3.5,-4),Color3.fromRGB(255,0,0),"Neon")
+-- Exhaust pipe
+Cyl(m,"Exhaust",Vector3.new(4,0.3,0.3),sp+Vector3.new(0.8,1.8,-1),Color3.fromRGB(160,160,165),"Metal")
+Cyl(m,"ExTip",Vector3.new(0.8,0.45,0.45),sp+Vector3.new(0.8,1.8,-3.2),Color3.fromRGB(140,140,145),"Metal")
+-- Kickstand
+P(m,"Kickstand",Vector3.new(0.15,1.5,0.15),sp+Vector3.new(-0.8,0.75,0.5),Color3.fromRGB(50,50,55),"Metal")
+-- Fender (front)
+P(m,"FenderF",Vector3.new(1.2,0.2,2),sp+Vector3.new(0,2.8,3.5),Color3.fromRGB(195,28,28),"Metal")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a riding script', 'Build a racetrack', 'Make a garage with more bikes'],
+      partCount: 23,
+    }
+  }
+
+  // ── AIRPLANE ────────────────────────────────────────────────────────
+  if (/\b(airplane|aeroplane|plane|jet|aircraft|biplane)\b/.test(m) && !/spaceship|rocket/.test(m)) {
+    return {
+      name: 'Airplane',
+      response: "Here's a passenger airplane — long cylindrical fuselage, swept delta wings, T-tail with rudder and elevators, glass cockpit, two jet engines mounted under the wings, landing gear, passenger windows along the side, and airline livery stripes. Sitting on a runway, ready for takeoff.\n\nWant me to add a flying script or build an airport?",
+      code: BOILERPLATE_TOP + `
+-- Runway pad
+P(m,"Runway",Vector3.new(12,0.3,50),sp+Vector3.new(0,0.15,0),Color3.fromRGB(55,55,58),"Concrete")
+P(m,"CenterLine",Vector3.new(0.5,0.05,40),sp+Vector3.new(0,0.35,0),Color3.fromRGB(240,240,240),"Concrete")
+-- Fuselage (main tube)
+Cyl(m,"Fuselage",Vector3.new(25,4,4),sp+Vector3.new(0,5,0),Color3.fromRGB(235,235,240),"Metal")
+-- Nose cone
+Ball(m,"Nose",Vector3.new(4,3.8,3.8),sp+Vector3.new(0,5,13),Color3.fromRGB(230,230,235),"Metal")
+-- Tail cone
+Ball(m,"TailCone",Vector3.new(3.5,3,3),sp+Vector3.new(0,5,-13),Color3.fromRGB(225,225,230),"Metal")
+-- Cockpit windows
+P(m,"CockpitGlass",Vector3.new(3.2,1.2,0.2),sp+Vector3.new(0,5.8,12.5),Color3.fromRGB(160,210,240),"Glass")
+-- Livery stripe
+P(m,"Stripe",Vector3.new(0.1,0.5,24),sp+Vector3.new(0,5.5,0),Color3.fromRGB(40,80,180),"Metal")
+-- Passenger windows (8 per side)
+for i=0,7 do P(m,"WinL"..i,Vector3.new(0.1,0.6,0.8),sp+Vector3.new(-2,5.8,8-i*2.5),Color3.fromRGB(180,210,235),"Glass") end
+for i=0,7 do P(m,"WinR"..i,Vector3.new(0.1,0.6,0.8),sp+Vector3.new(2,5.8,8-i*2.5),Color3.fromRGB(180,210,235),"Glass") end
+-- Wings
+P(m,"WingL",Vector3.new(18,0.4,5),sp+Vector3.new(-11,4.5,0),Color3.fromRGB(228,228,233),"Metal")
+P(m,"WingR",Vector3.new(18,0.4,5),sp+Vector3.new(11,4.5,0),Color3.fromRGB(228,228,233),"Metal")
+-- Wing tips
+P(m,"WingTipL",Vector3.new(0.3,1.5,1),sp+Vector3.new(-20,5,0),Color3.fromRGB(220,220,225),"Metal")
+P(m,"WingTipR",Vector3.new(0.3,1.5,1),sp+Vector3.new(20,5,0),Color3.fromRGB(220,220,225),"Metal")
+-- Engines (under wings)
+Cyl(m,"EngL",Vector3.new(4,2,2),sp+Vector3.new(-8,3.2,1),Color3.fromRGB(180,180,185),"Metal")
+Cyl(m,"EngR",Vector3.new(4,2,2),sp+Vector3.new(8,3.2,1),Color3.fromRGB(180,180,185),"Metal")
+-- Engine intakes (dark)
+Cyl(m,"IntakeL",Vector3.new(0.2,1.8,1.8),sp+Vector3.new(-8,3.2,3.1),Color3.fromRGB(40,40,45),"Metal")
+Cyl(m,"IntakeR",Vector3.new(0.2,1.8,1.8),sp+Vector3.new(8,3.2,3.1),Color3.fromRGB(40,40,45),"Metal")
+-- T-tail vertical
+P(m,"VerticalTail",Vector3.new(0.3,6,4),sp+Vector3.new(0,8,-12),Color3.fromRGB(232,232,237),"Metal")
+-- Horizontal stabilizers
+P(m,"HStabL",Vector3.new(6,0.3,2),sp+Vector3.new(-3,10.5,-13),Color3.fromRGB(228,228,233),"Metal")
+P(m,"HStabR",Vector3.new(6,0.3,2),sp+Vector3.new(3,10.5,-13),Color3.fromRGB(228,228,233),"Metal")
+-- Landing gear (nose + 2 main)
+Cyl(m,"GearNose",Vector3.new(1,0.3,0.3),sp+Vector3.new(0,1.5,8),Color3.fromRGB(80,80,85),"Metal")
+Cyl(m,"GearNoseWheel",Vector3.new(0.4,1.2,1.2),sp+Vector3.new(0,0.8,8),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"GearMainL",Vector3.new(1.5,0.3,0.3),sp+Vector3.new(-3,1.5,-2),Color3.fromRGB(80,80,85),"Metal")
+Cyl(m,"GearWheelL",Vector3.new(0.5,1.5,1.5),sp+Vector3.new(-3,0.8,-2),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"GearMainR",Vector3.new(1.5,0.3,0.3),sp+Vector3.new(3,1.5,-2),Color3.fromRGB(80,80,85),"Metal")
+Cyl(m,"GearWheelR",Vector3.new(0.5,1.5,1.5),sp+Vector3.new(3,0.8,-2),Color3.fromRGB(30,30,30),"Metal")
+-- Nav lights on wings
+P(m,"NavLightL",Vector3.new(0.3,0.2,0.3),sp+Vector3.new(-20,4.8,-1),Color3.fromRGB(255,60,60),"Neon")
+P(m,"NavLightR",Vector3.new(0.3,0.2,0.3),sp+Vector3.new(20,4.8,-1),Color3.fromRGB(60,255,60),"Neon")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a flying script', 'Build an airport', 'Make a military fighter jet'],
+      partCount: 38,
+    }
+  }
+
+  // ── PIZZA ───────────────────────────────────────────────────────────
+  if (/\b(pizza|pepperoni|margherita)\b/.test(m)) {
+    return {
+      name: 'Pizza',
+      response: "Fresh pizza right out of the oven — round dough base with a puffy golden crust edge, tomato sauce layer, melted cheese on top, and scattered pepperoni slices, olive bits, and basil leaves. I put it on a wooden serving board. Looks good enough to eat.\n\nWant me to add a pizza shop or make a whole restaurant?",
+      code: BOILERPLATE_TOP + `
+-- Serving board
+P(m,"Board",Vector3.new(10,0.3,10),sp+Vector3.new(0,2.15,0),Color3.fromRGB(140,95,45),"Wood")
+-- Pizza base (dough)
+Cyl(m,"Dough",Vector3.new(0.5,8,8),sp+Vector3.new(0,2.55,0),Color3.fromRGB(220,185,120),"Concrete")
+-- Crust edge (slightly raised ring)
+Cyl(m,"Crust",Vector3.new(0.3,8.5,8.5),sp+Vector3.new(0,2.75,0),Color3.fromRGB(200,160,90),"Concrete")
+Cyl(m,"CrustInner",Vector3.new(0.35,7.2,7.2),sp+Vector3.new(0,2.7,0),Color3.fromRGB(210,170,100),"Concrete")
+-- Sauce layer
+Cyl(m,"Sauce",Vector3.new(0.1,6.8,6.8),sp+Vector3.new(0,2.85,0),Color3.fromRGB(180,40,30),"Concrete")
+-- Cheese layer
+Cyl(m,"Cheese",Vector3.new(0.08,6.5,6.5),sp+Vector3.new(0,2.9,0),Color3.fromRGB(240,210,80),"Concrete")
+-- Pepperoni slices (8)
+Cyl(m,"Pep1",Vector3.new(0.1,0.8,0.8),sp+Vector3.new(1.5,3,1),Color3.fromRGB(160,35,25),"Concrete")
+Cyl(m,"Pep2",Vector3.new(0.1,0.8,0.8),sp+Vector3.new(-1,3,2),Color3.fromRGB(155,30,22),"Concrete")
+Cyl(m,"Pep3",Vector3.new(0.1,0.8,0.8),sp+Vector3.new(2,3,-1.5),Color3.fromRGB(158,33,24),"Concrete")
+Cyl(m,"Pep4",Vector3.new(0.1,0.8,0.8),sp+Vector3.new(-2,3,-0.5),Color3.fromRGB(162,38,28),"Concrete")
+Cyl(m,"Pep5",Vector3.new(0.1,0.8,0.8),sp+Vector3.new(0,3,-2),Color3.fromRGB(156,32,23),"Concrete")
+Cyl(m,"Pep6",Vector3.new(0.1,0.8,0.8),sp+Vector3.new(-0.5,3,0),Color3.fromRGB(160,35,25),"Concrete")
+Cyl(m,"Pep7",Vector3.new(0.1,0.7,0.7),sp+Vector3.new(2.5,3,0.5),Color3.fromRGB(158,33,24),"Concrete")
+Cyl(m,"Pep8",Vector3.new(0.1,0.7,0.7),sp+Vector3.new(-2.5,3,1.5),Color3.fromRGB(155,30,22),"Concrete")
+-- Olive bits
+Ball(m,"Olive1",Vector3.new(0.4,0.2,0.4),sp+Vector3.new(1,3.05,2.5),Color3.fromRGB(30,30,25),"Concrete")
+Ball(m,"Olive2",Vector3.new(0.4,0.2,0.4),sp+Vector3.new(-1.5,3.05,-1.5),Color3.fromRGB(35,32,28),"Concrete")
+Ball(m,"Olive3",Vector3.new(0.35,0.2,0.35),sp+Vector3.new(2.5,3.05,-0.5),Color3.fromRGB(32,30,26),"Concrete")
+-- Basil leaves
+P(m,"Basil1",Vector3.new(0.6,0.05,0.4),sp+Vector3.new(0.5,3.05,1.5),Color3.fromRGB(45,120,35),"Grass")
+P(m,"Basil2",Vector3.new(0.5,0.05,0.35),sp+Vector3.new(-1.5,3.05,0.5),Color3.fromRGB(50,125,40),"Grass")
+P(m,"Basil3",Vector3.new(0.55,0.05,0.4),sp+Vector3.new(1,3.05,-1),Color3.fromRGB(48,118,38),"Grass")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a pizza shop', 'Add a full restaurant', 'Make more food items'],
+      partCount: 22,
+    }
+  }
+
+  // ── STREETLIGHT (modern) ────────────────────────────────────────────
+  if (/\b(streetlight|modern lamp|road light|parking lot light)\b/.test(m)) {
+    return {
+      name: 'Streetlight',
+      response: "Modern streetlight — tall dark metal pole with a slim curved arm extending out, flat LED light housing on the end, and a bright white PointLight shining down. Clean urban look, perfect for roads, parking lots, or city scenes.\n\nWant me to line a whole road with these?",
+      code: BOILERPLATE_TOP + `
+-- Base plate
+Cyl(m,"BasePlate",Vector3.new(0.4,3,3),sp+Vector3.new(0,0.2,0),Color3.fromRGB(55,55,60),"Metal")
+-- Main pole
+Cyl(m,"Pole",Vector3.new(16,0.5,0.5),sp+Vector3.new(0,8.2,0),Color3.fromRGB(60,62,68),"Metal")
+-- Curved arm
+P(m,"ArmUp",Vector3.new(0.4,2,0.4),sp+Vector3.new(0,15.5,0.5),Color3.fromRGB(58,60,65),"Metal")
+P(m,"ArmOut",Vector3.new(0.4,0.4,4),sp+Vector3.new(0,16.5,2.5),Color3.fromRGB(58,60,65),"Metal")
+-- Light housing (flat LED panel)
+P(m,"Housing",Vector3.new(2,0.4,3),sp+Vector3.new(0,16.2,4),Color3.fromRGB(50,52,58),"Metal")
+P(m,"LensPanel",Vector3.new(1.8,0.1,2.5),sp+Vector3.new(0,16,4),Color3.fromRGB(255,250,230),"Neon")
+-- Access panel on pole
+P(m,"AccessPanel",Vector3.new(0.6,1,0.1),sp+Vector3.new(0,3,0.3),Color3.fromRGB(50,52,58),"Metal")
+-- Pole base cover
+Cyl(m,"BaseCover",Vector3.new(1,1,1),sp+Vector3.new(0,0.8,0),Color3.fromRGB(52,54,60),"Metal")
+-- Bolt ring at base
+Cyl(m,"BoltRing",Vector3.new(0.2,2.5,2.5),sp+Vector3.new(0,0.4,0),Color3.fromRGB(50,50,55),"Metal")
+-- Bolts (4)
+Cyl(m,"Bolt1",Vector3.new(0.15,0.3,0.3),sp+Vector3.new(0.8,0.45,0.8),Color3.fromRGB(80,80,85),"Metal")
+Cyl(m,"Bolt2",Vector3.new(0.15,0.3,0.3),sp+Vector3.new(-0.8,0.45,0.8),Color3.fromRGB(80,80,85),"Metal")
+Cyl(m,"Bolt3",Vector3.new(0.15,0.3,0.3),sp+Vector3.new(0.8,0.45,-0.8),Color3.fromRGB(80,80,85),"Metal")
+Cyl(m,"Bolt4",Vector3.new(0.15,0.3,0.3),sp+Vector3.new(-0.8,0.45,-0.8),Color3.fromRGB(80,80,85),"Metal")
+-- Road number plate
+P(m,"NumberPlate",Vector3.new(0.5,0.8,0.1),sp+Vector3.new(0,5,0.3),Color3.fromRGB(240,240,240),"Metal")
+-- Bright PointLight
+local sl = Instance.new("PointLight") sl.Color=Color3.fromRGB(255,250,235) sl.Range=45 sl.Brightness=2 sl.Parent=m:FindFirstChild("LensPanel")
+` + BOILERPLATE_BOT,
+      suggestions: ['Line a whole road with these', 'Build a city street', 'Add a parking lot'],
+      partCount: 15,
+    }
+  }
+
+  // ── CAT / KITTY ─────────────────────────────────────────────────────
+  if (/\b(cat|kitty|kitten|feline)\b/.test(m)) {
+    return {
+      name: 'Cat',
+      response: "Blocky pet cat — sleek body, triangular ears, round head with big eyes and whiskers, four dainty paws, and a long curved tail. Classic tabby orange with darker stripes. Adopt Me vibes all the way.\n\nWant me to add a follow script or make more pets?",
+      code: BOILERPLATE_TOP + `
+-- Body (sleeker than dog)
+P(m,"Body",Vector3.new(2.5,2,5),sp+Vector3.new(0,2.8,0),Color3.fromRGB(220,150,60),"Fabric")
+P(m,"Belly",Vector3.new(2,1.2,4),sp+Vector3.new(0,2.4,0),Color3.fromRGB(240,200,130),"Fabric")
+-- Stripes on body
+P(m,"Stripe1",Vector3.new(2.6,0.1,0.4),sp+Vector3.new(0,3.8,1),Color3.fromRGB(170,100,30),"Fabric")
+P(m,"Stripe2",Vector3.new(2.6,0.1,0.4),sp+Vector3.new(0,3.8,-0.5),Color3.fromRGB(170,100,30),"Fabric")
+P(m,"Stripe3",Vector3.new(2.6,0.1,0.4),sp+Vector3.new(0,3.8,-1.5),Color3.fromRGB(170,100,30),"Fabric")
+-- Head
+P(m,"Head",Vector3.new(2.5,2.2,2.2),sp+Vector3.new(0,4.5,2.5),Color3.fromRGB(225,155,65),"Fabric")
+-- Ears (triangular - using wedges)
+W(m,"EarL",Vector3.new(0.5,0.8,0.5),sp+Vector3.new(-0.8,5.9,2.5),Color3.fromRGB(230,160,70),0)
+W(m,"EarR",Vector3.new(0.5,0.8,0.5),sp+Vector3.new(0.8,5.9,2.5),Color3.fromRGB(230,160,70),0)
+-- Inner ears (pink)
+W(m,"InnerEarL",Vector3.new(0.3,0.5,0.3),sp+Vector3.new(-0.8,5.8,2.6),Color3.fromRGB(230,160,170),0)
+W(m,"InnerEarR",Vector3.new(0.3,0.5,0.3),sp+Vector3.new(0.8,5.8,2.6),Color3.fromRGB(230,160,170),0)
+-- Eyes (big and round)
+Ball(m,"EyeL",Vector3.new(0.6,0.6,0.3),sp+Vector3.new(-0.6,4.8,3.5),Color3.fromRGB(80,180,60),"Concrete")
+Ball(m,"EyeR",Vector3.new(0.6,0.6,0.3),sp+Vector3.new(0.6,4.8,3.5),Color3.fromRGB(80,180,60),"Concrete")
+Ball(m,"PupilL",Vector3.new(0.25,0.35,0.15),sp+Vector3.new(-0.6,4.8,3.65),Color3.fromRGB(15,15,15),"Concrete")
+Ball(m,"PupilR",Vector3.new(0.25,0.35,0.15),sp+Vector3.new(0.6,4.8,3.65),Color3.fromRGB(15,15,15),"Concrete")
+-- Nose (tiny pink triangle)
+Ball(m,"CatNose",Vector3.new(0.3,0.25,0.2),sp+Vector3.new(0,4.4,3.6),Color3.fromRGB(230,140,150),"Concrete")
+-- Whiskers (thin parts)
+P(m,"WhiskerL1",Vector3.new(1.5,0.03,0.03),sp+Vector3.new(-1,4.3,3.4),Color3.fromRGB(240,240,240),"Metal")
+P(m,"WhiskerL2",Vector3.new(1.5,0.03,0.03),sp+Vector3.new(-1,4.15,3.4),Color3.fromRGB(240,240,240),"Metal")
+P(m,"WhiskerR1",Vector3.new(1.5,0.03,0.03),sp+Vector3.new(1,4.3,3.4),Color3.fromRGB(240,240,240),"Metal")
+P(m,"WhiskerR2",Vector3.new(1.5,0.03,0.03),sp+Vector3.new(1,4.15,3.4),Color3.fromRGB(240,240,240),"Metal")
+-- Legs
+P(m,"LegFL",Vector3.new(0.6,1.8,0.6),sp+Vector3.new(-0.8,1,1.5),Color3.fromRGB(218,148,58),"Fabric")
+P(m,"LegFR",Vector3.new(0.6,1.8,0.6),sp+Vector3.new(0.8,1,1.5),Color3.fromRGB(218,148,58),"Fabric")
+P(m,"LegBL",Vector3.new(0.6,1.8,0.6),sp+Vector3.new(-0.8,1,-1.5),Color3.fromRGB(218,148,58),"Fabric")
+P(m,"LegBR",Vector3.new(0.6,1.8,0.6),sp+Vector3.new(0.8,1,-1.5),Color3.fromRGB(218,148,58),"Fabric")
+-- Tail (long and curved up)
+P(m,"Tail1",Vector3.new(0.4,0.4,2),sp+Vector3.new(0,3.2,-3),Color3.fromRGB(215,145,55),"Fabric")
+P(m,"Tail2",Vector3.new(0.4,1.5,0.4),sp+Vector3.new(0,4.2,-3.8),Color3.fromRGB(210,140,50),"Fabric")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a follow script', 'Make a dog too', 'Build a pet shop'],
+      partCount: 26,
+    }
+  }
+
+  // ── TREASURE CHEST ──────────────────────────────────────────────────
+  if (/\b(treasure chest|chest|loot box|treasure)\b/.test(m) && !/chest plate/.test(m)) {
+    return {
+      name: 'Treasure Chest',
+      response: "Treasure chest — dark wood body with iron bands, curved lid propped open, gold coins spilling out, a gemstone sitting on top, and a lock on the front. The gold has a neon glow to it. Perfect loot drop for any adventure game.\n\nWant me to add a collectible script or build a treasure room?",
+      code: BOILERPLATE_TOP + `
+-- Body (box)
+P(m,"Body",Vector3.new(5,3,3.5),sp+Vector3.new(0,1.5,0),Color3.fromRGB(100,62,28),"Wood")
+-- Iron bands on body
+P(m,"BandF",Vector3.new(5.1,0.3,0.1),sp+Vector3.new(0,1,1.8),Color3.fromRGB(65,65,70),"Metal")
+P(m,"BandB",Vector3.new(5.1,0.3,0.1),sp+Vector3.new(0,1,-1.8),Color3.fromRGB(65,65,70),"Metal")
+P(m,"BandM",Vector3.new(5.1,0.3,0.1),sp+Vector3.new(0,2,1.8),Color3.fromRGB(65,65,70),"Metal")
+-- Lid (open, tilted back)
+P(m,"LidBase",Vector3.new(5,0.5,3.5),sp+Vector3.new(0,3.25,0),Color3.fromRGB(105,65,30),"Wood")
+P(m,"LidCurve",Vector3.new(5,1,3),sp+Vector3.new(0,3.5,-1),Color3.fromRGB(110,68,32),"Wood")
+-- Lid iron bands
+P(m,"LidBand1",Vector3.new(5.1,0.15,0.1),sp+Vector3.new(0,3.5,0),Color3.fromRGB(65,65,70),"Metal")
+-- Lock on front
+P(m,"Lock",Vector3.new(0.8,0.8,0.2),sp+Vector3.new(0,2.5,1.9),Color3.fromRGB(200,180,50),"Metal")
+P(m,"Keyhole",Vector3.new(0.15,0.3,0.1),sp+Vector3.new(0,2.4,2),Color3.fromRGB(30,30,30),"Metal")
+-- Corner brackets
+P(m,"CornerFL",Vector3.new(0.3,3,0.3),sp+Vector3.new(-2.5,1.5,1.7),Color3.fromRGB(60,60,65),"Metal")
+P(m,"CornerFR",Vector3.new(0.3,3,0.3),sp+Vector3.new(2.5,1.5,1.7),Color3.fromRGB(60,60,65),"Metal")
+P(m,"CornerBL",Vector3.new(0.3,3,0.3),sp+Vector3.new(-2.5,1.5,-1.7),Color3.fromRGB(60,60,65),"Metal")
+P(m,"CornerBR",Vector3.new(0.3,3,0.3),sp+Vector3.new(2.5,1.5,-1.7),Color3.fromRGB(60,60,65),"Metal")
+-- Gold coins spilling out
+Ball(m,"Coin1",Vector3.new(0.6,0.2,0.6),sp+Vector3.new(0.5,3.3,0.5),Color3.fromRGB(255,210,50),"Neon")
+Ball(m,"Coin2",Vector3.new(0.6,0.2,0.6),sp+Vector3.new(-0.3,3.4,0.8),Color3.fromRGB(255,200,40),"Neon")
+Ball(m,"Coin3",Vector3.new(0.5,0.2,0.5),sp+Vector3.new(1,3.2,-0.3),Color3.fromRGB(250,205,45),"Neon")
+Ball(m,"Coin4",Vector3.new(0.55,0.2,0.55),sp+Vector3.new(-0.8,3.35,0),Color3.fromRGB(255,215,55),"Neon")
+Ball(m,"Coin5",Vector3.new(0.5,0.2,0.5),sp+Vector3.new(0.2,3.5,1.2),Color3.fromRGB(248,200,42),"Neon")
+-- Gemstone on top
+Ball(m,"Gem",Vector3.new(0.8,0.8,0.8),sp+Vector3.new(0,3.8,0),Color3.fromRGB(60,200,100),"Neon")
+-- Scattered coins on ground
+Ball(m,"GroundCoin1",Vector3.new(0.5,0.15,0.5),sp+Vector3.new(3,0.1,1),Color3.fromRGB(255,210,50),"Neon")
+Ball(m,"GroundCoin2",Vector3.new(0.4,0.15,0.4),sp+Vector3.new(2.5,0.1,-0.5),Color3.fromRGB(250,205,45),"Neon")
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a collectible script', 'Build a treasure room', 'Make a dungeon around it'],
+      partCount: 22,
+    }
+  }
+
+  // ── BOOKSHELF ───────────────────────────────────────────────────────
+  if (/\b(bookshelf|book shelf|bookcase|library shelf)\b/.test(m)) {
+    return {
+      name: 'Bookshelf',
+      response: "Tall wooden bookshelf — dark oak frame with five shelves packed with colorful books of different sizes. Some leaning, some stacked flat, a decorative globe on top, and a small plant on one shelf. Perfect for a library, study, or wizard tower.\n\nWant me to fill a whole library wall with these?",
+      code: BOILERPLATE_TOP + `
+-- Frame (back panel)
+P(m,"BackPanel",Vector3.new(8,12,0.3),sp+Vector3.new(0,6,0),Color3.fromRGB(95,58,25),"Wood")
+-- Frame sides
+P(m,"SideL",Vector3.new(0.5,12,2),sp+Vector3.new(-4,6,1),Color3.fromRGB(100,62,28),"Wood")
+P(m,"SideR",Vector3.new(0.5,12,2),sp+Vector3.new(4,6,1),Color3.fromRGB(100,62,28),"Wood")
+-- Top
+P(m,"Top",Vector3.new(8,0.4,2),sp+Vector3.new(0,12.2,1),Color3.fromRGB(105,65,30),"Wood")
+-- Shelves (4)
+P(m,"Shelf1",Vector3.new(7.5,0.3,1.8),sp+Vector3.new(0,0.15,1),Color3.fromRGB(98,60,26),"Wood")
+P(m,"Shelf2",Vector3.new(7.5,0.3,1.8),sp+Vector3.new(0,3,1),Color3.fromRGB(98,60,26),"Wood")
+P(m,"Shelf3",Vector3.new(7.5,0.3,1.8),sp+Vector3.new(0,6,1),Color3.fromRGB(98,60,26),"Wood")
+P(m,"Shelf4",Vector3.new(7.5,0.3,1.8),sp+Vector3.new(0,9,1),Color3.fromRGB(98,60,26),"Wood")
+-- Books on shelf 1 (bottom)
+P(m,"Book1a",Vector3.new(0.5,2.5,1.5),sp+Vector3.new(-3,1.6,1),Color3.fromRGB(180,40,40),"Concrete")
+P(m,"Book1b",Vector3.new(0.5,2.5,1.5),sp+Vector3.new(-2.3,1.6,1),Color3.fromRGB(40,80,160),"Concrete")
+P(m,"Book1c",Vector3.new(0.6,2.2,1.5),sp+Vector3.new(-1.5,1.45,1),Color3.fromRGB(60,140,60),"Concrete")
+P(m,"Book1d",Vector3.new(0.4,2.5,1.5),sp+Vector3.new(-0.7,1.6,1),Color3.fromRGB(140,80,160),"Concrete")
+P(m,"Book1e",Vector3.new(0.5,2.5,1.5),sp+Vector3.new(0.1,1.6,1),Color3.fromRGB(200,160,40),"Concrete")
+P(m,"Book1f",Vector3.new(1.5,0.4,1.5),sp+Vector3.new(2,0.55,1),Color3.fromRGB(100,50,30),"Concrete")
+-- Books on shelf 2
+P(m,"Book2a",Vector3.new(0.5,2.5,1.5),sp+Vector3.new(-3,4.6,1),Color3.fromRGB(200,100,40),"Concrete")
+P(m,"Book2b",Vector3.new(0.6,2.5,1.5),sp+Vector3.new(-2.2,4.6,1),Color3.fromRGB(40,40,120),"Concrete")
+P(m,"Book2c",Vector3.new(0.4,2.2,1.5),sp+Vector3.new(-1.4,4.45,1),Color3.fromRGB(180,180,40),"Concrete")
+P(m,"Book2d",Vector3.new(0.5,2.5,1.5),sp+Vector3.new(1,4.6,1),Color3.fromRGB(160,40,80),"Concrete")
+P(m,"Book2e",Vector3.new(0.5,2.5,1.5),sp+Vector3.new(2,4.6,1),Color3.fromRGB(40,160,140),"Concrete")
+-- Books on shelf 3
+P(m,"Book3a",Vector3.new(0.5,2.5,1.5),sp+Vector3.new(-2.5,7.6,1),Color3.fromRGB(80,40,120),"Concrete")
+P(m,"Book3b",Vector3.new(0.4,2.5,1.5),sp+Vector3.new(-1.8,7.6,1),Color3.fromRGB(180,60,60),"Concrete")
+P(m,"Book3c",Vector3.new(0.6,2.5,1.5),sp+Vector3.new(0.5,7.6,1),Color3.fromRGB(40,100,40),"Concrete")
+-- Small plant on shelf 3
+Cyl(m,"Pot",Vector3.new(1,0.8,0.8),sp+Vector3.new(3,6.8,1),Color3.fromRGB(160,80,40),"Concrete")
+Ball(m,"Plant",Vector3.new(1.5,1.2,1.5),sp+Vector3.new(3,7.8,1),Color3.fromRGB(50,130,45),"LeafyGrass")
+-- Books on shelf 4
+P(m,"Book4a",Vector3.new(0.5,2.5,1.5),sp+Vector3.new(-3,10.6,1),Color3.fromRGB(60,60,160),"Concrete")
+P(m,"Book4b",Vector3.new(0.5,2.5,1.5),sp+Vector3.new(-2.2,10.6,1),Color3.fromRGB(160,120,40),"Concrete")
+P(m,"Book4c",Vector3.new(0.6,2.5,1.5),sp+Vector3.new(1.5,10.6,1),Color3.fromRGB(180,40,100),"Concrete")
+-- Globe on top
+Ball(m,"Globe",Vector3.new(2,2,2),sp+Vector3.new(2.5,13.5,1),Color3.fromRGB(60,120,180),"Concrete")
+Cyl(m,"GlobeStand",Vector3.new(0.5,0.3,0.3),sp+Vector3.new(2.5,12.5,1),Color3.fromRGB(180,150,50),"Metal")
+` + BOILERPLATE_BOT,
+      suggestions: ['Fill a whole library wall', 'Build a study room', 'Add a reading desk'],
+      partCount: 31,
+    }
+  }
+
+  // ── THRONE ──────────────────────────────────────────────────────────
+  if (/\b(throne|kings chair|royal chair|royal seat)\b/.test(m)) {
+    return {
+      name: 'Throne',
+      response: "Royal throne — massive ornate chair with a tall carved back, gold trim everywhere, red velvet cushion and padding, wide armrests with gem inlays, heavy stone base, and a red carpet leading up to it. Fit for a king. Players will fight over this seat.\n\nWant me to build a throne room around it?",
+      code: BOILERPLATE_TOP + `
+-- Stone platform
+P(m,"Platform",Vector3.new(8,1,6),sp+Vector3.new(0,0.5,0),Color3.fromRGB(130,125,118),"Granite")
+P(m,"Step",Vector3.new(10,0.5,2),sp+Vector3.new(0,0.25,4),Color3.fromRGB(125,120,112),"Granite")
+-- Throne frame (dark wood with gold trim)
+P(m,"SeatBase",Vector3.new(5,1,4),sp+Vector3.new(0,2,0),Color3.fromRGB(70,35,15),"Wood")
+P(m,"Cushion",Vector3.new(4.5,0.8,3.5),sp+Vector3.new(0,2.9,0),Color3.fromRGB(160,30,30),"Fabric")
+-- Backrest (tall)
+P(m,"BackFrame",Vector3.new(5,8,0.8),sp+Vector3.new(0,7,-1.6),Color3.fromRGB(75,38,18),"Wood")
+P(m,"BackPadding",Vector3.new(4,6,0.5),sp+Vector3.new(0,7,-1.3),Color3.fromRGB(155,28,28),"Fabric")
+-- Crown detail on top of backrest
+W(m,"CrownL",Vector3.new(1.5,1.5,0.8),sp+Vector3.new(-1.5,11.5,-1.6),Color3.fromRGB(200,170,50),0)
+W(m,"CrownR",Vector3.new(1.5,1.5,0.8),sp+Vector3.new(1.5,11.5,-1.6),Color3.fromRGB(200,170,50),0)
+P(m,"CrownCenter",Vector3.new(1,2,0.8),sp+Vector3.new(0,11.5,-1.6),Color3.fromRGB(205,175,55),"Metal")
+-- Gold trim lines
+P(m,"TrimTop",Vector3.new(5.2,0.2,0.2),sp+Vector3.new(0,11,-1.6),Color3.fromRGB(210,180,50),"Metal")
+P(m,"TrimMid",Vector3.new(5.2,0.2,0.2),sp+Vector3.new(0,7,-1.3),Color3.fromRGB(210,180,50),"Metal")
+P(m,"TrimBot",Vector3.new(5.2,0.2,0.2),sp+Vector3.new(0,4,-1.3),Color3.fromRGB(210,180,50),"Metal")
+-- Armrests
+P(m,"ArmL",Vector3.new(0.8,1,4),sp+Vector3.new(-2.2,3.5,0),Color3.fromRGB(72,36,16),"Wood")
+P(m,"ArmR",Vector3.new(0.8,1,4),sp+Vector3.new(2.2,3.5,0),Color3.fromRGB(72,36,16),"Wood")
+-- Armrest gems
+Ball(m,"GemL",Vector3.new(0.6,0.4,0.6),sp+Vector3.new(-2.2,4,1.5),Color3.fromRGB(60,60,200),"Neon")
+Ball(m,"GemR",Vector3.new(0.6,0.4,0.6),sp+Vector3.new(2.2,4,1.5),Color3.fromRGB(200,50,50),"Neon")
+-- Throne legs (ornate)
+P(m,"LegFL",Vector3.new(0.6,1.5,0.6),sp+Vector3.new(-2,0.75,1.5),Color3.fromRGB(68,34,14),"Wood")
+P(m,"LegFR",Vector3.new(0.6,1.5,0.6),sp+Vector3.new(2,0.75,1.5),Color3.fromRGB(68,34,14),"Wood")
+P(m,"LegBL",Vector3.new(0.6,1.5,0.6),sp+Vector3.new(-2,0.75,-1.5),Color3.fromRGB(68,34,14),"Wood")
+P(m,"LegBR",Vector3.new(0.6,1.5,0.6),sp+Vector3.new(2,0.75,-1.5),Color3.fromRGB(68,34,14),"Wood")
+-- Red carpet leading to throne
+P(m,"Carpet",Vector3.new(4,0.1,12),sp+Vector3.new(0,1.05,9),Color3.fromRGB(140,25,25),"Fabric")
+P(m,"CarpetFringe",Vector3.new(4.2,0.08,0.5),sp+Vector3.new(0,1.04,14.5),Color3.fromRGB(200,170,50),"Fabric")
+` + BOILERPLATE_BOT,
+      suggestions: ['Build a throne room', 'Add guards on each side', 'Make a whole royal palace'],
+      partCount: 23,
     }
   }
 
