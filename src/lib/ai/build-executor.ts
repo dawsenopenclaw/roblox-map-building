@@ -35,6 +35,7 @@ import {
 } from './advanced-roblox-knowledge'
 import { getEncyclopediaForTaskType } from './roblox-encyclopedia'
 import { getSystemDesignsForTaskType, getDataArchitecture, getClientServerPatterns, getUIPatterns, getEffectRecipes, getPerformanceBible } from './scripting-bible'
+import { selectRelevantKnowledge } from './knowledge-selector'
 import {
   economySystem,
   tycoonDropper,
@@ -1035,57 +1036,14 @@ This task is chunk ${chunkIndex ?? 0} of a larger build called "${parentName}".
     }
   }
 
-  // Inject deep building knowledge for building/terrain/prop tasks (the types that construct geometry)
-  // TRIMMED to 12K chars each to prevent prompt bloat that causes rate limit / timeout issues.
-  // The full knowledge is 100K+ chars — injecting all of it makes prompts too large and slow.
-  const needsBuildingKnowledge = ['building', 'terrain', 'prop', 'npc'].includes(task.type)
-  const buildingKnowledgeChunk = needsBuildingKnowledge
-    ? `\n\n--- BUILDING KNOWLEDGE ---\n${DEEP_BUILDING_KNOWLEDGE.slice(0, 12000)}\n--- END ---\n\n--- BUILD GUIDES ---\n${BUILDING_BIBLE.slice(0, 12000)}\n--- END ---\n`
-    : ''
-
-  // Inject deep game design knowledge for script/economy/ui/npc tasks
-  const gameDesignKnowledge = ['script', 'economy', 'ui', 'npc'].includes(task.type)
-    ? `\n\n--- DEEP GAME DESIGN KNOWLEDGE ---\n${getKnowledgeForTaskType(task.type)}\n--- END GAME DESIGN KNOWLEDGE ---\n`
-    : ''
-
-  // Inject advanced Roblox knowledge — section matched to task type for maximum relevance
-  let advancedKnowledge = ''
-  if (['building', 'terrain', 'prop'].includes(task.type)) {
-    advancedKnowledge = `\n\n--- ADVANCED TECHNIQUES ---\n${getAdvancedBuildingKnowledge().slice(0, 6000)}\n--- END ---\n`
-  } else if (['script', 'economy'].includes(task.type)) {
-    advancedKnowledge = `\n\n--- ADVANCED SCRIPTING ---\n${getAdvancedScriptingKnowledge().slice(0, 6000)}\n${getExploitPreventionKnowledge().slice(0, 3000)}\n--- END ---\n`
-  } else if (task.type === 'npc') {
-    advancedKnowledge = `\n\n--- ADVANCED NPC TECHNIQUES ---\n${getAdvancedScriptingKnowledge().slice(0, 2000)}\n${getPerformanceKnowledge().slice(0, 1500)}\n--- END ADVANCED NPC ---\n`
-  } else if (task.type === 'lighting') {
-    advancedKnowledge = `\n\n--- ADVANCED VISUAL TECHNIQUES ---\n${getVisualEffectsKnowledge()}\n--- END ADVANCED VISUAL ---\n`
-  } else if (task.type === 'audio') {
-    advancedKnowledge = `\n\n--- ADVANCED SOUND DESIGN ---\n${getSoundDesignKnowledge()}\n--- END ADVANCED SOUND ---\n`
-  } else if (task.type === 'ui') {
-    advancedKnowledge = `\n\n--- ADVANCED UI + MONETIZATION ---\n${getMonetizationKnowledge()}\n${getPerformanceKnowledge().slice(0, 1500)}\n--- END ADVANCED UI ---\n`
-  }
-
-  // Inject scripting bible knowledge — system designs, data patterns, communication, UI, effects
-  let scriptingBibleChunk = ''
-  if (['script', 'economy', 'npc'].includes(task.type)) {
-    scriptingBibleChunk = `\n\n--- SCRIPTING BIBLE: SYSTEM DESIGNS ---\n${getSystemDesignsForTaskType(task.type)}\n--- END SYSTEM DESIGNS ---\n`
-    scriptingBibleChunk += `\n--- SCRIPTING BIBLE: DATA ARCHITECTURE ---\n${getDataArchitecture().slice(0, 3000)}\n--- END DATA ARCHITECTURE ---\n`
-    scriptingBibleChunk += `\n--- SCRIPTING BIBLE: CLIENT-SERVER PATTERNS ---\n${getClientServerPatterns().slice(0, 3000)}\n--- END CLIENT-SERVER ---\n`
-  } else if (task.type === 'ui') {
-    scriptingBibleChunk = `\n\n--- SCRIPTING BIBLE: UI PATTERNS ---\n${getUIPatterns().slice(0, 6000)}\n--- END UI PATTERNS ---\n`
-    scriptingBibleChunk += `\n--- SCRIPTING BIBLE: SYSTEM DESIGNS ---\n${getSystemDesignsForTaskType('ui').slice(0, 3000)}\n--- END SYSTEM DESIGNS ---\n`
-  } else if (['lighting', 'audio'].includes(task.type)) {
-    scriptingBibleChunk = `\n\n--- SCRIPTING BIBLE: EFFECT RECIPES ---\n${getEffectRecipes().slice(0, 6000)}\n--- END EFFECT RECIPES ---\n`
-  } else if (['building', 'terrain', 'prop'].includes(task.type)) {
-    scriptingBibleChunk = `\n\n--- SCRIPTING BIBLE: PERFORMANCE ---\n${getPerformanceBible().slice(0, 3000)}\n--- END PERFORMANCE ---\n`
-  }
+  // Smart knowledge injection — picks only the most relevant sections (20K chars MAX)
+  // Replaces the old approach that dumped 40K+ chars and caused rate limits/timeouts
+  const smartKnowledge = selectRelevantKnowledge(task.prompt, task.type)
 
   // Extract prompt modifiers from task description for unique, non-generic builds
   const taskModifiers = modifiersToInstructions(extractModifiers(task.prompt))
 
-  // Inject relevant encyclopedia sections (materials, colors, recipes, services, luau, etc.)
-  const encyclopediaKnowledge = `\n\n--- ROBLOX ENCYCLOPEDIA REFERENCE ---\n${getEncyclopediaForTaskType(task.type).slice(0, 8000)}\n--- END ENCYCLOPEDIA ---\n`
-
-  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + taskModifiers + chunkParentInstructions + buildingKnowledgeChunk + gameDesignKnowledge + advancedKnowledge + scriptingBibleChunk + encyclopediaKnowledge +
+  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + taskModifiers + chunkParentInstructions + smartKnowledge +
     `\n\nCRITICAL RULES:
 - Output ONLY valid Luau code. No JavaScript, no Python, no TypeScript.
 - Use game:GetService("ServiceName") not game.ServiceName
