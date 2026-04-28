@@ -31,13 +31,13 @@ export function detectBuildScale(message: string): BuildScale {
 
 export function getPartTargets(scale: BuildScale): { min: number; target: number; max: number } {
   switch (scale) {
-    case 'prop': return { min: 8, target: 15, max: 40 }
-    case 'furniture': return { min: 10, target: 20, max: 50 }
-    case 'vehicle': return { min: 20, target: 40, max: 80 }
-    case 'building': return { min: 60, target: 150, max: 400 }
-    case 'scene': return { min: 80, target: 200, max: 500 }
-    case 'map': return { min: 150, target: 400, max: 2000 }
-    case 'world': return { min: 300, target: 1000, max: 10000 }
+    case 'prop': return { min: 10, target: 25, max: 50 }
+    case 'furniture': return { min: 15, target: 35, max: 60 }
+    case 'vehicle': return { min: 30, target: 60, max: 120 }
+    case 'building': return { min: 80, target: 200, max: 500 }
+    case 'scene': return { min: 120, target: 300, max: 600 }
+    case 'map': return { min: 200, target: 500, max: 2500 }
+    case 'world': return { min: 400, target: 1200, max: 12000 }
   }
 }
 
@@ -174,8 +174,8 @@ export function buildFocusedPrompt(message: string): string {
   // ALWAYS include: part targets and core rules
   sections.push(`
 PART TARGETS FOR THIS BUILD: minimum ${targets.min}, target ${targets.target}, up to ${targets.max} parts.
-${targets.min >= 60 ? 'USE FOR LOOPS for repeated elements (windows, fence posts, tiles, lamps, trees, flowers).' : ''}
-${targets.min >= 150 ? 'USE POSITION TABLES + LOOPS. One loop creating 12 lamps = 36 parts from 6 lines.' : ''}
+${targets.min >= 30 ? 'USE FOR LOOPS for repeated elements (windows, fence posts, tiles, lamps, trees, flowers).' : ''}
+${targets.min >= 80 ? 'USE POSITION TABLES + LOOPS. One loop creating 12 lamps = 36 parts from 6 lines.' : ''}
 
 ${example}`)
 

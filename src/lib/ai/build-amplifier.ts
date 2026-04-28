@@ -21,8 +21,12 @@
  * Atmosphere + Bloom + ColorCorrection + SunRays makes everything look 10X better.
  */
 function injectLightingStack(code: string): string {
-  // Skip if already has lighting setup
-  if (code.includes('Lighting') && (code.includes('Atmosphere') || code.includes('BloomEffect'))) {
+  // Skip ONLY if the AI already set up the FULL stack (all 4 effects)
+  const hasAtmosphere = code.includes('Atmosphere')
+  const hasBloom = code.includes('BloomEffect') || code.includes('Bloom')
+  const hasCC = code.includes('ColorCorrectionEffect') || code.includes('ColorCorrection')
+  const hasSunRays = code.includes('SunRaysEffect') || code.includes('SunRays')
+  if (hasAtmosphere && hasBloom && hasCC && hasSunRays) {
     return code
   }
 
@@ -68,8 +72,8 @@ local _sr = Instance.new("SunRaysEffect") _sr.Intensity=0.06 _sr.Spread=0.25 _sr
  * Adds grass terrain under and around the build so it doesn't float in void.
  */
 function injectTerrain(code: string): string {
-  // Skip if already has terrain
-  if (code.includes('workspace.Terrain') || code.includes(':FillBlock') || code.includes(':FillBall')) {
+  // Skip only if AI already set up terrain with variation (FillBlock + FillBall both present)
+  if (code.includes(':FillBlock') && code.includes(':FillBall')) {
     return code
   }
 
@@ -112,9 +116,9 @@ end)
  * Scans for ceiling/roof parts and adds warm lights parented to them.
  */
 function injectInteriorLights(code: string): string {
-  // Skip if already has multiple PointLights
+  // Skip only if AI already placed 4+ PointLights (a proper lighting pass)
   const existingLights = (code.match(/PointLight/g) || []).length
-  if (existingLights >= 2) return code
+  if (existingLights >= 4) return code
 
   // Skip for non-building code
   if (!code.includes('Instance.new("Part")') && !code.includes('P(')) return code
@@ -253,26 +257,41 @@ export function amplifyBuild(code: string): { code: string; injections: string[]
   amplified = injectColorVariation(amplified)
   if (amplified.length > beforeVC) injections.push('color variation helper')
 
-  // 6. Ambient particles (dust motes for atmosphere)
-  if (!amplified.includes('ParticleEmitter')) {
+  // 6. Ambient particles (dust motes + floating leaves for atmosphere)
+  const particleCount = (amplified.match(/ParticleEmitter/g) || []).length
+  if (particleCount < 2) {
     const particleBlock = `
--- Ambient dust motes
+-- ═══ AMBIENT PARTICLES (auto-injected) ═══
 pcall(function()
+  -- Dust motes floating in sunlight
   local _dustPart = Instance.new("Part") _dustPart.Name = "ambient_dust" _dustPart.Anchored = true
-  _dustPart.Size = Vector3.new(60,1,60) _dustPart.CFrame = CFrame.new(sp.X, gy+8, sp.Z)
+  _dustPart.Size = Vector3.new(80,1,80) _dustPart.CFrame = CFrame.new(sp.X, gy+8, sp.Z)
   _dustPart.Transparency = 1 _dustPart.CanCollide = false _dustPart.Parent = m
-  local _pe = Instance.new("ParticleEmitter") _pe.Rate = 3 _pe.Lifetime = NumberRange.new(8,15)
+  local _pe = Instance.new("ParticleEmitter") _pe.Rate = 5 _pe.Lifetime = NumberRange.new(8,15)
   _pe.Speed = NumberRange.new(0.3,1) _pe.SpreadAngle = Vector2.new(180,180)
   _pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,0.05),NumberSequenceKeypoint.new(0.5,0.15),NumberSequenceKeypoint.new(1,0.05)})
   _pe.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0.8),NumberSequenceKeypoint.new(0.5,0.5),NumberSequenceKeypoint.new(1,1)})
   _pe.Color = ColorSequence.new(Color3.fromRGB(255,250,230))
   _pe.LightEmission = 0.3 _pe.Parent = _dustPart
+
+  -- Floating leaves / pollen for outdoor atmosphere
+  local _leafPart = Instance.new("Part") _leafPart.Name = "ambient_leaves" _leafPart.Anchored = true
+  _leafPart.Size = Vector3.new(100,1,100) _leafPart.CFrame = CFrame.new(sp.X, gy+15, sp.Z)
+  _leafPart.Transparency = 1 _leafPart.CanCollide = false _leafPart.Parent = m
+  local _lpe = Instance.new("ParticleEmitter") _lpe.Rate = 2 _lpe.Lifetime = NumberRange.new(10,20)
+  _lpe.Speed = NumberRange.new(0.5,2) _lpe.SpreadAngle = Vector2.new(180,30)
+  _lpe.RotSpeed = NumberRange.new(-60,60) _lpe.Rotation = NumberRange.new(0,360)
+  _lpe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(0.5,0.4),NumberSequenceKeypoint.new(1,0.1)})
+  _lpe.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0.3),NumberSequenceKeypoint.new(0.7,0.5),NumberSequenceKeypoint.new(1,1)})
+  _lpe.Color = ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(80,140,50)),ColorSequenceKeypoint.new(1,Color3.fromRGB(160,130,60))})
+  _lpe.Parent = _leafPart
 end)
+-- ═══ END PARTICLES ═══
 `
     const finalize = amplified.indexOf('m.Parent = workspace')
     if (finalize !== -1) {
       amplified = amplified.slice(0, finalize) + particleBlock + '\n' + amplified.slice(finalize)
-      injections.push('ambient dust particle emitter')
+      injections.push('ambient particles (dust motes + floating leaves)')
     }
   }
 

@@ -120,11 +120,12 @@ async function embedViaGemini(text: string): Promise<number[]> {
 // Bumped from 6 → 12 (Apr 16) so the AI sees more of the ingested video
 // library per build. With MAX_CONTEXT_TOKENS=6000 below, 12 chunks at
 // ~500 tokens each still fits comfortably in any modern LLM context.
-const DEFAULT_TOP_K = 12
-// 0.30 (was 0.35) admits slightly weaker matches — useful once the corpus
-// includes hundreds of videos and the per-prompt best chunk may not be
-// strictly category-aligned.
-const SIMILARITY_THRESHOLD = 0.30
+// Bumped 12 → 24 (Apr 27) to inject double the knowledge per request.
+// With MAX_CONTEXT_TOKENS=12000 below, 24 chunks at ~500 tokens each fits.
+const DEFAULT_TOP_K = 24
+// 0.25 (was 0.30) admits weaker matches — casts a wider knowledge net
+// so the AI sees more relevant patterns, techniques, and API references.
+const SIMILARITY_THRESHOLD = 0.25
 
 /**
  * Retrieve the most relevant documentation chunks for a given prompt.
@@ -173,11 +174,10 @@ export async function retrieveContext(
 
 // ── Prompt builder — injects retrieved context into system prompt ──────────
 
-// Bumped from 3000 → 6000 (Apr 16). With Gemini Flash at 1M-token context
-// and the orchestrator's prompts well under 30k tokens total, 6k for
-// retrieved tutorial context is comfortable and gives the AI dramatically
-// more concrete examples to draw from.
-const MAX_CONTEXT_TOKENS = 6000
+// Bumped 6000 → 12000 (Apr 27). With Gemini Flash at 1M-token context
+// and top-K raised to 24, we need more room. 12K tokens of retrieved
+// knowledge gives the AI a massive reference library per request.
+const MAX_CONTEXT_TOKENS = 12000
 
 /**
  * Build an enriched system prompt by injecting relevant documentation.

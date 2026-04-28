@@ -38,17 +38,27 @@ async function getIndex() {
 /**
  * Find the best specialist for a given user message.
  * Returns null if no specialist matches above threshold.
+ * @deprecated Use findSpecialists() for multi-specialist activation.
  */
 export async function findSpecialist(userMessage: string): Promise<Specialist | null> {
+  const matches = await findSpecialists(userMessage)
+  return matches.length > 0 ? matches[0] : null
+}
+
+/**
+ * Find the TOP 3 specialists that match a user message above threshold.
+ * Multiple specialists combine their expertise — e.g. a "tycoon game with
+ * combat" request gets both the tycoon specialist AND the combat specialist.
+ */
+export async function findSpecialists(userMessage: string, maxCount: number = 3): Promise<Specialist[]> {
   // Don't activate specialists for very short messages (greetings, questions)
-  if (userMessage.trim().split(/\s+/).length < 3) return null
+  if (userMessage.trim().split(/\s+/).length < 3) return []
 
   const index = await getIndex()
   const words = userMessage.toLowerCase().replace(/[^a-z0-9\s-]/g, '').split(/\s+/)
   const messageText = userMessage.toLowerCase()
 
-  let bestScore = 0
-  let bestMatch: Specialist | null = null
+  const scored: Array<{ specialist: Specialist; score: number }> = []
 
   for (const { specialist, keywordSet, wordSet } of index) {
     let score = 0
@@ -66,30 +76,41 @@ export async function findSpecialist(userMessage: string): Promise<Specialist | 
       }
     }
 
-    if (score > bestScore) {
-      bestScore = score
-      bestMatch = specialist
+    if (score >= 2) {
+      scored.push({ specialist, score })
     }
   }
 
-  return bestScore >= 2 ? bestMatch : null
+  // Sort by score descending, take top N
+  scored.sort((a, b) => b.score - a.score)
+  return scored.slice(0, maxCount).map(s => s.specialist)
 }
 
 /**
  * Build the specialist-enhanced system prompt.
+ * Supports single specialist (legacy) or array of specialists.
  */
-export function applySpecialist(basePrompt: string, specialist: Specialist): string {
-  return `[SPECIALIST MODE: ${specialist.name}]
-${specialist.prompt}
+export function applySpecialist(basePrompt: string, specialist: Specialist | Specialist[]): string {
+  const specialists = Array.isArray(specialist) ? specialist : [specialist]
+  if (specialists.length === 0) return basePrompt
+
+  const specialistBlocks = specialists.map((s, i) =>
+    `[SPECIALIST ${i + 1}: ${s.name}]\n${s.prompt}`
+  ).join('\n\n---\n\n')
+
+  return `${specialistBlocks}
 
 ${basePrompt}`
 }
 
 /**
- * Get RAG categories to use based on the specialist's domain.
+ * Get RAG categories to use based on the specialists' domains.
+ * Accepts single specialist, array, or null.
  */
-export function getSpecialistRAGCategories(specialist: Specialist | null): string[] {
+export function getSpecialistRAGCategories(specialist: Specialist | Specialist[] | null): string[] {
   const defaults = ['pattern', 'api', 'luau', 'service', 'building', 'dev']
   if (!specialist) return defaults
-  return [...new Set([...specialist.ragCategories, ...defaults])]
+  const specialists = Array.isArray(specialist) ? specialist : [specialist]
+  const allCategories = specialists.flatMap(s => s.ragCategories)
+  return [...new Set([...allCategories, ...defaults])]
 }

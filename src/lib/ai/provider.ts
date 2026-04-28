@@ -476,14 +476,14 @@ export async function callAI(
   const userMessage = messages.filter(m => m.role === 'user').pop()?.content ?? ''
 
   if (opts.useRAG) {
-    // Auto-select specialist based on user message
-    const specialist = await findSpecialist(userMessage)
-    if (specialist) {
-      enrichedPrompt = applySpecialist(enrichedPrompt, specialist)
-      // Merge specialist's preferred RAG categories with any provided ones
-      const specialistCategories = getSpecialistRAGCategories(specialist)
+    // Auto-select top specialists based on user message (up to 3)
+    const specialists = await findSpecialists(userMessage)
+    if (specialists.length > 0) {
+      enrichedPrompt = applySpecialist(enrichedPrompt, specialists)
+      // Merge all specialists' preferred RAG categories with any provided ones
+      const specialistCategories = getSpecialistRAGCategories(specialists)
       opts = { ...opts, ragCategories: [...new Set([...(opts.ragCategories ?? []), ...specialistCategories])] }
-      console.log(`[ai-provider] Specialist selected: ${specialist.name}`)
+      console.log(`[ai-provider] Specialists selected: ${specialists.map(s => s.name).join(', ')}`)
     }
 
     // RAG enrichment: retrieve relevant docs and inject into system prompt

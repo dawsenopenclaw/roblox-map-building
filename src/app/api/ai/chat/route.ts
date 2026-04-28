@@ -80,7 +80,7 @@ import { formatAdditiveRetryPrompt } from '@/lib/ai/build-blueprint'
 import { detectRecommendations, recordRecommendation, getTopRecommendations, formatRecommendations } from '@/lib/ai/recommendation-tracker'
 import { extractApiKey, verifyApiKey } from '@/lib/api-key-auth'
 import { buildRAGSystemPrompt } from '@/lib/ai/rag'
-import { findSpecialist, applySpecialist } from '@/lib/ai/specialists/router'
+import { findSpecialist, findSpecialists, applySpecialist } from '@/lib/ai/specialists/router'
 import { buildRobloxContext } from '@/lib/ai/roblox-knowledge'
 import { getReferenceGame } from '@/lib/ai/reference-games'
 import { validateBuild } from '@/lib/ai/build-validator'
@@ -4903,12 +4903,12 @@ async function freeModelTwoPass(
   let luauCode: string | null = null
   let executedInStudio: boolean = false
 
-  // Auto-select specialist based on what the user is building
-  const specialist = await findSpecialist(message)
-  const specialistPrefix = specialist
-    ? `[SPECIALIST: ${specialist.name}]\n${specialist.prompt}\n\n`
+  // Auto-select top specialists based on what the user is building (up to 3)
+  const specialists = await findSpecialists(message)
+  const specialistPrefix = specialists.length > 0
+    ? specialists.map((s, i) => `[SPECIALIST ${i + 1}: ${s.name}]\n${s.prompt}`).join('\n\n---\n\n') + '\n\n'
     : ''
-  if (specialist) console.log(`[freeModelTwoPass] Specialist: ${specialist.name}`)
+  if (specialists.length > 0) console.log(`[freeModelTwoPass] Specialists: ${specialists.map(s => s.name).join(', ')}`)
 
   // Inject relevant Roblox API reference snippets for ALL build types (not just scripts)
   // The knowledge base has terrain, trees, water, roads, weather — all useful for builds
@@ -8224,10 +8224,11 @@ After they share something they built:
  * Call this instead of using FORJEAI_SYSTEM_PROMPT directly for build intents.
  */
 async function getSpecializedPrompt(userMessage: string): Promise<string> {
-  const spec = await findSpecialist(userMessage)
-  if (spec) {
-    console.log(`[chat] Specialist activated: ${spec.name}`)
-    return `[SPECIALIST: ${spec.name}]\n${spec.prompt}\n\n` + FORJEAI_SYSTEM_PROMPT
+  const specs = await findSpecialists(userMessage)
+  if (specs.length > 0) {
+    console.log(`[chat] Specialists activated: ${specs.map(s => s.name).join(', ')}`)
+    const blocks = specs.map((s, i) => `[SPECIALIST ${i + 1}: ${s.name}]\n${s.prompt}`).join('\n\n---\n\n')
+    return blocks + '\n\n' + FORJEAI_SYSTEM_PROMPT
   }
   return FORJEAI_SYSTEM_PROMPT
 }
