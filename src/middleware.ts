@@ -2,8 +2,13 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-import { locales, defaultLocale } from './i18n/config'
-import { i18nMiddleware } from './middleware-i18n'
+// ─── i18n stub (module was removed — inline defaults) ────────────────────────
+const locales = ['en'] as const
+const defaultLocale = 'en' as const
+
+// ─── Rate limiting imports ──────────────────────────────────────────────────
+// Import from the actual rate-limit module. These use Upstash Redis when
+// available and fall back gracefully (fail-open) when Redis is down.
 import {
   authApiRateLimit,
   signInRateLimit,
@@ -337,7 +342,8 @@ export default clerkMiddleware(async (auth, req) => {
     // compose the two middlewares by running i18n first, reading its
     // rewritten URL, and then invoking the Clerk pipeline on that target.
     if (hasNonDefaultLocalePrefix(request.nextUrl.pathname)) {
-      return i18nMiddleware(request)
+      // i18n middleware removed — just pass through for now
+      return NextResponse.next()
     }
 
     // ── Studio API bypass — Studio plugin has no cookies/session. Skip Clerk
