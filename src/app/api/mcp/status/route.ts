@@ -41,26 +41,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Fetch user info
-  const user = await db.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      name: true,
-      tokenBalance: { select: { balance: true } },
-      subscription: { select: { tier: true, status: true } },
-    },
-  })
+  // Fetch user info — wrap in try/catch for resilience
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        tokenBalance: { select: { balance: true } },
+        subscription: { select: { tier: true, status: true } },
+      },
+    })
 
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    return NextResponse.json({
+      studioConnected: false,
+      placeName: null,
+      tokenBalance: user?.tokenBalance?.balance ?? 0,
+      tier: user?.subscription?.tier ?? 'FREE',
+      subscriptionStatus: user?.subscription?.status ?? 'none',
+    })
+  } catch (err) {
+    console.error('[mcp/status] DB error:', err instanceof Error ? err.message : err)
+    return NextResponse.json({
+      studioConnected: false,
+      placeName: null,
+      tokenBalance: 0,
+      tier: 'FREE',
+      subscriptionStatus: 'unknown',
+    })
   }
-
-  return NextResponse.json({
-    studioConnected: false, // Studio sessions are in-memory/Redis — check via /api/studio/status with session token
-    placeName: null,
-    tokenBalance: user.tokenBalance?.balance ?? 0,
-    tier: user.subscription?.tier ?? 'FREE',
-    subscriptionStatus: user.subscription?.status ?? 'none',
-  })
 }
