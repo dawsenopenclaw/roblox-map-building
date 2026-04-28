@@ -4,6 +4,15 @@ import type { NextRequest } from 'next/server'
 
 import { locales, defaultLocale } from './i18n/config'
 import { i18nMiddleware } from './middleware-i18n'
+import {
+  authApiRateLimit,
+  signInRateLimit,
+  signUpRateLimit,
+  billingRateLimit,
+  studioConnectRateLimit,
+  rateLimitHeaders,
+  type RateLimitResult,
+} from './lib/rate-limit'
 
 // ─── i18n composition ─────────────────────────────────────────────────────────
 // Non-default locale prefixes that, when present as the first path segment,
@@ -282,6 +291,31 @@ function handleCorsPreFlight(request: NextRequest): NextResponse | null {
   return new NextResponse(null, { status: 204, headers })
 }
 
+// ─── Rate limit helper ───────────────────────────────────────────────────────
+
+function getClientIp(request: NextRequest): string {
+  // Vercel sets the real client IP; fall back to x-forwarded-for first entry.
+  return (
+    request.headers.get('x-real-ip') ??
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    '127.0.0.1'
+  )
+}
+
+function rateLimited429(result: RateLimitResult): NextResponse {
+  const retryAfter = Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000))
+  return NextResponse.json(
+    { error: 'rate_limited', retryAfter },
+    {
+      status: 429,
+      headers: {
+        ...rateLimitHeaders(result),
+        'Retry-After': String(retryAfter),
+      },
+    },
+  )
+}
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 export default clerkMiddleware(async (auth, req) => {
@@ -372,6 +406,28 @@ export default clerkMiddleware(async (auth, req) => {
       }
     }
 
+    // ── 1b. Rate limiting — IP-based for unauthenticated routes ─────────────
+    // These run BEFORE auth resolution so brute-force / credential-stuffing
+    // attacks are blocked before hitting Clerk or any downstream logic.
+    const pathname = request.nextUrl.pathname
+    const clientIp = getClientIp(request)
+
+    try {
+      if (pathname.startsWith('/api/auth')) {
+        const rl = await authApiRateLimit(clientIp)
+        if (!rl.allowed) return rateLimited429(rl)
+      } else if (pathname.startsWith('/sign-up')) {
+        const rl = await signUpRateLimit(clientIp)
+        if (!rl.allowed) return rateLimited429(rl)
+      } else if (pathname.startsWith('/sign-in')) {
+        const rl = await signInRateLimit(clientIp)
+        if (!rl.allowed) return rateLimited429(rl)
+      }
+    } catch (err) {
+      // Rate limiter failure must never break auth flows — pass through.
+      console.error('[middleware] rate-limit error (IP-based):', err)
+    }
+
     // ── 2. Auth routing ────────────────────────────────────────────────────────
     // In demo mode all routes are accessible — skip auth resolution entirely.
     // DEMO_MODE in production throws at module load (see guard above).
@@ -413,6 +469,23 @@ export default clerkMiddleware(async (auth, req) => {
         authUrl.searchParams.set('redirect_url', redirectPath)
       }
       return NextResponse.redirect(authUrl)
+    }
+
+    // ── 2b. Rate limiting — user-based for authenticated routes ─────────────
+    // Billing and studio-connect use the authenticated userId so an attacker
+    // can't rotate IPs to bypass limits. Falls back to IP if no userId.
+    try {
+      const rlIdentifier = userId ?? clientIp
+      if (pathname.startsWith('/api/billing/')) {
+        const rl = await billingRateLimit(rlIdentifier)
+        if (!rl.allowed) return rateLimited429(rl)
+      } else if (pathname === '/api/studio/connect') {
+        const rl = await studioConnectRateLimit(rlIdentifier)
+        if (!rl.allowed) return rateLimited429(rl)
+      }
+    } catch (err) {
+      // Rate limiter failure must never break billing/studio — pass through.
+      console.error('[middleware] rate-limit error (user-based):', err)
     }
 
     // ── 3. Admin route guard ───────────────────────────────────────────────────

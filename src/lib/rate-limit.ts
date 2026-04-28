@@ -79,6 +79,18 @@ const marketplaceWriteLimiter = createLimiter(10, '1 m', 'ratelimit:mkt:write')
 /** Studio execute: 30 per minute. */
 const studioExecuteLimiter = createLimiter(30, '1 m', 'ratelimit:studio:exec')
 
+/** Auth API routes: 10 per minute per IP (brute-force protection). */
+const authApiLimiter = createLimiter(10, '1 m', 'ratelimit:auth:api')
+
+/** Sign-in page: 20 per minute per IP. */
+const signInLimiter = createLimiter(20, '1 m', 'ratelimit:auth:signin')
+
+/** Sign-up page: 5 per minute per IP (anti-spam). */
+const signUpLimiter = createLimiter(5, '1 m', 'ratelimit:auth:signup')
+
+/** Studio connect: 5 per minute per user. */
+const studioConnectLimiter = createLimiter(5, '1 m', 'ratelimit:studio:connect')
+
 /**
  * Exported map of all named limiters — handy when you want to reference them
  * by key rather than importing individual functions.
@@ -96,6 +108,10 @@ export const rateLimits = {
   marketplaceRead: marketplaceReadLimiter,
   marketplaceWrite: marketplaceWriteLimiter,
   studioExecute: studioExecuteLimiter,
+  authApi: authApiLimiter,
+  signIn: signInLimiter,
+  signUp: signUpLimiter,
+  studioConnect: studioConnectLimiter,
 }
 
 // ---------------------------------------------------------------------------
@@ -291,6 +307,26 @@ export async function studioSyncRateLimit(sessionId: string): Promise<RateLimitR
 /** Studio execute — 30 commands per minute per user. */
 export async function studioExecuteRateLimit(userId: string): Promise<RateLimitResult> {
   return checkRateLimit(studioExecuteLimiter, userId, 30, 60)
+}
+
+/** Auth API — 10 requests per minute per IP (brute-force protection). */
+export async function authApiRateLimit(ip: string): Promise<RateLimitResult> {
+  return checkRateLimit(authApiLimiter, ip, 10, 60)
+}
+
+/** Sign-in — 20 requests per minute per IP. */
+export async function signInRateLimit(ip: string): Promise<RateLimitResult> {
+  return checkRateLimit(signInLimiter, ip, 20, 60)
+}
+
+/** Sign-up — 5 requests per minute per IP (anti-spam). */
+export async function signUpRateLimit(ip: string): Promise<RateLimitResult> {
+  return checkRateLimit(signUpLimiter, ip, 5, 60)
+}
+
+/** Studio connect — 5 per minute per user. */
+export async function studioConnectRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkRateLimit(studioConnectLimiter, userId, 5, 60)
 }
 
 // ---------------------------------------------------------------------------
