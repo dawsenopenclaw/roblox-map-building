@@ -78,6 +78,7 @@ import {
 } from '@/lib/ai/gui-templates'
 import { formatAdditiveRetryPrompt } from '@/lib/ai/build-blueprint'
 import { detectRecommendations, recordRecommendation, getTopRecommendations, formatRecommendations } from '@/lib/ai/recommendation-tracker'
+import { extractApiKey, verifyApiKey } from '@/lib/api-key-auth'
 import { buildRAGSystemPrompt } from '@/lib/ai/rag'
 import { findSpecialist, applySpecialist } from '@/lib/ai/specialists/router'
 import { buildRobloxContext } from '@/lib/ai/roblox-knowledge'
@@ -13624,60 +13625,90 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let isAdmin = false
 
   if (!isDemo) {
-    let userId: string | null = null
-    try {
-      const session = await auth()
-      userId = session?.userId ?? null
-    } catch {
-      // Clerk unavailable — treat as guest
+    // --- API Key auth (MCP servers, CLI, external integrations) ---
+    const rawApiKey = extractApiKey(req)
+    if (rawApiKey) {
+      const keyUser = await verifyApiKey(rawApiKey)
+      if (keyUser) {
+        authedUserId = keyUser.userId
+      } else {
+        return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
+      }
     }
 
-    if (userId) {
-      // Resolve Clerk session id -> internal DB User.id (cuid). spendTokens,
-      // getTokenBalance, and Prisma writes all key off User.id — passing the
-      // raw Clerk id causes "user not found" errors at runtime.
+    // --- Clerk session auth (web app) ---
+    if (!authedUserId) {
+      let userId: string | null = null
       try {
-        const dbUser = await db.user.findUnique({
-          where: { clerkId: userId },
-          select: { id: true },
-        })
-        if (dbUser) {
-          authedUserId = dbUser.id
-        }
+        const session = await auth()
+        userId = session?.userId ?? null
       } catch {
-        // DB unavailable — leave authedUserId null so token-spend branches skip
+        // Clerk unavailable — treat as guest
       }
 
+      if (userId) {
+        // Resolve Clerk session id -> internal DB User.id (cuid). spendTokens,
+        // getTokenBalance, and Prisma writes all key off User.id — passing the
+        // raw Clerk id causes "user not found" errors at runtime.
+        try {
+          const dbUser = await db.user.findUnique({
+            where: { clerkId: userId },
+            select: { id: true },
+          })
+          if (dbUser) {
+            authedUserId = dbUser.id
+          }
+        } catch {
+          // DB unavailable — leave authedUserId null so token-spend branches skip
+        }
+      }
+    }
+
+    if (authedUserId) {
       // Admin bypass: check if this user's email is in ADMIN_EMAILS.
       // Admins skip all token spend/balance checks so they can test freely.
-      try {
-        const client = await clerkClient()
-        const clerkUser = await client.users.getUser(userId)
-        const email =
-          clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
-            ?.emailAddress ?? null
-        if (email) {
-          const adminList = (process.env.ADMIN_EMAILS ?? '')
-            .split(',')
-            .map((s) => s.trim().toLowerCase())
-            .filter(Boolean)
-          isAdmin = adminList.includes(email.toLowerCase())
+      // Only check via Clerk if we authenticated via Clerk (not API key).
+      if (!rawApiKey) {
+        try {
+          let clerkUserId: string | null = null
+          try {
+            const session = await auth()
+            clerkUserId = session?.userId ?? null
+          } catch { /* ignore */ }
+          if (clerkUserId) {
+            const client = await clerkClient()
+            const clerkUser = await client.users.getUser(clerkUserId)
+            const email =
+              clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
+                ?.emailAddress ?? null
+            if (email) {
+              const adminList = (process.env.ADMIN_EMAILS ?? '')
+                .split(',')
+                .map((s) => s.trim().toLowerCase())
+                .filter(Boolean)
+              isAdmin = adminList.includes(email.toLowerCase())
+            }
+          }
+        } catch {
+          // Clerk unavailable — treat as non-admin
         }
-      } catch {
-        // Clerk unavailable — treat as non-admin
+
+        // Check tier — skip if DB unavailable (allow through as FREE)
+        try {
+          const clerkSession = await auth().catch(() => null)
+          const clerkId = clerkSession?.userId ?? null
+          if (clerkId) {
+            const tierDenied = await requireTier(clerkId, 'FREE')
+            if (tierDenied) return tierDenied
+          }
+        } catch {
+          // DB unavailable — treat as FREE tier, allow through
+          console.warn('[chat] DB unavailable for tier check — allowing through')
+        }
       }
 
-      // Check tier — skip if DB unavailable (allow through as FREE)
       try {
-        const tierDenied = await requireTier(userId, 'FREE')
-        if (tierDenied) return tierDenied
-      } catch {
-        // DB unavailable — treat as FREE tier, allow through
-        console.warn('[chat] DB unavailable for tier check — allowing through')
-      }
-
-      try {
-        const rl = await aiRateLimit(userId)
+        const rl = await aiRateLimit(authedUserId)
         if (!rl.allowed) {
           return NextResponse.json(
             {
@@ -13695,7 +13726,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       // Global + per-user spending cap — hard stop to prevent runaway API bills
       try {
-        const guard = await checkSpendingGuard(userId)
+        const guard = await checkSpendingGuard(authedUserId)
         if (!guard.allowed) {
           return NextResponse.json(
             {
