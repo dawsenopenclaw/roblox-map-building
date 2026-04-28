@@ -12,7 +12,7 @@
 
 import 'server-only'
 import { buildRAGSystemPrompt } from './rag'
-import { findSpecialist, applySpecialist, getSpecialistRAGCategories } from './specialists/router'
+import { findSpecialist, findSpecialists, applySpecialist, getSpecialistRAGCategories } from './specialists/router'
 import { callOpenRouter, selectBestModel, estimateBuildComplexity } from './openrouter'
 import { isPaidModelsEnabled } from '@/lib/spending-guard'
 import { getNextKey, reportRateLimit } from './key-rotator'
@@ -57,7 +57,7 @@ async function callGemini(
   const key = getNextKey('GEMINI') || process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
   if (!key) return null
 
-  const { maxTokens = 16384, temperature = opts.codeMode ? 0.2 : 0.7, jsonMode = false } = opts
+  const { maxTokens = 65536, temperature = opts.codeMode ? 0.2 : 0.7, jsonMode = false } = opts
 
   // Gemini uses a separate system_instruction + contents format
   const contents = messages
@@ -144,7 +144,9 @@ async function callGroq(
   const key = getNextKey('GROQ') || process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_MAIN
   if (!key) return null
 
-  const { maxTokens = 16384, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
+  const { maxTokens: requestedTokens = 65536, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
+  // Groq's llama-3.3-70b max output is 32768 tokens
+  const maxTokens = Math.min(requestedTokens, 32768)
 
   const groqMessages = [
     { role: 'system', content: systemPrompt },
@@ -209,7 +211,7 @@ async function* streamGemini(
   const key = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_MAIN
   if (!key) return
 
-  const { maxTokens = 16384, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
+  const { maxTokens = 65536, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
 
   const contents = messages
     .filter((m) => m.role !== 'system')
@@ -274,7 +276,9 @@ async function* streamGroq(
   const key = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_MAIN
   if (!key) return
 
-  const { maxTokens = 16384, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
+  const { maxTokens: requestedStreamTokens = 65536, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
+  // Groq's llama-3.3-70b max output is 32768 tokens
+  const maxTokens = Math.min(requestedStreamTokens, 32768)
 
   const groqMessages = [
     { role: 'system', content: systemPrompt },
@@ -340,10 +344,10 @@ export async function callAIStream(
   const userMessage = messages.filter(m => m.role === 'user').pop()?.content ?? ''
 
   if (opts.useRAG) {
-    const specialist = await findSpecialist(userMessage)
-    if (specialist) {
-      enrichedPrompt = applySpecialist(enrichedPrompt, specialist)
-      const specialistCategories = getSpecialistRAGCategories(specialist)
+    const specialists = await findSpecialists(userMessage)
+    if (specialists.length > 0) {
+      enrichedPrompt = applySpecialist(enrichedPrompt, specialists)
+      const specialistCategories = getSpecialistRAGCategories(specialists)
       opts = { ...opts, ragCategories: [...new Set([...(opts.ragCategories ?? []), ...specialistCategories])] }
     }
     try {
@@ -500,7 +504,7 @@ export async function callAI(
     const complexity = estimateBuildComplexity(userMessage)
     const bestModel = selectBestModel('build', complexity, opts.codeMode ?? false, 'creator')
     console.log(`[ai-provider] OpenRouter fallback: ${bestModel} (complexity: ${complexity})`)
-    const orResult = await callOpenRouter(bestModel, enrichedPrompt, userMessage, [], opts.maxTokens ?? 16384, opts.temperature ?? (opts.codeMode ? 0.2 : 0.7))
+    const orResult = await callOpenRouter(bestModel, enrichedPrompt, userMessage, [], opts.maxTokens ?? 65536, opts.temperature ?? (opts.codeMode ? 0.2 : 0.7))
     if (orResult) return orResult
   }
 

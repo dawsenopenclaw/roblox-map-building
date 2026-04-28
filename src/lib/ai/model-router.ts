@@ -4,8 +4,10 @@
  *
  * Routing logic:
  *   - Simple builds → gemini-flash (cheapest, fastest)
- *   - Script/UI mode → claude-sonnet (best code quality, lowest error rate)
- *   - Complex builds → gemini-flash with more tokens
+ *   - Medium/complex builds → gemini-pro (best structural quality)
+ *   - Script/UI/Economy/NPC → claude-sonnet (best code quality, lowest error rate)
+ *   - Full game / extreme → gemini-pro (highest quality)
+ *   - Conversation/chat → gemini-flash (fast, free)
  *   - Free tier → gemini-flash only (cost control)
  */
 
@@ -50,28 +52,39 @@ export function selectBestModel(
     return { provider: 'gemini', model: 'gemini-2.5-flash' }
   }
 
-  // Script/UI intents: Claude Sonnet has lowest error rate for code
-  const isScript = ['script', 'ui', 'gui', 'localscript', 'modulescript'].includes(intent)
-  if (isScript && effectiveComplexity !== 'simple') {
+  // Script/UI/Economy/NPC intents: Claude Sonnet has lowest error rate for code
+  const isCodeIntent = ['script', 'ui', 'gui', 'localscript', 'modulescript', 'economy', 'npc'].includes(intent)
+  if (isCodeIntent && effectiveComplexity !== 'simple') {
     return { provider: 'openrouter', model: OR_CLAUDE_SONNET }
   }
 
-  // Extreme complexity: Gemini Pro (best Roblox benchmark score)
+  // Full game / extreme complexity: Gemini Pro (best Roblox benchmark score)
   if (effectiveComplexity === 'extreme') {
     return { provider: 'openrouter', model: OR_GEMINI_PRO }
   }
 
-  // Complex builds: Gemini Flash with more tokens (cost-effective)
+  // Building intents: route by complexity for best build quality
+  const isBuild = ['build', 'building', 'terrain', 'prop', 'lighting'].includes(intent)
+  if (isBuild) {
+    // Medium+ buildings use Gemini Pro for highest structural quality
+    if (effectiveComplexity === 'complex' || effectiveComplexity === 'medium') {
+      return { provider: 'openrouter', model: OR_GEMINI_PRO }
+    }
+    // Simple buildings use Gemini Flash (fast, good enough)
+    return { provider: 'gemini', model: 'gemini-2.5-flash' }
+  }
+
+  // Complex non-build tasks: Gemini Flash via OpenRouter (cost-effective)
   if (effectiveComplexity === 'complex') {
     return { provider: 'openrouter', model: OR_GEMINI_FLASH }
   }
 
-  // Medium builds: direct Gemini (free, fast)
+  // Medium tasks: direct Gemini (free, fast)
   if (effectiveComplexity === 'medium') {
     return { provider: 'gemini', model: 'gemini-2.5-flash' }
   }
 
-  // Simple / conversation: direct Gemini (free tier)
+  // Simple / conversation: direct Gemini Flash (fast, free)
   return { provider: 'gemini', model: 'gemini-2.5-flash' }
 }
 

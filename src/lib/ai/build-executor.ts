@@ -614,7 +614,7 @@ This task is chunk ${chunkIndex ?? 0} of a larger build called "${parentName}".
     }
 
     const text = await callAI(systemPrompt, messages, {
-      maxTokens: 16384,
+      maxTokens: 32768,
       codeMode: true,
       useRAG: true,
       // Include 'service' + 'dev' + 'blender' alongside the task-specific
