@@ -64,7 +64,7 @@ const EMPTY_CONFIG: BillingConfig = {
 // ---------------------------------------------------------------------------
 
 // Tier prices — premium positioning (we're the only all-in-one platform)
-// 14-day free trial → convert fast, show value immediately
+// 3-day free trial → convert fast, show value immediately
 const ANNUAL_TOTALS = {
   BUILDER: 240.00,   // $20/mo annual = $240/year (20% off)
   CREATOR: 480.00,   // $40/mo annual = $480/year (20% off)
@@ -75,24 +75,24 @@ const ANNUAL_TOTALS = {
 const TIERS = [
   {
     key: 'FREE',
-    name: 'Free',
+    name: 'Test Drive',
     icon: Zap,
     priceMonthly: 0,
     priceYearly: 0,
     yearlyTotal: 0,
-    tagline: 'Start building right now',
+    tagline: '1,000 tokens to test everything — no credit card needed',
     highlight: true,
     badge: 'FREE',
     cta: 'Start Building Free',
     ctaHref: '/sign-up?plan=free',
     features: [
+      '1,000 tokens (one-time, never expires)',
       '50 builds per month',
       '5 AI models included',
       'Script generation',
       'Game system templates',
       'Studio plugin',
       'Community support',
-      'No credit card ever',
     ],
   },
   {
@@ -240,7 +240,7 @@ const TOKEN_PACKS = [
 const FAQ = [
   {
     q: 'Is the free plan really free?',
-    a: 'Yes, 100% free. No credit card, no trial that expires, no catch. You get 50 builds per month, 5 AI models, script generation, game templates, and the Studio plugin. Use it as long as you want. Upgrade only when you need more.',
+    a: 'Yes, 100% free. No credit card, no catch. You get 1,000 tokens to test everything — builds, scripts, templates, the Studio plugin. Tokens are a one-time grant and never expire, but they don\'t refresh monthly. Upgrade when you need more.',
   },
   {
     q: 'What is a token and how are they used?',
@@ -251,8 +251,8 @@ const FAQ = [
     a: 'A lot more than you think. 50 builds a month means roughly 15 houses, 10 game scripts, or 5 full game scenes. Most creators start free and upgrade once they have a game idea they want to go all-in on.',
   },
   {
-    q: 'How does the 14-day free trial work on paid plans?',
-    a: 'Pick any paid plan and try it free for 14 days. No credit card needed to start. If you like it, add payment before the trial ends. If not, you drop back to the Free plan automatically. No charge, no hassle.',
+    q: 'How does the 3-day free trial work on paid plans?',
+    a: 'Pick any paid plan and try it free for 3 days. No credit card needed to start. If you like it, add payment before the trial ends. If not, you drop back to the Free plan automatically. No charge, no hassle.',
   },
   {
     q: 'How does annual billing work?',
@@ -796,18 +796,13 @@ function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, p
     )
   }
 
-  // Price not configured — show "Contact us" instead of broken checkout
+  // Price not configured in Stripe — fall back to sign-up link so users can
+  // still onboard. They'll be on the free tier until the price is set up.
   if (!priceConfigured) {
     return (
-      <a
-        href="mailto:hello@forjegames.com?subject=I want the ForjeGames plan"
-        className={`block text-center font-bold py-4 rounded-xl text-base transition-all duration-200 mb-2 ${baseContactUs}`}
-      >
-        <span className="flex items-center justify-center gap-2">
-          <Mail className="w-4 h-4" />
-          Contact us
-        </span>
-      </a>
+      <Link href={ctaHref} className={className} style={style}>
+        {cta}
+      </Link>
     )
   }
 
@@ -991,7 +986,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* 14-Day Free Trial Banner                                           */}
+        {/* 3-Day Free Trial Banner                                            */}
         {/* ------------------------------------------------------------------ */}
         <div
           className="relative overflow-hidden rounded-2xl mb-12 px-6 py-5 text-center"
@@ -1007,7 +1002,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
             }}
           />
           <p className="relative text-white font-extrabold text-lg sm:text-xl mb-1">
-            Try any paid plan free for 14 days
+            Try any paid plan free for 3 days
           </p>
           <p className="relative text-white/80 text-sm font-medium">
             No credit card needed. Cancel anytime. Keep everything you build.
@@ -1222,8 +1217,8 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                           WebkitTextFillColor: 'transparent',
                           backgroundClip: 'text',
                         }}>$0</p>
-                        <p className="text-sm text-emerald-400 font-bold mt-1.5">Free forever</p>
-                        <p className="text-xs text-[#6B7699] mt-0.5">No credit card required</p>
+                        <p className="text-sm text-emerald-400 font-bold mt-1.5">Free to start</p>
+                        <p className="text-xs text-[#6B7699] mt-0.5">1,000 tokens · one-time · no credit card</p>
                       </>
                     ) : (
                       <>
@@ -1275,10 +1270,10 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                   {/* Trial / free notice */}
                   <p className="text-center text-[11px] text-[#3D4A6A] mb-1 leading-relaxed">
                     {(tier.priceMonthly as number) > 0
-                      ? '14-day free trial · No credit card required'
+                      ? '3-day free trial · No credit card required'
                       : (
                         <span className="text-emerald-400 font-semibold">
-                          No credit card — free forever
+                          1,000 tokens · one-time grant · no credit card
                         </span>
                       )}
                   </p>
@@ -1387,7 +1382,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
               <thead>
                 <tr className="border-b border-white/[0.06]">
                   <th className="text-left py-3 px-4 text-[#6B7699] font-medium">Feature</th>
-                  <th className="py-3 px-4 text-[#D4AF37] font-bold" style={{ background: 'rgba(212,175,55,0.06)' }}>Free</th>
+                  <th className="py-3 px-4 text-[#D4AF37] font-bold" style={{ background: 'rgba(212,175,55,0.06)' }}>Test Drive</th>
                   <th className="py-3 px-4 text-white font-medium">Builder</th>
                   <th className="py-3 px-4 text-white font-medium">Creator</th>
                   <th className="py-3 px-4 text-white font-medium">Pro</th>
@@ -1424,7 +1419,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
             { label: 'No contracts' },
             { label: 'Cancel anytime' },
             { label: 'SSL encrypted' },
-            { label: '14-day free trial on all paid plans' },
+            { label: '3-day free trial on all paid plans' },
           ].map(({ label, icon: TrustIcon }) => (
             <span key={label} className="flex items-center gap-2 text-sm text-[#4A5580]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
@@ -1468,7 +1463,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                   ['Knowledge Base', '25 API patterns injected', 'Context injection', 'No', 'No'],
                   ['Version Control', 'Checkpoints', 'Prompt rollback', 'No', 'No'],
                   ['Studio Plugin', 'Live sync + console', 'File sync', 'Basic', 'Desktop app'],
-                  ['Starting Price', 'Free forever (50/mo)', 'Free (1/day)', '$8.99/mo', '$20/mo + API keys'],
+                  ['Starting Price', 'Free (1,000 tokens)', 'Free (1/day)', '$8.99/mo', '$20/mo + API keys'],
                 ].map(([feature, forje, lemonade, rebirth, ropilot], i) => (
                   <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
                     <td className="py-2.5 px-4 text-white font-medium">{feature}</td>

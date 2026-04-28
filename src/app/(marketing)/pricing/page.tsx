@@ -6,7 +6,7 @@ import PricingClient from './PricingClient'
 export const metadata: Metadata = createMetadata({
   title: 'Pricing — Start Free, Upgrade When Ready',
   description:
-    'ForjeGames is free to start. Build Roblox games with AI — no credit card, no catch. Free plan includes 50 builds/month, 5 AI models, and the Studio plugin. Paid plans from $25/mo with 14-day free trial.',
+    'ForjeGames is free to start. Build Roblox games with AI — no credit card, no catch. Free plan includes 1,000 tokens, 5 AI models, and the Studio plugin. Paid plans from $25/mo with 3-day free trial.',
   path: '/pricing',
   keywords: [
     'ForjeGames pricing',

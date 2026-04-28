@@ -6,7 +6,7 @@ export const SUBSCRIPTION_TIERS = {
     priceMonthly: 0,
     priceYearly: 0,
     tokensPerMonth: 1000,
-    features: ['1,000 tokens/month', '10 builds per day', 'Basic terrain', 'Single builds only', 'Community support'],
+    features: ['1,000 tokens (one-time grant)', '10 builds per day', 'Basic terrain', 'Single builds only', 'Community support'],
     stripePriceIdMonthly: serverEnv.STRIPE_FREE_PRICE_ID || '',
     stripePriceIdYearly: '',
   },

@@ -67,7 +67,7 @@ describe('Stripe integration', () => {
           cancel_url: 'https://app.test/cancel',
           metadata: expect.objectContaining({ userId: 'user_abc', type: 'subscription' }),
           subscription_data: expect.objectContaining({
-            trial_period_days: 14,
+            trial_period_days: 3,
             metadata: { userId: 'user_abc' },
           }),
         }),
@@ -75,7 +75,7 @@ describe('Stripe integration', () => {
       )
     })
 
-    it('includes a 14-day trial in subscription sessions', async () => {
+    it('includes a 3-day trial in subscription sessions', async () => {
       mockCheckoutSessionsCreate.mockResolvedValue({ id: 'cs_1' })
 
       await createSubscriptionCheckoutSession({
@@ -87,7 +87,7 @@ describe('Stripe integration', () => {
       })
 
       const callArgs = mockCheckoutSessionsCreate.mock.calls[0][0]
-      expect(callArgs.subscription_data.trial_period_days).toBe(14)
+      expect(callArgs.subscription_data.trial_period_days).toBe(3)
     })
 
     it('propagates stripe API errors', async () => {

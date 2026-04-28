@@ -90,7 +90,7 @@ const RELEASES: Release[] = [
     items: [
       { type: 'feat', text: 'Marketing site: homepage, pricing, docs hub, and download page' },
       { type: 'feat', text: 'Clerk authentication: email/password, Google OAuth, Discord OAuth' },
-      { type: 'feat', text: 'Stripe subscriptions: Pro and Studio plans with 14-day free trial' },
+      { type: 'feat', text: 'Stripe subscriptions: Pro and Studio plans with 3-day free trial' },
       { type: 'feat', text: 'Basic AI chat: single-agent Luau script generation (Claude 3.5 Sonnet)' },
       { type: 'feat', text: 'Token balance widget and usage dashboard' },
       { type: 'feat', text: 'Onboarding flow: 5-step wizard with demo mode for unauthenticated users' },
