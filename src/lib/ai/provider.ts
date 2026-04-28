@@ -17,6 +17,7 @@ import { callOpenRouter, selectBestModel, estimateBuildComplexity } from './open
 import { isPaidModelsEnabled } from '@/lib/spending-guard'
 import { getNextKey, reportRateLimit } from './key-rotator'
 import { getKnowledgeForGameType, KNOWLEDGE_SCRIPTING, KNOWLEDGE_BALANCE } from './deep-game-knowledge'
+import { getAdvancedBuildingKnowledge, getAdvancedScriptingKnowledge, getExploitPreventionKnowledge, getVisualEffectsKnowledge, getSoundDesignKnowledge } from './advanced-roblox-knowledge'
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system'
@@ -569,6 +570,37 @@ export async function callAI(
   } else if (lowerMsg.includes('script') || lowerMsg.includes('luau') || lowerMsg.includes('code')) {
     // For general scripting requests, inject scripting patterns
     enrichedPrompt += `\n\n--- SCRIPTING PATTERNS ---\n${KNOWLEDGE_SCRIPTING.slice(0, 2000)}\n${KNOWLEDGE_BALANCE.slice(0, 1000)}\n--- END PATTERNS ---`
+  }
+
+  // Inject advanced knowledge for complex/professional builds
+  const advancedKeywords = ['professional', 'advanced', 'detailed', 'realistic', 'complex',
+    'front page', 'high quality', 'showcase', 'constraint', 'hinge', 'spring', 'weld',
+    'particle', 'beam', 'trail', 'effect', 'exploit', 'anti-cheat', 'security',
+    'datastore', 'session lock', 'state machine', 'module', 'architecture',
+    'performance', 'optimize', 'streaming', 'spatial', 'sound design', 'audio',
+    'footstep', 'ambient', 'monetize', 'gamepass', 'developer product', 'robux',
+    'mesh', 'union', 'cframe', 'terrain sculpt', 'lighting', 'atmosphere']
+  const isAdvanced = advancedKeywords.some(kw => lowerMsg.includes(kw))
+  if (isAdvanced) {
+    // Pick the most relevant advanced section based on what the user asked about
+    let advSection = ''
+    if (['build', 'house', 'castle', 'tower', 'bridge', 'wall', 'roof', 'mesh', 'union', 'cframe', 'terrain'].some(k => lowerMsg.includes(k))) {
+      advSection = getAdvancedBuildingKnowledge().slice(0, 3000)
+    } else if (['script', 'module', 'service', 'datastore', 'state machine', 'architect', 'session'].some(k => lowerMsg.includes(k))) {
+      advSection = getAdvancedScriptingKnowledge().slice(0, 3000)
+    } else if (['exploit', 'anti-cheat', 'security', 'hack', 'remote spam'].some(k => lowerMsg.includes(k))) {
+      advSection = getExploitPreventionKnowledge().slice(0, 3000)
+    } else if (['particle', 'beam', 'trail', 'effect', 'vfx', 'camera'].some(k => lowerMsg.includes(k))) {
+      advSection = getVisualEffectsKnowledge().slice(0, 3000)
+    } else if (['sound', 'audio', 'music', 'footstep', 'ambient'].some(k => lowerMsg.includes(k))) {
+      advSection = getSoundDesignKnowledge().slice(0, 3000)
+    } else {
+      // General advanced request — give a mix
+      advSection = getAdvancedBuildingKnowledge().slice(0, 1500) + '\n' + getAdvancedScriptingKnowledge().slice(0, 1500)
+    }
+    if (advSection) {
+      enrichedPrompt += `\n\n--- ADVANCED ROBLOX KNOWLEDGE ---\n${advSection}\n--- END ADVANCED KNOWLEDGE ---`
+    }
   }
 
   // Try Gemini direct first (fastest, free tier)

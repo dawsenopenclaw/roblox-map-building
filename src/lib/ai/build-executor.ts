@@ -23,6 +23,15 @@ import { serverEnv } from '@/lib/env'
 import type { BuildPlan, BuildTask, BuildTaskType } from './build-planner'
 import { DEEP_BUILDING_KNOWLEDGE } from './deep-building-knowledge'
 import {
+  getAdvancedBuildingKnowledge,
+  getAdvancedScriptingKnowledge,
+  getExploitPreventionKnowledge,
+  getPerformanceKnowledge,
+  getVisualEffectsKnowledge,
+  getSoundDesignKnowledge,
+  getMonetizationKnowledge,
+} from './advanced-roblox-knowledge'
+import {
   economySystem,
   tycoonDropper,
   npcDialogSystem,
@@ -886,7 +895,23 @@ This task is chunk ${chunkIndex ?? 0} of a larger build called "${parentName}".
     ? `\n\n--- DEEP GAME DESIGN KNOWLEDGE ---\n${getKnowledgeForTaskType(task.type)}\n--- END GAME DESIGN KNOWLEDGE ---\n`
     : ''
 
-  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + chunkParentInstructions + buildingKnowledgeChunk + gameDesignKnowledge +
+  // Inject advanced Roblox knowledge — section matched to task type for maximum relevance
+  let advancedKnowledge = ''
+  if (['building', 'terrain', 'prop'].includes(task.type)) {
+    advancedKnowledge = `\n\n--- ADVANCED ROBLOX TECHNIQUES ---\n${getAdvancedBuildingKnowledge()}\n--- END ADVANCED TECHNIQUES ---\n`
+  } else if (['script', 'economy'].includes(task.type)) {
+    advancedKnowledge = `\n\n--- ADVANCED SCRIPTING ARCHITECTURE ---\n${getAdvancedScriptingKnowledge()}\n${getExploitPreventionKnowledge()}\n--- END ADVANCED ARCHITECTURE ---\n`
+  } else if (task.type === 'npc') {
+    advancedKnowledge = `\n\n--- ADVANCED NPC TECHNIQUES ---\n${getAdvancedScriptingKnowledge().slice(0, 2000)}\n${getPerformanceKnowledge().slice(0, 1500)}\n--- END ADVANCED NPC ---\n`
+  } else if (task.type === 'lighting') {
+    advancedKnowledge = `\n\n--- ADVANCED VISUAL TECHNIQUES ---\n${getVisualEffectsKnowledge()}\n--- END ADVANCED VISUAL ---\n`
+  } else if (task.type === 'audio') {
+    advancedKnowledge = `\n\n--- ADVANCED SOUND DESIGN ---\n${getSoundDesignKnowledge()}\n--- END ADVANCED SOUND ---\n`
+  } else if (task.type === 'ui') {
+    advancedKnowledge = `\n\n--- ADVANCED UI + MONETIZATION ---\n${getMonetizationKnowledge()}\n${getPerformanceKnowledge().slice(0, 1500)}\n--- END ADVANCED UI ---\n`
+  }
+
+  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] + chunkParentInstructions + buildingKnowledgeChunk + gameDesignKnowledge + advancedKnowledge +
     `\n\nCRITICAL RULES:
 - Output ONLY valid Luau code. No JavaScript, no Python, no TypeScript.
 - Use game:GetService("ServiceName") not game.ServiceName
