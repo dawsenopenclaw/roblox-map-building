@@ -305,6 +305,9 @@ const RE_PLACE_ASSET = /placeAsset\(\s*(\d+)\s*,\s*((?:[^,()]|\([^)]*\))+)\s*,\s
  *  for genuinely novel constructs the translator can't handle. */
 const TEMPLATE_HELPER_PATTERNS = [
   /\bfunction\s+P\b/,           // function P(name, cf, size, mat, col, parent)
+  /\bfunction\s+Cyl\b/,         // function Cyl(parent, name, ...) — boilerplate cylinder helper
+  /\bfunction\s+Ball\b/,        // function Ball(parent, name, ...) — boilerplate ball helper
+  /\bfunction\s+W\b/,           // function W(parent, name, ...) — boilerplate wedge helper
   /\bfunction\s+getFolder\b/,   // function getFolder(name)
   /\bfunction\s+vc\b/,          // function vc(base, variance)
   /\bpcall\s*\(\s*function\b/,  // pcall(function() -- MAIN LOGIC wrapper
@@ -329,6 +332,8 @@ const TEMPLATE_HELPER_PATTERNS = [
   /\b\w+:IsA\b/,                // type checking in helpers
   /\b\w+:Raycast\b/,            // workspace:Raycast — used in ground detection
   /\b\w+\.Position\.Y\b/,       // reading position — not a translatable line
+  /\bif\s+not\s+rid\b/,         // BOILERPLATE_TOP: `if not rid then warn("Recording failed") return end`
+  /\bif\s+m\.PrimaryPart\b/,    // BOILERPLATE_BOT: `if m.PrimaryPart == nil and ...`
 ]
 
 const UNTRANSLATABLE_PATTERNS = [
@@ -660,8 +665,11 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
   // Pass 1: collect all Instance.new declarations
   for (const line of lines) {
     // Skip function definition bodies — e.g. `local function P(n,cf,...) local p=Instance.new("Part") ...`
-    // These define helper functions, not actual part creation calls
+    // These define helper functions, not actual part creation calls.
+    // Also skip function body continuation lines that assign to parameter variables
+    // (e.g. `local pt=Instance.new("Part") pt.Name=n pt.Size=s ...` where n/s are params)
     if (/\bfunction\s+\w+\s*\(/.test(line)) continue
+    if (/\.\bName\s*=\s*n\b/.test(line)) continue  // pt.Name=n — helper body pattern
 
     const m = RE_INSTANCE_NEW.exec(line)
     if (!m) continue
@@ -874,7 +882,101 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
     }
   }
 
-  // Pass 1b3: detect Light() helper calls — Light(parentPart, brightness, range, R, G, B)
+  // Pass 1b3: detect BOILERPLATE-format P/Cyl/Ball/W calls used by instant templates.
+  // Format: P(parent, "name", Vector3.new(size), pos_expr, Color3.fromRGB(r,g,b), "Material")
+  //         Cyl(parent, "name", Vector3.new(size), pos_expr, Color3.fromRGB(r,g,b), "Material")
+  //         Ball(parent, "name", Vector3.new(size), pos_expr, Color3.fromRGB(r,g,b), "Material")
+  //         W(parent, "name", Vector3.new(size), pos_expr, Color3.fromRGB(r,g,b), angle)
+  // These differ from OLD/NEW formats: parent is first arg, material is a quoted string.
+  // Position arg pattern: matches `sp+Vector3.new(x,y,z)` or `Vector3.new(x,y,z)` or any expr with parens
+  const POS_PAT = '((?:[^,()]|\\([^)]*\\))+)'
+  const RE_BOILERPLATE_P = new RegExp(`(?:local\\s+\\w+\\s*=\\s*)?P\\(\\s*\\w+\\s*,\\s*["']([^"']+)["']\\s*,\\s*(Vector3\\.new\\([^)]+\\))\\s*,\\s*${POS_PAT}\\s*,\\s*(Color3\\.(?:fromRGB|new)\\([^)]+\\))\\s*,\\s*["'](\\w+)["']\\s*\\)`)
+  const RE_BOILERPLATE_CYL = new RegExp(`(?:local\\s+\\w+\\s*=\\s*)?Cyl\\(\\s*\\w+\\s*,\\s*["']([^"']+)["']\\s*,\\s*(Vector3\\.new\\([^)]+\\))\\s*,\\s*${POS_PAT}\\s*,\\s*(Color3\\.(?:fromRGB|new)\\([^)]+\\))\\s*,\\s*["'](\\w+)["']\\s*\\)`)
+  const RE_BOILERPLATE_BALL = new RegExp(`(?:local\\s+\\w+\\s*=\\s*)?Ball\\(\\s*\\w+\\s*,\\s*["']([^"']+)["']\\s*,\\s*(Vector3\\.new\\([^)]+\\))\\s*,\\s*${POS_PAT}\\s*,\\s*(Color3\\.(?:fromRGB|new)\\([^)]+\\))\\s*,\\s*["'](\\w+)["']\\s*\\)`)
+  const RE_BOILERPLATE_W = new RegExp(`(?:local\\s+\\w+\\s*=\\s*)?W\\(\\s*\\w+\\s*,\\s*["']([^"']+)["']\\s*,\\s*(Vector3\\.new\\([^)]+\\))\\s*,\\s*${POS_PAT}\\s*,\\s*(Color3\\.(?:fromRGB|new)\\([^)]+\\))\\s*,\\s*(-?\\d+(?:\\.\\d+)?|nil)\\s*\\)`)
+
+  for (const line of lines) {
+    if (/\bfunction\s+\w+\s*\(/.test(line)) continue
+
+    // P(parent, "name", size, pos, color, "Material")
+    const pm = RE_BOILERPLATE_P.exec(line)
+    if (pm) {
+      const size = parseVector3(pm[2]) ?? { x: 4, y: 1.2, z: 2 }
+      const posV3 = RE_VECTOR3.exec(pm[3])
+      const position = posV3 ? { x: parseFloat(posV3[1]), y: parseFloat(posV3[2]), z: parseFloat(posV3[3]) } : { x: 0, y: 0, z: 0 }
+      const color = parseColor(pm[4]) ?? { r: 163, g: 162, b: 165 }
+      commands.push({
+        type: 'create_part',
+        name: pm[1],
+        position, size, color,
+        material: pm[5],
+        anchored: true,
+        parentName: defaultParent,
+      })
+      continue
+    }
+
+    // Cyl(parent, "name", size, pos, color, "Material")
+    const cm2 = RE_BOILERPLATE_CYL.exec(line)
+    if (cm2) {
+      const size = parseVector3(cm2[2]) ?? { x: 4, y: 4, z: 4 }
+      const posV3 = RE_VECTOR3.exec(cm2[3])
+      const position = posV3 ? { x: parseFloat(posV3[1]), y: parseFloat(posV3[2]), z: parseFloat(posV3[3]) } : { x: 0, y: 0, z: 0 }
+      const color = parseColor(cm2[4]) ?? { r: 163, g: 162, b: 165 }
+      commands.push({
+        type: 'create_part',
+        name: cm2[1],
+        position, size, color,
+        material: cm2[5],
+        anchored: true,
+        parentName: defaultParent,
+        shape: 'Cylinder',
+      } as CreatePartCommand)
+      continue
+    }
+
+    // Ball(parent, "name", size, pos, color, "Material")
+    const bm2 = RE_BOILERPLATE_BALL.exec(line)
+    if (bm2) {
+      const size = parseVector3(bm2[2]) ?? { x: 4, y: 4, z: 4 }
+      const posV3 = RE_VECTOR3.exec(bm2[3])
+      const position = posV3 ? { x: parseFloat(posV3[1]), y: parseFloat(posV3[2]), z: parseFloat(posV3[3]) } : { x: 0, y: 0, z: 0 }
+      const color = parseColor(bm2[4]) ?? { r: 163, g: 162, b: 165 }
+      commands.push({
+        type: 'create_part',
+        name: bm2[1],
+        position, size, color,
+        material: bm2[5],
+        anchored: true,
+        parentName: defaultParent,
+        shape: 'Ball',
+      } as CreatePartCommand)
+      continue
+    }
+
+    // W(parent, "name", size, pos, color, angle)
+    const wm2 = RE_BOILERPLATE_W.exec(line)
+    if (wm2) {
+      const size = parseVector3(wm2[2]) ?? { x: 4, y: 1.2, z: 2 }
+      const posV3 = RE_VECTOR3.exec(wm2[3])
+      const position = posV3 ? { x: parseFloat(posV3[1]), y: parseFloat(posV3[2]), z: parseFloat(posV3[3]) } : { x: 0, y: 0, z: 0 }
+      const color = parseColor(wm2[4]) ?? { r: 163, g: 162, b: 165 }
+      const rotY = wm2[5] !== 'nil' ? parseFloat(wm2[5]) : undefined
+      commands.push({
+        type: 'create_part',
+        name: wm2[1],
+        position, size, color,
+        material: 'Slate', // W() hardcodes Slate in boilerplate
+        anchored: true,
+        parentName: defaultParent,
+        shape: 'Wedge',
+        rotationY: rotY,
+      } as CreatePartCommand)
+      continue
+    }
+  }
+
+  // Pass 1b4: detect Light() helper calls — Light(parentPart, brightness, range, R, G, B)
   const RE_LIGHT = /Light\(\s*(\w+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/
   for (const line of lines) {
     const lm = RE_LIGHT.exec(line)
