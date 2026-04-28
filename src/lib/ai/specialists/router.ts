@@ -52,7 +52,7 @@ export async function findSpecialist(userMessage: string): Promise<Specialist | 
  */
 export async function findSpecialists(userMessage: string, maxCount: number = 3): Promise<Specialist[]> {
   // Don't activate specialists for very short messages (greetings, questions)
-  if (userMessage.trim().split(/\s+/).length < 3) return []
+  if (userMessage.trim().split(/\s+/).length < 2) return []
 
   const index = await getIndex()
   const words = userMessage.toLowerCase().replace(/[^a-z0-9\s-]/g, '').split(/\s+/)
@@ -76,7 +76,7 @@ export async function findSpecialists(userMessage: string, maxCount: number = 3)
       }
     }
 
-    if (score >= 2) {
+    if (score >= 1) {
       scored.push({ specialist, score })
     }
   }

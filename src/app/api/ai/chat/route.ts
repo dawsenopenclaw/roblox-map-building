@@ -8424,11 +8424,15 @@ ${effectiveInstruction}`
           if (qualityResult.source === 'llm') {
             finalVerificationScore = Math.round(finalVerificationScore * 0.7 + qualityResult.total * 0.3)
           }
-          // If quality is terrible and we haven't retried too much, discard
-          // Only discard at truly broken scores (< 10) — old threshold 15 was too aggressive
+          // If quality is terrible, discard outright
           if (qualityResult.total < 10 && qualityResult.source === 'llm') {
             console.warn(`[QualityScore] model=${model} score=${qualityResult.total} critically low — discarding`)
             luauCode = null
+          }
+          // If shouldRetry is true (total < 65) and we haven't retried yet, flag for quality floor retry
+          if (qualityResult.shouldRetry && !qualityRetried && luauCode) {
+            console.warn(`[QualityScore] model=${model} score=${qualityResult.total} — shouldRetry=true, forcing quality floor retry`)
+            finalVerificationScore = Math.min(finalVerificationScore, 39) // Force quality floor retry below
           }
         } catch (qErr) {
           console.warn('[QualityScore] Non-blocking error:', qErr instanceof Error ? qErr.message : qErr)

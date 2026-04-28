@@ -420,9 +420,9 @@ export function auditBuild(
 
   // Pass/fail decision
   const passed =
-    features.parts >= requirements.minParts * 0.7 && // Allow 30% grace on parts
+    features.parts >= requirements.minParts * 0.9 && // Allow 10% grace on parts
     missingRequirements.length === 0 &&
-    missingFeatures.length <= claims.length * 0.3 && // Allow 30% unmatched claims
+    missingFeatures.length <= claims.length * 0.1 && // Allow 10% unmatched claims
     detailScore >= 40
 
   return {

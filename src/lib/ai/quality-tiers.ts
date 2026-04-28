@@ -35,8 +35,8 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
   starter: {
     name: 'Starter',
     label: 'Clean & Simple',
-    minParts: 15,
-    maxParts: 40,
+    minParts: 20,
+    maxParts: 120,
     minLights: 1,
     minInteractive: 0,
     minColors: 3,
@@ -46,7 +46,7 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
     requiresScriptedElements: false,
     requiresCinematicLighting: false,
     promptModifier: `QUALITY TIER: STARTER — Clean, simple, functional.
-- 15-40 parts. Focus on correct proportions and clean geometry.
+- 20-120 parts. Focus on correct proportions and clean geometry.
 - Use 3+ different colors with vc() variation.
 - Roofs MUST use W() wedge helper, not flat Parts.
 - At least 1 PointLight for atmosphere.
@@ -56,8 +56,8 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
   builder: {
     name: 'Builder',
     label: 'Detailed & Polished',
-    minParts: 25,
-    maxParts: 55,
+    minParts: 35,
+    maxParts: 200,
     minLights: 3,
     minInteractive: 1,
     minColors: 5,
@@ -67,7 +67,7 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
     requiresScriptedElements: false,
     requiresCinematicLighting: false,
     promptModifier: `QUALITY TIER: BUILDER — Detailed with character.
-- 25-55 parts. Every surface needs thought — no plain boxes.
+- 35-200 parts. Every surface needs thought — no plain boxes.
 - INTERIORS ARE MANDATORY: furniture, counters, shelves, rugs, wall art.
 - 3+ PointLights with warm tones (255,200,140) for cozy atmosphere.
 - At least 1 interactive element: ProximityPrompt on doors, or ClickDetector on something.
@@ -79,8 +79,8 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
   pro: {
     name: 'Pro',
     label: 'Production Quality',
-    minParts: 35,
-    maxParts: 65,
+    minParts: 50,
+    maxParts: 400,
     minLights: 5,
     minInteractive: 3,
     minColors: 8,
@@ -109,8 +109,8 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
   master: {
     name: 'Master',
     label: 'Showcase Quality',
-    minParts: 50,
-    maxParts: 75,
+    minParts: 80,
+    maxParts: 600,
     minLights: 8,
     minInteractive: 5,
     minColors: 10,
@@ -120,7 +120,7 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
     requiresScriptedElements: true,
     requiresCinematicLighting: true,
     promptModifier: `QUALITY TIER: MASTER — Showcase, award-winning quality.
-- 50-75 parts. Every single part is intentional and detailed.
+- 80-600 parts. Every single part is intentional and detailed.
 - SCRIPTED ELEMENTS: doors that TweenService open/close with sound, lights that flicker (randomized Brightness/Range in loop), NPCs with ProximityPrompt dialogue.
 - RICH INTERIORS: every room furnished with 5+ props. Kitchen has appliances, bedroom has bedside tables + lamps + books.
 - 8+ light sources with purposeful placement — accent PointLights, task SpotLights, warm ambient bounce lights (Brightness 0.3, Range 50+ behind walls).
@@ -139,8 +139,8 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
   legendary: {
     name: 'Legendary',
     label: 'God Tier',
-    minParts: 60,
-    maxParts: 80,
+    minParts: 100,
+    maxParts: 1000,
     minLights: 12,
     minInteractive: 8,
     minColors: 12,
@@ -150,7 +150,7 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
     requiresScriptedElements: true,
     requiresCinematicLighting: true,
     promptModifier: `QUALITY TIER: LEGENDARY — This is the ceiling. Museum-quality, fully alive.
-- 60-80 parts, every one of them justified and detailed.
+- 100-1000 parts, every one of them justified and detailed.
 - FULLY SCRIPTED: doors open with TweenService + Sound. Lights flicker (Brightness oscillation in task.spawn loop). NPCs wander with PathfindingService. Buttons trigger events. Signs display dynamic text via SurfaceGui.
 - IMMERSIVE AUDIO: ambient Sound instances everywhere — wind, birds, water, fire crackling.
 - PARTICLE MASTERY: Smoke with NumberSequence transparency curves, Fire with size variation, ParticleEmitter for dust motes (Rate=3, lifetime=12, transparency 0.6→1), embers (Rate=5, upward velocity, orange→red ColorSequence), fog wisps (Rate=1, Size=10+, slow).
