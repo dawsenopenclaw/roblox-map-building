@@ -1,6 +1,11 @@
 // ─── Referral System ──────────────────────────────────────────────────────────
-// Unique codes, chain tracking, 20% lifetime commissions, milestone rewards,
+// Unique codes, chain tracking, one-time flat commissions, milestone rewards,
 // and leaderboard logic.
+//
+// Commission model (one-time per signup):
+//   - Any referred signup: $20 flat to affiliate
+//   - If referred user subscribes to $25/mo Builder plan: $12.50 to affiliate
+//     (half goes to affiliate, half kept for taxes)
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -34,9 +39,9 @@ export type CommissionEvent = {
   id: string
   referrerId: string
   referredUserId: string
-  type: 'subscription_payment' | 'token_purchase' | 'marketplace_sale'
+  type: 'signup' | 'builder_plan_signup'
   grossAmountCents: number
-  commissionCents: number        // 20% of gross
+  commissionCents: number        // $20 flat or $12.50 for Builder plan
   createdAt: Date
   paid: boolean
 }
@@ -141,21 +146,39 @@ export function buildReferralLink(code: string, baseUrl = 'https://forjegames.co
 }
 
 // ─── Commission calculation ───────────────────────────────────────────────────
+// One-time flat commissions — NOT recurring.
 
-export const COMMISSION_RATE = 0.20 // 20% lifetime
+/** $20 flat commission per referred signup (any plan, including free). In cents. */
+export const SIGNUP_COMMISSION_CENTS = 2000
 
-export function calculateCommission(grossAmountCents: number): number {
-  return Math.round(grossAmountCents * COMMISSION_RATE)
+/** Commission for Builder plan ($25/mo) referral: affiliate gets half ($12.50). In cents. */
+export const BUILDER_PLAN_COMMISSION_CENTS = 1250
+
+/**
+ * Calculate the one-time affiliate commission for a referral.
+ *
+ * @param planPriceCents - 0 for free signup, or the plan's monthly price in cents
+ * @returns commission in cents
+ *
+ * Rules:
+ *   - Free signup (or any non-Builder plan): $20 flat
+ *   - $25/mo Builder plan: $12.50 (half — other half kept for taxes)
+ */
+export function calculateCommission(planPriceCents: number): number {
+  if (planPriceCents === 2500) {
+    // Builder plan ($25/mo) — affiliate gets half, other half kept for taxes
+    return BUILDER_PLAN_COMMISSION_CENTS
+  }
+  // All other signups (free, Starter, Creator, Pro, Studio) — $20 flat
+  return SIGNUP_COMMISSION_CENTS
 }
 
-export function projectLifetimeCommission(
-  payingReferrals: number,
-  avgMonthlyRevenuePerUser: number, // cents
-  avgRetentionMonths: number,
-): number {
-  return Math.round(
-    payingReferrals * avgMonthlyRevenuePerUser * avgRetentionMonths * COMMISSION_RATE,
-  )
+/**
+ * Project total earnings for an affiliate based on referral count.
+ * Since commissions are one-time, this is simply: referrals x $20.
+ */
+export function projectTotalCommission(totalReferrals: number): number {
+  return totalReferrals * SIGNUP_COMMISSION_CENTS
 }
 
 // ─── Milestone rewards ────────────────────────────────────────────────────────
@@ -284,17 +307,18 @@ export function buildLeaderboard(
 // ─── Demo data ────────────────────────────────────────────────────────────────
 
 export function getDemoLeaderboard(): ReferralLeaderboardEntry[] {
+  // Demo data: $20 per referral signup (one-time)
   return buildLeaderboard([
-    { userId: 'u_01', username: 'BloxStudio_Pro',    avatarInitials: 'BP', totalReferrals: 142, payingReferrals: 118, lifetimeCommissionCents: 423600 },
-    { userId: 'u_02', username: 'DevMaster_Z',       avatarInitials: 'DZ', totalReferrals: 97,  payingReferrals: 84,  lifetimeCommissionCents: 302400 },
-    { userId: 'u_03', username: 'MapBuilder99',      avatarInitials: 'MB', totalReferrals: 73,  payingReferrals: 61,  lifetimeCommissionCents: 219600 },
-    { userId: 'u_04', username: 'ScriptWizard_X',    avatarInitials: 'SW', totalReferrals: 54,  payingReferrals: 47,  lifetimeCommissionCents: 169200 },
-    { userId: 'u_05', username: 'LuauLegend',        avatarInitials: 'LL', totalReferrals: 38,  payingReferrals: 32,  lifetimeCommissionCents: 115200 },
-    { userId: 'u_06', username: 'ForjeGames_Fan',    avatarInitials: 'FG', totalReferrals: 29,  payingReferrals: 25,  lifetimeCommissionCents: 90000  },
-    { userId: 'u_07', username: 'GameDevGuru',       avatarInitials: 'GG', totalReferrals: 21,  payingReferrals: 18,  lifetimeCommissionCents: 64800  },
-    { userId: 'u_08', username: 'StudioArchitect',   avatarInitials: 'SA', totalReferrals: 15,  payingReferrals: 12,  lifetimeCommissionCents: 43200  },
-    { userId: 'u_09', username: 'AssetHunter_7',     avatarInitials: 'AH', totalReferrals: 10,  payingReferrals: 8,   lifetimeCommissionCents: 28800  },
-    { userId: 'u_10', username: 'TemplateKing',      avatarInitials: 'TK', totalReferrals: 7,   payingReferrals: 6,   lifetimeCommissionCents: 21600  },
+    { userId: 'u_01', username: 'BloxStudio_Pro',    avatarInitials: 'BP', totalReferrals: 142, payingReferrals: 118, lifetimeCommissionCents: 284000 },
+    { userId: 'u_02', username: 'DevMaster_Z',       avatarInitials: 'DZ', totalReferrals: 97,  payingReferrals: 84,  lifetimeCommissionCents: 194000 },
+    { userId: 'u_03', username: 'MapBuilder99',      avatarInitials: 'MB', totalReferrals: 73,  payingReferrals: 61,  lifetimeCommissionCents: 146000 },
+    { userId: 'u_04', username: 'ScriptWizard_X',    avatarInitials: 'SW', totalReferrals: 54,  payingReferrals: 47,  lifetimeCommissionCents: 108000 },
+    { userId: 'u_05', username: 'LuauLegend',        avatarInitials: 'LL', totalReferrals: 38,  payingReferrals: 32,  lifetimeCommissionCents: 76000  },
+    { userId: 'u_06', username: 'ForjeGames_Fan',    avatarInitials: 'FG', totalReferrals: 29,  payingReferrals: 25,  lifetimeCommissionCents: 58000  },
+    { userId: 'u_07', username: 'GameDevGuru',       avatarInitials: 'GG', totalReferrals: 21,  payingReferrals: 18,  lifetimeCommissionCents: 42000  },
+    { userId: 'u_08', username: 'StudioArchitect',   avatarInitials: 'SA', totalReferrals: 15,  payingReferrals: 12,  lifetimeCommissionCents: 30000  },
+    { userId: 'u_09', username: 'AssetHunter_7',     avatarInitials: 'AH', totalReferrals: 10,  payingReferrals: 8,   lifetimeCommissionCents: 20000  },
+    { userId: 'u_10', username: 'TemplateKing',      avatarInitials: 'TK', totalReferrals: 7,   payingReferrals: 6,   lifetimeCommissionCents: 14000  },
   ])
 }
 
@@ -305,9 +329,9 @@ export function getDemoCommissionEvents(): CommissionEvent[] {
       id: 'ce_001',
       referrerId: 'u_01',
       referredUserId: 'u_ref_001',
-      type: 'subscription_payment',
-      grossAmountCents: 2999,
-      commissionCents: 599,
+      type: 'signup',
+      grossAmountCents: 0,
+      commissionCents: 2000, // $20 flat
       createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000),
       paid: false,
     },
@@ -315,9 +339,9 @@ export function getDemoCommissionEvents(): CommissionEvent[] {
       id: 'ce_002',
       referrerId: 'u_01',
       referredUserId: 'u_ref_002',
-      type: 'token_purchase',
-      grossAmountCents: 4999,
-      commissionCents: 999,
+      type: 'builder_plan_signup',
+      grossAmountCents: 2500,
+      commissionCents: 1250, // $12.50 (half of $25, other half for taxes)
       createdAt: new Date(now.getTime() - 8 * 60 * 60 * 1000),
       paid: false,
     },
@@ -325,9 +349,9 @@ export function getDemoCommissionEvents(): CommissionEvent[] {
       id: 'ce_003',
       referrerId: 'u_01',
       referredUserId: 'u_ref_003',
-      type: 'marketplace_sale',
-      grossAmountCents: 1499,
-      commissionCents: 299,
+      type: 'signup',
+      grossAmountCents: 0,
+      commissionCents: 2000, // $20 flat
       createdAt: new Date(now.getTime() - 26 * 60 * 60 * 1000),
       paid: true,
     },

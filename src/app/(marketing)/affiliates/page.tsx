@@ -3,9 +3,9 @@ import Link from 'next/link'
 import { createMetadata } from '@/lib/metadata'
 
 export const metadata: Metadata = createMetadata({
-  title: 'Affiliate Program — Earn 25% Recurring Commission',
+  title: 'Affiliate Program — Earn $20 Per Referral',
   description:
-    'Join the ForjeGames affiliate program. Earn 25% recurring commission on every referral. Share your link, get paid monthly. No cap on earnings.',
+    'Join the ForjeGames affiliate program. Earn $20 for every person you refer. One-time payout per signup. No cap on earnings.',
   path: '/affiliates',
   keywords: [
     'ForjeGames affiliate',
@@ -18,8 +18,8 @@ export const metadata: Metadata = createMetadata({
 const BENEFITS = [
   {
     icon: '💰',
-    title: '25% Recurring Commission',
-    desc: 'Earn 25% of every payment your referrals make — not just the first month, every month they stay subscribed.',
+    title: '$20 Per Signup',
+    desc: 'Earn $20 for every person who signs up through your link. One-time payout, no strings attached.',
   },
   {
     icon: '🔗',
@@ -33,8 +33,8 @@ const BENEFITS = [
   },
   {
     icon: '💸',
-    title: 'Monthly Payouts',
-    desc: 'Get paid via PayPal or Stripe every month. No minimum threshold. No earning cap.',
+    title: 'Fast Payouts',
+    desc: 'Get paid via PayPal or Stripe. No minimum threshold. No earning cap.',
   },
   {
     icon: '🎨',
@@ -51,7 +51,7 @@ const BENEFITS = [
 const STEPS = [
   { step: '1', title: 'Sign up', desc: 'Create your ForjeGames account (free). Your referral link is generated automatically.' },
   { step: '2', title: 'Share your link', desc: 'Post your referral link on YouTube, TikTok, Discord, Twitter — anywhere Roblox creators hang out.' },
-  { step: '3', title: 'Earn commission', desc: 'When someone signs up through your link and subscribes, you earn 25% of every payment they make.' },
+  { step: '3', title: 'Get paid', desc: 'When someone signs up through your link, you earn $20. If they subscribe to the Builder plan ($25/mo), you earn $12.50. One-time per signup.' },
 ]
 
 export default function AffiliatesPage() {
@@ -64,11 +64,11 @@ export default function AffiliatesPage() {
         </div>
 
         <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4" style={{ letterSpacing: '-0.03em' }}>
-          Earn <span style={{ color: '#D4AF37' }}>25%</span> on every referral
+          Earn <span style={{ color: '#D4AF37' }}>$20</span> per referral
         </h1>
         <p className="text-lg text-[#6B7699] max-w-2xl mx-auto mb-8">
-          Share ForjeGames with your audience and earn recurring commission on every subscription.
-          No cap on earnings. Paid monthly.
+          Share ForjeGames with your audience. Every signup through your link = $20 in your pocket.
+          One-time payout. No cap on earnings.
         </p>
 
         <div className="flex flex-wrap gap-4 justify-center">
@@ -133,7 +133,7 @@ export default function AffiliatesPage() {
         >
           <h2 className="text-2xl font-bold text-white mb-3">Ready to earn?</h2>
           <p className="text-[#6B7699] text-sm mb-6">
-            Sign up for free, get your referral link, and start earning 25% on every subscription.
+            Sign up for free, get your referral link, and start earning $20 per signup.
           </p>
           <Link
             href="/sign-up"
