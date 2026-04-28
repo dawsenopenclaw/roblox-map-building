@@ -3943,10 +3943,9 @@ function getInstantTemplate(msg: string): InstantTemplate | null {
       response: "Chunky stylized pine — the kind you see dotting the hills in every top Roblox game. Wide triangular tiers stacked up, bright saturated greens, stubby trunk, little grass tufts around the base. Looks clean from any camera angle.\n\nWant a whole pine forest, or mix these with oaks?",
       code: BOILERPLATE_TOP + `
 -- Ground detail: grass patch under tree
-local grass = Cyl(m,"GrassPatch",Vector3.new(0.3,16,16),sp+Vector3.new(0,0.15,0),Color3.fromRGB(70,145,55),"Grass")
+Cyl(m,"GrassPatch",Vector3.new(0.3,16,16),sp+Vector3.new(0,0.15,0),Color3.fromRGB(70,145,55),"Grass")
 -- Shadow disc
-local shadow = Cyl(m,"Shadow",Vector3.new(0.1,14,14),sp+Vector3.new(0,0.05,0),Color3.fromRGB(30,50,25),"Grass")
-shadow.Transparency = 0.45
+Cyl(m,"Shadow",Vector3.new(0.1,14,14),sp+Vector3.new(0,0.05,0),Color3.fromRGB(30,50,25),"Grass")
 -- Stubby trunk
 Cyl(m,"Trunk",Vector3.new(4,4,4),sp+Vector3.new(0,2,0),Color3.fromRGB(101,67,33),"Wood")
 Cyl(m,"TrunkRoot",Vector3.new(1.5,5,5),sp+Vector3.new(0,0.75,0),Color3.fromRGB(85,55,28),"Wood")
@@ -3968,11 +3967,9 @@ Ball(m,"Rock2",Vector3.new(1.2,1,1.3),sp+Vector3.new(-2.5,0.5,3.5),Color3.fromRG
 P(m,"Tuft1",Vector3.new(0.2,1.2,0.2),sp+Vector3.new(4,0.6,1),Color3.fromRGB(60,135,45),"Grass")
 P(m,"Tuft2",Vector3.new(0.15,1,0.15),sp+Vector3.new(-3,0.5,4),Color3.fromRGB(55,125,40),"Grass")
 P(m,"Tuft3",Vector3.new(0.2,1.1,0.2),sp+Vector3.new(2,0.55,-4),Color3.fromRGB(65,140,50),"Grass")
--- Canopy glow
-local gl = Instance.new("PointLight") gl.Range=18 gl.Brightness=0.25 gl.Color=Color3.fromRGB(120,190,100) gl.Parent=m.Tier2
 ` + BOILERPLATE_BOT,
       suggestions: ['Make a pine forest', 'Build a cabin next to it', 'Add snow everywhere'],
-      partCount: 20,
+      partCount: 18,
     }
   }
 
@@ -3984,59 +3981,79 @@ local gl = Instance.new("PointLight") gl.Range=18 gl.Brightness=0.25 gl.Color=Co
       code: BOILERPLATE_TOP + `
 -- Ground base
 P(m,"Ground",Vector3.new(60,0.5,60),sp+Vector3.new(0,0.25,0),Color3.fromRGB(75,140,55),"Grass")
--- Forest: 12 trees
-local trees = {
-  {x=0,z=0,s=1.0,t="oak"},{x=16,z=8,s=0.85,t="pine"},{x=-13,z=6,s=1.1,t="oak"},
-  {x=9,z=-15,s=0.9,t="oak"},{x=-9,z=-11,s=0.7,t="pine"},{x=22,z=-4,s=1.05,t="oak"},
-  {x=-20,z=-3,s=0.8,t="pine"},{x=5,z=20,s=0.95,t="oak"},{x=-6,z=17,s=1.15,t="oak"},
-  {x=19,z=18,s=0.65,t="pine"},{x=-16,z=14,s=0.9,t="oak"},{x=12,z=-20,s=0.75,t="pine"}
-}
-local g = {
-  Color3.fromRGB(50,125,42),Color3.fromRGB(60,138,50),Color3.fromRGB(42,118,38),
-  Color3.fromRGB(72,148,58),Color3.fromRGB(38,112,35),Color3.fromRGB(80,155,62),
-  Color3.fromRGB(55,132,48),Color3.fromRGB(65,142,54)
-}
-for i,td in ipairs(trees) do
-  local b = sp + Vector3.new(td.x, 0, td.z)
-  local s = td.s
-  local c1 = g[(i % #g) + 1]
-  local c2 = g[((i+3) % #g) + 1]
-  local c3 = g[((i+5) % #g) + 1]
-  -- Shadow
-  local sh = Cyl(m,"Sh"..i,Vector3.new(0.1,11*s,11*s),b+Vector3.new(0,0.05,0),Color3.fromRGB(30,50,25),"Grass")
-  sh.Transparency = 0.5
-  -- Trunk
-  Cyl(m,"T"..i,Vector3.new(4*s,3.5*s,3.5*s),b+Vector3.new(0,2*s,0),Color3.fromRGB(101,67,33),"Wood")
-  if td.t == "pine" then
-    Ball(m,"P"..i.."B",Vector3.new(13*s,7*s,13*s),b+Vector3.new(0,5.5*s,0),c1,"LeafyGrass")
-    Ball(m,"P"..i.."M",Vector3.new(9*s,6*s,9*s),b+Vector3.new(0,10*s,0),c2,"LeafyGrass")
-    Ball(m,"P"..i.."T",Vector3.new(5*s,5*s,5*s),b+Vector3.new(0,14*s,0),c3,"LeafyGrass")
-  else
-    -- Puffy oak: MASSIVE canopy relative to trunk
-    Ball(m,"O"..i.."C",Vector3.new(12*s,11*s,12*s),b+Vector3.new(0,7*s,0),c1,"LeafyGrass")
-    Ball(m,"O"..i.."L",Vector3.new(8*s,7*s,8*s),b+Vector3.new(-3*s,6.5*s,2*s),c2,"LeafyGrass")
-    Ball(m,"O"..i.."R",Vector3.new(7*s,7*s,7*s),b+Vector3.new(3*s,6*s,-1*s),c3,"LeafyGrass")
-    Ball(m,"O"..i.."T",Vector3.new(6*s,6*s,6*s),b+Vector3.new(0,10*s,0),c2,"LeafyGrass")
-  end
-end
+-- Tree 1: Oak at (0,0)
+Cyl(m,"T1",Vector3.new(4,3.5,3.5),sp+Vector3.new(0,2,0),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"O1C",Vector3.new(12,11,12),sp+Vector3.new(0,7,0),Color3.fromRGB(50,125,42),"LeafyGrass")
+Ball(m,"O1L",Vector3.new(8,7,8),sp+Vector3.new(-3,6.5,2),Color3.fromRGB(60,138,50),"LeafyGrass")
+Ball(m,"O1R",Vector3.new(7,7,7),sp+Vector3.new(3,6,-1),Color3.fromRGB(72,148,58),"LeafyGrass")
+Ball(m,"O1T",Vector3.new(6,6,6),sp+Vector3.new(0,10,0),Color3.fromRGB(60,138,50),"LeafyGrass")
+-- Tree 2: Pine at (16,8)
+Cyl(m,"T2",Vector3.new(3.4,3,3),sp+Vector3.new(16,1.7,8),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"P2B",Vector3.new(11,6,11),sp+Vector3.new(16,4.7,8),Color3.fromRGB(60,138,50),"LeafyGrass")
+Ball(m,"P2M",Vector3.new(7.6,5.1,7.6),sp+Vector3.new(16,8.5,8),Color3.fromRGB(72,148,58),"LeafyGrass")
+Ball(m,"P2T",Vector3.new(4.2,4.2,4.2),sp+Vector3.new(16,11.9,8),Color3.fromRGB(80,155,62),"LeafyGrass")
+-- Tree 3: Oak at (-13,6)
+Cyl(m,"T3",Vector3.new(4.4,3.8,3.8),sp+Vector3.new(-13,2.2,6),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"O3C",Vector3.new(13.2,12.1,13.2),sp+Vector3.new(-13,7.7,6),Color3.fromRGB(42,118,38),"LeafyGrass")
+Ball(m,"O3L",Vector3.new(8.8,7.7,8.8),sp+Vector3.new(-16.3,7.1,8.2),Color3.fromRGB(72,148,58),"LeafyGrass")
+Ball(m,"O3R",Vector3.new(7.7,7.7,7.7),sp+Vector3.new(-9.7,6.6,4.9),Color3.fromRGB(38,112,35),"LeafyGrass")
+-- Tree 4: Oak at (9,-15)
+Cyl(m,"T4",Vector3.new(3.6,3.2,3.2),sp+Vector3.new(9,1.8,-15),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"O4C",Vector3.new(10.8,9.9,10.8),sp+Vector3.new(9,6.3,-15),Color3.fromRGB(80,155,62),"LeafyGrass")
+Ball(m,"O4L",Vector3.new(7.2,6.3,7.2),sp+Vector3.new(6.3,5.8,-13),Color3.fromRGB(55,132,48),"LeafyGrass")
+Ball(m,"O4R",Vector3.new(6.3,6.3,6.3),sp+Vector3.new(11.7,5.4,-16),Color3.fromRGB(65,142,54),"LeafyGrass")
+-- Tree 5: Pine at (-9,-11)
+Cyl(m,"T5",Vector3.new(2.8,2.4,2.4),sp+Vector3.new(-9,1.4,-11),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"P5B",Vector3.new(9.1,4.9,9.1),sp+Vector3.new(-9,3.8,-11),Color3.fromRGB(38,112,35),"LeafyGrass")
+Ball(m,"P5M",Vector3.new(6.3,4.2,6.3),sp+Vector3.new(-9,7,-11),Color3.fromRGB(55,132,48),"LeafyGrass")
+Ball(m,"P5T",Vector3.new(3.5,3.5,3.5),sp+Vector3.new(-9,9.8,-11),Color3.fromRGB(65,142,54),"LeafyGrass")
+-- Tree 6: Oak at (22,-4)
+Cyl(m,"T6",Vector3.new(4.2,3.7,3.7),sp+Vector3.new(22,2.1,-4),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"O6C",Vector3.new(12.6,11.5,12.6),sp+Vector3.new(22,7.3,-4),Color3.fromRGB(80,155,62),"LeafyGrass")
+Ball(m,"O6L",Vector3.new(8.4,7.3,8.4),sp+Vector3.new(18.8,6.8,-2),Color3.fromRGB(50,125,42),"LeafyGrass")
+-- Tree 7: Pine at (-20,-3)
+Cyl(m,"T7",Vector3.new(3.2,2.8,2.8),sp+Vector3.new(-20,1.6,-3),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"P7B",Vector3.new(10.4,5.6,10.4),sp+Vector3.new(-20,4.4,-3),Color3.fromRGB(42,118,38),"LeafyGrass")
+Ball(m,"P7M",Vector3.new(7.2,4.8,7.2),sp+Vector3.new(-20,8,-3),Color3.fromRGB(55,132,48),"LeafyGrass")
+Ball(m,"P7T",Vector3.new(4,4,4),sp+Vector3.new(-20,11.2,-3),Color3.fromRGB(80,155,62),"LeafyGrass")
+-- Tree 8: Oak at (5,20)
+Cyl(m,"T8",Vector3.new(3.8,3.3,3.3),sp+Vector3.new(5,1.9,20),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"O8C",Vector3.new(11.4,10.4,11.4),sp+Vector3.new(5,6.6,20),Color3.fromRGB(65,142,54),"LeafyGrass")
+Ball(m,"O8L",Vector3.new(7.6,6.6,7.6),sp+Vector3.new(2.1,6.2,21.9),Color3.fromRGB(50,125,42),"LeafyGrass")
+Ball(m,"O8R",Vector3.new(6.6,6.6,6.6),sp+Vector3.new(7.8,5.7,19),Color3.fromRGB(60,138,50),"LeafyGrass")
+-- Tree 9: Oak at (-6,17)
+Cyl(m,"T9",Vector3.new(4.6,4,4),sp+Vector3.new(-6,2.3,17),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"O9C",Vector3.new(13.8,12.6,13.8),sp+Vector3.new(-6,8,17),Color3.fromRGB(42,118,38),"LeafyGrass")
+Ball(m,"O9L",Vector3.new(9.2,8,9.2),sp+Vector3.new(-9.5,7.5,19.3),Color3.fromRGB(60,138,50),"LeafyGrass")
+-- Tree 10: Pine at (19,18)
+Cyl(m,"T10",Vector3.new(2.6,2.3,2.3),sp+Vector3.new(19,1.3,18),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"P10B",Vector3.new(8.4,4.5,8.4),sp+Vector3.new(19,3.6,18),Color3.fromRGB(72,148,58),"LeafyGrass")
+Ball(m,"P10M",Vector3.new(5.8,3.9,5.8),sp+Vector3.new(19,6.5,18),Color3.fromRGB(38,112,35),"LeafyGrass")
+Ball(m,"P10T",Vector3.new(3.2,3.2,3.2),sp+Vector3.new(19,9.1,18),Color3.fromRGB(55,132,48),"LeafyGrass")
+-- Tree 11: Oak at (-16,14)
+Cyl(m,"T11",Vector3.new(3.6,3.2,3.2),sp+Vector3.new(-16,1.8,14),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"O11C",Vector3.new(10.8,9.9,10.8),sp+Vector3.new(-16,6.3,14),Color3.fromRGB(60,138,50),"LeafyGrass")
+Ball(m,"O11L",Vector3.new(7.2,6.3,7.2),sp+Vector3.new(-18.7,5.8,15.8),Color3.fromRGB(42,118,38),"LeafyGrass")
+-- Tree 12: Pine at (12,-20)
+Cyl(m,"T12",Vector3.new(3,2.6,2.6),sp+Vector3.new(12,1.5,-20),Color3.fromRGB(101,67,33),"Wood")
+Ball(m,"P12B",Vector3.new(9.7,5.2,9.7),sp+Vector3.new(12,4.1,-20),Color3.fromRGB(55,132,48),"LeafyGrass")
+Ball(m,"P12M",Vector3.new(6.7,4.5,6.7),sp+Vector3.new(12,7.5,-20),Color3.fromRGB(65,142,54),"LeafyGrass")
+Ball(m,"P12T",Vector3.new(3.7,3.7,3.7),sp+Vector3.new(12,10.5,-20),Color3.fromRGB(80,155,62),"LeafyGrass")
 -- Scattered rocks
-for i=1,8 do
-  local rx = math.random(-25,25)
-  local rz = math.random(-25,25)
-  local rs = 0.8 + math.random() * 1.2
-  Ball(m,"Rock"..i,Vector3.new(rs,rs*0.7,rs),sp+Vector3.new(rx,rs*0.35,rz),Color3.fromRGB(120+math.random(-15,15),115+math.random(-15,15),105+math.random(-15,15)),"Granite")
-end
+Ball(m,"Rock1",Vector3.new(1.5,1,1.5),sp+Vector3.new(-15,0.5,5),Color3.fromRGB(125,120,108),"Granite")
+Ball(m,"Rock2",Vector3.new(1.8,1.2,1.8),sp+Vector3.new(10,0.6,-8),Color3.fromRGB(118,112,100),"Granite")
+Ball(m,"Rock3",Vector3.new(1.2,0.8,1.2),sp+Vector3.new(20,0.4,15),Color3.fromRGB(130,125,115),"Granite")
+Ball(m,"Rock4",Vector3.new(1.6,1.1,1.6),sp+Vector3.new(-5,0.5,-20),Color3.fromRGB(110,108,98),"Granite")
+Ball(m,"Rock5",Vector3.new(1.3,0.9,1.3),sp+Vector3.new(-22,0.4,18),Color3.fromRGB(122,118,108),"Granite")
 -- Grass tufts
-for i=1,12 do
-  local gx = math.random(-28,28)
-  local gz = math.random(-28,28)
-  P(m,"Grass"..i,Vector3.new(0.15+math.random()*0.1, 0.8+math.random()*0.6, 0.15),sp+Vector3.new(gx,0.5,gz),Color3.fromRGB(50+math.random(0,30),120+math.random(0,30),40+math.random(0,20)),"Grass")
-end
--- Soft ambient light
-local amb = Instance.new("PointLight") amb.Range=40 amb.Brightness=0.15 amb.Color=Color3.fromRGB(140,200,120) amb.Parent=m.Ground
+P(m,"Grass1",Vector3.new(0.2,1,0.2),sp+Vector3.new(-8,0.5,12),Color3.fromRGB(55,130,42),"Grass")
+P(m,"Grass2",Vector3.new(0.2,1.2,0.2),sp+Vector3.new(14,0.6,-12),Color3.fromRGB(65,140,50),"Grass")
+P(m,"Grass3",Vector3.new(0.15,0.9,0.15),sp+Vector3.new(-18,0.45,-15),Color3.fromRGB(50,125,40),"Grass")
+P(m,"Grass4",Vector3.new(0.2,1.1,0.2),sp+Vector3.new(8,0.55,22),Color3.fromRGB(70,145,55),"Grass")
+P(m,"Grass5",Vector3.new(0.15,1,0.15),sp+Vector3.new(-24,0.5,0),Color3.fromRGB(60,135,45),"Grass")
 ` + BOILERPLATE_BOT,
       suggestions: ['Add a river through the forest', 'Build a cabin clearing', 'Add a campfire with seating'],
-      partCount: 100,
+      partCount: 75,
     }
   }
 
@@ -4047,23 +4064,19 @@ local amb = Instance.new("PointLight") amb.Range=40 amb.Brightness=0.15 amb.Colo
       response: "Here's a proper stylized oak — the kind you see in Pet Sim and Adopt Me. Short chunky trunk, thick branch arms angled out naturally, and a MASSIVE puffy canopy of 12 overlapping spheres in different greens that completely dominates the silhouette. Grass patch underneath, little rocks at the base, shadow disc to ground it. Looks right from every angle.\n\nWant me to make a whole forest, or build a park scene around it?",
       code: BOILERPLATE_TOP + `
 -- Ground detail: circular grass patch
-local grass = Cyl(m,"GrassPatch",Vector3.new(0.3,18,18),sp+Vector3.new(0,0.15,0),Color3.fromRGB(70,145,55),"Grass")
+Cyl(m,"GrassPatch",Vector3.new(0.3,18,18),sp+Vector3.new(0,0.15,0),Color3.fromRGB(70,145,55),"Grass")
 -- Shadow disc
-local shadow = Cyl(m,"Shadow",Vector3.new(0.1,16,16),sp+Vector3.new(0,0.05,0),Color3.fromRGB(30,50,25),"Grass")
-shadow.Transparency = 0.45
+Cyl(m,"Shadow",Vector3.new(0.1,16,16),sp+Vector3.new(0,0.05,0),Color3.fromRGB(30,50,25),"Grass")
 -- Stubby thick trunk (short and wide, NOT a tall pole)
 Cyl(m,"Trunk",Vector3.new(5,4.5,4.5),sp+Vector3.new(0,2.5,0),Color3.fromRGB(101,67,33),"Wood")
 -- Flared base (wider at ground)
 Cyl(m,"TrunkBase",Vector3.new(1.5,5.5,5.5),sp+Vector3.new(0,0.75,0),Color3.fromRGB(85,55,28),"Wood")
 -- Bark detail ring
 Cyl(m,"BarkRing",Vector3.new(0.6,4.8,4.8),sp+Vector3.new(0,2,0),Color3.fromRGB(75,48,22),"Wood")
--- Branch arms (thick, angled naturally)
-local b1=Cyl(m,"Branch1",Vector3.new(5,2,2),sp+Vector3.new(3,5,0),Color3.fromRGB(95,63,32),"Wood")
-b1.CFrame=CFrame.new(sp+Vector3.new(3,5,0))*CFrame.Angles(0,0,math.rad(50))
-local b2=Cyl(m,"Branch2",Vector3.new(4.5,1.8,1.8),sp+Vector3.new(-2.5,4.5,2),Color3.fromRGB(90,58,28),"Wood")
-b2.CFrame=CFrame.new(sp+Vector3.new(-2.5,4.5,2))*CFrame.Angles(0,math.rad(35),math.rad(-55))
-local b3=Cyl(m,"Branch3",Vector3.new(4,1.6,1.6),sp+Vector3.new(0.5,5,-2.5),Color3.fromRGB(92,60,30),"Wood")
-b3.CFrame=CFrame.new(sp+Vector3.new(0.5,5,-2.5))*CFrame.Angles(math.rad(50),math.rad(-20),0)
+-- Branch arms (positioned at angles)
+Cyl(m,"Branch1",Vector3.new(5,2,2),sp+Vector3.new(3,5,0),Color3.fromRGB(95,63,32),"Wood")
+Cyl(m,"Branch2",Vector3.new(4.5,1.8,1.8),sp+Vector3.new(-2.5,4.5,2),Color3.fromRGB(90,58,28),"Wood")
+Cyl(m,"Branch3",Vector3.new(4,1.6,1.6),sp+Vector3.new(0.5,5,-2.5),Color3.fromRGB(92,60,30),"Wood")
 -- ═══ MASSIVE CANOPY — 12 balls, all different greens, dominates the tree ═══
 -- Core (biggest — this IS the tree's shape)
 Ball(m,"C_Core",Vector3.new(14,13,14),sp+Vector3.new(0,9,0),Color3.fromRGB(58,135,48),"LeafyGrass")
@@ -4096,15 +4109,12 @@ P(m,"Tuft2",Vector3.new(0.15,1.1,0.15),sp+Vector3.new(-4,0.55,5),Color3.fromRGB(
 P(m,"Tuft3",Vector3.new(0.2,1.2,0.2),sp+Vector3.new(3,0.6,-5),Color3.fromRGB(65,142,50),"Grass")
 P(m,"Tuft4",Vector3.new(0.15,0.9,0.15),sp+Vector3.new(-5.5,0.45,-2),Color3.fromRGB(55,132,42),"Grass")
 -- Small flowers (tiny colored dots in the grass)
-Ball(m,"Flower1",Vector3.new(0.6,0.6,0.6),sp+Vector3.new(6,0.8,2),Color3.fromRGB(240,220,50),"SmoothPlastic")
-Ball(m,"Flower2",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(-4.5,0.7,-4),Color3.fromRGB(220,80,80),"SmoothPlastic")
-Ball(m,"Flower3",Vector3.new(0.55,0.55,0.55),sp+Vector3.new(3,0.75,5.5),Color3.fromRGB(180,100,220),"SmoothPlastic")
--- Canopy glow (beautiful in Future lighting)
-local glow = Instance.new("PointLight") glow.Range=22 glow.Brightness=0.3 glow.Color=Color3.fromRGB(130,195,110) glow.Parent=m.C_Core
-local glow2 = Instance.new("PointLight") glow2.Range=12 glow2.Brightness=0.15 glow2.Color=Color3.fromRGB(140,200,120) glow2.Parent=m.C_Top
+Ball(m,"Flower1",Vector3.new(0.6,0.6,0.6),sp+Vector3.new(6,0.8,2),Color3.fromRGB(240,220,50),"Neon")
+Ball(m,"Flower2",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(-4.5,0.7,-4),Color3.fromRGB(220,80,80),"Neon")
+Ball(m,"Flower3",Vector3.new(0.55,0.55,0.55),sp+Vector3.new(3,0.75,5.5),Color3.fromRGB(180,100,220),"Neon")
 ` + BOILERPLATE_BOT,
       suggestions: ['Make a forest of these', 'Build a park scene', 'Make an autumn version'],
-      partCount: 42,
+      partCount: 38,
     }
   }
 
@@ -4129,9 +4139,6 @@ Cyl(m,"DoorHandle",Vector3.new(0.3,0.3,0.3),sp+Vector3.new(1.2,5,10.4),Color3.fr
 -- Windows
 P(m,"Window1",Vector3.new(4,4,0.2),sp+Vector3.new(-6,7,10.2),Color3.fromRGB(200,220,255),"Glass")
 P(m,"Window2",Vector3.new(4,4,0.2),sp+Vector3.new(6,7,10.2),Color3.fromRGB(200,220,255),"Glass")
--- Window lights
-local l1=Instance.new("SpotLight") l1.Range=20 l1.Brightness=0.8 l1.Color=Color3.fromRGB(255,240,200) l1.Face=Enum.NormalId.Front l1.Parent=m.Window1
-local l2=Instance.new("SpotLight") l2.Range=20 l2.Brightness=0.8 l2.Color=Color3.fromRGB(255,240,200) l2.Face=Enum.NormalId.Front l2.Parent=m.Window2
 -- Roof
 W(m,"RoofLeft",Vector3.new(14,5,24),sp+Vector3.new(-6,16,0),Color3.fromRGB(70,70,70),0)
 W(m,"RoofRight",Vector3.new(14,5,24),sp+Vector3.new(6,16,0),Color3.fromRGB(70,70,70),180)
@@ -4142,11 +4149,9 @@ P(m,"Porch",Vector3.new(12,0.5,4),sp+Vector3.new(0,1,12),Color3.fromRGB(140,100,
 P(m,"PorchRail1",Vector3.new(0.3,3,0.3),sp+Vector3.new(-5.5,3,13.5),Color3.fromRGB(140,100,60),"Wood")
 P(m,"PorchRail2",Vector3.new(0.3,3,0.3),sp+Vector3.new(5.5,3,13.5),Color3.fromRGB(140,100,60),"Wood")
 P(m,"PorchRailing",Vector3.new(11,0.3,0.3),sp+Vector3.new(0,4,13.5),Color3.fromRGB(140,100,60),"Wood")
--- Porch light
-local pl=Instance.new("PointLight") pl.Range=16 pl.Brightness=0.6 pl.Color=Color3.fromRGB(255,230,180) pl.Parent=m.Door
 ` + BOILERPLATE_BOT,
       suggestions: ['Add furniture inside', 'Build a backyard', 'Make it bigger'],
-      partCount: 22,
+      partCount: 18,
     }
   }
 
@@ -4163,22 +4168,20 @@ P(m,"Trunk",Vector3.new(5.5,0.5,3),sp+Vector3.new(0,4,-4),Color3.fromRGB(190,25,
 P(m,"Roof",Vector3.new(5,1.5,5),sp+Vector3.new(0,5,0),Color3.fromRGB(185,25,25),"Metal")
 -- Windshield
 P(m,"Windshield",Vector3.new(4.5,2,0.2),sp+Vector3.new(0,5,2.8),Color3.fromRGB(200,220,255),"Glass")
-local ws=m.Windshield ws.Transparency=0.3
 P(m,"RearWindow",Vector3.new(4.5,1.5,0.2),sp+Vector3.new(0,5,-2.3),Color3.fromRGB(200,220,255),"Glass")
-m.RearWindow.Transparency=0.3
 -- Wheels
-for i,offset in ipairs({{-3,1.2,4},{3,1.2,4},{-3,1.2,-4},{3,1.2,-4}}) do
-  local w=Cyl(m,"Wheel"..i,Vector3.new(0.8,2.5,2.5),sp+Vector3.new(offset[1],offset[2],offset[3]),Color3.fromRGB(30,30,30),"Metal")
-end
+Cyl(m,"Wheel1",Vector3.new(0.8,2.5,2.5),sp+Vector3.new(-3,1.2,4),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"Wheel2",Vector3.new(0.8,2.5,2.5),sp+Vector3.new(3,1.2,4),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"Wheel3",Vector3.new(0.8,2.5,2.5),sp+Vector3.new(-3,1.2,-4),Color3.fromRGB(30,30,30),"Metal")
+Cyl(m,"Wheel4",Vector3.new(0.8,2.5,2.5),sp+Vector3.new(3,1.2,-4),Color3.fromRGB(30,30,30),"Metal")
 -- Headlights
 P(m,"Headlight1",Vector3.new(1,0.6,0.2),sp+Vector3.new(-2,3.5,6.1),Color3.fromRGB(255,255,200),"Neon")
 P(m,"Headlight2",Vector3.new(1,0.6,0.2),sp+Vector3.new(2,3.5,6.1),Color3.fromRGB(255,255,200),"Neon")
-local hl=Instance.new("SpotLight") hl.Range=30 hl.Brightness=1 hl.Color=Color3.fromRGB(255,255,220) hl.Face=Enum.NormalId.Front hl.Parent=m.Headlight1
 -- Tail lights
 P(m,"Tail1",Vector3.new(1,0.4,0.2),sp+Vector3.new(-2,3.5,-6.1),Color3.fromRGB(255,0,0),"Neon")
 P(m,"Tail2",Vector3.new(1,0.4,0.2),sp+Vector3.new(2,3.5,-6.1),Color3.fromRGB(255,0,0),"Neon")
--- Seat
-local seat=Instance.new("VehicleSeat") seat.Name="DriverSeat" seat.Size=Vector3.new(2,0.5,2) seat.Position=sp+Vector3.new(0,3.5,0) seat.Anchored=false seat.MaxSpeed=80 seat.Torque=40 seat.TurnSpeed=2 seat.Color=Color3.fromRGB(40,40,40) seat.Material=Enum.Material.Fabric seat.Parent=m
+-- Driver seat
+P(m,"DriverSeat",Vector3.new(2,0.5,2),sp+Vector3.new(0,3.5,0),Color3.fromRGB(40,40,40),"Fabric")
 -- License plate
 P(m,"Plate",Vector3.new(2,0.8,0.1),sp+Vector3.new(0,2.5,-6.1),Color3.fromRGB(240,240,240),"Metal")
 ` + BOILERPLATE_BOT,
@@ -4214,16 +4217,14 @@ P(m,"GuardDetail",Vector3.new(0.3,0.3,4.5),sp+Vector3.new(0,3.3,0),Color3.fromRG
 -- Grip (leather wrapped)
 Cyl(m,"Grip",Vector3.new(3.2,0.65,0.65),sp+Vector3.new(0,1.5,0),Color3.fromRGB(75,45,25),"Fabric")
 -- Grip wrapping detail
-for i=0,4 do
-  P(m,"Wrap"..i,Vector3.new(0.7,0.12,0.7),sp+Vector3.new(0,0.4+i*0.6,0),Color3.fromRGB(60,35,18),"Fabric")
-end
+P(m,"Wrap0",Vector3.new(0.7,0.12,0.7),sp+Vector3.new(0,0.4,0),Color3.fromRGB(60,35,18),"Fabric")
+P(m,"Wrap1",Vector3.new(0.7,0.12,0.7),sp+Vector3.new(0,1.0,0),Color3.fromRGB(60,35,18),"Fabric")
+P(m,"Wrap2",Vector3.new(0.7,0.12,0.7),sp+Vector3.new(0,1.6,0),Color3.fromRGB(60,35,18),"Fabric")
+P(m,"Wrap3",Vector3.new(0.7,0.12,0.7),sp+Vector3.new(0,2.2,0),Color3.fromRGB(60,35,18),"Fabric")
+P(m,"Wrap4",Vector3.new(0.7,0.12,0.7),sp+Vector3.new(0,2.8,0),Color3.fromRGB(60,35,18),"Fabric")
 -- Pommel with gem
 Ball(m,"Pommel",Vector3.new(1.2,1.2,1.2),sp+Vector3.new(0,-0.2,0),Color3.fromRGB(180,150,50),"Metal")
 Ball(m,"Gem",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(0,-0.2,0),Color3.fromRGB(80,180,255),"Neon")
--- Lighting
-local eg=Instance.new("PointLight") eg.Range=8 eg.Brightness=0.5 eg.Color=Color3.fromRGB(140,200,255) eg.Parent=m.EdgeL
-local spot=Instance.new("SpotLight") spot.Range=20 spot.Brightness=0.8 spot.Color=Color3.fromRGB(255,240,200) spot.Face=Enum.NormalId.Top spot.Angle=35 spot.Parent=m.PedestalTop
-local gemGlow=Instance.new("PointLight") gemGlow.Range=5 gemGlow.Brightness=0.6 gemGlow.Color=Color3.fromRGB(80,180,255) gemGlow.Parent=m.Gem
 ` + BOILERPLATE_BOT,
       suggestions: ['Add a damage script', 'Build a weapon rack', 'Make a shield to match'],
       partCount: 28,
@@ -4248,39 +4249,63 @@ P(m,"WallW",Vector3.new(2.5,16,44),sp+Vector3.new(-22,8.5,0),Color3.fromRGB(132,
 -- Wall walkway (top of walls)
 P(m,"WalkN",Vector3.new(44,0.5,3),sp+Vector3.new(0,16.7,22),Color3.fromRGB(115,112,105),"Cobblestone")
 P(m,"WalkS",Vector3.new(44,0.5,3),sp+Vector3.new(0,16.7,-22),Color3.fromRGB(115,112,105),"Cobblestone")
--- Battlements (all 4 walls)
-for i=0,8 do P(m,"MN"..i,Vector3.new(3,3.5,1.5),sp+Vector3.new(-20+i*5,19,22.5),Color3.fromRGB(140,135,125),"Granite") end
-for i=0,8 do P(m,"MS"..i,Vector3.new(3,3.5,1.5),sp+Vector3.new(-20+i*5,19,-22.5),Color3.fromRGB(135,130,120),"Granite") end
+-- Battlements (north wall)
+P(m,"MN0",Vector3.new(3,3.5,1.5),sp+Vector3.new(-20,19,22.5),Color3.fromRGB(140,135,125),"Granite")
+P(m,"MN1",Vector3.new(3,3.5,1.5),sp+Vector3.new(-15,19,22.5),Color3.fromRGB(140,135,125),"Granite")
+P(m,"MN2",Vector3.new(3,3.5,1.5),sp+Vector3.new(-10,19,22.5),Color3.fromRGB(140,135,125),"Granite")
+P(m,"MN3",Vector3.new(3,3.5,1.5),sp+Vector3.new(-5,19,22.5),Color3.fromRGB(140,135,125),"Granite")
+P(m,"MN4",Vector3.new(3,3.5,1.5),sp+Vector3.new(0,19,22.5),Color3.fromRGB(140,135,125),"Granite")
+P(m,"MN5",Vector3.new(3,3.5,1.5),sp+Vector3.new(5,19,22.5),Color3.fromRGB(140,135,125),"Granite")
+P(m,"MN6",Vector3.new(3,3.5,1.5),sp+Vector3.new(10,19,22.5),Color3.fromRGB(140,135,125),"Granite")
+P(m,"MN7",Vector3.new(3,3.5,1.5),sp+Vector3.new(15,19,22.5),Color3.fromRGB(140,135,125),"Granite")
+P(m,"MN8",Vector3.new(3,3.5,1.5),sp+Vector3.new(20,19,22.5),Color3.fromRGB(140,135,125),"Granite")
+-- Battlements (south wall)
+P(m,"MS0",Vector3.new(3,3.5,1.5),sp+Vector3.new(-20,19,-22.5),Color3.fromRGB(135,130,120),"Granite")
+P(m,"MS1",Vector3.new(3,3.5,1.5),sp+Vector3.new(-15,19,-22.5),Color3.fromRGB(135,130,120),"Granite")
+P(m,"MS2",Vector3.new(3,3.5,1.5),sp+Vector3.new(-10,19,-22.5),Color3.fromRGB(135,130,120),"Granite")
+P(m,"MS3",Vector3.new(3,3.5,1.5),sp+Vector3.new(-5,19,-22.5),Color3.fromRGB(135,130,120),"Granite")
+P(m,"MS4",Vector3.new(3,3.5,1.5),sp+Vector3.new(0,19,-22.5),Color3.fromRGB(135,130,120),"Granite")
+P(m,"MS5",Vector3.new(3,3.5,1.5),sp+Vector3.new(5,19,-22.5),Color3.fromRGB(135,130,120),"Granite")
+P(m,"MS6",Vector3.new(3,3.5,1.5),sp+Vector3.new(10,19,-22.5),Color3.fromRGB(135,130,120),"Granite")
+P(m,"MS7",Vector3.new(3,3.5,1.5),sp+Vector3.new(15,19,-22.5),Color3.fromRGB(135,130,120),"Granite")
+P(m,"MS8",Vector3.new(3,3.5,1.5),sp+Vector3.new(20,19,-22.5),Color3.fromRGB(135,130,120),"Granite")
 -- 4 Corner towers
-for _,c in ipairs({{-22,22},{22,22},{-22,-22},{22,-22}}) do
-  Cyl(m,"Twr"..c[1]..c[2],Vector3.new(22,7,7),sp+Vector3.new(c[1],11.5,c[2]),Color3.fromRGB(130,125,115),"Granite")
-  -- Cone roof
-  Ball(m,"Roof"..c[1]..c[2],Vector3.new(9,6,9),sp+Vector3.new(c[1],24,c[2]),Color3.fromRGB(65,40,25),"Slate")
-  -- Arrow slits
-  P(m,"Slit"..c[1]..c[2],Vector3.new(0.4,3,0.2),sp+Vector3.new(c[1]>0 and c[1]-3.5 or c[1]+3.5,12,c[2]),Color3.fromRGB(20,20,25),"Concrete")
-  -- Tower top ring
-  Cyl(m,"Ring"..c[1]..c[2],Vector3.new(0.8,7.5,7.5),sp+Vector3.new(c[1],22.5,c[2]),Color3.fromRGB(120,115,105),"Granite")
-end
+Cyl(m,"TwrNW",Vector3.new(22,7,7),sp+Vector3.new(-22,11.5,22),Color3.fromRGB(130,125,115),"Granite")
+Ball(m,"RoofNW",Vector3.new(9,6,9),sp+Vector3.new(-22,24,22),Color3.fromRGB(65,40,25),"Slate")
+P(m,"SlitNW",Vector3.new(0.4,3,0.2),sp+Vector3.new(-18.5,12,22),Color3.fromRGB(20,20,25),"Concrete")
+Cyl(m,"RingNW",Vector3.new(0.8,7.5,7.5),sp+Vector3.new(-22,22.5,22),Color3.fromRGB(120,115,105),"Granite")
+Cyl(m,"TwrNE",Vector3.new(22,7,7),sp+Vector3.new(22,11.5,22),Color3.fromRGB(130,125,115),"Granite")
+Ball(m,"RoofNE",Vector3.new(9,6,9),sp+Vector3.new(22,24,22),Color3.fromRGB(65,40,25),"Slate")
+P(m,"SlitNE",Vector3.new(0.4,3,0.2),sp+Vector3.new(18.5,12,22),Color3.fromRGB(20,20,25),"Concrete")
+Cyl(m,"RingNE",Vector3.new(0.8,7.5,7.5),sp+Vector3.new(22,22.5,22),Color3.fromRGB(120,115,105),"Granite")
+Cyl(m,"TwrSW",Vector3.new(22,7,7),sp+Vector3.new(-22,11.5,-22),Color3.fromRGB(130,125,115),"Granite")
+Ball(m,"RoofSW",Vector3.new(9,6,9),sp+Vector3.new(-22,24,-22),Color3.fromRGB(65,40,25),"Slate")
+P(m,"SlitSW",Vector3.new(0.4,3,0.2),sp+Vector3.new(-18.5,12,-22),Color3.fromRGB(20,20,25),"Concrete")
+Cyl(m,"RingSW",Vector3.new(0.8,7.5,7.5),sp+Vector3.new(-22,22.5,-22),Color3.fromRGB(120,115,105),"Granite")
+Cyl(m,"TwrSE",Vector3.new(22,7,7),sp+Vector3.new(22,11.5,-22),Color3.fromRGB(130,125,115),"Granite")
+Ball(m,"RoofSE",Vector3.new(9,6,9),sp+Vector3.new(22,24,-22),Color3.fromRGB(65,40,25),"Slate")
+P(m,"SlitSE",Vector3.new(0.4,3,0.2),sp+Vector3.new(18.5,12,-22),Color3.fromRGB(20,20,25),"Concrete")
+Cyl(m,"RingSE",Vector3.new(0.8,7.5,7.5),sp+Vector3.new(22,22.5,-22),Color3.fromRGB(120,115,105),"Granite")
 -- Gatehouse (front)
 P(m,"GateFrame",Vector3.new(10,18,3),sp+Vector3.new(0,9.5,22),Color3.fromRGB(125,120,110),"Granite")
 P(m,"GateOpening",Vector3.new(6,11,3.5),sp+Vector3.new(0,6,22),Color3.fromRGB(30,25,20),"Concrete")
 P(m,"Portcullis",Vector3.new(5.5,10,0.3),sp+Vector3.new(0,5.5,22.5),Color3.fromRGB(80,80,85),"DiamondPlate")
-m.Portcullis.Transparency = 0.15
 P(m,"GateDoor1",Vector3.new(2.5,9,0.5),sp+Vector3.new(-1.5,5,23),Color3.fromRGB(85,55,30),"Wood")
 P(m,"GateDoor2",Vector3.new(2.5,9,0.5),sp+Vector3.new(1.5,5,23),Color3.fromRGB(80,52,28),"Wood")
 -- Gate door iron bands
-for i=0,2 do P(m,"Band"..i,Vector3.new(5.5,0.4,0.15),sp+Vector3.new(0,3+i*3,23.2),Color3.fromRGB(70,70,75),"Metal") end
+P(m,"Band0",Vector3.new(5.5,0.4,0.15),sp+Vector3.new(0,3,23.2),Color3.fromRGB(70,70,75),"Metal")
+P(m,"Band1",Vector3.new(5.5,0.4,0.15),sp+Vector3.new(0,6,23.2),Color3.fromRGB(70,70,75),"Metal")
+P(m,"Band2",Vector3.new(5.5,0.4,0.15),sp+Vector3.new(0,9,23.2),Color3.fromRGB(70,70,75),"Metal")
 -- Central keep (raised)
 P(m,"KeepBase",Vector3.new(16,2,16),sp+Vector3.new(0,1.8,0),Color3.fromRGB(110,108,100),"Cobblestone")
 P(m,"KeepWalls",Vector3.new(14,10,14),sp+Vector3.new(0,7.8,0),Color3.fromRGB(145,140,130),"Granite")
 P(m,"KeepRoof",Vector3.new(16,1,16),sp+Vector3.new(0,13.3,0),Color3.fromRGB(60,38,22),"Slate")
 P(m,"KeepDoor",Vector3.new(4,7,0.5),sp+Vector3.new(0,5.3,7.2),Color3.fromRGB(90,58,30),"Wood")
--- Keep windows (glowing)
-for _,wp in ipairs({{-5,9,7},{5,9,7},{7,9,0},{-7,9,0}}) do
-  local w=P(m,"KW",Vector3.new(2,3,0.3),sp+Vector3.new(wp[1],wp[2],wp[3]),Color3.fromRGB(200,180,120),"Glass")
-  w.Transparency=0.2
-  local wl=Instance.new("SpotLight") wl.Range=15 wl.Brightness=0.6 wl.Color=Color3.fromRGB(255,200,100) wl.Parent=w
-end
+-- Keep windows
+P(m,"KW1",Vector3.new(2,3,0.3),sp+Vector3.new(-5,9,7),Color3.fromRGB(200,180,120),"Glass")
+P(m,"KW2",Vector3.new(2,3,0.3),sp+Vector3.new(5,9,7),Color3.fromRGB(200,180,120),"Glass")
+P(m,"KW3",Vector3.new(2,3,0.3),sp+Vector3.new(7,9,0),Color3.fromRGB(200,180,120),"Glass")
+P(m,"KW4",Vector3.new(2,3,0.3),sp+Vector3.new(-7,9,0),Color3.fromRGB(200,180,120),"Glass")
 -- Well
 Cyl(m,"Well",Vector3.new(2.5,4.5,4.5),sp+Vector3.new(10,1.5,8),Color3.fromRGB(118,115,108),"Granite")
 P(m,"WellWater",Vector3.new(3.5,0.2,3.5),sp+Vector3.new(10,1,8),Color3.fromRGB(60,120,180),"Glass")
@@ -4288,26 +4313,42 @@ Cyl(m,"WellPost1",Vector3.new(3,0.3,0.3),sp+Vector3.new(8.5,3,8),Color3.fromRGB(
 Cyl(m,"WellPost2",Vector3.new(3,0.3,0.3),sp+Vector3.new(11.5,3,8),Color3.fromRGB(90,60,30),"Wood")
 P(m,"WellRoof",Vector3.new(4,0.3,4),sp+Vector3.new(10,4.5,8),Color3.fromRGB(65,40,25),"Wood")
 -- Market stalls (2)
-for _,sx in ipairs({-10,10}) do
-  P(m,"Stall"..sx,Vector3.new(6,0.3,4),sp+Vector3.new(sx,4,-8),Color3.fromRGB(140,95,50),"Wood")
-  P(m,"StallLeg1"..sx,Vector3.new(0.4,3,0.4),sp+Vector3.new(sx-2.5,2.5,-9.5),Color3.fromRGB(120,80,40),"Wood")
-  P(m,"StallLeg2"..sx,Vector3.new(0.4,3,0.4),sp+Vector3.new(sx+2.5,2.5,-9.5),Color3.fromRGB(120,80,40),"Wood")
-  P(m,"Awning"..sx,Vector3.new(7,0.2,5),sp+Vector3.new(sx,5.5,-8),Color3.fromRGB(180,50,40),"Fabric")
-end
+P(m,"StallL",Vector3.new(6,0.3,4),sp+Vector3.new(-10,4,-8),Color3.fromRGB(140,95,50),"Wood")
+P(m,"StallLeg1L",Vector3.new(0.4,3,0.4),sp+Vector3.new(-12.5,2.5,-9.5),Color3.fromRGB(120,80,40),"Wood")
+P(m,"StallLeg2L",Vector3.new(0.4,3,0.4),sp+Vector3.new(-7.5,2.5,-9.5),Color3.fromRGB(120,80,40),"Wood")
+P(m,"AwningL",Vector3.new(7,0.2,5),sp+Vector3.new(-10,5.5,-8),Color3.fromRGB(180,50,40),"Fabric")
+P(m,"StallR",Vector3.new(6,0.3,4),sp+Vector3.new(10,4,-8),Color3.fromRGB(140,95,50),"Wood")
+P(m,"StallLeg1R",Vector3.new(0.4,3,0.4),sp+Vector3.new(7.5,2.5,-9.5),Color3.fromRGB(120,80,40),"Wood")
+P(m,"StallLeg2R",Vector3.new(0.4,3,0.4),sp+Vector3.new(12.5,2.5,-9.5),Color3.fromRGB(120,80,40),"Wood")
+P(m,"AwningR",Vector3.new(7,0.2,5),sp+Vector3.new(10,5.5,-8),Color3.fromRGB(180,50,40),"Fabric")
 -- Torches (8 around the courtyard + walls)
-for _,tp in ipairs({{-10,11,21.5},{10,11,21.5},{-21.5,11,10},{-21.5,11,-10},{21.5,11,10},{21.5,11,-10},{-10,11,-21.5},{10,11,-21.5}}) do
-  local t=P(m,"Torch",Vector3.new(0.3,2,0.3),sp+Vector3.new(tp[1],tp[2],tp[3]),Color3.fromRGB(110,75,30),"Wood")
-  local f=Instance.new("Fire") f.Size=3 f.Heat=4 f.Parent=t
-  local pl=Instance.new("PointLight") pl.Range=18 pl.Brightness=0.6 pl.Color=Color3.fromRGB(255,155,45) pl.Parent=t
-end
+P(m,"Torch1",Vector3.new(0.3,2,0.3),sp+Vector3.new(-10,11,21.5),Color3.fromRGB(110,75,30),"Wood")
+P(m,"Torch2",Vector3.new(0.3,2,0.3),sp+Vector3.new(10,11,21.5),Color3.fromRGB(110,75,30),"Wood")
+P(m,"Torch3",Vector3.new(0.3,2,0.3),sp+Vector3.new(-21.5,11,10),Color3.fromRGB(110,75,30),"Wood")
+P(m,"Torch4",Vector3.new(0.3,2,0.3),sp+Vector3.new(-21.5,11,-10),Color3.fromRGB(110,75,30),"Wood")
+P(m,"Torch5",Vector3.new(0.3,2,0.3),sp+Vector3.new(21.5,11,10),Color3.fromRGB(110,75,30),"Wood")
+P(m,"Torch6",Vector3.new(0.3,2,0.3),sp+Vector3.new(21.5,11,-10),Color3.fromRGB(110,75,30),"Wood")
+P(m,"Torch7",Vector3.new(0.3,2,0.3),sp+Vector3.new(-10,11,-21.5),Color3.fromRGB(110,75,30),"Wood")
+P(m,"Torch8",Vector3.new(0.3,2,0.3),sp+Vector3.new(10,11,-21.5),Color3.fromRGB(110,75,30),"Wood")
+-- Torch tips (neon glow to suggest fire)
+P(m,"TorchTip1",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(-10,12.2,21.5),Color3.fromRGB(255,155,45),"Neon")
+P(m,"TorchTip2",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(10,12.2,21.5),Color3.fromRGB(255,155,45),"Neon")
+P(m,"TorchTip3",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(-21.5,12.2,10),Color3.fromRGB(255,155,45),"Neon")
+P(m,"TorchTip4",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(-21.5,12.2,-10),Color3.fromRGB(255,155,45),"Neon")
+P(m,"TorchTip5",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(21.5,12.2,10),Color3.fromRGB(255,155,45),"Neon")
+P(m,"TorchTip6",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(21.5,12.2,-10),Color3.fromRGB(255,155,45),"Neon")
+P(m,"TorchTip7",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(-10,12.2,-21.5),Color3.fromRGB(255,155,45),"Neon")
+P(m,"TorchTip8",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(10,12.2,-21.5),Color3.fromRGB(255,155,45),"Neon")
 -- Banners on towers
-for _,c in ipairs({{-22,22},{22,22}}) do
-  P(m,"Banner"..c[1],Vector3.new(0.1,6,3),sp+Vector3.new(c[1]>0 and c[1]-4 or c[1]+4,18,c[2]),Color3.fromRGB(160,35,35),"Fabric")
-end
+P(m,"BannerL",Vector3.new(0.1,6,3),sp+Vector3.new(-18,18,22),Color3.fromRGB(160,35,35),"Fabric")
+P(m,"BannerR",Vector3.new(0.1,6,3),sp+Vector3.new(18,18,22),Color3.fromRGB(160,35,35),"Fabric")
 -- Path from gate to keep
-for i=0,5 do
-  P(m,"Path"..i,Vector3.new(5,0.15,3),sp+Vector3.new(0,0.85,6+i*3),Color3.fromRGB(140,135,125),"Cobblestone")
-end
+P(m,"Path0",Vector3.new(5,0.15,3),sp+Vector3.new(0,0.85,6),Color3.fromRGB(140,135,125),"Cobblestone")
+P(m,"Path1",Vector3.new(5,0.15,3),sp+Vector3.new(0,0.85,9),Color3.fromRGB(140,135,125),"Cobblestone")
+P(m,"Path2",Vector3.new(5,0.15,3),sp+Vector3.new(0,0.85,12),Color3.fromRGB(140,135,125),"Cobblestone")
+P(m,"Path3",Vector3.new(5,0.15,3),sp+Vector3.new(0,0.85,15),Color3.fromRGB(140,135,125),"Cobblestone")
+P(m,"Path4",Vector3.new(5,0.15,3),sp+Vector3.new(0,0.85,18),Color3.fromRGB(140,135,125),"Cobblestone")
+P(m,"Path5",Vector3.new(5,0.15,3),sp+Vector3.new(0,0.85,21),Color3.fromRGB(140,135,125),"Cobblestone")
 ` + BOILERPLATE_BOT,
       suggestions: ['Add a throne room inside', 'Build a moat with drawbridge', 'Add a dungeon below'],
       partCount: 95,
@@ -4322,21 +4363,22 @@ end
       code: BOILERPLATE_TOP + `
 -- Water patch
 P(m,"Water",Vector3.new(40,1,50),sp+Vector3.new(0,-0.5,0),Color3.fromRGB(50,120,180),"Glass")
-m.Water.Transparency=0.35
 -- Hull (layered for depth)
 P(m,"HullOuter",Vector3.new(8,3,20),sp+Vector3.new(0,2,0),Color3.fromRGB(110,70,35),"Wood")
 P(m,"HullInner",Vector3.new(7,2.5,19),sp+Vector3.new(0,2.5,0),Color3.fromRGB(120,80,40),"Wood")
 W(m,"BowL",Vector3.new(4,3,5),sp+Vector3.new(-2,2,12),Color3.fromRGB(105,68,32),"Wood")
 W(m,"BowR",Vector3.new(4,3,5),sp+Vector3.new(2,2,12),Color3.fromRGB(105,68,32),"Wood")
 -- Hull planking stripes
-for i=0,3 do P(m,"Plank"..i,Vector3.new(8.2,0.15,18),sp+Vector3.new(0,1.2+i*0.7,0),Color3.fromRGB(95,62,28),"Wood") end
+P(m,"Plank0",Vector3.new(8.2,0.15,18),sp+Vector3.new(0,1.2,0),Color3.fromRGB(95,62,28),"Wood")
+P(m,"Plank1",Vector3.new(8.2,0.15,18),sp+Vector3.new(0,1.9,0),Color3.fromRGB(95,62,28),"Wood")
+P(m,"Plank2",Vector3.new(8.2,0.15,18),sp+Vector3.new(0,2.6,0),Color3.fromRGB(95,62,28),"Wood")
+P(m,"Plank3",Vector3.new(8.2,0.15,18),sp+Vector3.new(0,3.3,0),Color3.fromRGB(95,62,28),"Wood")
 -- Deck
 P(m,"Deck",Vector3.new(7,0.3,18),sp+Vector3.new(0,3.65,0),Color3.fromRGB(145,105,58),"WoodPlanks")
 -- Cabin at stern
 P(m,"CabinWall",Vector3.new(6,3,4),sp+Vector3.new(0,5.15,-6),Color3.fromRGB(115,75,38),"Wood")
 P(m,"CabinRoof",Vector3.new(6.5,0.3,4.5),sp+Vector3.new(0,6.8,-6),Color3.fromRGB(85,55,28),"Wood")
 P(m,"CabinWindow",Vector3.new(2,1.5,0.2),sp+Vector3.new(0,5.5,-8.2),Color3.fromRGB(180,210,240),"Glass")
-m.CabinWindow.Transparency=0.25
 -- Mast + rigging
 Cyl(m,"Mast",Vector3.new(16,0.6,0.6),sp+Vector3.new(0,11.6,2),Color3.fromRGB(90,60,30),"Wood")
 Cyl(m,"CrossBeam",Vector3.new(0.4,10,0.4),sp+Vector3.new(0,16,2),Color3.fromRGB(85,55,28),"Wood")
@@ -4346,29 +4388,34 @@ P(m,"MainSail",Vector3.new(0.1,10,8),sp+Vector3.new(0.5,13,2),Color3.fromRGB(240
 P(m,"JibSail",Vector3.new(0.1,7,4),sp+Vector3.new(0.3,10,8),Color3.fromRGB(235,230,212),"Fabric")
 -- Helm (captain's wheel)
 Cyl(m,"Wheel",Vector3.new(0.3,2.5,2.5),sp+Vector3.new(0,5,-5),Color3.fromRGB(100,65,30),"Wood")
-local seat=Instance.new("VehicleSeat") seat.Name="Helm" seat.Size=Vector3.new(2,0.5,2) seat.Position=sp+Vector3.new(0,4,-4) seat.Anchored=false seat.MaxSpeed=40 seat.TurnSpeed=1.5 seat.Color=Color3.fromRGB(100,70,35) seat.Material=Enum.Material.Wood seat.Parent=m
+P(m,"Helm",Vector3.new(2,0.5,2),sp+Vector3.new(0,4,-4),Color3.fromRGB(100,70,35),"Wood")
 -- Railings
 P(m,"RailL",Vector3.new(0.2,2,16),sp+Vector3.new(-3.5,4.6,0),Color3.fromRGB(105,70,32),"Wood")
 P(m,"RailR",Vector3.new(0.2,2,16),sp+Vector3.new(3.5,4.6,0),Color3.fromRGB(105,70,32),"Wood")
 -- Railing posts
-for i=0,5 do
-  P(m,"PostL"..i,Vector3.new(0.3,2,0.3),sp+Vector3.new(-3.5,4.6,-7+i*3),Color3.fromRGB(100,65,30),"Wood")
-  P(m,"PostR"..i,Vector3.new(0.3,2,0.3),sp+Vector3.new(3.5,4.6,-7+i*3),Color3.fromRGB(100,65,30),"Wood")
-end
+P(m,"PostL0",Vector3.new(0.3,2,0.3),sp+Vector3.new(-3.5,4.6,-7),Color3.fromRGB(100,65,30),"Wood")
+P(m,"PostR0",Vector3.new(0.3,2,0.3),sp+Vector3.new(3.5,4.6,-7),Color3.fromRGB(100,65,30),"Wood")
+P(m,"PostL1",Vector3.new(0.3,2,0.3),sp+Vector3.new(-3.5,4.6,-4),Color3.fromRGB(100,65,30),"Wood")
+P(m,"PostR1",Vector3.new(0.3,2,0.3),sp+Vector3.new(3.5,4.6,-4),Color3.fromRGB(100,65,30),"Wood")
+P(m,"PostL2",Vector3.new(0.3,2,0.3),sp+Vector3.new(-3.5,4.6,-1),Color3.fromRGB(100,65,30),"Wood")
+P(m,"PostR2",Vector3.new(0.3,2,0.3),sp+Vector3.new(3.5,4.6,-1),Color3.fromRGB(100,65,30),"Wood")
+P(m,"PostL3",Vector3.new(0.3,2,0.3),sp+Vector3.new(-3.5,4.6,2),Color3.fromRGB(100,65,30),"Wood")
+P(m,"PostR3",Vector3.new(0.3,2,0.3),sp+Vector3.new(3.5,4.6,2),Color3.fromRGB(100,65,30),"Wood")
+P(m,"PostL4",Vector3.new(0.3,2,0.3),sp+Vector3.new(-3.5,4.6,5),Color3.fromRGB(100,65,30),"Wood")
+P(m,"PostR4",Vector3.new(0.3,2,0.3),sp+Vector3.new(3.5,4.6,5),Color3.fromRGB(100,65,30),"Wood")
+P(m,"PostL5",Vector3.new(0.3,2,0.3),sp+Vector3.new(-3.5,4.6,8),Color3.fromRGB(100,65,30),"Wood")
+P(m,"PostR5",Vector3.new(0.3,2,0.3),sp+Vector3.new(3.5,4.6,8),Color3.fromRGB(100,65,30),"Wood")
 -- Rudder
 P(m,"Rudder",Vector3.new(0.3,4,2.5),sp+Vector3.new(0,0.5,-10.5),Color3.fromRGB(95,60,28),"Wood")
 -- Bow lanterns
-for _,side in ipairs({{-3,4.5,10},{3,4.5,10}}) do
-  local lp=P(m,"Lantern",Vector3.new(0.6,0.8,0.6),sp+Vector3.new(side[1],side[2],side[3]),Color3.fromRGB(200,170,50),"Metal")
-  local ll=Instance.new("PointLight") ll.Range=14 ll.Brightness=0.5 ll.Color=Color3.fromRGB(255,200,100) ll.Parent=lp
-end
+P(m,"LanternL",Vector3.new(0.6,0.8,0.6),sp+Vector3.new(-3,4.5,10),Color3.fromRGB(200,170,50),"Metal")
+P(m,"LanternR",Vector3.new(0.6,0.8,0.6),sp+Vector3.new(3,4.5,10),Color3.fromRGB(200,170,50),"Metal")
 -- Anchor
 P(m,"Anchor",Vector3.new(0.3,2,1.5),sp+Vector3.new(4,2,8),Color3.fromRGB(70,70,75),"Metal")
 -- Flag at top of mast
 P(m,"Flag",Vector3.new(0.05,1.5,3),sp+Vector3.new(0,19,2),Color3.fromRGB(180,40,40),"Fabric")
 -- Wake/foam at waterline
 P(m,"Wake1",Vector3.new(10,0.1,6),sp+Vector3.new(0,0.1,-12),Color3.fromRGB(220,235,245),"Glass")
-m.Wake1.Transparency=0.5
 ` + BOILERPLATE_BOT,
       suggestions: ['Add the full ocean', 'Make it a pirate ship', 'Add cannons and a crew'],
       partCount: 48,
@@ -4388,8 +4435,6 @@ P(m,"SeatBase",Vector3.new(4,0.5,4),sp+Vector3.new(0,2.5,0),Color3.fromRGB(130,8
 -- Cushion (padded)
 P(m,"Cushion",Vector3.new(3.5,0.8,3.5),sp+Vector3.new(0,3.15,0),Color3.fromRGB(75,55,120),"Fabric")
 P(m,"CushionBack",Vector3.new(3.5,3.5,0.8),sp+Vector3.new(0,4.9,-1.5),Color3.fromRGB(70,50,115),"Fabric")
--- Sit part (invisible, functional)
-local s=Instance.new("Seat") s.Name="SitPart" s.Size=Vector3.new(3,0.2,3) s.Position=sp+Vector3.new(0,3.6,0) s.Anchored=true s.Transparency=1 s.Parent=m
 -- Backrest frame
 P(m,"BackFrame",Vector3.new(4,5,0.5),sp+Vector3.new(0,5.2,-1.9),Color3.fromRGB(125,78,35),"Wood")
 P(m,"TopRail",Vector3.new(4.2,0.6,0.6),sp+Vector3.new(0,7.5,-1.9),Color3.fromRGB(135,85,40),"Wood")
@@ -4410,7 +4455,6 @@ Cyl(m,"TableLeg",Vector3.new(3.2,0.6,0.6),sp+Vector3.new(4.5,1.6,0),Color3.fromR
 Cyl(m,"LampBase",Vector3.new(0.3,1.5,1.5),sp+Vector3.new(4.5,3.8,0),Color3.fromRGB(170,140,50),"Metal")
 Cyl(m,"LampPole",Vector3.new(4,0.25,0.25),sp+Vector3.new(4.5,6,0),Color3.fromRGB(165,135,45),"Metal")
 Ball(m,"LampShade",Vector3.new(3,2.5,3),sp+Vector3.new(4.5,8.2,0),Color3.fromRGB(240,230,200),"Fabric")
-local ll=Instance.new("PointLight") ll.Range=18 ll.Brightness=0.6 ll.Color=Color3.fromRGB(255,235,190) ll.Parent=m.LampShade
 -- Book on table
 P(m,"Book",Vector3.new(1.2,0.3,1.6),sp+Vector3.new(5,3.9,0.8),Color3.fromRGB(140,40,40),"SmoothPlastic")
 ` + BOILERPLATE_BOT,
@@ -4432,54 +4476,51 @@ P(m,"HullMain",Vector3.new(7,3.5,22),sp+Vector3.new(0,6,0),Color3.fromRGB(155,16
 P(m,"HullUpper",Vector3.new(6,1.5,18),sp+Vector3.new(0,8,0),Color3.fromRGB(165,170,178),"Metal")
 P(m,"HullLower",Vector3.new(6,1,20),sp+Vector3.new(0,4.5,0),Color3.fromRGB(140,145,152),"Metal")
 -- Panel lines (detail stripes)
-for i=0,3 do P(m,"PanelLine"..i,Vector3.new(7.1,0.08,0.08),sp+Vector3.new(0,5+i*1.2,-4+i*5),Color3.fromRGB(80,85,90),"Metal") end
+P(m,"PanelLine0",Vector3.new(7.1,0.08,0.08),sp+Vector3.new(0,5,-4),Color3.fromRGB(80,85,90),"Metal")
+P(m,"PanelLine1",Vector3.new(7.1,0.08,0.08),sp+Vector3.new(0,6.2,1),Color3.fromRGB(80,85,90),"Metal")
+P(m,"PanelLine2",Vector3.new(7.1,0.08,0.08),sp+Vector3.new(0,7.4,6),Color3.fromRGB(80,85,90),"Metal")
+P(m,"PanelLine3",Vector3.new(7.1,0.08,0.08),sp+Vector3.new(0,8.6,11),Color3.fromRGB(80,85,90),"Metal")
 -- Nose cone
 W(m,"NoseTop",Vector3.new(6,2,8),sp+Vector3.new(0,7.5,15),Color3.fromRGB(160,165,172),0)
 W(m,"NoseBot",Vector3.new(6,1.5,6),sp+Vector3.new(0,5,14),Color3.fromRGB(148,152,160),180)
 -- Cockpit dome (glass)
 Ball(m,"Cockpit",Vector3.new(4.5,3,5),sp+Vector3.new(0,8.5,10),Color3.fromRGB(160,210,245),"Glass")
-m.Cockpit.Transparency=0.25
--- Cockpit interior glow
-local cg=Instance.new("PointLight") cg.Range=8 cg.Brightness=0.4 cg.Color=Color3.fromRGB(100,200,255) cg.Parent=m.Cockpit
 -- Pilot seat
-local seat=Instance.new("VehicleSeat") seat.Name="PilotSeat" seat.Size=Vector3.new(2,0.5,2) seat.Position=sp+Vector3.new(0,6.5,9) seat.Anchored=false seat.MaxSpeed=120 seat.TurnSpeed=3 seat.Color=Color3.fromRGB(40,42,48) seat.Material=Enum.Material.Fabric seat.Parent=m
+P(m,"PilotSeat",Vector3.new(2,0.5,2),sp+Vector3.new(0,6.5,9),Color3.fromRGB(40,42,48),"Fabric")
 -- Delta wings
 P(m,"WingL",Vector3.new(14,0.5,8),sp+Vector3.new(-10,5.5,-2),Color3.fromRGB(148,152,160),"Metal")
 P(m,"WingR",Vector3.new(14,0.5,8),sp+Vector3.new(10,5.5,-2),Color3.fromRGB(148,152,160),"Metal")
 -- Wing tip lights
 P(m,"WingTipL",Vector3.new(0.6,0.3,0.6),sp+Vector3.new(-16.5,5.5,-2),Color3.fromRGB(255,60,60),"Neon")
 P(m,"WingTipR",Vector3.new(0.6,0.3,0.6),sp+Vector3.new(16.5,5.5,-2),Color3.fromRGB(60,255,60),"Neon")
--- Engine nacelles (each side)
-for _,side in ipairs({{-8,5,-8},{8,5,-8}}) do
-  P(m,"Nacelle"..side[1],Vector3.new(3,3,6),sp+Vector3.new(side[1],side[2],side[3]),Color3.fromRGB(125,130,138),"DiamondPlate")
-  -- Thrust ring (neon glow)
-  Cyl(m,"ThrustRing"..side[1],Vector3.new(0.4,2.8,2.8),sp+Vector3.new(side[1],side[2],side[3]-3.2),Color3.fromRGB(80,170,255),"Neon")
-  -- Thrust core
-  Cyl(m,"ThrustCore"..side[1],Vector3.new(0.2,1.5,1.5),sp+Vector3.new(side[1],side[2],side[3]-3.3),Color3.fromRGB(180,230,255),"Neon")
-  -- Engine glow
-  local eg=Instance.new("PointLight") eg.Range=20 eg.Brightness=1.2 eg.Color=Color3.fromRGB(80,170,255)
-  eg.Parent=m["ThrustRing"..side[1]]
-  -- Exhaust particles
-  local pe=Instance.new("ParticleEmitter") pe.Color=ColorSequence.new(Color3.fromRGB(100,180,255),Color3.fromRGB(40,80,200))
-  pe.Size=NumberSequence.new(1.5,0) pe.Lifetime=NumberRange.new(0.3,0.8) pe.Rate=40 pe.Speed=NumberRange.new(8,15)
-  pe.SpreadAngle=Vector2.new(5,5) pe.Parent=m["ThrustCore"..side[1]]
-end
+-- Engine nacelles (left)
+P(m,"NacelleL",Vector3.new(3,3,6),sp+Vector3.new(-8,5,-8),Color3.fromRGB(125,130,138),"DiamondPlate")
+Cyl(m,"ThrustRingL",Vector3.new(0.4,2.8,2.8),sp+Vector3.new(-8,5,-11.2),Color3.fromRGB(80,170,255),"Neon")
+Cyl(m,"ThrustCoreL",Vector3.new(0.2,1.5,1.5),sp+Vector3.new(-8,5,-11.3),Color3.fromRGB(180,230,255),"Neon")
+-- Engine nacelles (right)
+P(m,"NacelleR",Vector3.new(3,3,6),sp+Vector3.new(8,5,-8),Color3.fromRGB(125,130,138),"DiamondPlate")
+Cyl(m,"ThrustRingR",Vector3.new(0.4,2.8,2.8),sp+Vector3.new(8,5,-11.2),Color3.fromRGB(80,170,255),"Neon")
+Cyl(m,"ThrustCoreR",Vector3.new(0.2,1.5,1.5),sp+Vector3.new(8,5,-11.3),Color3.fromRGB(180,230,255),"Neon")
 -- Dorsal fin
 W(m,"DorsalFin",Vector3.new(0.5,5,6),sp+Vector3.new(0,10,-6),Color3.fromRGB(150,155,162),0)
 -- Ventral cannon
 Cyl(m,"Cannon",Vector3.new(4,0.5,0.5),sp+Vector3.new(0,3.8,4),Color3.fromRGB(90,92,98),"Metal")
 P(m,"CannonMount",Vector3.new(1.5,0.8,1.5),sp+Vector3.new(0,4.2,4),Color3.fromRGB(100,102,108),"Metal")
 -- Landing gear (3 points)
-for _,lp in ipairs({{0,0.8,8},{-4,0.8,-6},{4,0.8,-6}}) do
-  Cyl(m,"Gear",Vector3.new(0.5,0.4,0.4),sp+Vector3.new(lp[1],2,lp[3]),Color3.fromRGB(90,90,95),"Metal")
-  Cyl(m,"GearPad",Vector3.new(0.2,1.2,1.2),sp+Vector3.new(lp[1],lp[2],lp[3]),Color3.fromRGB(60,60,65),"Metal")
-end
+Cyl(m,"Gear1",Vector3.new(0.5,0.4,0.4),sp+Vector3.new(0,2,8),Color3.fromRGB(90,90,95),"Metal")
+Cyl(m,"GearPad1",Vector3.new(0.2,1.2,1.2),sp+Vector3.new(0,0.8,8),Color3.fromRGB(60,60,65),"Metal")
+Cyl(m,"Gear2",Vector3.new(0.5,0.4,0.4),sp+Vector3.new(-4,2,-6),Color3.fromRGB(90,90,95),"Metal")
+Cyl(m,"GearPad2",Vector3.new(0.2,1.2,1.2),sp+Vector3.new(-4,0.8,-6),Color3.fromRGB(60,60,65),"Metal")
+Cyl(m,"Gear3",Vector3.new(0.5,0.4,0.4),sp+Vector3.new(4,2,-6),Color3.fromRGB(90,90,95),"Metal")
+Cyl(m,"GearPad3",Vector3.new(0.2,1.2,1.2),sp+Vector3.new(4,0.8,-6),Color3.fromRGB(60,60,65),"Metal")
 -- Cargo ramp (rear, open)
 P(m,"Ramp",Vector3.new(5,0.3,4),sp+Vector3.new(0,1.5,-12),Color3.fromRGB(135,138,145),"DiamondPlate")
 -- Running lights along hull
-for i=0,4 do
-  P(m,"RunLight"..i,Vector3.new(0.3,0.15,0.3),sp+Vector3.new(-3.5,4.5,-8+i*4),Color3.fromRGB(255,200,50),"Neon")
-end
+P(m,"RunLight0",Vector3.new(0.3,0.15,0.3),sp+Vector3.new(-3.5,4.5,-8),Color3.fromRGB(255,200,50),"Neon")
+P(m,"RunLight1",Vector3.new(0.3,0.15,0.3),sp+Vector3.new(-3.5,4.5,-4),Color3.fromRGB(255,200,50),"Neon")
+P(m,"RunLight2",Vector3.new(0.3,0.15,0.3),sp+Vector3.new(-3.5,4.5,0),Color3.fromRGB(255,200,50),"Neon")
+P(m,"RunLight3",Vector3.new(0.3,0.15,0.3),sp+Vector3.new(-3.5,4.5,4),Color3.fromRGB(255,200,50),"Neon")
+P(m,"RunLight4",Vector3.new(0.3,0.15,0.3),sp+Vector3.new(-3.5,4.5,8),Color3.fromRGB(255,200,50),"Neon")
 ` + BOILERPLATE_BOT,
       suggestions: ['Add a flying script', 'Build a space station', 'Add laser weapons'],
       partCount: 55,
