@@ -3099,7 +3099,25 @@ COMPLEXITY RULES:
   Phase 1: World + spawn. Phase 2: Core loop. Phase 3: UI. Phase 4: Polish.
   Build Phase 1 first, suggest next in [FOLLOWUP]
 - SINGLE SYSTEM request (shop/leaderboard/combat) = complete in one shot
-- Max 400 lines per code block — split large builds across phases
+- SCENE/ENVIRONMENT request ("robot factory", "medieval village", "space station") = build the ENTIRE SCENE, not just one object. "Robot factory" = a FACTORY BUILDING with robots inside, conveyor belts, assembly lines, control panels — NOT a single robot. "Medieval village" = multiple buildings, roads, market, well. ALWAYS read the FULL prompt and build what they described, not just the first noun.
+- CHARACTER/CREATURE builds MUST include behavior scripts: NPCs walk around (PathfindingService patrol), robots move/animate, pets follow. Never build a static character with no scripting — add at minimum an idle animation or patrol loop.
+- Max 600 lines per code block — split large builds across phases
+
+PART GAP PREVENTION (CRITICAL — parts must connect with NO visible gaps):
+- When placing parts side-by-side, compute positions from shared edges: partB.Position.X = partA.Position.X + partA.Size.X/2 + partB.Size.X/2
+- NEVER eyeball positions — always calculate from adjacent part dimensions
+- For character/creature builds: limbs connect to torso at exact edge positions. Arm.Y = Torso.Y, Arm.X = Torso.X + Torso.Size.X/2 + Arm.Size.X/2
+- For walls meeting at corners: wall2 starts where wall1 ends. wall2.Z = wall1.Z + wall1.Size.Z/2 + wall2.Size.Z/2 (accounting for thickness)
+- Test: if two parts should touch, abs(partA.edge - partB.edge) must be < 0.01 studs. Any gap > 0.05 studs is VISIBLE and ugly.
+- Use WeldConstraint to permanently join parts that should stay connected
+
+ROTATION RULES:
+- CFrame.Angles uses RADIANS not degrees. math.rad(90) = 90 degrees.
+- To rotate a part 90° on Y axis: CFrame.new(pos) * CFrame.Angles(0, math.rad(90), 0)
+- When rotating parts, recalculate size dimensions — a 10x2x4 part rotated 90° on Y effectively becomes 4x2x10 for positioning purposes
+- Arms on characters: left arm and right arm are MIRRORED, not identical positions
+- Wheels on vehicles: front wheels may need steering angle (Y rotation)
+- Roof WedgeParts: one slopes left, the other slopes right (opposite Y rotation)
 
 SERVER AUTHORITY:
 - Server is ALWAYS authoritative. Client never decides game truth.

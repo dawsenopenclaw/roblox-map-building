@@ -275,6 +275,30 @@ Z-FIGHTING PREVENTION RULES:
 - Use outerSurface - depth for parts that are RECESSED into a wall
 - Test: if partA.Position.X == partB.Position.X and their sizes overlap, they WILL z-fight. Offset one.
 
+GAP PREVENTION (parts must connect with ZERO visible gaps):
+- Compute every position from adjacent part edges: nextPart.X = prevPart.X + prevPart.SizeX/2 + nextPart.SizeX/2
+- NEVER guess positions — always calculate from neighboring dimensions
+- Character limbs: Arm.X = Torso.X + Torso.SizeX/2 + Arm.SizeX/2 (touching edge to edge)
+- Wall corners: wall2.Z = wall1.Z + wall1.SizeZ/2 + wall2.SizeZ/2
+- Stacked parts: upper.Y = lower.Y + lower.SizeY/2 + upper.SizeY/2
+- If gap > 0.05 studs between touching parts, it is VISIBLE and looks broken. Fix it.
+- Use WeldConstraint between connected parts that should move together.
+
+SCENE INTERPRETATION (CRITICAL):
+- "Robot factory" = a FACTORY BUILDING with robots inside, conveyor belts, assembly lines, control panels. NOT a single robot.
+- "Medieval village" = multiple buildings + roads + market + well + NPCs. NOT one house.
+- "Space station" = corridors + rooms + airlocks + viewport + control room. NOT one room.
+- ALWAYS build the FULL SCENE described. Read EVERY word in the prompt.
+
+BEHAVIOR SCRIPTING (add life to builds):
+- Characters/creatures: add a patrol script (PathfindingService between 3-4 waypoints) or idle animation
+- Robots: add servo sounds, blinking lights (PointLight toggling), head rotation
+- Doors: add ClickDetector + TweenService open/close
+- Lights: add flickering (PointLight.Brightness randomized via Heartbeat)
+- Machines: add moving parts (conveyor belt TweenService loop, gears rotating)
+- Vehicles: add VehicleSeat so players can drive
+- Water features: add ParticleEmitter for splash/mist
+
 ORGANIZATION: Group ALL parts in a named Model. Use Folders: Foundation, Walls, WallDetail, Windows, Doors, Roof, Interior, Furniture, Exterior, Lights. Anchor ALL parts. Wrap in ChangeHistoryService.
 
 Output ONLY runnable Luau code. No explanation. Generate as many parts as needed — DO NOT cut corners. A good building has 80-200+ parts.`,
@@ -324,6 +348,27 @@ ENVIRONMENT PROPS (scatter these around builds):
 - Ground cover: Small grass tufts, flower clusters, leaf piles, puddles
 - Wall decorations: Hanging signs, lanterns, banners, ivy (green Parts crawling up walls)
 - Atmospheric: Floating dust particles (ParticleEmitter), ambient light shafts, fog rolls
+
+GAP PREVENTION FOR PROPS:
+- Character/creature limbs MUST connect tightly: Arm.X = Body.X + Body.SizeX/2 + Arm.SizeX/2
+- Furniture legs MUST touch the floor: Leg.Y = floorY + Leg.SizeY/2
+- Stacked items MUST sit flush: top.Y = bottom.Y + bottom.SizeY/2 + top.SizeY/2
+- Wheels MUST touch the ground AND align with the body
+- ZERO visible gaps. Calculate every position from neighbor edges.
+
+BEHAVIOR SCRIPTING FOR PROPS:
+- Robot/character: add idle behavior (head swivel, light blink, servo sound, or simple patrol between 2 points)
+- Vehicle: add VehicleSeat for driveable vehicles
+- Lamp/torch: add PointLight with flicker (Heartbeat + math.random modulation)
+- Clock: add time display via SurfaceGui updating every second
+- Machine: add moving parts (TweenService loop for conveyor, gears, pistons)
+- Fountain: add ParticleEmitter for water spray
+- Fireplace: add Fire instance + crackling Sound + warm PointLight
+
+SCENE INTERPRETATION:
+- "Robot factory" = FACTORY BUILDING with robots + conveyors + machines. NOT a single robot.
+- "Pirate cove" = cave + water + ship + treasure + dock. NOT a single ship.
+- Always build the FULL SCENE the user described.
 
 Output ONLY runnable Luau code. Generate as many parts as needed to make it look real.`,
 
