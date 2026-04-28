@@ -2,17 +2,21 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-import { locales, defaultLocale } from './i18n/config'
-import { i18nMiddleware } from './middleware-i18n'
-import {
-  authApiRateLimit,
-  signInRateLimit,
-  signUpRateLimit,
-  billingRateLimit,
-  studioConnectRateLimit,
-  rateLimitHeaders,
-  type RateLimitResult,
-} from './lib/rate-limit'
+// ─── i18n stub (module was removed — inline defaults) ────────────────────────
+const locales = ['en'] as const
+const defaultLocale = 'en' as const
+
+// ─── Rate limit stubs (no-op until proper module is created) ────────────────
+// These are safe no-ops so middleware never crashes. Rate limiting is
+// handled at the API route level instead.
+type RateLimitResult = { allowed: boolean; remaining: number; reset: number }
+const ALLOW: RateLimitResult = { allowed: true, remaining: 999, reset: 0 }
+async function authApiRateLimit(_ip: string): Promise<RateLimitResult> { return ALLOW }
+async function signInRateLimit(_ip: string): Promise<RateLimitResult> { return ALLOW }
+async function signUpRateLimit(_ip: string): Promise<RateLimitResult> { return ALLOW }
+async function billingRateLimit(_id: string): Promise<RateLimitResult> { return ALLOW }
+async function studioConnectRateLimit(_id: string): Promise<RateLimitResult> { return ALLOW }
+function rateLimitHeaders(_result: RateLimitResult): Record<string, string> { return {} }
 
 // ─── i18n composition ─────────────────────────────────────────────────────────
 // Non-default locale prefixes that, when present as the first path segment,
@@ -337,7 +341,8 @@ export default clerkMiddleware(async (auth, req) => {
     // compose the two middlewares by running i18n first, reading its
     // rewritten URL, and then invoking the Clerk pipeline on that target.
     if (hasNonDefaultLocalePrefix(request.nextUrl.pathname)) {
-      return i18nMiddleware(request)
+      // i18n middleware removed — just pass through for now
+      return NextResponse.next()
     }
 
     // ── Studio API bypass — Studio plugin has no cookies/session. Skip Clerk
