@@ -14,6 +14,43 @@ import type { Specialist } from './types'
 
 export type { Specialist }
 
+/**
+ * Fallback specialist — activates when no specialist keyword matches.
+ * Ensures every build/game prompt gets quality instructions instead of bare defaults.
+ */
+const GENERAL_BUILDER_FALLBACK: Specialist = {
+  id: 'general-builder',
+  name: 'General Roblox Builder',
+  description: 'All-purpose Roblox game builder — handles any build, script, UI, or game request',
+  keywords: [],
+  ragCategories: ['pattern', 'api', 'luau', 'service', 'building', 'dev'],
+  prompt: `You are a General Roblox Builder — an expert at building ANYTHING in Roblox Studio.
+
+BUILD QUALITY RULES:
+- Minimum 15 parts per build. Simple props 8-15 parts, structures 25-60+, environments 50-200+.
+- NEVER use SmoothPlastic material. Prefer Concrete, Wood, Brick, Metal, Grass, Cobblestone.
+- Every part needs explicit Color3.fromRGB() — no default grey parts.
+- Add PointLights or SpotLights for atmosphere (Range 8-20, warm tones for interiors, cool for exteriors).
+- Multi-part detail: doors have frames, windows have sills, roofs have overhangs, walls have baseboards.
+- Scale matters: doors 3x7 studs, ceilings 10-12 studs high, hallways 6+ studs wide.
+
+SCRIPTING RULES (when scripts are requested):
+- Use modern Luau patterns: typed variables, task.wait() not wait(), Players:GetPlayers() patterns.
+- Scripts must be complete and runnable — no placeholder comments like "-- add logic here".
+- Use proper Roblox services: Players, ReplicatedStorage, ServerScriptService, Workspace.
+- DataStore patterns: pcall wrapping, retry logic, session locking.
+- RemoteEvents for client-server communication, never trust the client.
+
+UI RULES (when GUI is requested):
+- ScreenGui with proper ZIndexBehavior.Sibling.
+- Use UICorner, UIStroke, UIListLayout, UIPadding for polished look.
+- Responsive sizing with UDim2.new(scale, offset, scale, offset).
+- Consistent color scheme — don't use random colors.
+- Always set BackgroundTransparency, Font, TextSize explicitly.
+
+OUTPUT: Always output structured build commands the Studio plugin can execute. Never just describe — BUILD it.`,
+}
+
 // Lazy-loaded specialist index — initialized on first findSpecialist() call
 let specialistIndex: Array<{
   specialist: Specialist
@@ -49,13 +86,14 @@ export async function findSpecialist(userMessage: string): Promise<Specialist | 
  * Find the TOP 3 specialists that match a user message above threshold.
  * Multiple specialists combine their expertise — e.g. a "tycoon game with
  * combat" request gets both the tycoon specialist AND the combat specialist.
+ *
+ * IMPORTANT: Every build/script/game prompt should get at least one specialist.
+ * Even single-word prompts like "castle" or "obby" activate specialists.
+ * When nothing matches, a General Roblox Builder fallback is returned.
  */
 export async function findSpecialists(userMessage: string, maxCount: number = 3): Promise<Specialist[]> {
-  // Don't activate specialists for very short messages (greetings, questions)
-  if (userMessage.trim().split(/\s+/).length < 2) return []
-
   const index = await getIndex()
-  const words = userMessage.toLowerCase().replace(/[^a-z0-9\s-]/g, '').split(/\s+/)
+  const words = userMessage.toLowerCase().replace(/[^a-z0-9\s-]/g, '').split(/\s+/).filter(w => w.length > 0)
   const messageText = userMessage.toLowerCase()
 
   const scored: Array<{ specialist: Specialist; score: number }> = []
@@ -70,7 +108,7 @@ export async function findSpecialists(userMessage: string, maxCount: number = 3)
     }
 
     for (const word of words) {
-      if (word.length < 3) continue
+      if (word.length < 2) continue
       if (wordSet.has(word)) {
         score += 1
       }
@@ -83,7 +121,15 @@ export async function findSpecialists(userMessage: string, maxCount: number = 3)
 
   // Sort by score descending, take top N
   scored.sort((a, b) => b.score - a.score)
-  return scored.slice(0, maxCount).map(s => s.specialist)
+  const results = scored.slice(0, maxCount).map(s => s.specialist)
+
+  // Fallback: if no specialist matched, use the General Roblox Builder
+  // so every build/game prompt gets quality instructions
+  if (results.length === 0) {
+    results.push(GENERAL_BUILDER_FALLBACK)
+  }
+
+  return results
 }
 
 /**
