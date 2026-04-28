@@ -68,6 +68,422 @@ export interface EnhancedPromptAsset {
   description: string
 }
 
+// ─── Style Modifier Types ──────────────────────────────────────────────────
+
+export type MoodModifier =
+  | 'cozy' | 'dark' | 'futuristic' | 'magical' | 'rustic'
+  | 'cheerful' | 'elegant' | 'industrial' | 'neutral'
+
+export type ScaleModifier = 'tiny' | 'small' | 'normal' | 'large' | 'massive' | 'detailed'
+
+export type EnvironmentModifier =
+  | 'woods' | 'hill' | 'water' | 'city' | 'desert'
+  | 'snow' | 'floating' | 'underground' | 'none'
+
+export type TimeModifier = 'night' | 'sunset' | 'dawn' | 'rain' | 'morning' | 'day'
+
+export interface StyleModifiers {
+  mood: MoodModifier
+  scale: ScaleModifier
+  environment: EnvironmentModifier
+  time: TimeModifier
+  /** Specific RGB palette derived from mood — 5 colors for primary, secondary, accent, trim, detail */
+  palette: { name: string; rgb: string }[]
+  /** Materials that fit the mood */
+  materials: string[]
+  /** Lighting instructions derived from mood + time */
+  lightingOverride: string
+  /** Scale multiplier (1.0 = normal) */
+  scaleMultiplier: number
+  /** Extra environment elements to add around the build */
+  environmentElements: string[]
+  /** Raw keywords that triggered each modifier (for debugging) */
+  triggerWords: string[]
+}
+
+// ─── Style Modifier Detection ──────────────────────────────────────────────
+
+const MOOD_PATTERNS: { pattern: RegExp; mood: MoodModifier; triggerLabel: string }[] = [
+  { pattern: /\b(cozy|cosy|warm|homey|homely|snug|comfy|comfortable|inviting|welcoming)\b/i, mood: 'cozy', triggerLabel: 'cozy/warm' },
+  { pattern: /\b(dark|creepy|scary|horror|spooky|haunted|sinister|gloomy|ominous|eerie|abandoned|decrepit|cursed)\b/i, mood: 'dark', triggerLabel: 'dark/creepy' },
+  { pattern: /\b(futuristic|modern|sleek|sci-?fi|cyber|neon|tech|advanced|hi-?tech|minimalist|contemporary)\b/i, mood: 'futuristic', triggerLabel: 'futuristic/modern' },
+  { pattern: /\b(magical|enchanted|fantasy|mystical|fairy|wizard|witch|arcane|ethereal|mythical|elven|fae|sorcerer)\b/i, mood: 'magical', triggerLabel: 'magical/fantasy' },
+  { pattern: /\b(rustic|old|weathered|ancient|worn|aged|vintage|antique|medieval|historic|crumbling|decayed)\b/i, mood: 'rustic', triggerLabel: 'rustic/old' },
+  { pattern: /\b(cheerful|fun|playful|happy|bright|colorful|colourful|carnival|party|festive|joyful|whimsical)\b/i, mood: 'cheerful', triggerLabel: 'cheerful/fun' },
+  { pattern: /\b(elegant|fancy|luxurious|luxury|grand|opulent|royal|palace|mansion|ornate|gilded|regal|majestic)\b/i, mood: 'elegant', triggerLabel: 'elegant/fancy' },
+  { pattern: /\b(industrial|gritty|urban|factory|warehouse|steampunk|pipes|metal|brutalist|concrete jungle)\b/i, mood: 'industrial', triggerLabel: 'industrial/gritty' },
+]
+
+const SCALE_PATTERNS: { pattern: RegExp; scale: ScaleModifier }[] = [
+  { pattern: /\b(tiny|miniature|micro|teeny)\b/i, scale: 'tiny' },
+  { pattern: /\b(small|little|mini|compact|petite)\b/i, scale: 'small' },
+  { pattern: /\b(large|big|tall|wide|spacious)\b/i, scale: 'large' },
+  { pattern: /\b(massive|enormous|giant|huge|colossal|mega|towering|sprawling|vast)\b/i, scale: 'massive' },
+  { pattern: /\b(detailed|intricate|complex|elaborate|ornate|decorated)\b/i, scale: 'detailed' },
+]
+
+const ENVIRONMENT_PATTERNS: { pattern: RegExp; env: EnvironmentModifier }[] = [
+  { pattern: /\b(in the woods|in a forest|forest|woods|grove|woodland|among trees|tree-?lined)\b/i, env: 'woods' },
+  { pattern: /\b(on a hill|hilltop|mountain|cliff|ridge|peak|elevated|overlook|bluff|highland)\b/i, env: 'hill' },
+  { pattern: /\b(by the water|ocean|lake|river|beach|seaside|coastal|waterfront|dock|harbor|harbour|pond|shore|bay)\b/i, env: 'water' },
+  { pattern: /\b(in the city|downtown|urban|street|metropolis|skyscraper|cityscape|neighborhood|block)\b/i, env: 'city' },
+  { pattern: /\b(desert|sand|arid|dune|mesa|canyon|badlands|oasis)\b/i, env: 'desert' },
+  { pattern: /\b(snow|winter|frozen|ice|arctic|tundra|blizzard|frosty|glacial|cold)\b/i, env: 'snow' },
+  { pattern: /\b(floating|in the sky|cloud|skyborne|airborne|heavenly|celestial|above the clouds)\b/i, env: 'floating' },
+  { pattern: /\b(underground|cave|cavern|subterranean|tunnel|mine|grotto|crypt|catacomb)\b/i, env: 'underground' },
+]
+
+const TIME_PATTERNS: { pattern: RegExp; time: TimeModifier }[] = [
+  { pattern: /\b(at night|nighttime|night-?time|midnight|nocturnal|starlit|moonlit|under the stars)\b/i, time: 'night' },
+  { pattern: /\b(sunset|dusk|twilight|golden hour|evening)\b/i, time: 'sunset' },
+  { pattern: /\b(dawn|sunrise|first light|daybreak)\b/i, time: 'dawn' },
+  { pattern: /\b(rain|rainy|storm|stormy|thunder|downpour|drizzle|overcast|cloudy)\b/i, time: 'rain' },
+  { pattern: /\b(morning|early|misty morning|foggy morning)\b/i, time: 'morning' },
+]
+
+// ─── Mood → palette/material/lighting mappings ─────────────────────────────
+
+interface MoodProfile {
+  palette: { name: string; rgb: string }[]
+  materials: string[]
+  lightingBase: string
+}
+
+const MOOD_PROFILES: Record<MoodModifier, MoodProfile> = {
+  cozy: {
+    palette: [
+      { name: 'warm brown', rgb: '139, 90, 43' },
+      { name: 'cream', rgb: '245, 230, 200' },
+      { name: 'burnt orange', rgb: '200, 120, 50' },
+      { name: 'soft gold', rgb: '220, 190, 130' },
+      { name: 'deep red accent', rgb: '160, 60, 50' },
+    ],
+    materials: ['WoodPlanks', 'Fabric', 'Brick', 'Wood', 'Cobblestone'],
+    lightingBase: 'Warm ambient. PointLights (Color 255,220,180, Brightness 0.6, Range 20) in every room/area. Atmosphere (Density 0.25, Color 200,180,160). Bloom (Intensity 0.3, Size 24). ColorCorrection (Brightness 0.05, Saturation 0.1, TintColor 255,240,220).',
+  },
+  dark: {
+    palette: [
+      { name: 'charcoal', rgb: '40, 40, 45' },
+      { name: 'blood red', rgb: '120, 20, 20' },
+      { name: 'slate gray', rgb: '70, 70, 80' },
+      { name: 'bone white', rgb: '180, 175, 165' },
+      { name: 'sickly green accent', rgb: '80, 120, 60' },
+    ],
+    materials: ['Slate', 'Granite', 'Cobblestone', 'Metal', 'CorrodedMetal'],
+    lightingBase: 'Dark oppressive. ClockTime 0. Few dim PointLights (Color 180,160,140, Brightness 0.3, Range 12). Atmosphere (Density 0.5, Color 30,25,35). Bloom (Intensity 0.1, Size 10). ColorCorrection (Brightness -0.1, Contrast 0.2, Saturation -0.2). Fog.',
+  },
+  futuristic: {
+    palette: [
+      { name: 'clean white', rgb: '230, 235, 240' },
+      { name: 'electric blue', rgb: '0, 150, 255' },
+      { name: 'silver', rgb: '190, 195, 200' },
+      { name: 'neon cyan accent', rgb: '0, 255, 230' },
+      { name: 'dark panel', rgb: '30, 35, 45' },
+    ],
+    materials: ['Metal', 'Glass', 'Neon', 'DiamondPlate', 'Foil'],
+    lightingBase: 'Clean bright futuristic. SpotLights (white, Brightness 1, Range 40). Neon edge strips. Atmosphere (Density 0.1, Color 200,210,230). Bloom (Intensity 0.5, Size 40). ColorCorrection (Contrast 0.15, Saturation 0.05, TintColor 220,230,255).',
+  },
+  magical: {
+    palette: [
+      { name: 'deep purple', rgb: '80, 40, 140' },
+      { name: 'enchanted gold', rgb: '230, 200, 80' },
+      { name: 'mystic teal', rgb: '40, 180, 170' },
+      { name: 'starlight white', rgb: '230, 225, 255' },
+      { name: 'rose pink accent', rgb: '200, 100, 150' },
+    ],
+    materials: ['Marble', 'Glass', 'Neon', 'Fabric', 'Ice'],
+    lightingBase: 'Ethereal glow. PointLights with varied colors (purple, teal, gold) scattered throughout. Atmosphere (Density 0.3, Color 140,120,180). Bloom (Intensity 0.6, Size 35). ColorCorrection (Saturation 0.25, TintColor 200,190,240). ParticleEmitters for sparkle/fairy dust.',
+  },
+  rustic: {
+    palette: [
+      { name: 'weathered stone', rgb: '140, 135, 125' },
+      { name: 'old wood', rgb: '110, 75, 45' },
+      { name: 'faded brick', rgb: '160, 110, 90' },
+      { name: 'moss green', rgb: '80, 110, 60' },
+      { name: 'iron gray accent', rgb: '90, 85, 80' },
+    ],
+    materials: ['Cobblestone', 'Brick', 'Wood', 'Granite', 'Pebble'],
+    lightingBase: 'Warm weathered. SpotLights (Color 255,230,190, Brightness 0.5). Atmosphere (Density 0.35, Color 180,170,150). Bloom (Intensity 0.2, Size 20). ColorCorrection (Saturation -0.1, Brightness -0.02). Imperfect feel — add CFrame.Angles(0, math.rad(math.random(-3,3)), 0) jitter to placed parts.',
+  },
+  cheerful: {
+    palette: [
+      { name: 'sunny yellow', rgb: '255, 220, 50' },
+      { name: 'sky blue', rgb: '80, 180, 255' },
+      { name: 'grass green', rgb: '80, 200, 80' },
+      { name: 'hot pink accent', rgb: '255, 100, 150' },
+      { name: 'bright orange', rgb: '255, 160, 40' },
+    ],
+    materials: ['Concrete', 'Fabric', 'Neon', 'Wood', 'Glass'],
+    lightingBase: 'Bright cheerful. Full daylight ClockTime 14. Atmosphere (Density 0.15, Color 200,220,255). Bloom (Intensity 0.4, Size 30). ColorCorrection (Brightness 0.1, Saturation 0.3, Contrast 0.05). Vivid and saturated everywhere.',
+  },
+  elegant: {
+    palette: [
+      { name: 'rich gold', rgb: '200, 170, 60' },
+      { name: 'dark mahogany', rgb: '70, 35, 20' },
+      { name: 'cream marble', rgb: '240, 235, 225' },
+      { name: 'velvet burgundy', rgb: '120, 30, 50' },
+      { name: 'polished black', rgb: '25, 25, 30' },
+    ],
+    materials: ['Marble', 'WoodPlanks', 'Glass', 'Neon', 'Fabric'],
+    lightingBase: 'Warm elegant. Chandeliers (PointLight Color 255,240,200, Brightness 0.8, Range 30). Atmosphere (Density 0.2, Color 200,190,180). Bloom (Intensity 0.35, Size 28). ColorCorrection (Contrast 0.1, Saturation 0.1). Gold Neon accent strips on trim.',
+  },
+  industrial: {
+    palette: [
+      { name: 'steel gray', rgb: '120, 125, 130' },
+      { name: 'rust orange', rgb: '160, 90, 40' },
+      { name: 'dark concrete', rgb: '80, 80, 85' },
+      { name: 'warning yellow', rgb: '230, 200, 40' },
+      { name: 'pipe copper', rgb: '180, 120, 70' },
+    ],
+    materials: ['DiamondPlate', 'CorrodedMetal', 'Metal', 'Concrete', 'Brick'],
+    lightingBase: 'Harsh industrial. Overhead SpotLights (white, Brightness 1.2, Angle 60). Atmosphere (Density 0.3, Color 150,150,160). Bloom (Intensity 0.15, Size 15). ColorCorrection (Saturation -0.15, Contrast 0.15). Exposed pipes, grating, bolted plates.',
+  },
+  neutral: {
+    palette: [
+      { name: 'warm gray', rgb: '160, 155, 150' },
+      { name: 'soft white', rgb: '235, 230, 225' },
+      { name: 'medium brown', rgb: '140, 100, 65' },
+      { name: 'muted blue', rgb: '100, 130, 170' },
+      { name: 'dark accent', rgb: '60, 55, 50' },
+    ],
+    materials: ['Concrete', 'Wood', 'Brick', 'Metal', 'Glass'],
+    lightingBase: 'Future technology. Atmosphere (Density 0.3, Color 180,195,220). Bloom (Intensity 0.4, Size 30). ColorCorrection (Brightness 0.05, Contrast 0.1, Saturation 0.15). SunRays (Intensity 0.1, Spread 0.3).',
+  },
+}
+
+// ─── Environment → surrounding elements ────────────────────────────────────
+
+const ENVIRONMENT_ELEMENTS: Record<EnvironmentModifier, string[]> = {
+  woods: [
+    '8-12 trees surrounding the build (Cyl trunk Wood 95,65,30 + 4 overlapping Ball canopies Grass varying greens) via positions table + loop',
+    'Leaf ground cover: scattered small flat green Parts (Grass material, 0.3 stud tall, random rotation)',
+    'Dirt path leading to entrance (Pebble material, 100,80,55)',
+    'Fallen log prop (Cyl on side, Wood material, moss green patches)',
+    'Mushroom clusters (small Cyl stem + Ball cap, 3-4 per cluster)',
+    'Dappled light: Atmosphere (Density 0.35, Color 160,180,140), filtered sun feel',
+    'Terrain FillBlock Grass base with FillBall earth mounds',
+  ],
+  hill: [
+    'Elevated terrain: build sits on FillBall hill (60+ studs wide, 15-25 studs above base)',
+    'Rocky outcrops around base (irregular Parts, Granite material, 130,125,120)',
+    'Winding path from bottom to top (Cobblestone alternating tiles via loop)',
+    'Wildflowers along path edges (small colored Ball Parts via loop)',
+    'Wind-bent tree at summit (angled Cyl trunk)',
+    'Retaining stone wall on one side (Cobblestone, loop for stones)',
+    'Terrain FillBlock Grass base + FillBall for hill shape',
+  ],
+  water: [
+    'Water body: large Glass Part (transparency 0.4, blue 80,140,200, SurfaceLight underneath)',
+    'Sandy beach/shore area (Sand material, 220,200,160)',
+    'Dock/pier extending over water (Wood planks via loop, posts underneath)',
+    'Rocks along shoreline (irregular Parts, Granite, varying sizes)',
+    'Reeds/cattails at water edge (thin Cyl Parts, green)',
+    'Small boat or raft prop (Wood Parts)',
+    'Wave effect: ParticleEmitter (white, low rate) along water edge',
+    'Terrain FillBlock Sand for shore, Water for water area',
+  ],
+  city: [
+    'Road in front of build (Concrete dark gray 70,70,75, yellow center line, white edge lines)',
+    'Sidewalk (Concrete lighter 160,160,165)',
+    'Street lights every 15 studs via loop (Cyl pole + box lamp + PointLight)',
+    'Fire hydrant prop (red Cyl)',
+    'Other building facades on either side (simple shells, different heights)',
+    'Crosswalk markings (white stripe Parts)',
+    'Trash can, newspaper box, bench props on sidewalk',
+    'No terrain FillBlock needed — all concrete/asphalt',
+  ],
+  desert: [
+    'Sandy terrain: FillBlock Sand (220,195,155) as base',
+    'Cacti (3-5 via loop): tall Cyl + Branch Cyls at angles, Grass material green',
+    'Mesa rocks: large irregular Parts stacked, Sandstone/Sand material (200,160,100)',
+    'Tumbleweeds: brown Ball Parts scattered',
+    'Heat haze: Atmosphere (Density 0.25, Color 230,210,180), warm tint',
+    'Sun-bleached bones/skull prop (white Parts)',
+    'Cracked ground texture: dark line Parts in dry-mud pattern',
+  ],
+  snow: [
+    'Snow terrain: FillBlock Snow white (240,245,250) as base',
+    'Snow-capped elements: white Part layers on top of roof, walls, rocks (0.3-0.5 stud thick)',
+    'Icicles hanging from edges (thin WedgeParts, Ice material, transparency 0.2, 200,220,240)',
+    'Frozen pond: Glass Part (Ice material, transparency 0.3, pale blue)',
+    'Snow-covered pine trees (white Ball canopies instead of green)',
+    'Snowman prop (3 stacked white Balls + carrot nose + coal eyes)',
+    'Breath/snow particles: ParticleEmitter (white, small, slow drift)',
+    'Cold lighting: ColorCorrection TintColor 200,210,240, Atmosphere bluish',
+  ],
+  floating: [
+    'NO ground terrain — build floats in sky',
+    'Cloud platforms underneath: white Parts (Fabric material, transparency 0.2, soft shapes)',
+    'Chains or pillars hanging down from build into void',
+    'Smaller floating rock chunks nearby (Granite, irregular shapes, varying sizes)',
+    'Ethereal particles: ParticleEmitter (white/gold sparkles drifting upward)',
+    'Sky-blue Atmosphere (Density 0.1, Color 180,210,255), bright SunRays',
+    'Waterfalls pouring off edges into nothing (blue Glass + ParticleEmitter)',
+    'Rainbow arc nearby (thin colored Parts in arc shape)',
+  ],
+  underground: [
+    'Cave walls enclosing the build: large irregular Parts (Slate/Granite, dark 60,55,50)',
+    'Stalactites hanging from ceiling (WedgeParts pointing down, Slate)',
+    'Stalagmites rising from floor (WedgeParts pointing up)',
+    'Glowing crystals: Neon material Parts (purple/teal/blue, PointLight attached)',
+    'Torch brackets on walls (PointLight warm, flickering via script)',
+    'Underground pool: small Glass Part (dark blue, slight glow)',
+    'Rock rubble scattered on floor (small irregular Parts)',
+    'Dark lighting: minimal ambient, rely on torches and crystal glow. Atmosphere (Density 0.6, Color 20,15,25).',
+  ],
+  none: [],
+}
+
+// ─── Time → lighting overrides ─────────────────────────────────────────────
+
+const TIME_LIGHTING: Record<TimeModifier, string> = {
+  night: 'ClockTime 0. Dark sky, stars visible. Only artificial lights visible (PointLights, SpotLights, Neon strips). Moon glow. Atmosphere (Density 0.4, Color 20,25,40). ColorCorrection (Brightness -0.15, Saturation -0.1, TintColor 140,150,200). Street lamps and window lights become focal points.',
+  sunset: 'ClockTime 17.5. Golden orange sky. Long warm shadows. Atmosphere (Density 0.3, Color 255,180,120). ColorCorrection (Brightness 0.05, Saturation 0.2, TintColor 255,220,180). Bloom (Intensity 0.5). SunRays (Intensity 0.25, Spread 0.5). Everything bathed in golden light.',
+  dawn: 'ClockTime 6. Soft pink-purple sky. Gentle light from east. Atmosphere (Density 0.35, Color 220,180,200). ColorCorrection (Brightness 0, Saturation 0.1, TintColor 240,210,220). Mist at ground level (Atmosphere density). Quiet peaceful feel.',
+  rain: 'ClockTime 12 but overcast. Dark gray sky. Atmosphere (Density 0.5, Color 100,105,115). ColorCorrection (Brightness -0.05, Saturation -0.15, Contrast 0.1). ParticleEmitter rain (white streaks, fast downward, high rate). Puddle Parts on ground (Glass, 0.1 stud tall, dark blue, transparency 0.3). Wet reflective surfaces.',
+  morning: 'ClockTime 8. Soft warm light. Light mist. Atmosphere (Density 0.3, Color 200,210,220). Bloom (Intensity 0.3, Size 25). ColorCorrection (Brightness 0.05, Saturation 0.05). Dewy fresh feel. Fog at low elevation.',
+  day: 'ClockTime 14. Standard bright daylight. Atmosphere (Density 0.25, Color 180,200,230). Bloom (Intensity 0.3, Size 28). ColorCorrection (Brightness 0.05, Saturation 0.15). SunRays (Intensity 0.1). Clear sky.',
+}
+
+/**
+ * Analyzes a user prompt and extracts structured style modifiers.
+ * This runs BEFORE Groq enhancement and gives the planner (and the main AI)
+ * specific palette, material, lighting, and environment instructions derived
+ * from the user's actual words. This is what prevents generic builds.
+ */
+export function extractStyleModifiers(prompt: string): StyleModifiers {
+  const lower = prompt.toLowerCase()
+  const triggerWords: string[] = []
+
+  // Detect mood
+  let mood: MoodModifier = 'neutral'
+  for (const { pattern, mood: m, triggerLabel } of MOOD_PATTERNS) {
+    if (pattern.test(lower)) {
+      mood = m
+      triggerWords.push(`mood:${triggerLabel}`)
+      break
+    }
+  }
+
+  // Detect scale modifier
+  let scale: ScaleModifier = 'normal'
+  for (const { pattern, scale: s } of SCALE_PATTERNS) {
+    if (pattern.test(lower)) {
+      scale = s
+      triggerWords.push(`scale:${s}`)
+      break
+    }
+  }
+
+  // Detect environment
+  let environment: EnvironmentModifier = 'none'
+  for (const { pattern, env } of ENVIRONMENT_PATTERNS) {
+    if (pattern.test(lower)) {
+      environment = env
+      triggerWords.push(`env:${env}`)
+      break
+    }
+  }
+
+  // Detect time
+  let time: TimeModifier = 'day'
+  for (const { pattern, time: t } of TIME_PATTERNS) {
+    if (pattern.test(lower)) {
+      time = t
+      triggerWords.push(`time:${t}`)
+      break
+    }
+  }
+
+  // Look up profiles
+  const moodProfile = MOOD_PROFILES[mood]
+  const envElements = ENVIRONMENT_ELEMENTS[environment]
+
+  // Build lighting: time overrides mood lighting, but mood tints remain
+  let lightingOverride = TIME_LIGHTING[time]
+  if (time === 'day' && mood !== 'neutral') {
+    // Use mood-specific lighting instead of generic day
+    lightingOverride = moodProfile.lightingBase
+  }
+
+  // Scale multiplier
+  const scaleMultipliers: Record<ScaleModifier, number> = {
+    tiny: 0.5,
+    small: 0.7,
+    normal: 1.0,
+    large: 1.5,
+    massive: 2.5,
+    detailed: 1.0, // same size, more parts
+  }
+
+  return {
+    mood,
+    scale,
+    environment,
+    time,
+    palette: moodProfile.palette,
+    materials: moodProfile.materials,
+    lightingOverride,
+    scaleMultiplier: scaleMultipliers[scale],
+    environmentElements: envElements,
+    triggerWords,
+  }
+}
+
+/**
+ * Formats style modifiers into a prompt block that can be injected into
+ * both the Groq planner and the main AI system prompt.
+ */
+export function formatStyleModifiersBlock(modifiers: StyleModifiers): string {
+  const lines: string[] = []
+
+  lines.push('[STYLE_MODIFIERS — extracted from user prompt]')
+  lines.push(`Mood: ${modifiers.mood} | Scale: ${modifiers.scale} (${modifiers.scaleMultiplier}x) | Environment: ${modifiers.environment} | Time: ${modifiers.time}`)
+  lines.push('')
+
+  // Palette
+  lines.push('COLOR PALETTE (use these specific colors, NOT generic defaults):')
+  for (const c of modifiers.palette) {
+    lines.push(`  - ${c.name}: Color3.fromRGB(${c.rgb})`)
+  }
+  lines.push('')
+
+  // Materials
+  lines.push(`PREFERRED MATERIALS: ${modifiers.materials.join(', ')}`)
+  lines.push('Use these materials predominantly. Mix in 1-2 others for variety but keep the mood consistent.')
+  lines.push('')
+
+  // Lighting
+  lines.push('LIGHTING SETUP:')
+  lines.push(modifiers.lightingOverride)
+  lines.push('')
+
+  // Scale
+  if (modifiers.scale !== 'normal') {
+    lines.push(`SCALE ADJUSTMENT: All dimensions multiplied by ${modifiers.scaleMultiplier}x.`)
+    if (modifiers.scale === 'detailed') {
+      lines.push('DETAIL MODE: Same physical size, but add 2x the usual detail parts (trim, molding, hardware, decorations).')
+    }
+    lines.push('')
+  }
+
+  // Environment
+  if (modifiers.environmentElements.length > 0) {
+    lines.push('SURROUNDING ENVIRONMENT (add these around the main build):')
+    for (const elem of modifiers.environmentElements) {
+      lines.push(`  - ${elem}`)
+    }
+    lines.push('')
+  }
+
+  lines.push('CRITICAL: These modifiers came from analyzing what the user ACTUALLY asked for.')
+  lines.push('Do NOT ignore them. Do NOT fall back to generic colors/materials/lighting.')
+  lines.push('Every part of the build must reflect this mood, palette, and atmosphere.')
+  lines.push('[/STYLE_MODIFIERS]')
+
+  return lines.join('\n')
+}
+
 export interface EnhancedPrompt {
   originalPrompt: string
   intent: PromptIntent
@@ -87,6 +503,8 @@ export interface EnhancedPrompt {
   lightingSetup: string     // detailed lighting instructions
   exteriorFocus: boolean    // true = facade-first, no interior unless asked
   forLoopSpecs: string[]    // list of things to build with FOR loops
+  // v3 style modifier fields
+  styleModifiers: StyleModifiers
 }
 
 // ─── Defaults & validation ──────────────────────────────────────────────────
@@ -236,7 +654,15 @@ SECTION PLANNING RULES:
 - Lighting ALWAYS includes the full AAA stack for outdoor builds. ALWAYS include SpotLights behind Glass windows.
 - The enhancedPrompt should be SO detailed that a code AI just translates it line by line. Include specific RGB values, exact dimensions, loop counts, material names.
 - Total parts across all sections should hit the target of ${targets.target} (minimum ${targets.min}).
-- Keep the JSON clean, no markdown, no extra text outside the JSON.`
+- Keep the JSON clean, no markdown, no extra text outside the JSON.
+
+STYLE MODIFIER INTEGRATION (CRITICAL):
+- The user message may include a [STYLE_MODIFIERS] block with extracted mood, palette, materials, lighting, and environment.
+- If present, you MUST use those specific RGB colors, materials, and lighting in your sections. Do NOT invent your own palette.
+- The palette colors should map to your sections: primary → walls, secondary → trim/frames, accent → doors/decorations, etc.
+- The preferred materials list should be used for the majority of parts. Only deviate for specific functional needs (Glass for windows, Neon for lights).
+- Environment elements should become their own sections in your blueprint (e.g., "Surrounding Trees", "Snow Cover", "Water Feature").
+- A "cozy cottage in the woods" is NOT the same as a "futuristic cottage in the city". Every adjective changes the build.`
 }
 
 // ─── Vague prompt expansion ─────────────────────────────────────────────────
@@ -377,26 +803,43 @@ export async function enhancePrompt(
   rawPrompt: string,
   context?: string,
 ): Promise<EnhancedPrompt> {
+  // ── Step 1: Extract style modifiers from the ORIGINAL prompt (before expansion) ──
+  // This captures the user's actual words like "cozy", "in the woods", "at night"
+  const styleModifiers = extractStyleModifiers(rawPrompt)
+
   // Expand vague prompts BEFORE detecting scale and calling AI
   const expandedPrompt = expandVaguePrompt(rawPrompt)
 
-  // Detect build scale and targets BEFORE calling the AI
+  // Apply scale modifier to part targets
   const scale = detectBuildScale(expandedPrompt)
-  const targets = getPartTargets(scale)
+  const baseTargets = getPartTargets(scale)
+
+  // Adjust targets based on scale modifier
+  const scaleAdjust = styleModifiers.scale === 'detailed' ? 2.0 :
+    styleModifiers.scale === 'massive' ? 1.5 :
+    styleModifiers.scale === 'large' ? 1.3 :
+    styleModifiers.scale === 'tiny' ? 0.6 :
+    styleModifiers.scale === 'small' ? 0.8 : 1.0
+  const targets = {
+    min: Math.round(baseTargets.min * scaleAdjust),
+    target: Math.round(baseTargets.target * scaleAdjust),
+    max: Math.round(baseTargets.max * scaleAdjust),
+  }
 
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) {
     // Graceful fallback when Groq is not configured — return a minimal plan
     // so the rest of the pipeline still works.
-    return buildFallbackPlan(rawPrompt, scale, targets)
+    return buildFallbackPlan(rawPrompt, scale, targets, styleModifiers)
   }
 
   const groq = new Groq({ apiKey })
 
-  // Use expanded prompt for the AI planner (more detail = better plan)
+  // ── Step 2: Inject style modifiers into the Groq planner prompt ──
+  const styleBlock = formatStyleModifiersBlock(styleModifiers)
   const userContent = context
-    ? `Context: ${context}\n\nUser request: ${expandedPrompt}\n\nBuild scale: ${scale} (target ${targets.target} parts, min ${targets.min}, max ${targets.max})`
-    : `${expandedPrompt}\n\nBuild scale: ${scale} (target ${targets.target} parts, min ${targets.min}, max ${targets.max})`
+    ? `Context: ${context}\n\nUser request: ${expandedPrompt}\n\nBuild scale: ${scale} (target ${targets.target} parts, min ${targets.min}, max ${targets.max})\n\n${styleBlock}`
+    : `${expandedPrompt}\n\nBuild scale: ${scale} (target ${targets.target} parts, min ${targets.min}, max ${targets.max})\n\n${styleBlock}`
 
   const systemPrompt = buildPlannerSystemPrompt(scale, targets)
 
@@ -415,14 +858,14 @@ export async function enhancePrompt(
     const raw = response.choices[0]?.message?.content
     if (!raw) {
       console.warn('[prompt-enhancer] Empty response from Groq, using fallback')
-      return buildFallbackPlan(rawPrompt, scale, targets)
+      return buildFallbackPlan(rawPrompt, scale, targets, styleModifiers)
     }
 
     const parsed = JSON.parse(raw) as Record<string, unknown>
-    return buildEnhancedPromptResult(rawPrompt, parsed, scale, targets)
+    return buildEnhancedPromptResult(rawPrompt, parsed, scale, targets, styleModifiers)
   } catch (err) {
     console.error('[prompt-enhancer] Groq API error, using fallback:', err instanceof Error ? err.message : err)
-    return buildFallbackPlan(rawPrompt, scale, targets)
+    return buildFallbackPlan(rawPrompt, scale, targets, styleModifiers)
   }
 }
 
@@ -446,6 +889,7 @@ function buildEnhancedPromptResult(
   parsed: Record<string, unknown>,
   scale: BuildScale,
   targets: { min: number; target: number; max: number },
+  styleModifiers?: StyleModifiers,
 ): EnhancedPrompt {
   const intent = sanitizeIntent(parsed.intent)
   const complexity = sanitizeComplexity(parsed.estimatedComplexity)
@@ -493,6 +937,8 @@ function buildEnhancedPromptResult(
     lightingSetup: typeof parsed.lightingSetup === 'string' ? parsed.lightingSetup : 'Future technology + Atmosphere + Bloom + ColorCorrection',
     exteriorFocus: ['building', 'scene', 'map', 'world'].includes(scale),
     forLoopSpecs,
+    // v3 style modifiers
+    styleModifiers: styleModifiers || extractStyleModifiers(originalPrompt),
   }
 }
 
@@ -502,9 +948,11 @@ function buildFallbackPlan(
   rawPrompt: string,
   scale?: BuildScale,
   targets?: { min: number; target: number; max: number },
+  modifiers?: StyleModifiers,
 ): EnhancedPrompt {
   const s = scale || detectBuildScale(rawPrompt)
   const t = targets || getPartTargets(s)
+  const sm = modifiers || extractStyleModifiers(rawPrompt)
   return {
     originalPrompt: rawPrompt,
     intent: 'build',
@@ -519,7 +967,7 @@ function buildFallbackPlan(
     ],
     assetCount: 1,
     assets: [],
-    styleDirective: 'Use Concrete, Wood, Brick, Metal materials. No SmoothPlastic.',
+    styleDirective: `Use ${sm.materials.join(', ')} materials. Palette: ${sm.palette.map(c => `${c.name} (${c.rgb})`).join(', ')}. No SmoothPlastic.`,
     estimatedComplexity: 'medium',
     estimatedCredits: 2,
     enhancedPrompt: rawPrompt,
@@ -527,9 +975,10 @@ function buildFallbackPlan(
     partTargets: t,
     sections: [],
     foundationType: ['building', 'scene', 'map', 'world'].includes(s) ? 'layered' : 'basic',
-    lightingSetup: 'Future technology + Atmosphere + Bloom + ColorCorrection',
+    lightingSetup: sm.lightingOverride,
     exteriorFocus: ['building', 'scene', 'map', 'world'].includes(s),
     forLoopSpecs: [],
+    styleModifiers: sm,
   }
 }
 
@@ -551,6 +1000,12 @@ export function formatEnhancedPlanContext(plan: EnhancedPrompt): string {
   lines.push(`Exterior-first: ${plan.exteriorFocus ? 'YES — facade only, no interior unless user asked' : 'no'}`)
   lines.push(`Style: ${plan.styleDirective}`)
   lines.push('')
+
+  // ── v3: Inject style modifiers from user prompt analysis ──
+  if (plan.styleModifiers) {
+    lines.push(formatStyleModifiersBlock(plan.styleModifiers))
+    lines.push('')
+  }
 
   // Detailed section blueprints — the core upgrade
   if (plan.sections.length > 0) {

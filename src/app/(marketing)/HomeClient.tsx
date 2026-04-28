@@ -1,94 +1,121 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
 import { useAuth } from '@clerk/nextjs'
-import { motion } from 'framer-motion'
+import { motion, useInView } from 'framer-motion'
 
-// Below-the-fold sections are code-split for performance
-const AgentOrbital = dynamic(() => import('@/components/marketing/AgentOrbital'))
-const SellingPointsBento = dynamic(() => import('@/components/marketing/SellingPointsBento'))
 const ReviewMarquee = dynamic(() => import('@/components/marketing/ReviewMarquee'))
 const FaqSection = dynamic(() => import('@/components/marketing/FaqSection'))
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — Glassmorphic cards, gold accents, blurred backgrounds
+═══════════════════════════════════════════════════════════════════════════ */
+
+const glass = {
+  card: {
+    background: 'rgba(12,16,32,0.55)',
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '16px',
+  } as React.CSSProperties,
+  cardHover: {
+    border: '1px solid rgba(212,175,55,0.2)',
+    boxShadow: '0 0 30px rgba(212,175,55,0.06)',
+  } as React.CSSProperties,
+}
+
+/* Fade-in-up animation for sections */
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] } },
+}
+
+const stagger = {
+  visible: { transition: { staggerChildren: 0.1 } },
+}
 
 /* ─── Scroll reveal hook ─────────────────────────────────────────────────── */
 
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     const container = ref.current
     if (!container) return
     const els = container.querySelectorAll<HTMLElement>('.reveal')
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible')
-            observer.unobserve(entry.target)
-          }
-        })
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target) } }),
+      { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
     )
     els.forEach((el) => observer.observe(el))
     return () => observer.disconnect()
   }, [])
-
   return ref
 }
 
-/* ─── Live build counter — social proof ──────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 1 — HERO (Full screen)
+═══════════════════════════════════════════════════════════════════════════ */
 
-function LiveBuildCounter() {
-  const [stats, setStats] = useState<{ builds: number; users: number } | null>(null)
+const ROTATING_WORDS = ['Game', 'World', 'Obby', 'Tycoon', 'City', 'RPG']
+
+function RotatingHeroText() {
+  const [index, setIndex] = useState(0)
 
   useEffect(() => {
-    fetch('/api/stats')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setStats({ builds: d.totalBuilds || 0, users: d.totalUsers || 0 }) })
-      .catch(() => {})
+    const timer = setInterval(() => setIndex((i) => (i + 1) % ROTATING_WORDS.length), 2800)
+    return () => clearInterval(timer)
   }, [])
 
-  // Show nice rounded numbers even if API fails
-  const builds = stats?.builds || 5000
-  const users = stats?.users || 200
-
   return (
-    <div className="flex items-center gap-6 text-[12px]">
-      <div className="flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.6)] animate-pulse" />
-        <span style={{ color: '#71717A' }}>
-          <span style={{ color: '#A1A1AA', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-            {builds.toLocaleString()}
-          </span>{' '}
-          builds generated
+    <h1
+      className="font-bold tracking-tight text-center"
+      style={{ fontSize: 'clamp(3.2rem, 10vw, 7.5rem)', lineHeight: 1.02, letterSpacing: '-0.04em' }}
+    >
+      <span style={{ color: '#FAFAFA' }}>Forge your </span>
+      <span className="relative inline-block" style={{ minWidth: '4ch' }}>
+        {ROTATING_WORDS.map((word, i) => (
+          <motion.span
+            key={word}
+            className="absolute left-0 top-0"
+            initial={{ opacity: 0, y: 30, rotateX: -40 }}
+            animate={{
+              opacity: i === index ? 1 : 0,
+              y: i === index ? 0 : -30,
+              rotateX: i === index ? 0 : 40,
+            }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 45%, #D4AF37 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              display: i === index ? 'inline' : 'none',
+            }}
+          >
+            {word}
+          </motion.span>
+        ))}
+        {/* Invisible spacer for width */}
+        <span style={{ visibility: 'hidden' }}>
+          {ROTATING_WORDS.reduce((a, b) => (a.length > b.length ? a : b))}
         </span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <span style={{ color: '#71717A' }}>
-          <span style={{ color: '#A1A1AA', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-            {users.toLocaleString()}
-          </span>{' '}
-          creators
-        </span>
-      </div>
-    </div>
+      </span>
+    </h1>
   )
 }
 
-/* ─── Hero prompt input — frictionless type-and-go ──────────────────────── */
-
+/* Hero prompt input */
 const HERO_PLACEHOLDERS = [
-  'Build a tycoon factory with conveyor belts...',
-  'Make a medieval castle with a moat...',
-  'Create an obby with moving platforms...',
-  'Generate a futuristic space station...',
-  'Build a parkour map with checkpoints...',
-  'Design a tropical island with palm trees...',
+  'Build me a tycoon factory with conveyor belts...',
+  'Make a medieval castle with towers and a moat...',
+  'Create a parkour obby with 50 checkpoints...',
+  'Design a futuristic city with flying cars...',
+  'Build a complete RPG with combat and inventory...',
+  'Make a pet simulator with hatching eggs...',
 ]
 
 function HeroPromptInput() {
@@ -99,857 +126,529 @@ function HeroPromptInput() {
   const router = useRouter()
   const { isSignedIn } = useAuth()
 
-  // Animated typing placeholder
   useEffect(() => {
     if (focused || prompt.length > 0) return
     const target = HERO_PLACEHOLDERS[placeholderIndex]
     let i = 0
     let typingTimer: ReturnType<typeof setInterval>
     let pauseTimer: ReturnType<typeof setTimeout>
-
     const typeNext = () => {
       typingTimer = setInterval(() => {
-        if (i < target.length) {
-          setTypedPlaceholder(target.slice(0, i + 1))
-          i++
-        } else {
-          clearInterval(typingTimer)
-          pauseTimer = setTimeout(() => {
-            setPlaceholderIndex((prev) => (prev + 1) % HERO_PLACEHOLDERS.length)
-            setTypedPlaceholder('')
-          }, 2200)
-        }
-      }, 55)
+        if (i < target.length) { setTypedPlaceholder(target.slice(0, i + 1)); i++ }
+        else { clearInterval(typingTimer); pauseTimer = setTimeout(() => { setPlaceholderIndex((p) => (p + 1) % HERO_PLACEHOLDERS.length); setTypedPlaceholder('') }, 2200) }
+      }, 50)
     }
-
     typeNext()
-    return () => {
-      clearInterval(typingTimer)
-      clearTimeout(pauseTimer)
-    }
+    return () => { clearInterval(typingTimer); clearTimeout(pauseTimer) }
   }, [placeholderIndex, focused, prompt.length])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = prompt.trim()
-    const editorTarget = trimmed
-      ? `/editor?prompt=${encodeURIComponent(trimmed)}`
-      : '/editor'
-
-    if (isSignedIn) {
-      router.push(editorTarget)
-      return
-    }
-
-    router.push(`/sign-up?redirect_url=${encodeURIComponent(editorTarget)}`)
+    const target = trimmed ? `/editor?prompt=${encodeURIComponent(trimmed)}` : '/editor'
+    router.push(isSignedIn ? target : `/sign-up?redirect_url=${encodeURIComponent(target)}`)
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="relative group"
-      style={{
-        background: focused ? 'rgba(10,14,32,0.85)' : 'rgba(10,14,32,0.6)',
-        backdropFilter: 'blur(16px)',
-        border: `1px solid ${focused ? 'rgba(212,175,55,0.45)' : 'rgba(255,255,255,0.08)'}`,
-        borderRadius: 14,
-        padding: '6px 6px 6px 18px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        transition: 'all 0.2s ease-out',
-        boxShadow: focused
-          ? 'inset 0 1px 0 rgba(255,230,160,0.08), 0 0 0 3px rgba(212,175,55,0.14), 0 0 24px -2px rgba(212,175,55,0.32), 0 0 56px -4px rgba(212,175,55,0.18), 0 0 100px -8px rgba(212,175,55,0.08), 0 8px 32px rgba(0,0,0,0.4)'
-          : 'inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.3)',
-      }}
-    >
-      <span
-        aria-hidden="true"
+    <form onSubmit={handleSubmit} className="relative group w-full">
+      <div
         style={{
-          color: focused ? '#D4AF37' : '#71717A',
-          transition: 'color 0.2s ease-out',
+          ...glass.card,
+          padding: '6px 6px 6px 20px',
           display: 'flex',
           alignItems: 'center',
-          flexShrink: 0,
+          gap: 10,
+          borderColor: focused ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.08)',
+          boxShadow: focused
+            ? '0 0 0 3px rgba(212,175,55,0.12), 0 0 40px rgba(212,175,55,0.15), 0 8px 32px rgba(0,0,0,0.4)'
+            : '0 8px 32px rgba(0,0,0,0.3)',
+          transition: 'all 0.25s ease-out',
         }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={focused ? '#D4AF37' : '#52525B'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'stroke 0.2s' }}>
           <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" />
           <circle cx="12" cy="12" r="3" />
         </svg>
-      </span>
-
-      <input
-        type="text"
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        placeholder={focused || prompt ? 'Describe your game...' : typedPlaceholder + (typedPlaceholder.length < HERO_PLACEHOLDERS[placeholderIndex].length ? '|' : '')}
-        aria-label="Describe your Roblox game"
-        autoComplete="off"
-        spellCheck="false"
-        style={{
-          flex: 1,
-          minWidth: 0,
-          background: 'transparent',
-          border: 'none',
-          outline: 'none',
-          color: '#FAFAFA',
-          fontSize: 16,
-          fontFamily: 'inherit',
-          padding: '12px 0',
-          fontWeight: 500,
-        }}
-      />
-
-      <button
-        type="submit"
-        className="cta-shimmer flex-shrink-0 hover:brightness-110 active:scale-[0.95] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-        aria-label="Build my game"
-        style={{
-          background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
-          color: '#09090b',
-          border: 'none',
-          borderRadius: 10,
-          padding: '11px 18px',
-          fontSize: 14,
-          fontWeight: 700,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          boxShadow: 'inset 0 1px 0 rgba(255,230,160,0.4), inset 0 -1px 0 rgba(120,80,0,0.3), 0 0 18px -2px rgba(212,175,55,0.45), 0 0 36px -4px rgba(212,175,55,0.22), 0 0 72px -8px rgba(212,175,55,0.10), 0 4px 16px -2px rgba(0,0,0,0.5)',
-          transition: 'transform 0.12s ease-out, box-shadow 0.2s ease-out, filter 0.15s ease',
-          letterSpacing: '0.01em',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        Build
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </button>
+        <input
+          type="text"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={typedPlaceholder || 'Describe what you want to build...'}
+          className="flex-1 bg-transparent outline-none text-white text-[15px] placeholder:text-zinc-600"
+          style={{ minWidth: 0 }}
+        />
+        <button
+          type="submit"
+          className="flex-shrink-0 px-5 py-3 rounded-xl text-sm font-bold text-black transition-all hover:brightness-110 active:scale-[0.97]"
+          style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }}
+        >
+          Build
+        </button>
+      </div>
     </form>
   )
 }
 
-/* ─── Rotating hero text ─────────────────────────────────────────────────── */
-
-const ROTATING_WORDS = ['Game', 'Map', 'UI', 'Terrain', 'World', 'Scripts', 'Assets']
-const ROTATE_INTERVAL_MS = 2200
-
-function RotatingHeroText() {
-  const [index, setIndex] = useState(0)
-
+/* Live stat counter */
+function LiveBuildCounter() {
+  const [stats, setStats] = useState<{ builds: number; users: number } | null>(null)
   useEffect(() => {
-    const timer = setInterval(() => {
-      setIndex(prev => (prev + 1) % ROTATING_WORDS.length)
-    }, ROTATE_INTERVAL_MS)
-    return () => clearInterval(timer)
+    fetch('/api/stats').then(r => r.ok ? r.json() : null).then(d => { if (d) setStats({ builds: d.totalBuilds || 0, users: d.totalUsers || 0 }) }).catch(() => {})
   }, [])
-
-  const longestWord = ROTATING_WORDS.reduce((a, b) => (a.length > b.length ? a : b))
-  const currentWord = ROTATING_WORDS[index]
-  const stepDeg = 360 / ROTATING_WORDS.length
-  const ringRotation = index * stepDeg
-
+  const builds = stats?.builds || 5000
+  const users = stats?.users || 200
   return (
-    <h1
-      className="font-bold tracking-tight"
-      style={{
-        fontSize: 'clamp(3.5rem, 11vw, 8rem)',
-        lineHeight: 1.04,
-        letterSpacing: '-0.04em',
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'baseline',
-        justifyContent: 'center',
-        gap: '0.25em',
-      }}
-    >
-      <span style={{ color: '#FAFAFA' }}>Forge your</span>
-      <span
-        aria-live="polite"
-        aria-label={currentWord}
-        style={{
-          display: 'inline-block',
-          position: 'relative',
-          height: '1.15em',
-          minWidth: `${longestWord.length + 0.5}ch`,
-          verticalAlign: 'bottom',
-          perspective: '1200px',
-          perspectiveOrigin: '50% 50%',
-        }}
-      >
-        <span
-          aria-hidden="true"
-          style={{ visibility: 'hidden', display: 'inline-block', whiteSpace: 'nowrap' }}
-        >
-          {longestWord}
-        </span>
-
-        <span
-          className="forge-ring"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            transformStyle: 'preserve-3d',
-            transform: `rotateX(${ringRotation}deg)`,
-            transition: 'transform 0.9s cubic-bezier(0.32, 0.72, 0.24, 1)',
-            willChange: 'transform',
-          }}
-        >
-          {ROTATING_WORDS.map((word, i) => {
-            const angle = -i * stepDeg
-            const isActive = i === index
-            return (
-              <span
-                key={word}
-                className={`forge-word${isActive ? ' forge-word-active' : ''}`}
-                aria-hidden={isActive ? undefined : 'true'}
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  whiteSpace: 'nowrap',
-                  transform: `rotateX(${angle}deg) translateZ(1.2em)`,
-                  transformOrigin: '50% 50%',
-                  backfaceVisibility: 'hidden',
-                  opacity: isActive ? 1 : 0,
-                  transition: 'opacity 0.6s ease-out',
-                  willChange: 'transform, opacity',
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 50%, #D4AF37 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
-              >
-                {word}
-              </span>
-            )
-          })}
-        </span>
-      </span>
-    </h1>
-  )
-}
-
-/* ─── How It Works — 3-step flow ──────────────────────────────────────────── */
-
-const STEPS = [
-  {
-    num: '01',
-    title: 'Describe your game',
-    desc: 'Type, speak, or upload an image. Plain English — no code, no templates, no setup.',
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" />
-        <circle cx="12" cy="12" r="3" />
-      </svg>
-    ),
-  },
-  {
-    num: '02',
-    title: 'AI agents build it',
-    desc: '200+ specialist agents coordinate — terrain, scripts, assets, lighting, economy — all at once.',
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14l-5-4.87 6.91-1.01z" />
-      </svg>
-    ),
-  },
-  {
-    num: '03',
-    title: 'Play it in Studio',
-    desc: 'Everything syncs live to Roblox Studio. Hit play. Your game is already there.',
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="5 3 19 12 5 21 5 3" />
-      </svg>
-    ),
-  },
-]
-
-function HowItWorks() {
-  return (
-    <section className="reveal py-20 sm:py-28 px-6 relative" style={{ background: '#050810' }}>
-      {/* Subtle divider line */}
-      <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', maxWidth: 500, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.15), transparent)' }} />
-
-      <div className="max-w-4xl mx-auto text-center">
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '2px', color: '#D4AF37', textTransform: 'uppercase', marginBottom: 12, fontFamily: 'var(--font-mono, monospace)' }}>
-          How it works
-        </p>
-        <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 800, color: '#f0f0f0', lineHeight: 1.2, letterSpacing: '-0.03em', marginBottom: 48 }}>
-          Three steps. Zero friction.
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
-          {STEPS.map((step, i) => (
-            <div key={step.num} className="reveal flex flex-col items-center text-center" style={{ animationDelay: `${i * 150}ms` }}>
-              {/* Step icon in circle */}
-              <div style={{
-                width: 64, height: 64, borderRadius: '50%',
-                background: 'rgba(212,175,55,0.06)',
-                border: '1px solid rgba(212,175,55,0.18)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#D4AF37', marginBottom: 20,
-              }}>
-                {step.icon}
-              </div>
-              {/* Step number */}
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#D4AF37', letterSpacing: '0.1em', marginBottom: 8, opacity: 0.6 }}>{step.num}</span>
-              {/* Title */}
-              <h3 style={{ fontSize: 17, fontWeight: 700, color: '#E8EAF0', marginBottom: 8, letterSpacing: '-0.01em' }}>{step.title}</h3>
-              {/* Description */}
-              <p style={{ fontSize: 14, lineHeight: 1.6, color: '#71717A', maxWidth: 260, margin: '0 auto' }}>{step.desc}</p>
-
-              {/* Connector arrow (only between steps on desktop) */}
-              {i < STEPS.length - 1 && (
-                <div className="hidden md:block" aria-hidden style={{
-                  position: 'absolute',
-                  top: '50%',
-                  right: -20,
-                  transform: 'translateY(-50%)',
-                }}>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+    <div className="flex items-center gap-6 text-[12px]">
+      <div className="flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.6)] animate-pulse" />
+        <span className="text-zinc-500"><span className="text-zinc-400 font-semibold tabular-nums">{builds.toLocaleString()}</span> builds</span>
       </div>
-    </section>
-  )
-}
-
-/* ─── See It In Action — video demo + proof cards ────────────────────────── */
-
-const DEMO_VIDEO_URL = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || ''
-
-/** Extract YouTube embed ID from various URL formats */
-function getYouTubeEmbedUrl(url: string): string | null {
-  if (!url) return null
-  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/)
-  return m ? `https://www.youtube-nocookie.com/embed/${m[1]}?rel=0&modestbranding=1` : null
-}
-
-const PROOF_CARDS = [
-  { label: '200+ AI Specialists', icon: (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z" />
-      <path d="M10 21h4" />
-    </svg>
-  )},
-  { label: 'Works in Roblox Studio', icon: (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="6" width="20" height="12" rx="2" />
-      <path d="M6 12h4M14 12h4M12 10v4" />
-    </svg>
-  )},
-  { label: 'Free to Start', icon: (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6" />
-      <path d="M12 2l3.5 3.5L12 9 8.5 5.5z" />
-      <rect x="2" y="10" width="20" height="4" rx="1" />
-    </svg>
-  )},
-]
-
-/** Animated typing mockup when no video URL is provided */
-function DemoMockup() {
-  return (
-    <div style={{
-      position: 'relative', width: '100%', aspectRatio: '16/9',
-      background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.04) 0%, rgba(5,8,16,1) 70%)',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      gap: 20, padding: 24, overflow: 'hidden',
-    }}>
-      {/* Grid background */}
-      <div aria-hidden style={{
-        position: 'absolute', inset: 0, opacity: 0.12,
-        backgroundImage: 'linear-gradient(rgba(212,175,55,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,55,0.1) 1px, transparent 1px)',
-        backgroundSize: '40px 40px',
-      }} />
-
-      {/* User chat bubble with typing animation */}
-      <div style={{
-        position: 'relative', zIndex: 1, width: '100%', maxWidth: 440,
-        background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.18)',
-        borderRadius: 12, padding: '14px 18px',
-      }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#D4AF37', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>You</p>
-        <p className="demo-typing" style={{ fontSize: 15, color: '#E8EAF0', fontFamily: 'inherit', overflow: 'hidden', whiteSpace: 'nowrap', borderRight: '2px solid #D4AF37' }}>
-          build me a medieval castle with towers
-        </p>
-      </div>
-
-      {/* AI response bubble */}
-      <div style={{
-        position: 'relative', zIndex: 1, width: '100%', maxWidth: 440,
-        background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 12, padding: '14px 18px',
-      }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#A3E635', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>ForjeGames AI</p>
-        <pre style={{ fontSize: 12, color: '#A1A1AA', fontFamily: 'var(--font-mono, monospace)', lineHeight: 1.6, whiteSpace: 'pre-wrap', margin: 0 }}>
-{`Creating castle_base (120x80 studs)
-Adding 4 corner towers (height: 48)
-Placing drawbridge + gate mechanism
-Generating throne room interior...
-✓ 47 parts built — syncing to Studio`}
-        </pre>
-      </div>
-
-      <style jsx>{`
-        .demo-typing {
-          animation: demoType 2.8s steps(38) 0.5s both, demoBlink 0.6s step-end infinite 3.3s;
-          width: 0;
-        }
-        @keyframes demoType { to { width: 100%; } }
-        @keyframes demoBlink { 50% { border-color: transparent; } }
-      `}</style>
+      <div className="text-zinc-500"><span className="text-zinc-400 font-semibold tabular-nums">{users.toLocaleString()}</span> creators</div>
     </div>
   )
 }
 
-function SeeItInAction() {
-  const [playing, setPlaying] = useState(false)
-  const embedUrl = getYouTubeEmbedUrl(DEMO_VIDEO_URL)
+function HeroSection() {
+  return (
+    <section className="relative flex flex-col items-center justify-center text-center overflow-hidden min-h-screen px-6" style={{ paddingTop: '14vh', paddingBottom: '10vh' }}>
+      {/* Background glow — contained, won't overlap content */}
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)', width: '120%', height: '70%', background: 'radial-gradient(ellipse 60% 45% at 50% 15%, rgba(212,175,55,0.10) 0%, transparent 65%)', filter: 'blur(40px)' }} />
+        <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.2 }} />
+      </div>
+
+      <motion.div className="relative max-w-4xl mx-auto w-full z-10" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}>
+        {/* Badge */}
+        <motion.div className="mb-6 flex justify-center" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2, duration: 0.5 }}>
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[0.15em]" style={{ ...glass.card, color: '#D4AF37', borderColor: 'rgba(212,175,55,0.2)' }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
+            AI-Powered Roblox Game Builder
+          </span>
+        </motion.div>
+
+        {/* Headline */}
+        <motion.div className="mb-7" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.8 }}>
+          <RotatingHeroText />
+        </motion.div>
+
+        {/* Subtitle */}
+        <motion.p className="text-zinc-500 leading-relaxed max-w-2xl mx-auto mb-10" style={{ fontSize: 'clamp(1rem, 2.2vw, 1.25rem)' }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.7 }}>
+          Describe your game. The AI plans it, builds it, and puts it in Studio. Full games with 50,000+ parts — scripts, UI, terrain, everything.
+        </motion.p>
+
+        {/* Prompt input */}
+        <motion.div className="max-w-2xl mx-auto mb-8" initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.65, duration: 0.7 }}>
+          <HeroPromptInput />
+        </motion.div>
+
+        {/* Reassurance */}
+        <motion.p className="text-[13px] text-zinc-600 mb-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.85 }}>
+          1,000 free tokens &middot; No credit card &middot; 3-day free trial on paid plans
+        </motion.p>
+
+        {/* Live stats */}
+        <motion.div className="flex justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.0 }}>
+          <LiveBuildCounter />
+        </motion.div>
+
+        {/* Powered by */}
+        <motion.p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-zinc-700" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.1 }}>
+          Powered by <span className="text-zinc-500">212 AI Specialists</span>
+          <span className="mx-2 opacity-30">&middot;</span>
+          <span className="text-zinc-500">Game Planning AI</span>
+          <span className="mx-2 opacity-30">&middot;</span>
+          <span className="text-zinc-500">3D Mesh Gen</span>
+        </motion.p>
+      </motion.div>
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 2 — HOW IT WORKS (Video walkthrough)
+═══════════════════════════════════════════════════════════════════════════ */
+
+const STEPS = [
+  { num: '01', title: 'Describe Your Game', desc: 'Tell the AI what you want. "Build me a tycoon with conveyor belts and a shop system." The AI plans every phase.', icon: '💬' },
+  { num: '02', title: 'AI Plans & Builds', desc: '212 specialist AIs work together. Terrain, buildings, scripts, UI, lighting — all generated and quality-checked.', icon: '🧠' },
+  { num: '03', title: 'Appears in Studio', desc: 'Code gets sent to Roblox Studio through the plugin. Watch your game come to life in real-time.', icon: '🎮' },
+]
+
+function HowItWorksSection() {
+  const ref = useRef<HTMLDivElement>(null)
+  const isInView = useInView(ref, { once: true, margin: '-80px' })
 
   return (
-    <section className="reveal relative py-20 sm:py-28 px-4 sm:px-6" style={{ background: '#050810' }}>
-      {/* Top divider */}
-      <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', maxWidth: 500, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.15), transparent)' }} />
+    <section ref={ref} className="relative py-24 sm:py-32 px-6" style={{ background: '#040712' }}>
+      {/* Divider */}
+      <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '50%', maxWidth: 400, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.12), transparent)' }} />
 
-      <div className="max-w-[800px] mx-auto w-full" style={{ maxWidth: 800 }}>
-        {/* Heading */}
-        <div className="text-center mb-10">
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '2px', color: '#D4AF37', textTransform: 'uppercase', marginBottom: 12, fontFamily: 'var(--font-mono, monospace)' }}>
-            See it in action
-          </p>
-          <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 800, color: '#f0f0f0', lineHeight: 1.2, letterSpacing: '-0.03em', marginBottom: 8 }}>
-            Type anything. Watch it build.
+      <div className="max-w-5xl mx-auto">
+        <motion.div className="text-center mb-16" variants={fadeUp} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]/70 mb-4 font-mono">How It Works</p>
+          <h2 className="font-bold tracking-tight text-white mb-4" style={{ fontSize: 'clamp(1.8rem, 4.5vw, 3rem)' }}>
+            From idea to playable game in <span className="text-[#D4AF37]">minutes</span>
           </h2>
-          <p style={{ fontSize: 15, color: '#71717A', maxWidth: 400, margin: '0 auto' }}>
-            Real AI output — no editing, no tricks.
-          </p>
-        </div>
+          <p className="text-zinc-500 max-w-xl mx-auto">No coding. No 3D modeling. Just describe what you want and the AI handles everything.</p>
+        </motion.div>
 
-        {/* Video / Mockup container */}
-        <div style={{
-          background: 'linear-gradient(180deg, rgba(10,14,26,0.95) 0%, rgba(5,8,16,0.98) 100%)',
-          border: '1px solid rgba(212,175,55,0.12)',
-          borderRadius: 16, overflow: 'hidden',
-        }}>
-          {embedUrl && !playing ? (
-            /* Thumbnail with play button */
-            <button
-              onClick={() => setPlaying(true)}
-              aria-label="Play demo video"
+        {/* Video placeholder — replace with actual video */}
+        <motion.div
+          className="mb-20 rounded-2xl overflow-hidden relative aspect-video max-w-3xl mx-auto"
+          style={{ ...glass.card, borderColor: 'rgba(212,175,55,0.15)' }}
+          variants={fadeUp}
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+        >
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(212,175,55,0.15)', border: '2px solid rgba(212,175,55,0.3)' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="#D4AF37"><polygon points="9.5,7.5 16.5,12 9.5,16.5" /></svg>
+            </div>
+            <p className="text-zinc-400 text-sm font-medium">Watch the full walkthrough</p>
+            <p className="text-zinc-600 text-xs">Demo video coming soon</p>
+          </div>
+        </motion.div>
+
+        {/* 3 Steps */}
+        <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6" variants={stagger} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
+          {STEPS.map((step) => (
+            <motion.div key={step.num} variants={fadeUp} className="group" style={{ ...glass.card, padding: '28px 24px' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-2xl">{step.icon}</span>
+                <span className="text-[11px] font-bold tracking-[0.15em] text-[#D4AF37]/60 font-mono">{step.num}</span>
+              </div>
+              <h3 className="text-white font-bold text-lg mb-2">{step.title}</h3>
+              <p className="text-zinc-500 text-sm leading-relaxed">{step.desc}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 3 — WHAT YOU CAN BUILD (Capabilities)
+═══════════════════════════════════════════════════════════════════════════ */
+
+const CAPABILITIES = [
+  {
+    category: 'Full Games',
+    items: ['RPG with combat & inventory', 'Obby with 100+ checkpoints', 'Tycoon with economy system', 'Simulator with progression', 'Battle royale with zones', 'Horror with jumpscares & atmosphere'],
+    icon: '🎮',
+    color: '#D4AF37',
+  },
+  {
+    category: 'Maps & Worlds',
+    items: ['Cities with roads & buildings', 'Fantasy landscapes', 'Underwater environments', 'Space stations & colonies', 'Medieval villages', 'Procedural terrain generation'],
+    icon: '🗺️',
+    color: '#22C55E',
+  },
+  {
+    category: 'Buildings & Props',
+    items: ['Castles, houses, shops', 'Furniture & decorations', 'Vehicles & boats', 'Weapons & tools', 'Trees, rocks, nature', 'Custom 3D mesh assets'],
+    icon: '🏗️',
+    color: '#60A5FA',
+  },
+  {
+    category: 'Scripts & Systems',
+    items: ['Combat & damage systems', 'Inventory & trading', 'DataStore saving', 'Leaderboards & ranking', 'NPC dialogue & quests', 'Pet follow & hatching'],
+    icon: '💻',
+    color: '#A78BFA',
+  },
+  {
+    category: 'UI & Interface',
+    items: ['Shop GUIs & menus', 'Health bars & HUDs', 'Settings & options', 'Loading screens', 'Notification systems', 'Mobile-friendly controls'],
+    icon: '🎨',
+    color: '#F59E0B',
+  },
+  {
+    category: 'Monetization',
+    items: ['Game Pass setup', 'Developer Products', 'Premium Benefits', 'Daily reward systems', 'Battle passes', 'Robux pricing strategy'],
+    icon: '💰',
+    color: '#EF4444',
+  },
+]
+
+function CapabilitiesSection() {
+  const ref = useRef<HTMLDivElement>(null)
+  const isInView = useInView(ref, { once: true, margin: '-80px' })
+
+  return (
+    <section ref={ref} className="relative py-24 sm:py-32 px-6" style={{ background: '#050810' }}>
+      <div className="max-w-6xl mx-auto">
+        <motion.div className="text-center mb-16" variants={fadeUp} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]/70 mb-4 font-mono">What You Can Build</p>
+          <h2 className="font-bold tracking-tight text-white mb-4" style={{ fontSize: 'clamp(1.8rem, 4.5vw, 3rem)' }}>
+            Everything your game needs. <span className="text-[#D4AF37]">One platform.</span>
+          </h2>
+          <p className="text-zinc-500 max-w-xl mx-auto">From a single tree to a 50,000-part open world. The AI handles terrain, buildings, scripts, UI, lighting, and monetization.</p>
+        </motion.div>
+
+        <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" variants={stagger} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
+          {CAPABILITIES.map((cap) => (
+            <motion.div
+              key={cap.category}
+              variants={fadeUp}
+              className="group transition-all duration-300 hover:translate-y-[-2px]"
+              style={{ ...glass.card, padding: '24px' }}
+              onMouseEnter={(e) => { Object.assign(e.currentTarget.style, glass.cardHover) }}
+              onMouseLeave={(e) => { e.currentTarget.style.border = glass.card.border as string; e.currentTarget.style.boxShadow = '' }}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-2xl">{cap.icon}</span>
+                <h3 className="text-white font-bold">{cap.category}</h3>
+              </div>
+              <ul className="space-y-2">
+                {cap.items.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm text-zinc-400">
+                    <span className="mt-1.5 w-1 h-1 rounded-full flex-shrink-0" style={{ background: cap.color }} />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 5 — GAME PLANNING DEEP DIVE
+═══════════════════════════════════════════════════════════════════════════ */
+
+const PHASES = [
+  { name: 'Terrain & World', parts: '2,000-5,000', desc: 'Mountains, rivers, biomes, paths' },
+  { name: 'Buildings & Structures', parts: '3,000-10,000', desc: 'Houses, shops, landmarks' },
+  { name: 'Props & Decoration', parts: '2,000-8,000', desc: 'Trees, rocks, furniture, signs' },
+  { name: 'NPCs & Characters', parts: '500-2,000', desc: 'Enemies, merchants, quest givers' },
+  { name: 'Scripts & Game Logic', parts: '—', desc: 'Combat, economy, progression' },
+  { name: 'UI & Interface', parts: '—', desc: 'Menus, HUD, inventory screens' },
+  { name: 'Lighting & Effects', parts: '200-1,000', desc: 'Atmosphere, particles, post-processing' },
+  { name: 'Monetization', parts: '—', desc: 'Game passes, products, premium perks' },
+]
+
+function GamePlanningSection() {
+  const ref = useRef<HTMLDivElement>(null)
+  const isInView = useInView(ref, { once: true, margin: '-80px' })
+
+  return (
+    <section ref={ref} className="relative py-24 sm:py-32 px-6" style={{ background: '#040712' }}>
+      <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '50%', maxWidth: 400, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.12), transparent)' }} />
+
+      <div className="max-w-5xl mx-auto">
+        <motion.div className="text-center mb-16" variants={fadeUp} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]/70 mb-4 font-mono">Game Planning AI</p>
+          <h2 className="font-bold tracking-tight text-white mb-4" style={{ fontSize: 'clamp(1.8rem, 4.5vw, 3rem)' }}>
+            Plan entire games, <span className="text-[#D4AF37]">phase by phase</span>
+          </h2>
+          <p className="text-zinc-500 max-w-xl mx-auto">Tell the AI your game idea. It creates an 8-phase build plan, then builds each phase while you watch. Say &quot;continue&quot; to keep going.</p>
+        </motion.div>
+
+        {/* Phase timeline */}
+        <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" variants={stagger} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
+          {PHASES.map((phase, i) => (
+            <motion.div key={phase.name} variants={fadeUp} style={{ ...glass.card, padding: '20px' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold" style={{ background: 'rgba(212,175,55,0.15)', color: '#D4AF37' }}>{i + 1}</span>
+                <span className="text-white font-semibold text-sm">{phase.name}</span>
+              </div>
+              {phase.parts !== '—' && <p className="text-[#D4AF37] text-xs font-mono mb-1">{phase.parts} parts</p>}
+              <p className="text-zinc-500 text-xs leading-relaxed">{phase.desc}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <motion.div className="text-center mt-10" variants={fadeUp} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
+          <Link
+            href="/sign-up?redirect_url=/editor?prompt=plan%20me%20a%20game"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-black transition-all hover:brightness-110 active:scale-[0.97]"
+            style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }}
+          >
+            Plan Your First Game
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </Link>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 6 — PRICING (3 options)
+═══════════════════════════════════════════════════════════════════════════ */
+
+const PLANS = [
+  {
+    name: 'Test Drive',
+    price: 'Free',
+    sub: '1,000 tokens, one-time',
+    features: ['Small builds & props', 'Basic AI models', 'Studio plugin', 'Community support'],
+    cta: 'Start Free',
+    href: '/sign-up',
+    highlight: false,
+  },
+  {
+    name: 'Builder',
+    price: '$20',
+    sub: '/month',
+    features: ['15,000 tokens/mo', '25% game depth', 'All AI models', 'MCP integration', '3-day free trial'],
+    cta: 'Start Building',
+    href: '/sign-up?plan=builder',
+    highlight: false,
+  },
+  {
+    name: 'Studio',
+    price: '$200',
+    sub: '/month',
+    features: ['200,000 tokens/mo', '100% full game building', 'Priority AI queue', '50,000+ part games', 'API access + SDK', 'Dedicated support', '3-day free trial'],
+    cta: 'Go Studio',
+    href: '/sign-up?plan=studio',
+    highlight: true,
+  },
+]
+
+function PricingSection() {
+  const ref = useRef<HTMLDivElement>(null)
+  const isInView = useInView(ref, { once: true, margin: '-80px' })
+
+  return (
+    <section ref={ref} className="relative py-24 sm:py-32 px-6" style={{ background: '#050810' }}>
+      <div className="max-w-5xl mx-auto">
+        <motion.div className="text-center mb-14" variants={fadeUp} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]/70 mb-4 font-mono">Pricing</p>
+          <h2 className="font-bold tracking-tight text-white mb-4" style={{ fontSize: 'clamp(1.8rem, 4.5vw, 3rem)' }}>
+            Simple pricing. <span className="text-[#D4AF37]">Real results.</span>
+          </h2>
+          <p className="text-zinc-500 max-w-lg mx-auto">Test free, build more with Builder, or go all-in with Studio for complete game creation.</p>
+        </motion.div>
+
+        <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start" variants={stagger} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
+          {PLANS.map((plan) => (
+            <motion.div
+              key={plan.name}
+              variants={fadeUp}
+              className="relative"
               style={{
-                position: 'relative', display: 'block', width: '100%',
-                aspectRatio: '16/9', background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.06) 0%, rgba(5,8,16,1) 70%)',
-                border: 'none', cursor: 'pointer', overflow: 'hidden',
+                ...glass.card,
+                padding: '32px 28px',
+                borderColor: plan.highlight ? 'rgba(212,175,55,0.35)' : 'rgba(255,255,255,0.06)',
+                boxShadow: plan.highlight ? '0 0 50px rgba(212,175,55,0.08)' : undefined,
               }}
             >
-              {/* Grid overlay */}
-              <div aria-hidden style={{
-                position: 'absolute', inset: 0, opacity: 0.1,
-                backgroundImage: 'linear-gradient(rgba(212,175,55,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,55,0.1) 1px, transparent 1px)',
-                backgroundSize: '40px 40px',
-              }} />
-              {/* Play button */}
-              <div style={{
-                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                width: 72, height: 72, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 40px rgba(212,175,55,0.4), 0 0 80px rgba(212,175,55,0.15)',
-                transition: 'transform 0.2s ease',
-              }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="#09090b" stroke="none">
-                  <polygon points="8 5 20 12 8 19" />
-                </svg>
+              {plan.highlight && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ background: '#D4AF37', color: '#050810' }}>
+                  Most Popular
+                </div>
+              )}
+              <h3 className="text-white font-bold text-lg mb-1">{plan.name}</h3>
+              <div className="flex items-baseline gap-1 mb-5">
+                <span className="text-3xl font-bold text-white">{plan.price}</span>
+                <span className="text-zinc-500 text-sm">{plan.sub}</span>
               </div>
-            </button>
-          ) : embedUrl && playing ? (
-            /* YouTube iframe */
-            <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9' }}>
-              <iframe
-                src={`${embedUrl}&autoplay=1`}
-                title="ForjeGames Demo"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                sandbox="allow-scripts allow-same-origin allow-presentation"
-                loading="lazy"
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
-              />
-            </div>
-          ) : (
-            /* No video URL — show animated mockup */
-            <DemoMockup />
-          )}
-        </div>
-
-        {/* Proof cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
-          {PROOF_CARDS.map((card) => (
-            <div key={card.label} style={{
-              background: 'rgba(255,255,255,0.02)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: 12, padding: '16px 18px',
-              display: 'flex', alignItems: 'center', gap: 12,
-              transition: 'border-color 0.2s ease',
-            }}
-            className="hover:border-[rgba(212,175,55,0.2)]"
-            >
-              <div style={{ color: '#D4AF37', flexShrink: 0 }}>{card.icon}</div>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#E8EAF0' }}>{card.label}</span>
-            </div>
+              <ul className="space-y-3 mb-8">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2.5 text-sm text-zinc-400">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 flex-shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href={plan.href}
+                className="block w-full text-center py-3 rounded-xl text-sm font-bold transition-all hover:brightness-110 active:scale-[0.97]"
+                style={plan.highlight
+                  ? { background: 'linear-gradient(135deg, #D4AF37, #FFD966)', color: '#050810' }
+                  : { background: 'rgba(255,255,255,0.06)', color: '#FAFAFA', border: '1px solid rgba(255,255,255,0.1)' }
+                }
+              >
+                {plan.cta}
+              </Link>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
+
+        <motion.p className="text-center text-zinc-600 text-sm mt-8" variants={fadeUp} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
+          All paid plans include a 3-day free trial. <Link href="/pricing" className="text-[#D4AF37] hover:underline">See full pricing details</Link>
+        </motion.p>
       </div>
     </section>
   )
 }
 
-/* ─── Final CTA — repeat the prompt input at bottom ──────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECTION 8 — FINAL CTA
+═══════════════════════════════════════════════════════════════════════════ */
 
 function FinalCTA() {
+  const ref = useRef<HTMLDivElement>(null)
+  const isInView = useInView(ref, { once: true, margin: '-80px' })
+
   return (
-    <section className="relative py-20 sm:py-28 px-6 text-center" style={{ background: '#050810' }}>
-      <div className="max-w-2xl mx-auto">
-        <h2
-          className="reveal font-bold tracking-tight mb-4"
-          style={{
-            fontSize: 'clamp(1.8rem, 5vw, 3rem)',
-            lineHeight: 1.15,
-            color: '#FAFAFA',
-          }}
-        >
-          Your game is one prompt away.
-        </h2>
-        <p className="reveal text-sm mb-8" style={{ color: '#71717A' }}>
-          Try it free — plans start at $25/mo. No contracts, cancel anytime.
-        </p>
-        <div className="reveal max-w-xl mx-auto mb-6">
-          <HeroPromptInput />
-        </div>
-        <p className="reveal text-[12px]" style={{ color: '#3F3F46' }}>
-          3-day free trial &middot; No credit card required &middot; Works with Roblox Studio
-        </p>
+    <section ref={ref} className="relative py-24 sm:py-32 px-6 text-center" style={{ background: '#040712' }}>
+      <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '50%', maxWidth: 400, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.12), transparent)' }} />
+      <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div style={{ position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)', width: '60%', height: '50%', background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.05) 0%, transparent 60%)', filter: 'blur(40px)' }} />
       </div>
+
+      <motion.div className="relative max-w-2xl mx-auto" variants={fadeUp} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]/60 mb-5 font-mono">Ready?</p>
+        <h2 className="font-bold tracking-tight text-white mb-5" style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1 }}>
+          Your game starts with <span style={{ background: 'linear-gradient(90deg, #D4AF37, #FFD166)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>one sentence</span>
+        </h2>
+        <p className="text-zinc-500 text-lg mb-10 max-w-lg mx-auto">1,000 free tokens. No credit card. Your first build appears in Studio instantly.</p>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link href="/sign-up" className="cta-shimmer inline-flex items-center gap-2 rounded-xl px-8 py-4 text-sm font-bold text-black transition-all hover:brightness-110 active:scale-[0.97]" style={{ background: 'linear-gradient(135deg, #D4AF37, #FFD966)', boxShadow: '0 0 40px rgba(212,175,55,0.3)' }}>
+            Start Building Free
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </Link>
+          <Link href="/pricing" className="inline-flex items-center gap-2 rounded-xl px-8 py-4 text-sm font-semibold text-white transition-all hover:bg-white/5" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+            See Pricing
+          </Link>
+        </div>
+      </motion.div>
     </section>
   )
 }
 
-/* ─── Main page ──────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN PAGE — All sections composed
+═══════════════════════════════════════════════════════════════════════════ */
 
 export default function HomeClient() {
   const pageRef = useReveal()
-  const tHero = useTranslations('hero')
 
   return (
-    <>
-      <div
-        ref={pageRef}
-        className="min-h-screen"
-        style={{ background: '#050810', color: '#FAFAFA', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)' }}
-      >
+    <div ref={pageRef} className="min-h-screen" style={{ background: '#050810', color: '#FAFAFA', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)' }}>
 
-        {/* ═══════════════════════════════════════════════════════════════
-            SECTION 1 — HERO
-        ═══════════════════════════════════════════════════════════════ */}
-        <section
-          className="relative flex flex-col items-center justify-center text-center overflow-hidden"
-          style={{ paddingTop: '16vh', paddingBottom: '10vh', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
-        >
-          {/* Aurora animated background */}
-          <div aria-hidden="true" className="aurora-hero" />
+      {/* 1 — Hero (full screen) */}
+      <HeroSection />
 
-          {/* Deep radial gold glow */}
-          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: [
-                'radial-gradient(ellipse 70% 50% at 50% 10%, rgba(212,175,55,0.13) 0%, rgba(212,175,55,0.04) 40%, transparent 70%)',
-                'radial-gradient(ellipse 50% 35% at 50% 5%,  rgba(255,184,28,0.08) 0%, transparent 55%)',
-                'radial-gradient(ellipse 90% 60% at 50% 0%,  rgba(212,175,55,0.03) 0%, transparent 80%)',
-              ].join(', '),
-            }} />
-            <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.3 }} />
-          </div>
+      {/* 2 — How It Works + Video */}
+      <HowItWorksSection />
 
-          <motion.div
-            className="relative max-w-4xl mx-auto w-full"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          >
-            {/* Eyebrow badge */}
-            <motion.p
-              className="mb-5 inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px] font-semibold uppercase tracking-widest"
-              initial={{ opacity: 0, y: 12, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              style={{
-                background: 'rgba(212,175,55,0.08)',
-                border: '1px solid rgba(212,175,55,0.2)',
-                color: '#D4AF37',
-              }}
-            >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4AF37', display: 'inline-block' }} />
-              #1 AI Roblox Game Builder
-            </motion.p>
+      {/* 3 — What You Can Build */}
+      <CapabilitiesSection />
 
-            {/* Rotating Headline */}
-            <motion.div
-              className="mb-7"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <RotatingHeroText />
-            </motion.div>
+      {/* 4 — Reviews (real, live) */}
+      <ReviewMarquee />
 
-            {/* Subheadline */}
-            <motion.p
-              className="leading-relaxed max-w-2xl mx-auto mb-10"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              style={{ color: '#71717A', fontSize: 'clamp(1rem, 2.2vw, 1.25rem)' }}
-            >
-              {tHero('subtitle')}
-            </motion.p>
+      {/* 5 — Game Planning Deep Dive */}
+      <GamePlanningSection />
 
-            {/* Functional prompt input */}
-            <motion.div
-              className="max-w-2xl mx-auto mb-8"
-              initial={{ opacity: 0, y: 16, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.7, delay: 0.65, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <HeroPromptInput />
-            </motion.div>
+      {/* 6 — Pricing Preview */}
+      <PricingSection />
 
-            {/* Reassurance */}
-            <motion.p
-              className="text-[13px]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.85 }}
-              style={{ color: '#52525B' }}
-            >
-              3-day free trial &middot; Plans from $25/mo &middot; Works with Roblox Studio
-            </motion.p>
+      {/* 7 — Final CTA */}
+      <FinalCTA />
 
-            {/* Live stats strip */}
-            <motion.div
-              className="mt-5 flex flex-wrap justify-center gap-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 1.0 }}
-            >
-              <LiveBuildCounter />
-            </motion.div>
+      {/* 8 — FAQ */}
+      <FaqSection />
 
-            {/* Powered by strip */}
-            <motion.p
-              className="mt-4 text-[11px] uppercase tracking-[0.14em]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 1.1 }}
-              style={{ color: '#3F3F46' }}
-            >
-              Powered by{' '}
-              <span style={{ color: '#A1A1AA' }}>200+ AI Agents</span>
-              <span className="mx-2 opacity-40">&middot;</span>
-              <span style={{ color: '#A1A1AA' }}>25 Roblox API Patterns</span>
-              <span className="mx-2 opacity-40">&middot;</span>
-              <span style={{ color: '#A1A1AA' }}>3D Mesh Gen</span>
-              <span className="mx-2 opacity-40">&middot;</span>
-              <span style={{ color: '#A1A1AA' }}>13 Image Styles</span>
-            </motion.p>
-          </motion.div>
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════════════
-            SECTION 2 — AGENT ORBITAL
-        ═══════════════════════════════════════════════════════════════ */}
-        <AgentOrbital />
-
-        {/* ═══════════════════════════════════════════════════════════════
-            SECTION 3 — SELLING POINTS BENTO
-        ═══════════════════════════════════════════════════════════════ */}
-        <SellingPointsBento />
-
-        {/* ═══════════════════════════════════════════════════════════════
-            SECTION 3.5 — HOW IT WORKS
-        ═══════════════════════════════════════════════════════════════ */}
-        <HowItWorks />
-
-        {/* ═══════════════════════════════════════════════════════════════
-            SECTION 3.75 — SEE IT IN ACTION (video demo)
-        ═══════════════════════════════════════════════════════════════ */}
-        <SeeItInAction />
-
-        {/* ═══════════════════════════════════════════════════════════════
-            SECTION 4 — PLAYER REVIEWS
-        ═══════════════════════════════════════════════════════════════ */}
-        <ReviewMarquee />
-
-        {/* ═══════════════════════════════════════════════════════════════
-            SECTION 5 — START BUILDING CTA
-        ═══════════════════════════════════════════════════════════════ */}
-        <section className="relative py-24 sm:py-32 px-6 overflow-hidden" style={{ background: '#050810' }}>
-          {/* Ambient glow */}
-          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
-            <div style={{
-              position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)',
-              width: '80%', height: '60%',
-              background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.06) 0%, transparent 65%)',
-            }} />
-          </div>
-          {/* Divider */}
-          <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', maxWidth: 500, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.15), transparent)' }} />
-
-          <div className="relative max-w-3xl mx-auto text-center">
-            <motion.p
-              className="text-[11px] font-bold uppercase tracking-[0.18em] mb-5"
-              style={{ color: 'rgba(212,175,55,0.75)', fontFamily: 'var(--font-mono, monospace)' }}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.5 }}
-            >
-              Ready?
-            </motion.p>
-            <motion.h2
-              className="font-bold tracking-tight mb-5"
-              style={{
-                fontSize: 'clamp(2rem, 5.5vw, 3.5rem)',
-                lineHeight: 1.08,
-                color: '#FAFAFA',
-              }}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              Start Building in{' '}
-              <span style={{
-                background: 'linear-gradient(90deg, #D4AF37 0%, #FFD166 50%, #B8960C 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}>
-                60 Seconds
-              </span>
-            </motion.h2>
-            <motion.p
-              className="text-base sm:text-lg leading-relaxed mb-10 max-w-xl mx-auto"
-              style={{ color: '#71717A' }}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              1,000 free tokens. No credit card. Your first build appears in Studio instantly.
-            </motion.p>
-
-            {/* Buttons */}
-            <motion.div
-              className="flex flex-wrap items-center justify-center gap-3 mb-14"
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              <Link
-                href="/sign-up"
-                className="cta-shimmer inline-flex items-center gap-2 rounded-xl px-7 py-3.5 text-sm font-bold text-black transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
-                style={{
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
-                  boxShadow: '0 0 40px rgba(212,175,55,0.35), 0 0 80px rgba(212,175,55,0.12)',
-                }}
-              >
-                Start Building Free
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
-              </Link>
-              <Link
-                href="/pricing"
-                className="inline-flex items-center gap-2 rounded-xl border px-7 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/5"
-                style={{ borderColor: 'rgba(255,255,255,0.12)' }}
-              >
-                See Pricing
-              </Link>
-            </motion.div>
-
-            {/* 3 Stats */}
-            <motion.div
-              className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.6, delay: 0.45 }}
-            >
-              {[
-                { value: '200+', label: 'AI Specialists', icon: (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z" />
-                    <path d="M10 21h4" />
-                  </svg>
-                )},
-                { value: '13', label: 'Art Styles', icon: (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                  </svg>
-                )},
-                { value: '3D', label: 'Mesh Generation', icon: (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2l8 4.5v11L12 22l-8-4.5v-11z" />
-                    <path d="M12 22V11" />
-                    <path d="M20 6.5L12 11 4 6.5" />
-                  </svg>
-                )},
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="flex items-center gap-3 rounded-xl p-4"
-                  style={{
-                    background: 'rgba(212,175,55,0.04)',
-                    border: '1px solid rgba(212,175,55,0.12)',
-                  }}
-                >
-                  <div style={{ color: '#D4AF37', flexShrink: 0 }}>{stat.icon}</div>
-                  <div className="text-left">
-                    <p className="text-lg font-bold" style={{ color: '#FAFAFA', lineHeight: 1.2 }}>{stat.value}</p>
-                    <p className="text-[12px] font-medium" style={{ color: '#71717A' }}>{stat.label}</p>
-                  </div>
-                </div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════════════
-            SECTION 6 — FINAL CTA + FAQ
-        ══════════════════════��══════════════════════════════���═════════ */}
-        <FinalCTA />
-        <FaqSection />
-
-      </div>
-    </>
+    </div>
   )
 }

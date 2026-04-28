@@ -43,11 +43,17 @@ export {
 export {
   enhancePrompt,
   formatEnhancedPlanContext,
+  extractStyleModifiers,
+  formatStyleModifiersBlock,
   type EnhancedPrompt,
   type EnhancedPromptStep,
   type EnhancedPromptAsset,
   type PromptIntent,
   type Complexity,
+  type StyleModifiers,
+  type MoodModifier,
+  type EnvironmentModifier,
+  type TimeModifier,
 } from './prompt-enhancer'
 
 // Template generator
