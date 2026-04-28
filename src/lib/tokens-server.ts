@@ -1,6 +1,6 @@
 import { db } from './db'
 import { Prisma } from '@prisma/client'
-import { sendTokenLowEmail } from './email'
+import { sendTokenLowEmail, sendUpgradeNudgeEmail } from './email'
 import { dispatchWebhookEvent } from './webhook-dispatch'
 import { getRedis } from './redis'
 
@@ -119,6 +119,32 @@ export async function spendTokens(
         }
       }
     }
+
+    // Upgrade nudge — free users who drop below 200 tokens (80% of 1,000 used).
+    // Only send once per user (lifetime throttle via Redis key that never expires).
+    const tier = sub?.tier ?? 'FREE'
+    if (tier === 'FREE' && balance.balance > 0 && balance.balance <= 200) {
+      const redis = getRedis()
+      const nudgeKey = `upgrade_nudge_email:${userId}`
+      const alreadySent = redis ? await redis.get(nudgeKey).catch(() => null) : null
+      if (!alreadySent) {
+        const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, displayName: true } })
+        if (user?.email) {
+          sendUpgradeNudgeEmail({
+            email: user.email,
+            name: user.displayName || 'Creator',
+            tokenCount: balance.balance,
+          }).catch((err) => {
+            console.warn('[tokens] Failed to send upgrade nudge email:', err)
+          })
+        }
+        // Mark as sent permanently (30 day TTL) — only nudge once
+        if (redis) {
+          redis.set(nudgeKey, '1', 'EX', 2592000).catch(() => {})
+        }
+      }
+    }
+
     return balance
   })
 }

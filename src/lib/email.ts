@@ -18,6 +18,7 @@ import {
   CheckoutAbandonedEmail,
   DunningDay3Email,
   DunningDay7Email,
+  UpgradeNudgeEmail,
 } from './email-templates'
 
 // ─── Email configuration guard ────────────────────────────────────────────────
@@ -486,6 +487,27 @@ export async function sendDripDay7Email({
       to: email,
       subject: `You've built ${buildsCompleted} things in a week — what's next, ${name}?`,
       react: DripDay7Email({ name, buildsCompleted, tokensRemaining }),
+    })
+  )
+}
+
+// ─── Upgrade Nudge (free users at 80% usage) ─────────────────────────────────
+
+export async function sendUpgradeNudgeEmail({
+  email,
+  name,
+  tokenCount,
+}: {
+  email: string
+  name: string
+  tokenCount: number
+}): Promise<EmailResult> {
+  return guardedSend(() =>
+    getResend().emails.send({
+      from: FROM,
+      to: email,
+      subject: `You've used 80% of your free tokens — upgrade for more`,
+      react: UpgradeNudgeEmail({ name, tokenCount }),
     })
   )
 }

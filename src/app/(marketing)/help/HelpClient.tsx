@@ -15,32 +15,36 @@ interface FaqItem {
 
 const FAQ_ITEMS: FaqItem[] = [
   {
-    q: 'How do I connect the Studio plugin?',
-    a: 'Download the ForjeGames plugin from the Roblox marketplace, then install it in Roblox Studio. Once Studio is open, click the ForjeGames button in the Plugins toolbar and enter the 6-digit connection code shown in the ForjeGames editor. The status indicator will turn green when synced.',
+    q: 'How do I install the Studio plugin?',
+    a: 'Head to forjegames.com/download and click "Install Plugin". This opens the Roblox Creator Marketplace page — click "Get" to add it to your account. Next time you open Roblox Studio, the ForjeGames plugin appears in the Plugins toolbar automatically. No manual file copying needed.',
   },
   {
-    q: "Why isn't my build appearing in Studio?",
-    a: 'The most common cause is HTTP Requests being disabled. Go to Game Settings > Security and toggle "Allow HTTP Requests" on. Then disconnect and reconnect the plugin from the editor. If the issue persists, check that your firewall is not blocking localhost traffic.',
+    q: 'How do I connect Studio to ForjeGames?',
+    a: 'Open your ForjeGames dashboard, go to Settings > Studio tab, and copy the connection code. In Roblox Studio, click the ForjeGames button in the Plugins toolbar and paste the code. The status indicator turns green when the connection is live.',
+  },
+  {
+    q: "My build didn't appear in Studio — what do I check?",
+    a: 'First, make sure HTTP Requests is enabled: go to Game Settings > Security and toggle "Allow HTTP Requests" on. Second, confirm the ForjeGames plugin is active in the Plugins toolbar (icon should not be greyed out). Third, try a simpler prompt like "build a red brick wall" to rule out prompt complexity. If it still fails, disconnect and reconnect the plugin from Settings > Studio.',
+  },
+  {
+    q: 'How do I use the MCP integration?',
+    a: 'ForjeGames supports Model Context Protocol (MCP) for programmatic access. See the full setup guide and available endpoints at forjegames.com/docs/mcp. You can connect Claude Desktop, VS Code, or any MCP-compatible client using your API key from Settings.',
+  },
+  {
+    q: 'What AI models does ForjeGames use?',
+    a: 'ForjeGames uses Gemini as the primary model for code and build generation, with Groq as a fast fallback. Additional models handle specialized tasks like image generation (FAL), 3D mesh creation (Meshy), and code review. You do not need to configure anything — the system picks the best model for each request automatically.',
   },
   {
     q: 'How do tokens work?',
-    a: 'Every account starts with 1,000 free tokens on sign-up — no card required. Each AI build request costs 5 tokens. When you run low, head to Dashboard > Billing to purchase a token pack, or upgrade to a paid plan for a larger monthly allowance.',
+    a: 'Each AI build costs tokens based on complexity (typically 5-25 tokens per request). Free accounts start with 1,000 tokens. When you run low, buy token packs at forjegames.com/tokens or upgrade your plan for a larger monthly allowance. Your current balance is always visible in the dashboard.',
   },
   {
-    q: 'Can I use my own AI API key?',
-    a: 'Yes. ForjeGames supports Claude (Anthropic), GPT-4 (OpenAI), and Gemini (Google). Add your key in Dashboard > Settings > Model Selector. Your key is encrypted at rest and used only for your own requests — it never counts against your token balance.',
-  },
-  {
-    q: 'How do I get 3D meshes instead of parts?',
-    a: 'Every build request automatically generates a 3D mesh alongside the placed primitive parts. You can also explicitly request a mesh by including "generate 3d model" in your prompt, for example: "generate 3d model of a medieval castle tower". The mesh is delivered via Meshy AI and auto-inserted into Studio.',
-  },
-  {
-    q: 'Why does my build look like blocks?',
-    a: 'By default the AI places Roblox primitive parts (wedges, blocks, cylinders) for speed. These are great for layout and gameplay geometry. For detailed, high-poly assets include "generate 3d model" in your request to trigger full mesh generation instead.',
+    q: 'How do I get better builds?',
+    a: 'Be specific in your prompts. Mention materials (e.g. "brick walls, wooden floor"), approximate part counts ("detailed, at least 50 parts"), and style ("medieval", "sci-fi", "low-poly"). Adding context like "for a horror game lobby" helps the AI make better design choices. You can also say "enhance this build" after generating to add more detail.',
   },
   {
     q: 'How do I report a bug?',
-    a: 'Email support@forjegames.com with a short description of the problem. Including your browser console output (F12 > Console) speeds up the fix significantly. We aim to respond within 24 hours on business days.',
+    a: 'Email support@forjegames.com with a short description of the problem. Including your browser console output (F12 > Console) speeds up the fix. You can also report bugs in the #bug-reports channel on our Discord. We aim to respond within 24 hours on business days.',
   },
 ]
 
@@ -52,7 +56,7 @@ interface TroubleshootItem {
 const TROUBLESHOOT_ITEMS: TroubleshootItem[] = [
   {
     symptom: 'Plugin won\'t connect',
-    fix: 'Open Roblox Studio > Game Settings > Security and enable "Allow HTTP Requests". Then restart the plugin.',
+    fix: 'Open Roblox Studio > Game Settings > Security and enable "Allow HTTP Requests". Then restart the plugin. If it still fails, check that your firewall is not blocking localhost traffic on port 28080.',
   },
   {
     symptom: 'Build appears at wrong location',
@@ -60,11 +64,15 @@ const TROUBLESHOOT_ITEMS: TroubleshootItem[] = [
   },
   {
     symptom: 'Empty or no chat response',
-    fix: 'Hard refresh the page with Ctrl+Shift+R (Cmd+Shift+R on Mac) to clear any stale service worker cache, then check your internet connection.',
+    fix: 'Hard refresh the page with Ctrl+Shift+R (Cmd+Shift+R on Mac) to clear any stale service worker cache, then check your internet connection. If the issue continues, try a shorter prompt.',
   },
   {
     symptom: '"Token limit reached" error',
-    fix: 'Sign up for a free account to claim 1,000 starter tokens, or go to Dashboard > Billing to buy more. Paid plans include a larger monthly token allowance.',
+    fix: 'Your token balance has run out. Go to forjegames.com/tokens to buy a token pack, or upgrade your plan at forjegames.com/pricing for a larger monthly allowance.',
+  },
+  {
+    symptom: 'Build looks too simple or boxy',
+    fix: 'Add detail to your prompt: mention specific materials (brick, wood, metal), a target part count ("at least 40 parts"), and a style reference ("medieval castle", "futuristic lab"). Then say "enhance this build" to add more detail.',
   },
 ]
 

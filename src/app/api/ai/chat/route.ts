@@ -14698,6 +14698,7 @@ function buildErrorResponse(err: unknown, intent: IntentKey): string {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+ try {
   const isDemo = process.env.DEMO_MODE === 'true'
   let authedUserId: string | null = null
   let isAdmin = false
@@ -17099,4 +17100,11 @@ Tip: Run the Luau snippet in Studio Command Bar to insert all marketplace assets
     }) as unknown as NextResponse
   }
   return NextResponse.json(payload)
+ } catch (err) {
+  console.error('[chat] Unhandled error:', err)
+  return NextResponse.json(
+    { error: 'Something went wrong. Please try again.', code: 'INTERNAL_ERROR' },
+    { status: 500 }
+  )
+ }
 }

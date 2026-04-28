@@ -21,18 +21,34 @@ export const metadata: Metadata = createMetadata({
     mainEntity: [
       {
         '@type': 'Question',
-        name: 'How do I connect the Roblox Studio plugin?',
+        name: 'How do I install the Studio plugin?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Download the ForjeGames plugin from the Roblox marketplace, install it in Studio, then enter the connection code shown in the ForjeGames editor. The plugin appears in the Plugins toolbar.',
+          text: 'Go to forjegames.com/download and click Install Plugin to open the Roblox Creator Marketplace page. Click Get to add it to your account. The plugin appears in the Plugins toolbar next time you open Studio.',
         },
       },
       {
         '@type': 'Question',
-        name: "Why isn't my build appearing in Studio?",
+        name: 'How do I connect Studio to ForjeGames?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Make sure HTTP Requests is enabled in Game Settings > Security. If it is, disconnect and reconnect the plugin from the ForjeGames editor.',
+          text: 'Open Settings > Studio tab on forjegames.com and copy the connection code. In Roblox Studio, click the ForjeGames plugin button and paste the code. The status indicator turns green when connected.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: "My build didn't appear in Studio — what do I check?",
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Enable HTTP Requests in Game Settings > Security. Confirm the ForjeGames plugin is active in the Plugins toolbar. Try a simpler prompt to rule out complexity. Disconnect and reconnect from Settings > Studio if needed.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What AI models does ForjeGames use?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'ForjeGames uses Gemini as the primary model with Groq as a fast fallback. Additional models handle image generation, 3D mesh creation, and code review automatically.',
         },
       },
       {
@@ -40,31 +56,15 @@ export const metadata: Metadata = createMetadata({
         name: 'How do tokens work?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'You get 1,000 tokens free when you sign up. Each AI build costs 5 tokens. Buy more anytime from the Billing page in your dashboard.',
+          text: 'Each AI build costs 5-25 tokens based on complexity. Free accounts start with 1,000 tokens. Buy more at forjegames.com/tokens or upgrade your plan for a larger monthly allowance.',
         },
       },
       {
         '@type': 'Question',
-        name: 'Can I use my own AI API key?',
+        name: 'How do I get better builds?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. ForjeGames supports Claude, GPT, and Gemini. Add your key in Settings > Model Selector to use your own quota.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'How do I get 3D meshes?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Every build request automatically generates a 3D mesh alongside the placed parts. You can also explicitly ask for a mesh with "generate 3d model for X".',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Why does my build look like blocks?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'By default, AI builds use Roblox primitive parts. For detailed geometry, include "generate 3d model" in your prompt to trigger Meshy mesh generation.',
+          text: 'Be specific: mention materials, part counts, and style. Adding game context like "for a horror lobby" helps the AI make better choices. Use "enhance this build" to add detail after generating.',
         },
       },
       {
@@ -72,7 +72,7 @@ export const metadata: Metadata = createMetadata({
         name: 'How do I report a bug?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Email support@forjegames.com with a description of the issue and your browser console output if available.',
+          text: 'Email support@forjegames.com with a description of the issue and your browser console output (F12 > Console). You can also use the #bug-reports channel on Discord.',
         },
       },
     ],
