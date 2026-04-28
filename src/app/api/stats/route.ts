@@ -77,7 +77,8 @@ export async function GET() {
   try {
     const [totalUsers, totalBuilds, activeNow] = await Promise.all([
       db.user.count().catch(() => 0),
-      db.build.count().catch(() => 0),
+      // ChatMessage tracks actual AI generations — Build table isn't populated
+      db.chatMessage.count().catch(() => db.build.count().catch(() => 0)),
       countActiveSessions(),
     ])
 

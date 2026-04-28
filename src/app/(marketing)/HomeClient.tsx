@@ -112,16 +112,15 @@ function RotatingHeroText() {
       style={{ fontSize: 'clamp(3.2rem, 10vw, 7.5rem)', lineHeight: 1.02, letterSpacing: '-0.04em', fontWeight: 900 }}
     >
       <span style={{ color: '#FAFAFA', textShadow: '0 0 80px rgba(255,255,255,0.08)' }}>Forge your </span>
-      <span className="relative inline-block" style={{ minWidth: '4ch' }}>
+      <span className="relative inline-flex justify-center" style={{ minWidth: '5ch' }}>
         {ROTATING_WORDS.map((word, i) => (
           <motion.span
             key={word}
-            className="absolute left-0 top-0"
-            initial={{ opacity: 0, y: 30, rotateX: -40 }}
+            className="absolute inset-0 flex items-center justify-center"
+            initial={{ opacity: 0, y: 30 }}
             animate={{
               opacity: i === index ? 1 : 0,
               y: i === index ? 0 : -30,
-              rotateX: i === index ? 0 : 40,
             }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             style={{
@@ -129,15 +128,15 @@ function RotatingHeroText() {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              display: i === index ? 'inline' : 'none',
               filter: 'drop-shadow(0 0 40px rgba(212,175,55,0.3))',
+              pointerEvents: i === index ? 'auto' : 'none',
             }}
           >
             {word}
           </motion.span>
         ))}
-        {/* Invisible spacer for width */}
-        <span style={{ visibility: 'hidden' }}>
+        {/* Invisible spacer — uses longest word to hold width */}
+        <span className="invisible" aria-hidden="true">
           {ROTATING_WORDS.reduce((a, b) => (a.length > b.length ? a : b))}
         </span>
       </span>
@@ -446,19 +445,31 @@ function HowItWorksSection() {
           </div>
         </motion.div>
 
-        {/* 3 Steps */}
-        <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6" variants={stagger} initial="hidden" animate={isInView ? 'visible' : 'hidden'}>
-          {STEPS.map((step) => (
-            <motion.div key={step.num} variants={fadeUp} className="group" style={{ ...glass.card, padding: '28px 24px' }}>
+        {/* 3 Steps with connector lines */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+          {/* Connector line (desktop only) */}
+          <div className="hidden md:block absolute top-12 left-[20%] right-[20%] h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.2), rgba(212,175,55,0.2), transparent)' }} />
+
+          {STEPS.map((step, i) => (
+            <motion.div
+              key={step.num}
+              initial={{ opacity: 0, y: 30 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.6, delay: 0.3 + i * 0.15, ease: [0.16, 1, 0.3, 1] }}
+              className="group relative"
+              style={{ ...glass.card, padding: '28px 24px' }}
+            >
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-2xl">{step.icon}</span>
-                <span className="text-[11px] font-bold tracking-[0.15em] text-[#D4AF37]/60 font-mono">{step.num}</span>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.15)' }}>
+                  {step.icon}
+                </div>
+                <span className="text-[11px] font-bold tracking-[0.15em] text-[#D4AF37]/50 font-mono">STEP {step.num}</span>
               </div>
               <h3 className="text-white font-bold text-lg mb-2">{step.title}</h3>
               <p className="text-zinc-500 text-sm leading-relaxed">{step.desc}</p>
             </motion.div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   )
@@ -482,8 +493,8 @@ const CAPABILITIES = [
     color: '#22C55E',
   },
   {
-    category: 'Buildings & Props',
-    items: ['Castles, houses, shops', 'Furniture & decorations', 'Vehicles & boats', 'Weapons & tools', 'Trees, rocks, nature', 'Custom 3D mesh assets'],
+    category: 'Buildings & Structures',
+    items: ['Castles (200-500+ parts)', 'Houses with full interiors', 'Shops, restaurants, offices', 'Towers, bridges, walls', 'Vehicles (cars, boats, planes)', 'Custom 3D mesh assets'],
     icon: '🏗️',
     color: '#60A5FA',
   },
@@ -557,14 +568,14 @@ function CapabilitiesSection() {
 ═══════════════════════════════════════════════════════════════════════════ */
 
 const PHASES = [
-  { name: 'Terrain & World', parts: '2,000-5,000', desc: 'Mountains, rivers, biomes, paths' },
-  { name: 'Buildings & Structures', parts: '3,000-10,000', desc: 'Houses, shops, landmarks' },
-  { name: 'Props & Decoration', parts: '2,000-8,000', desc: 'Trees, rocks, furniture, signs' },
-  { name: 'NPCs & Characters', parts: '500-2,000', desc: 'Enemies, merchants, quest givers' },
-  { name: 'Scripts & Game Logic', parts: '—', desc: 'Combat, economy, progression' },
-  { name: 'UI & Interface', parts: '—', desc: 'Menus, HUD, inventory screens' },
-  { name: 'Lighting & Effects', parts: '200-1,000', desc: 'Atmosphere, particles, post-processing' },
-  { name: 'Monetization', parts: '—', desc: 'Game passes, products, premium perks' },
+  { name: 'Terrain & World', parts: '2,000-5,000', desc: 'Hills, rivers, biomes, roads, caves — procedurally generated with natural variation' },
+  { name: 'Buildings', parts: '5,000-20,000', desc: 'Full interiors, multiple floors, windows, doors, roofs — each building unique' },
+  { name: 'Props & Detail', parts: '3,000-15,000', desc: 'Trees (randomized), rocks, furniture, street lamps, fences, signs — no two alike' },
+  { name: 'NPCs & Characters', parts: '500-2,000', desc: 'Enemies with AI, shopkeepers, quest givers, dialogue systems, patrol paths' },
+  { name: 'Game Logic', parts: '—', desc: 'Combat, inventory, saving, trading, daily rewards — production-ready Luau scripts' },
+  { name: 'UI & Menus', parts: '—', desc: 'Shop GUI, health bars, settings, loading screens — polished and responsive' },
+  { name: 'Lighting & FX', parts: '200-1,000', desc: 'Day/night cycle, fog, particles, bloom, ambient sounds — cinematic atmosphere' },
+  { name: 'Monetization', parts: '—', desc: 'Game passes (49-499R$), dev products, premium perks — with pricing strategy' },
 ]
 
 function GamePlanningSection() {

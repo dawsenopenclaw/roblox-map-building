@@ -119,7 +119,7 @@ function MarketingNav() {
           className="flex-shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] rounded"
           aria-label="ForjeGames home"
         >
-          <ForjeLogo size={20} useImage />
+          <ForjeLogo size={22} />
         </Link>
 
         {/* Desktop nav — center, sharing space with logo + CTA via flex-1 */}

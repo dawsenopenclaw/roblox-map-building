@@ -507,10 +507,10 @@ export default function ReviewMarquee() {
             display: 'block',
           }}
         >
-          {hasReviews ? 'Builders are talking.' : 'What will you build?'}
+          {hasReviews ? 'Builders are talking.' : 'Leave a review. What will you build?'}
         </h2>
         <p style={{ fontSize: '15px', color: '#3D4560', margin: 0, letterSpacing: '0.2px' }}>
-          {hasReviews ? 'Real feedback from our community.' : 'Share your experience with the community.'}
+          {hasReviews ? 'Real reviews from real creators.' : 'Be the first to share your experience.'}
         </p>
       </div>
 
