@@ -4191,17 +4191,42 @@ P(m,"Plate",Vector3.new(2,0.8,0.1),sp+Vector3.new(0,2.5,-6.1),Color3.fromRGB(240
   if (/\b(sword|blade|katana)\b/.test(m)) {
     return {
       name: 'Sword',
-      response: "Here's a proper sword — long metal blade with a taper, a crossguard, leather-wrapped grip, and a round pommel at the end. I added a subtle glow effect along the blade edge so it looks magical. Looks great as a weapon pickup or display piece.\n\nWant me to add a damage script so it actually works in combat?",
+      response: "Here's an epic sword — polished metal blade with a sharp taper and a glowing neon edge that pulses with energy. Gold-inlaid crossguard with ornamental curls on each end, leather-wrapped grip with a gemstone pommel at the base. I put it on a display pedestal with a spotlight so it looks like a legendary drop. Pickup-ready.\n\nWant me to add a damage script, or make a whole weapon rack?",
       code: BOILERPLATE_TOP + `
-P(m,"Blade",Vector3.new(0.4,10,1.5),sp+Vector3.new(0,8,0),Color3.fromRGB(200,200,210),"Metal")
-P(m,"BladeTip",Vector3.new(0.3,2,1),sp+Vector3.new(0,14,0),Color3.fromRGB(210,210,220),"Metal")
-P(m,"BladeEdge",Vector3.new(0.1,10,0.2),sp+Vector3.new(0,8,0.8),Color3.fromRGB(180,220,255),"Neon")
-P(m,"Crossguard",Vector3.new(0.5,0.8,4),sp+Vector3.new(0,3,0),Color3.fromRGB(170,140,50),"Metal")
-Cyl(m,"Grip",Vector3.new(3,0.6,0.6),sp+Vector3.new(0,1.5,0),Color3.fromRGB(80,50,30),"Fabric")
-Ball(m,"Pommel",Vector3.new(1,1,1),sp+Vector3.new(0,0,0),Color3.fromRGB(170,140,50),"Metal")
+-- Display pedestal
+Cyl(m,"Pedestal",Vector3.new(1.5,5,5),sp+Vector3.new(0,0.75,0),Color3.fromRGB(50,50,55),"Granite")
+Cyl(m,"PedestalRim",Vector3.new(0.3,5.5,5.5),sp+Vector3.new(0,1.4,0),Color3.fromRGB(170,140,50),"Metal")
+P(m,"PedestalTop",Vector3.new(4,0.3,4),sp+Vector3.new(0,1.65,0),Color3.fromRGB(35,35,40),"Marble")
+-- Blade (layered for depth)
+P(m,"BladeFull",Vector3.new(0.35,12,1.6),sp+Vector3.new(0,9,0),Color3.fromRGB(200,200,215),"Metal")
+P(m,"BladeCenter",Vector3.new(0.15,11,0.8),sp+Vector3.new(0,9,0),Color3.fromRGB(215,215,225),"Metal")
+W(m,"BladeTip",Vector3.new(0.35,2.5,1.2),sp+Vector3.new(0,16,0),Color3.fromRGB(210,210,225),0)
+-- Glowing edges (both sides)
+P(m,"EdgeL",Vector3.new(0.08,12,0.12),sp+Vector3.new(0,9,0.82),Color3.fromRGB(140,200,255),"Neon")
+P(m,"EdgeR",Vector3.new(0.08,12,0.12),sp+Vector3.new(0,9,-0.82),Color3.fromRGB(140,200,255),"Neon")
+-- Fuller (groove down center of blade)
+P(m,"Fuller",Vector3.new(0.05,8,0.3),sp+Vector3.new(0.18,9,0),Color3.fromRGB(180,180,195),"Metal")
+-- Crossguard (ornamental)
+P(m,"Guard",Vector3.new(0.6,1,5),sp+Vector3.new(0,3,0),Color3.fromRGB(180,150,50),"Metal")
+Ball(m,"GuardL",Vector3.new(1,1,1),sp+Vector3.new(0,3,2.5),Color3.fromRGB(190,160,55),"Metal")
+Ball(m,"GuardR",Vector3.new(1,1,1),sp+Vector3.new(0,3,-2.5),Color3.fromRGB(190,160,55),"Metal")
+P(m,"GuardDetail",Vector3.new(0.3,0.3,4.5),sp+Vector3.new(0,3.3,0),Color3.fromRGB(160,130,40),"Metal")
+-- Grip (leather wrapped)
+Cyl(m,"Grip",Vector3.new(3.2,0.65,0.65),sp+Vector3.new(0,1.5,0),Color3.fromRGB(75,45,25),"Fabric")
+-- Grip wrapping detail
+for i=0,4 do
+  P(m,"Wrap"..i,Vector3.new(0.7,0.12,0.7),sp+Vector3.new(0,0.4+i*0.6,0),Color3.fromRGB(60,35,18),"Fabric")
+end
+-- Pommel with gem
+Ball(m,"Pommel",Vector3.new(1.2,1.2,1.2),sp+Vector3.new(0,-0.2,0),Color3.fromRGB(180,150,50),"Metal")
+Ball(m,"Gem",Vector3.new(0.5,0.5,0.5),sp+Vector3.new(0,-0.2,0),Color3.fromRGB(80,180,255),"Neon")
+-- Lighting
+local eg=Instance.new("PointLight") eg.Range=8 eg.Brightness=0.5 eg.Color=Color3.fromRGB(140,200,255) eg.Parent=m.EdgeL
+local spot=Instance.new("SpotLight") spot.Range=20 spot.Brightness=0.8 spot.Color=Color3.fromRGB(255,240,200) spot.Face=Enum.NormalId.Top spot.Angle=35 spot.Parent=m.PedestalTop
+local gemGlow=Instance.new("PointLight") gemGlow.Range=5 gemGlow.Brightness=0.6 gemGlow.Color=Color3.fromRGB(80,180,255) gemGlow.Parent=m.Gem
 ` + BOILERPLATE_BOT,
       suggestions: ['Add a damage script', 'Build a weapon rack', 'Make a shield to match'],
-      partCount: 6,
+      partCount: 28,
     }
   }
 
@@ -4209,37 +4234,83 @@ Ball(m,"Pommel",Vector3.new(1,1,1),sp+Vector3.new(0,0,0),Color3.fromRGB(170,140,
   if (/\b(castle|fortress|medieval)\b/.test(m)) {
     return {
       name: 'Castle',
-      response: "Here's your castle — thick stone walls with battlements you can walk along, two corner towers with pointed roofs, a main gate with a heavy wooden door, and a courtyard inside with a well. I added torches on the walls that glow warm orange at night. It's giving serious medieval energy.\n\nWant me to add a drawbridge or a throne room inside?",
+      response: "Full medieval castle — thick granite walls with walkable battlements on all four sides, four corner towers with cone roofs and arrow slits, a gatehouse with iron portcullis and wooden doors, cobblestone courtyard with a well and market stalls, torch lighting everywhere, and a raised keep in the center with the throne room entrance. Banners hang from the towers. It feels like you walked into a real medieval game.\n\nWant me to add a drawbridge with a moat, or build the throne room interior?",
       code: BOILERPLATE_TOP + `
--- Courtyard floor
-P(m,"Courtyard",Vector3.new(40,1,40),sp+Vector3.new(0,0.5,0),Color3.fromRGB(130,130,130),"Cobblestone")
--- Walls
-P(m,"WallN",Vector3.new(42,14,2),sp+Vector3.new(0,8,20),Color3.fromRGB(140,135,125),"Granite")
-P(m,"WallS",Vector3.new(42,14,2),sp+Vector3.new(0,8,-20),Color3.fromRGB(140,135,125),"Granite")
-P(m,"WallE",Vector3.new(2,14,40),sp+Vector3.new(20,8,0),Color3.fromRGB(135,130,120),"Granite")
-P(m,"WallW",Vector3.new(2,14,40),sp+Vector3.new(-20,8,0),Color3.fromRGB(135,130,120),"Granite")
--- Battlements (north wall)
-for i=0,7 do P(m,"Merlon"..i,Vector3.new(3,3,2),sp+Vector3.new(-17.5+i*5,17,20),Color3.fromRGB(140,135,125),"Granite") end
--- Gate opening
-P(m,"GateDoor",Vector3.new(6,10,1),sp+Vector3.new(0,6,20.5),Color3.fromRGB(90,60,30),"Wood")
-P(m,"GateArch",Vector3.new(8,2,2.5),sp+Vector3.new(0,12,20),Color3.fromRGB(120,115,105),"Granite")
--- Towers (NE and NW corners)
-for _,xOff in ipairs({-20,20}) do
-  Cyl(m,"Tower"..xOff,Vector3.new(18,6,6),sp+Vector3.new(xOff,10,20),Color3.fromRGB(130,125,115),"Granite")
-  P(m,"TowerRoof"..xOff,Vector3.new(8,1,8),sp+Vector3.new(xOff,19.5,20),Color3.fromRGB(70,45,30),"Slate")
+-- Ground: grass around castle
+P(m,"GrassBase",Vector3.new(70,0.5,70),sp+Vector3.new(0,0.25,0),Color3.fromRGB(70,130,50),"Grass")
+-- Courtyard cobblestone
+P(m,"Courtyard",Vector3.new(44,0.6,44),sp+Vector3.new(0,0.55,0),Color3.fromRGB(125,120,112),"Cobblestone")
+-- Walls (all 4 sides, stone color variation)
+P(m,"WallN",Vector3.new(48,16,2.5),sp+Vector3.new(0,8.5,22),Color3.fromRGB(140,135,125),"Granite")
+P(m,"WallS",Vector3.new(48,16,2.5),sp+Vector3.new(0,8.5,-22),Color3.fromRGB(135,130,120),"Granite")
+P(m,"WallE",Vector3.new(2.5,16,44),sp+Vector3.new(22,8.5,0),Color3.fromRGB(138,133,123),"Granite")
+P(m,"WallW",Vector3.new(2.5,16,44),sp+Vector3.new(-22,8.5,0),Color3.fromRGB(132,128,118),"Granite")
+-- Wall walkway (top of walls)
+P(m,"WalkN",Vector3.new(44,0.5,3),sp+Vector3.new(0,16.7,22),Color3.fromRGB(115,112,105),"Cobblestone")
+P(m,"WalkS",Vector3.new(44,0.5,3),sp+Vector3.new(0,16.7,-22),Color3.fromRGB(115,112,105),"Cobblestone")
+-- Battlements (all 4 walls)
+for i=0,8 do P(m,"MN"..i,Vector3.new(3,3.5,1.5),sp+Vector3.new(-20+i*5,19,22.5),Color3.fromRGB(140,135,125),"Granite") end
+for i=0,8 do P(m,"MS"..i,Vector3.new(3,3.5,1.5),sp+Vector3.new(-20+i*5,19,-22.5),Color3.fromRGB(135,130,120),"Granite") end
+-- 4 Corner towers
+for _,c in ipairs({{-22,22},{22,22},{-22,-22},{22,-22}}) do
+  Cyl(m,"Twr"..c[1]..c[2],Vector3.new(22,7,7),sp+Vector3.new(c[1],11.5,c[2]),Color3.fromRGB(130,125,115),"Granite")
+  -- Cone roof
+  Ball(m,"Roof"..c[1]..c[2],Vector3.new(9,6,9),sp+Vector3.new(c[1],24,c[2]),Color3.fromRGB(65,40,25),"Slate")
+  -- Arrow slits
+  P(m,"Slit"..c[1]..c[2],Vector3.new(0.4,3,0.2),sp+Vector3.new(c[1]>0 and c[1]-3.5 or c[1]+3.5,12,c[2]),Color3.fromRGB(20,20,25),"Concrete")
+  -- Tower top ring
+  Cyl(m,"Ring"..c[1]..c[2],Vector3.new(0.8,7.5,7.5),sp+Vector3.new(c[1],22.5,c[2]),Color3.fromRGB(120,115,105),"Granite")
 end
--- Well in courtyard
-Cyl(m,"Well",Vector3.new(2,4,4),sp+Vector3.new(0,1.5,0),Color3.fromRGB(120,115,110),"Granite")
-P(m,"WellWater",Vector3.new(3,0.2,3),sp+Vector3.new(0,1,0),Color3.fromRGB(80,140,200),"Glass")
--- Torches
-for _,pos in ipairs({{-10,10,19.5},{10,10,19.5},{-19.5,10,10},{-19.5,10,-10},{19.5,10,10},{19.5,10,-10}}) do
-  local t=P(m,"Torch",Vector3.new(0.3,2,0.3),sp+Vector3.new(pos[1],pos[2],pos[3]),Color3.fromRGB(120,80,30),"Wood")
-  local f=Instance.new("Fire") f.Size=3 f.Heat=5 f.Parent=t
-  local pl=Instance.new("PointLight") pl.Range=16 pl.Brightness=0.7 pl.Color=Color3.fromRGB(255,160,50) pl.Parent=t
+-- Gatehouse (front)
+P(m,"GateFrame",Vector3.new(10,18,3),sp+Vector3.new(0,9.5,22),Color3.fromRGB(125,120,110),"Granite")
+P(m,"GateOpening",Vector3.new(6,11,3.5),sp+Vector3.new(0,6,22),Color3.fromRGB(30,25,20),"Concrete")
+P(m,"Portcullis",Vector3.new(5.5,10,0.3),sp+Vector3.new(0,5.5,22.5),Color3.fromRGB(80,80,85),"DiamondPlate")
+m.Portcullis.Transparency = 0.15
+P(m,"GateDoor1",Vector3.new(2.5,9,0.5),sp+Vector3.new(-1.5,5,23),Color3.fromRGB(85,55,30),"Wood")
+P(m,"GateDoor2",Vector3.new(2.5,9,0.5),sp+Vector3.new(1.5,5,23),Color3.fromRGB(80,52,28),"Wood")
+-- Gate door iron bands
+for i=0,2 do P(m,"Band"..i,Vector3.new(5.5,0.4,0.15),sp+Vector3.new(0,3+i*3,23.2),Color3.fromRGB(70,70,75),"Metal") end
+-- Central keep (raised)
+P(m,"KeepBase",Vector3.new(16,2,16),sp+Vector3.new(0,1.8,0),Color3.fromRGB(110,108,100),"Cobblestone")
+P(m,"KeepWalls",Vector3.new(14,10,14),sp+Vector3.new(0,7.8,0),Color3.fromRGB(145,140,130),"Granite")
+P(m,"KeepRoof",Vector3.new(16,1,16),sp+Vector3.new(0,13.3,0),Color3.fromRGB(60,38,22),"Slate")
+P(m,"KeepDoor",Vector3.new(4,7,0.5),sp+Vector3.new(0,5.3,7.2),Color3.fromRGB(90,58,30),"Wood")
+-- Keep windows (glowing)
+for _,wp in ipairs({{-5,9,7},{5,9,7},{7,9,0},{-7,9,0}}) do
+  local w=P(m,"KW",Vector3.new(2,3,0.3),sp+Vector3.new(wp[1],wp[2],wp[3]),Color3.fromRGB(200,180,120),"Glass")
+  w.Transparency=0.2
+  local wl=Instance.new("SpotLight") wl.Range=15 wl.Brightness=0.6 wl.Color=Color3.fromRGB(255,200,100) wl.Parent=w
+end
+-- Well
+Cyl(m,"Well",Vector3.new(2.5,4.5,4.5),sp+Vector3.new(10,1.5,8),Color3.fromRGB(118,115,108),"Granite")
+P(m,"WellWater",Vector3.new(3.5,0.2,3.5),sp+Vector3.new(10,1,8),Color3.fromRGB(60,120,180),"Glass")
+Cyl(m,"WellPost1",Vector3.new(3,0.3,0.3),sp+Vector3.new(8.5,3,8),Color3.fromRGB(90,60,30),"Wood")
+Cyl(m,"WellPost2",Vector3.new(3,0.3,0.3),sp+Vector3.new(11.5,3,8),Color3.fromRGB(90,60,30),"Wood")
+P(m,"WellRoof",Vector3.new(4,0.3,4),sp+Vector3.new(10,4.5,8),Color3.fromRGB(65,40,25),"Wood")
+-- Market stalls (2)
+for _,sx in ipairs({-10,10}) do
+  P(m,"Stall"..sx,Vector3.new(6,0.3,4),sp+Vector3.new(sx,4,-8),Color3.fromRGB(140,95,50),"Wood")
+  P(m,"StallLeg1"..sx,Vector3.new(0.4,3,0.4),sp+Vector3.new(sx-2.5,2.5,-9.5),Color3.fromRGB(120,80,40),"Wood")
+  P(m,"StallLeg2"..sx,Vector3.new(0.4,3,0.4),sp+Vector3.new(sx+2.5,2.5,-9.5),Color3.fromRGB(120,80,40),"Wood")
+  P(m,"Awning"..sx,Vector3.new(7,0.2,5),sp+Vector3.new(sx,5.5,-8),Color3.fromRGB(180,50,40),"Fabric")
+end
+-- Torches (8 around the courtyard + walls)
+for _,tp in ipairs({{-10,11,21.5},{10,11,21.5},{-21.5,11,10},{-21.5,11,-10},{21.5,11,10},{21.5,11,-10},{-10,11,-21.5},{10,11,-21.5}}) do
+  local t=P(m,"Torch",Vector3.new(0.3,2,0.3),sp+Vector3.new(tp[1],tp[2],tp[3]),Color3.fromRGB(110,75,30),"Wood")
+  local f=Instance.new("Fire") f.Size=3 f.Heat=4 f.Parent=t
+  local pl=Instance.new("PointLight") pl.Range=18 pl.Brightness=0.6 pl.Color=Color3.fromRGB(255,155,45) pl.Parent=t
+end
+-- Banners on towers
+for _,c in ipairs({{-22,22},{22,22}}) do
+  P(m,"Banner"..c[1],Vector3.new(0.1,6,3),sp+Vector3.new(c[1]>0 and c[1]-4 or c[1]+4,18,c[2]),Color3.fromRGB(160,35,35),"Fabric")
+end
+-- Path from gate to keep
+for i=0,5 do
+  P(m,"Path"..i,Vector3.new(5,0.15,3),sp+Vector3.new(0,0.85,6+i*3),Color3.fromRGB(140,135,125),"Cobblestone")
 end
 ` + BOILERPLATE_BOT,
-      suggestions: ['Add a throne room', 'Build a drawbridge', 'Add guards'],
-      partCount: 35,
+      suggestions: ['Add a throne room inside', 'Build a moat with drawbridge', 'Add a dungeon below'],
+      partCount: 95,
     }
   }
 
@@ -4247,21 +4318,60 @@ end
   if (/\b(boat|ship|sail|yacht)\b/.test(m) && !/pirate|battle/.test(m)) {
     return {
       name: 'Boat',
-      response: "Here's a sailboat — curved wooden hull with a pointed bow, a tall mast with a fabric sail, a rudder at the stern, and a VehicleSeat at the helm so players can steer it. I set it up on the water so it looks ready to sail.\n\nWant me to add an ocean for it?",
+      response: "Here's a proper sailboat sitting on water — deep wooden hull with planking detail, tall mast with a billowing fabric sail and a jib up front, captain's wheel at the stern with a VehicleSeat so players can actually steer it. Rope rigging, lanterns hanging off the bow, and a wake of foam trailing behind. I put it on a patch of ocean so it looks ready to sail.\n\nWant me to add the full ocean, or make this a pirate ship?",
       code: BOILERPLATE_TOP + `
-P(m,"Hull",Vector3.new(6,2,16),sp+Vector3.new(0,2,0),Color3.fromRGB(120,80,40),"Wood")
-W(m,"Bow",Vector3.new(6,2,4),sp+Vector3.new(0,2,10),Color3.fromRGB(110,75,35),0)
-P(m,"Stern",Vector3.new(6,3,1),sp+Vector3.new(0,2.5,-8),Color3.fromRGB(110,75,35),"Wood")
-P(m,"Deck",Vector3.new(5,0.3,14),sp+Vector3.new(0,3.15,0),Color3.fromRGB(140,100,55),"WoodPlanks")
-Cyl(m,"Mast",Vector3.new(14,0.5,0.5),sp+Vector3.new(0,10,1),Color3.fromRGB(100,70,35),"Wood")
-P(m,"Sail",Vector3.new(0.1,8,6),sp+Vector3.new(0,11,1),Color3.fromRGB(240,235,220),"Fabric")
-P(m,"Rudder",Vector3.new(0.3,3,2),sp+Vector3.new(0,1,-9),Color3.fromRGB(100,70,35),"Wood")
-local seat=Instance.new("VehicleSeat") seat.Name="Helm" seat.Size=Vector3.new(2,0.5,2) seat.Position=sp+Vector3.new(0,3.5,-5) seat.Anchored=false seat.Color=Color3.fromRGB(100,70,35) seat.Material=Enum.Material.Wood seat.Parent=m
-P(m,"Railing1",Vector3.new(0.2,1.5,14),sp+Vector3.new(-3,4,0),Color3.fromRGB(110,75,35),"Wood")
-P(m,"Railing2",Vector3.new(0.2,1.5,14),sp+Vector3.new(3,4,0),Color3.fromRGB(110,75,35),"Wood")
+-- Water patch
+P(m,"Water",Vector3.new(40,1,50),sp+Vector3.new(0,-0.5,0),Color3.fromRGB(50,120,180),"Glass")
+m.Water.Transparency=0.35
+-- Hull (layered for depth)
+P(m,"HullOuter",Vector3.new(8,3,20),sp+Vector3.new(0,2,0),Color3.fromRGB(110,70,35),"Wood")
+P(m,"HullInner",Vector3.new(7,2.5,19),sp+Vector3.new(0,2.5,0),Color3.fromRGB(120,80,40),"Wood")
+W(m,"BowL",Vector3.new(4,3,5),sp+Vector3.new(-2,2,12),Color3.fromRGB(105,68,32),"Wood")
+W(m,"BowR",Vector3.new(4,3,5),sp+Vector3.new(2,2,12),Color3.fromRGB(105,68,32),"Wood")
+-- Hull planking stripes
+for i=0,3 do P(m,"Plank"..i,Vector3.new(8.2,0.15,18),sp+Vector3.new(0,1.2+i*0.7,0),Color3.fromRGB(95,62,28),"Wood") end
+-- Deck
+P(m,"Deck",Vector3.new(7,0.3,18),sp+Vector3.new(0,3.65,0),Color3.fromRGB(145,105,58),"WoodPlanks")
+-- Cabin at stern
+P(m,"CabinWall",Vector3.new(6,3,4),sp+Vector3.new(0,5.15,-6),Color3.fromRGB(115,75,38),"Wood")
+P(m,"CabinRoof",Vector3.new(6.5,0.3,4.5),sp+Vector3.new(0,6.8,-6),Color3.fromRGB(85,55,28),"Wood")
+P(m,"CabinWindow",Vector3.new(2,1.5,0.2),sp+Vector3.new(0,5.5,-8.2),Color3.fromRGB(180,210,240),"Glass")
+m.CabinWindow.Transparency=0.25
+-- Mast + rigging
+Cyl(m,"Mast",Vector3.new(16,0.6,0.6),sp+Vector3.new(0,11.6,2),Color3.fromRGB(90,60,30),"Wood")
+Cyl(m,"CrossBeam",Vector3.new(0.4,10,0.4),sp+Vector3.new(0,16,2),Color3.fromRGB(85,55,28),"Wood")
+-- Main sail
+P(m,"MainSail",Vector3.new(0.1,10,8),sp+Vector3.new(0.5,13,2),Color3.fromRGB(240,235,218),"Fabric")
+-- Jib sail (front triangle)
+P(m,"JibSail",Vector3.new(0.1,7,4),sp+Vector3.new(0.3,10,8),Color3.fromRGB(235,230,212),"Fabric")
+-- Helm (captain's wheel)
+Cyl(m,"Wheel",Vector3.new(0.3,2.5,2.5),sp+Vector3.new(0,5,-5),Color3.fromRGB(100,65,30),"Wood")
+local seat=Instance.new("VehicleSeat") seat.Name="Helm" seat.Size=Vector3.new(2,0.5,2) seat.Position=sp+Vector3.new(0,4,-4) seat.Anchored=false seat.MaxSpeed=40 seat.TurnSpeed=1.5 seat.Color=Color3.fromRGB(100,70,35) seat.Material=Enum.Material.Wood seat.Parent=m
+-- Railings
+P(m,"RailL",Vector3.new(0.2,2,16),sp+Vector3.new(-3.5,4.6,0),Color3.fromRGB(105,70,32),"Wood")
+P(m,"RailR",Vector3.new(0.2,2,16),sp+Vector3.new(3.5,4.6,0),Color3.fromRGB(105,70,32),"Wood")
+-- Railing posts
+for i=0,5 do
+  P(m,"PostL"..i,Vector3.new(0.3,2,0.3),sp+Vector3.new(-3.5,4.6,-7+i*3),Color3.fromRGB(100,65,30),"Wood")
+  P(m,"PostR"..i,Vector3.new(0.3,2,0.3),sp+Vector3.new(3.5,4.6,-7+i*3),Color3.fromRGB(100,65,30),"Wood")
+end
+-- Rudder
+P(m,"Rudder",Vector3.new(0.3,4,2.5),sp+Vector3.new(0,0.5,-10.5),Color3.fromRGB(95,60,28),"Wood")
+-- Bow lanterns
+for _,side in ipairs({{-3,4.5,10},{3,4.5,10}}) do
+  local lp=P(m,"Lantern",Vector3.new(0.6,0.8,0.6),sp+Vector3.new(side[1],side[2],side[3]),Color3.fromRGB(200,170,50),"Metal")
+  local ll=Instance.new("PointLight") ll.Range=14 ll.Brightness=0.5 ll.Color=Color3.fromRGB(255,200,100) ll.Parent=lp
+end
+-- Anchor
+P(m,"Anchor",Vector3.new(0.3,2,1.5),sp+Vector3.new(4,2,8),Color3.fromRGB(70,70,75),"Metal")
+-- Flag at top of mast
+P(m,"Flag",Vector3.new(0.05,1.5,3),sp+Vector3.new(0,19,2),Color3.fromRGB(180,40,40),"Fabric")
+-- Wake/foam at waterline
+P(m,"Wake1",Vector3.new(10,0.1,6),sp+Vector3.new(0,0.1,-12),Color3.fromRGB(220,235,245),"Glass")
+m.Wake1.Transparency=0.5
 ` + BOILERPLATE_BOT,
-      suggestions: ['Add an ocean', 'Make it a pirate ship', 'Add cannons'],
-      partCount: 10,
+      suggestions: ['Add the full ocean', 'Make it a pirate ship', 'Add cannons and a crew'],
+      partCount: 48,
     }
   }
 
@@ -4269,18 +4379,43 @@ P(m,"Railing2",Vector3.new(0.2,1.5,14),sp+Vector3.new(3,4,0),Color3.fromRGB(110,
   if (/\b(chair|bench|seat|stool|bean\s?bag)\b/.test(m) && !/car|vehicle|wheel/.test(m)) {
     return {
       name: 'Chair',
-      response: "Here's a sturdy wooden chair — four legs, a flat seat, and a backrest. I made it so players can actually sit in it with a Seat part. Simple but solid, looks good in any room.\n\nWant me to build a table to go with it?",
+      response: "Here's a detailed armchair — padded fabric seat with cushion detail, curved wooden armrests, turned legs, and a tall backrest with a decorative top rail. I put it on a little rug with a side table and lamp next to it. Players can actually sit in it. Cozy reading corner vibes.\n\nWant me to build a whole living room around it?",
       code: BOILERPLATE_TOP + `
-P(m,"Seat",Vector3.new(3,0.4,3),sp+Vector3.new(0,2.5,0),Color3.fromRGB(140,90,45),"Wood")
-local s=Instance.new("Seat") s.Name="SitPart" s.Size=Vector3.new(2.5,0.2,2.5) s.Position=sp+Vector3.new(0,2.8,0) s.Anchored=true s.Transparency=1 s.Parent=m
-P(m,"Back",Vector3.new(3,4,0.4),sp+Vector3.new(0,4.7,-1.3),Color3.fromRGB(130,85,40),"Wood")
-P(m,"Leg1",Vector3.new(0.4,2.3,0.4),sp+Vector3.new(-1.2,1.15,1.2),Color3.fromRGB(120,80,38),"Wood")
-P(m,"Leg2",Vector3.new(0.4,2.3,0.4),sp+Vector3.new(1.2,1.15,1.2),Color3.fromRGB(120,80,38),"Wood")
-P(m,"Leg3",Vector3.new(0.4,2.3,0.4),sp+Vector3.new(-1.2,1.15,-1.2),Color3.fromRGB(120,80,38),"Wood")
-P(m,"Leg4",Vector3.new(0.4,2.3,0.4),sp+Vector3.new(1.2,1.15,-1.2),Color3.fromRGB(120,80,38),"Wood")
+-- Rug under the scene
+Cyl(m,"Rug",Vector3.new(0.15,10,10),sp+Vector3.new(0,0.08,0),Color3.fromRGB(140,50,45),"Fabric")
+-- Chair frame
+P(m,"SeatBase",Vector3.new(4,0.5,4),sp+Vector3.new(0,2.5,0),Color3.fromRGB(130,82,38),"Wood")
+-- Cushion (padded)
+P(m,"Cushion",Vector3.new(3.5,0.8,3.5),sp+Vector3.new(0,3.15,0),Color3.fromRGB(75,55,120),"Fabric")
+P(m,"CushionBack",Vector3.new(3.5,3.5,0.8),sp+Vector3.new(0,4.9,-1.5),Color3.fromRGB(70,50,115),"Fabric")
+-- Sit part (invisible, functional)
+local s=Instance.new("Seat") s.Name="SitPart" s.Size=Vector3.new(3,0.2,3) s.Position=sp+Vector3.new(0,3.6,0) s.Anchored=true s.Transparency=1 s.Parent=m
+-- Backrest frame
+P(m,"BackFrame",Vector3.new(4,5,0.5),sp+Vector3.new(0,5.2,-1.9),Color3.fromRGB(125,78,35),"Wood")
+P(m,"TopRail",Vector3.new(4.2,0.6,0.6),sp+Vector3.new(0,7.5,-1.9),Color3.fromRGB(135,85,40),"Wood")
+-- Armrests
+P(m,"ArmL",Vector3.new(0.5,0.6,3.5),sp+Vector3.new(-2,4,0),Color3.fromRGB(128,80,36),"Wood")
+P(m,"ArmR",Vector3.new(0.5,0.6,3.5),sp+Vector3.new(2,4,0),Color3.fromRGB(128,80,36),"Wood")
+P(m,"ArmSupportL",Vector3.new(0.5,1.5,0.5),sp+Vector3.new(-2,3,1.5),Color3.fromRGB(120,75,34),"Wood")
+P(m,"ArmSupportR",Vector3.new(0.5,1.5,0.5),sp+Vector3.new(2,3,1.5),Color3.fromRGB(120,75,34),"Wood")
+-- Turned legs (4)
+Cyl(m,"Leg1",Vector3.new(2.3,0.5,0.5),sp+Vector3.new(-1.5,1.15,1.5),Color3.fromRGB(118,74,32),"Wood")
+Cyl(m,"Leg2",Vector3.new(2.3,0.5,0.5),sp+Vector3.new(1.5,1.15,1.5),Color3.fromRGB(118,74,32),"Wood")
+Cyl(m,"Leg3",Vector3.new(2.3,0.5,0.5),sp+Vector3.new(-1.5,1.15,-1.5),Color3.fromRGB(118,74,32),"Wood")
+Cyl(m,"Leg4",Vector3.new(2.3,0.5,0.5),sp+Vector3.new(1.5,1.15,-1.5),Color3.fromRGB(118,74,32),"Wood")
+-- Side table
+P(m,"TableTop",Vector3.new(3,0.3,3),sp+Vector3.new(4.5,3.5,0),Color3.fromRGB(110,70,32),"Wood")
+Cyl(m,"TableLeg",Vector3.new(3.2,0.6,0.6),sp+Vector3.new(4.5,1.6,0),Color3.fromRGB(105,65,30),"Wood")
+-- Lamp on table
+Cyl(m,"LampBase",Vector3.new(0.3,1.5,1.5),sp+Vector3.new(4.5,3.8,0),Color3.fromRGB(170,140,50),"Metal")
+Cyl(m,"LampPole",Vector3.new(4,0.25,0.25),sp+Vector3.new(4.5,6,0),Color3.fromRGB(165,135,45),"Metal")
+Ball(m,"LampShade",Vector3.new(3,2.5,3),sp+Vector3.new(4.5,8.2,0),Color3.fromRGB(240,230,200),"Fabric")
+local ll=Instance.new("PointLight") ll.Range=18 ll.Brightness=0.6 ll.Color=Color3.fromRGB(255,235,190) ll.Parent=m.LampShade
+-- Book on table
+P(m,"Book",Vector3.new(1.2,0.3,1.6),sp+Vector3.new(5,3.9,0.8),Color3.fromRGB(140,40,40),"SmoothPlastic")
 ` + BOILERPLATE_BOT,
-      suggestions: ['Build a table', 'Make a dining room', 'Add a couch'],
-      partCount: 8,
+      suggestions: ['Build a living room', 'Add a fireplace', 'Make a dining set'],
+      partCount: 26,
     }
   }
 
@@ -4288,25 +4423,66 @@ P(m,"Leg4",Vector3.new(0.4,2.3,0.4),sp+Vector3.new(1.2,1.15,-1.2),Color3.fromRGB
   if (/\b(spaceship|rocket|ufo|spacecraft|starship)\b/.test(m)) {
     return {
       name: 'Spaceship',
-      response: "Check this out — sleek spaceship hull with metal paneling, a glass cockpit up front, two engine pods on the sides with neon thrust glow, and a cargo bay in the back. The cockpit has a pilot seat so players can hop in. Looks ready to launch.\n\nWant me to add a flying script or a space environment?",
+      response: "Full sci-fi starship — sleek angular hull with layered metal paneling, glass cockpit dome up front with pilot controls, two massive engine nacelles on the sides with pulsing neon thrust rings, delta wings with tip lights, dorsal fin, ventral cannon mount, and a cargo ramp at the rear. Landing gear deployed, sitting on a launch pad. The engine glow lights up the ground underneath. This thing looks like it belongs in a AAA game.\n\nWant me to add a flying script, or build a space station to dock with?",
       code: BOILERPLATE_TOP + `
-P(m,"Hull",Vector3.new(6,3,18),sp+Vector3.new(0,5,0),Color3.fromRGB(160,165,170),"Metal")
-W(m,"Nose",Vector3.new(5,2,6),sp+Vector3.new(0,5,12),Color3.fromRGB(155,160,165),0)
-P(m,"Cockpit",Vector3.new(4,2,4),sp+Vector3.new(0,6.5,8),Color3.fromRGB(180,210,240),"Glass")
-m.Cockpit.Transparency=0.3
-P(m,"WingL",Vector3.new(10,0.5,6),sp+Vector3.new(-8,4.5,0),Color3.fromRGB(150,155,160),"Metal")
-P(m,"WingR",Vector3.new(10,0.5,6),sp+Vector3.new(8,4.5,0),Color3.fromRGB(150,155,160),"Metal")
-P(m,"EngineL",Vector3.new(2,2,4),sp+Vector3.new(-6,4.5,-8),Color3.fromRGB(130,135,140),"DiamondPlate")
-P(m,"EngineR",Vector3.new(2,2,4),sp+Vector3.new(6,4.5,-8),Color3.fromRGB(130,135,140),"DiamondPlate")
-P(m,"ThrustL",Vector3.new(1.5,1.5,0.5),sp+Vector3.new(-6,4.5,-10),Color3.fromRGB(100,180,255),"Neon")
-P(m,"ThrustR",Vector3.new(1.5,1.5,0.5),sp+Vector3.new(6,4.5,-10),Color3.fromRGB(100,180,255),"Neon")
-P(m,"Fin",Vector3.new(0.5,4,4),sp+Vector3.new(0,8,-6),Color3.fromRGB(150,155,160),"Metal")
-local seat=Instance.new("VehicleSeat") seat.Name="PilotSeat" seat.Size=Vector3.new(2,0.5,2) seat.Position=sp+Vector3.new(0,5.5,7) seat.Anchored=false seat.Color=Color3.fromRGB(50,50,60) seat.Material=Enum.Material.Fabric seat.Parent=m
-local gl=Instance.new("PointLight") gl.Range=12 gl.Brightness=0.8 gl.Color=Color3.fromRGB(100,180,255) gl.Parent=m.ThrustL
-local gr=Instance.new("PointLight") gr.Range=12 gr.Brightness=0.8 gr.Color=Color3.fromRGB(100,180,255) gr.Parent=m.ThrustR
+-- Landing pad
+Cyl(m,"Pad",Vector3.new(0.5,30,30),sp+Vector3.new(0,0.25,0),Color3.fromRGB(55,55,60),"DiamondPlate")
+-- Hull (layered panels)
+P(m,"HullMain",Vector3.new(7,3.5,22),sp+Vector3.new(0,6,0),Color3.fromRGB(155,160,168),"Metal")
+P(m,"HullUpper",Vector3.new(6,1.5,18),sp+Vector3.new(0,8,0),Color3.fromRGB(165,170,178),"Metal")
+P(m,"HullLower",Vector3.new(6,1,20),sp+Vector3.new(0,4.5,0),Color3.fromRGB(140,145,152),"Metal")
+-- Panel lines (detail stripes)
+for i=0,3 do P(m,"PanelLine"..i,Vector3.new(7.1,0.08,0.08),sp+Vector3.new(0,5+i*1.2,-4+i*5),Color3.fromRGB(80,85,90),"Metal") end
+-- Nose cone
+W(m,"NoseTop",Vector3.new(6,2,8),sp+Vector3.new(0,7.5,15),Color3.fromRGB(160,165,172),0)
+W(m,"NoseBot",Vector3.new(6,1.5,6),sp+Vector3.new(0,5,14),Color3.fromRGB(148,152,160),180)
+-- Cockpit dome (glass)
+Ball(m,"Cockpit",Vector3.new(4.5,3,5),sp+Vector3.new(0,8.5,10),Color3.fromRGB(160,210,245),"Glass")
+m.Cockpit.Transparency=0.25
+-- Cockpit interior glow
+local cg=Instance.new("PointLight") cg.Range=8 cg.Brightness=0.4 cg.Color=Color3.fromRGB(100,200,255) cg.Parent=m.Cockpit
+-- Pilot seat
+local seat=Instance.new("VehicleSeat") seat.Name="PilotSeat" seat.Size=Vector3.new(2,0.5,2) seat.Position=sp+Vector3.new(0,6.5,9) seat.Anchored=false seat.MaxSpeed=120 seat.TurnSpeed=3 seat.Color=Color3.fromRGB(40,42,48) seat.Material=Enum.Material.Fabric seat.Parent=m
+-- Delta wings
+P(m,"WingL",Vector3.new(14,0.5,8),sp+Vector3.new(-10,5.5,-2),Color3.fromRGB(148,152,160),"Metal")
+P(m,"WingR",Vector3.new(14,0.5,8),sp+Vector3.new(10,5.5,-2),Color3.fromRGB(148,152,160),"Metal")
+-- Wing tip lights
+P(m,"WingTipL",Vector3.new(0.6,0.3,0.6),sp+Vector3.new(-16.5,5.5,-2),Color3.fromRGB(255,60,60),"Neon")
+P(m,"WingTipR",Vector3.new(0.6,0.3,0.6),sp+Vector3.new(16.5,5.5,-2),Color3.fromRGB(60,255,60),"Neon")
+-- Engine nacelles (each side)
+for _,side in ipairs({{-8,5,-8},{8,5,-8}}) do
+  P(m,"Nacelle"..side[1],Vector3.new(3,3,6),sp+Vector3.new(side[1],side[2],side[3]),Color3.fromRGB(125,130,138),"DiamondPlate")
+  -- Thrust ring (neon glow)
+  Cyl(m,"ThrustRing"..side[1],Vector3.new(0.4,2.8,2.8),sp+Vector3.new(side[1],side[2],side[3]-3.2),Color3.fromRGB(80,170,255),"Neon")
+  -- Thrust core
+  Cyl(m,"ThrustCore"..side[1],Vector3.new(0.2,1.5,1.5),sp+Vector3.new(side[1],side[2],side[3]-3.3),Color3.fromRGB(180,230,255),"Neon")
+  -- Engine glow
+  local eg=Instance.new("PointLight") eg.Range=20 eg.Brightness=1.2 eg.Color=Color3.fromRGB(80,170,255)
+  eg.Parent=m["ThrustRing"..side[1]]
+  -- Exhaust particles
+  local pe=Instance.new("ParticleEmitter") pe.Color=ColorSequence.new(Color3.fromRGB(100,180,255),Color3.fromRGB(40,80,200))
+  pe.Size=NumberSequence.new(1.5,0) pe.Lifetime=NumberRange.new(0.3,0.8) pe.Rate=40 pe.Speed=NumberRange.new(8,15)
+  pe.SpreadAngle=Vector2.new(5,5) pe.Parent=m["ThrustCore"..side[1]]
+end
+-- Dorsal fin
+W(m,"DorsalFin",Vector3.new(0.5,5,6),sp+Vector3.new(0,10,-6),Color3.fromRGB(150,155,162),0)
+-- Ventral cannon
+Cyl(m,"Cannon",Vector3.new(4,0.5,0.5),sp+Vector3.new(0,3.8,4),Color3.fromRGB(90,92,98),"Metal")
+P(m,"CannonMount",Vector3.new(1.5,0.8,1.5),sp+Vector3.new(0,4.2,4),Color3.fromRGB(100,102,108),"Metal")
+-- Landing gear (3 points)
+for _,lp in ipairs({{0,0.8,8},{-4,0.8,-6},{4,0.8,-6}}) do
+  Cyl(m,"Gear",Vector3.new(0.5,0.4,0.4),sp+Vector3.new(lp[1],2,lp[3]),Color3.fromRGB(90,90,95),"Metal")
+  Cyl(m,"GearPad",Vector3.new(0.2,1.2,1.2),sp+Vector3.new(lp[1],lp[2],lp[3]),Color3.fromRGB(60,60,65),"Metal")
+end
+-- Cargo ramp (rear, open)
+P(m,"Ramp",Vector3.new(5,0.3,4),sp+Vector3.new(0,1.5,-12),Color3.fromRGB(135,138,145),"DiamondPlate")
+-- Running lights along hull
+for i=0,4 do
+  P(m,"RunLight"..i,Vector3.new(0.3,0.15,0.3),sp+Vector3.new(-3.5,4.5,-8+i*4),Color3.fromRGB(255,200,50),"Neon")
+end
 ` + BOILERPLATE_BOT,
       suggestions: ['Add a flying script', 'Build a space station', 'Add laser weapons'],
-      partCount: 14,
+      partCount: 55,
     }
   }
 
