@@ -229,77 +229,44 @@ function HeroPromptInput() {
   )
 }
 
-/* Smooth animated number display */
-
-function useAnimatedNumber(target: number, duration = 1200): number {
-  const [display, setDisplay] = useState(0)
-  const prevRef = useRef(0)
-  const rafRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    if (target === 0) return
-    const from = prevRef.current
-    const diff = target - from
-    if (diff === 0) return
-
-    const start = performance.now()
-
-    function tick(now: number) {
-      const elapsed = now - start
-      const progress = Math.min(elapsed / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      const current = Math.round(from + diff * eased)
-      setDisplay(current)
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(tick)
-      } else {
-        prevRef.current = target
-      }
-    }
-
-    rafRef.current = requestAnimationFrame(tick)
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [target, duration])
-
-  return display
-}
-
-/* Live stat counter — starts at 0, counts up as user watches */
+/* Live stat counter — loads real total, then ticks up from there */
 
 function LiveBuildCounter() {
-  const [buildCount, setBuildCount] = useState(0)
-  const [realUsers, setRealUsers] = useState(0)
+  const [displayBuilds, setDisplayBuilds] = useState(0)
+  const [displayUsers, setDisplayUsers] = useState(0)
+  const [loaded, setLoaded] = useState(false)
   const incrementRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Fetch real user count, but builds always start at 0 and tick up
+  // Fetch real counts, then start incrementing from the real number
   useEffect(() => {
     fetch('/api/stats')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setRealUsers(d.totalUsers || 0) })
-      .catch(() => {})
+      .then(d => {
+        if (d) {
+          setDisplayBuilds(d.totalBuilds || 0)
+          setDisplayUsers(d.totalUsers || 0)
+        }
+        setLoaded(true)
+      })
+      .catch(() => setLoaded(true))
   }, [])
 
-  // Builds tick up from 0 — mostly fast with occasional pauses
+  // Once loaded, tick builds up — mostly fast, some slow pauses
   useEffect(() => {
+    if (!loaded) return
+
     function scheduleNext() {
-      // 80% fast (0.4-1.2s), 20% slow pause (2-4s)
-      const isSlow = Math.random() < 0.2
-      const delay = isSlow ? 2000 + Math.random() * 2000 : 400 + Math.random() * 800
+      const isSlow = Math.random() < 0.15
+      const delay = isSlow ? 2500 + Math.random() * 2000 : 500 + Math.random() * 1000
       incrementRef.current = setTimeout(() => {
-        setBuildCount(prev => prev + 1)
+        setDisplayBuilds(prev => prev + 1)
         scheduleNext()
       }, delay)
     }
-    // Start after short delay
-    incrementRef.current = setTimeout(() => {
-      setBuildCount(1)
-      scheduleNext()
-    }, 1500)
-    return () => { if (incrementRef.current) clearTimeout(incrementRef.current) }
-  }, [])
 
-  const animBuilds = useAnimatedNumber(buildCount)
-  const animUsers = useAnimatedNumber(realUsers)
+    scheduleNext()
+    return () => { if (incrementRef.current) clearTimeout(incrementRef.current) }
+  }, [loaded])
 
   return (
     <div className="flex items-center gap-6 text-[12px]">
@@ -313,14 +280,14 @@ function LiveBuildCounter() {
 
       <div className="text-zinc-500">
         <span className="text-zinc-400 font-semibold tabular-nums">
-          {animBuilds.toLocaleString()}
+          {loaded ? displayBuilds.toLocaleString() : '0'}
         </span> builds
       </div>
 
-      {realUsers > 0 && (
+      {displayUsers > 0 && (
         <div className="text-zinc-500">
           <span className="text-zinc-400 font-semibold tabular-nums">
-            {animUsers.toLocaleString()}
+            {displayUsers.toLocaleString()}
           </span> creators
         </div>
       )}
@@ -749,11 +716,16 @@ export default function HomeClient() {
   const pageRef = useReveal()
 
   return (
-    <div ref={pageRef} className="min-h-screen relative" style={{ background: '#050810', color: '#FAFAFA', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)' }}>
-      {/* Star field background — stretches full page height, never blocks scroll */}
-      <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-        <div className="grid-overlay" style={{ position: 'sticky', top: 0, width: '100%', height: '100vh', opacity: 0.12 }} />
-      </div>
+    <div
+      ref={pageRef}
+      className="min-h-screen relative grid-overlay"
+      style={{
+        background: '#050810',
+        color: '#FAFAFA',
+        fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+        backgroundAttachment: 'fixed',
+      }}
+    >
 
       {/* 1 — Hero (full screen) */}
       <HeroSection />
