@@ -242,6 +242,43 @@ export async function pgGetCommandResult(commandId: string): Promise<PgCommandRe
   }
 }
 
+// ── Find active session (for MCP/API callers with no sessionId) ─────────────
+
+/** Find the most recently active connected session. Used when API key auth
+ *  callers don't provide a sessionId — picks the freshest Studio connection. */
+export async function pgFindActiveSession(): Promise<PgSession | null> {
+  await ensureTables()
+  const db = getDb()
+  const fiveMinAgo = Date.now() - 300_000
+  const rows = await db.$queryRawUnsafe<Array<{
+    session_id: string
+    place_id: string
+    place_name: string
+    plugin_version: string
+    connected: boolean
+    last_heartbeat: bigint | number
+    camera: unknown
+  }>>(
+    `SELECT session_id, place_id, place_name, plugin_version, connected, last_heartbeat, camera
+     FROM studio_session
+     WHERE connected = true AND last_heartbeat > $1
+     ORDER BY last_heartbeat DESC
+     LIMIT 1`,
+    fiveMinAgo,
+  )
+  if (!rows || rows.length === 0) return null
+  const r = rows[0]!
+  return {
+    sessionId: r.session_id,
+    placeId: r.place_id,
+    placeName: r.place_name,
+    pluginVersion: r.plugin_version,
+    connected: r.connected,
+    lastHeartbeat: Number(r.last_heartbeat),
+    camera: (r.camera as Record<string, unknown>) ?? undefined,
+  }
+}
+
 // ── Cleanup ─────────────────────────────────────────────────────────────────
 
 export async function pgCleanupStale(): Promise<void> {
