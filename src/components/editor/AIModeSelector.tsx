@@ -288,6 +288,22 @@ export function ThinkingIndicator({ mode, thinkingText }: { mode: AIMode; thinki
 
   const statusLabel = config.showsPlan ? 'Planning' : config.showsReasoning ? 'Thinking' : 'Generating'
 
+  // ── Phased progress steps ─────────────────────────────────────────────────
+  const BUILD_PHASES = [
+    { label: 'Understanding your request', threshold: 0 },
+    { label: 'Generating Luau code', threshold: 2 },
+    { label: 'Sending to Studio', threshold: 8 },
+    { label: 'Waiting for confirmation', threshold: 12 },
+  ] as const
+
+  // Determine which phase we're in based on elapsed time
+  let activePhaseIdx = 0
+  for (let i = BUILD_PHASES.length - 1; i >= 0; i--) {
+    if (elapsed >= BUILD_PHASES[i].threshold) { activePhaseIdx = i; break }
+  }
+
+  const showReassurance = elapsed >= 15
+
   return (
     <div style={{
       display: 'flex',
@@ -330,6 +346,55 @@ export function ThinkingIndicator({ mode, thinkingText }: { mode: AIMode; thinki
         </span>
       </div>
 
+      {/* Phase stepper — shows what the AI is doing right now */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, padding: '2px 0' }}>
+        {BUILD_PHASES.map((phase, idx) => {
+          const isDone = idx < activePhaseIdx
+          const isActive = idx === activePhaseIdx
+          const dotColor = isDone
+            ? '#22C55E'
+            : isActive
+              ? config.color
+              : 'rgba(255,255,255,0.12)'
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'center' }}>
+              {/* Dot */}
+              <div style={{
+                width: isActive ? 8 : 6,
+                height: isActive ? 8 : 6,
+                borderRadius: '50%',
+                background: dotColor,
+                boxShadow: isActive ? `0 0 8px ${config.color}66` : 'none',
+                transition: 'all 0.3s ease',
+                flexShrink: 0,
+              }} />
+              {/* Connector line between dots */}
+              {idx < BUILD_PHASES.length - 1 && (
+                <div style={{
+                  width: 20,
+                  height: 1.5,
+                  background: isDone
+                    ? 'rgba(34,197,94,0.4)'
+                    : 'rgba(255,255,255,0.06)',
+                  transition: 'background 0.3s ease',
+                  flexShrink: 0,
+                }} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Active phase label */}
+      <span style={{
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.45)',
+        fontFamily: 'Inter, sans-serif',
+        lineHeight: 1,
+      }}>
+        {BUILD_PHASES[activePhaseIdx].label}{dots}
+      </span>
+
       {/* Thinking text stream */}
       {thinkingText && (
         <div style={{
@@ -349,7 +414,21 @@ export function ThinkingIndicator({ mode, thinkingText }: { mode: AIMode; thinki
         </div>
       )}
 
-      {/* Progress bar */}
+      {/* Reassurance text — shown when build takes longer than 15s */}
+      {showReassurance && (
+        <span style={{
+          fontSize: 10,
+          color: 'rgba(255,255,255,0.3)',
+          fontFamily: 'Inter, sans-serif',
+          fontStyle: 'italic',
+          lineHeight: 1.4,
+          animation: 'bubbleReveal 0.4s ease-out forwards',
+        }}>
+          This is taking longer than usual — complex builds need more time
+        </span>
+      )}
+
+      {/* Gold gradient progress bar */}
       <div style={{
         height: 2, borderRadius: 1,
         background: 'rgba(255,255,255,0.04)',
@@ -357,7 +436,7 @@ export function ThinkingIndicator({ mode, thinkingText }: { mode: AIMode; thinki
       }}>
         <div style={{
           height: '100%',
-          background: `linear-gradient(90deg, transparent, ${config.color}, transparent)`,
+          background: 'linear-gradient(90deg, transparent, #D4AF37, #F0C850, #D4AF37, transparent)',
           animation: 'streamingShimmer 2s linear infinite',
           backgroundSize: '200% 100%',
         }} />

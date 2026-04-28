@@ -45,6 +45,8 @@ interface StudioConnectionBannerProps {
   /** When true, the banner is not rendered (caller manages visibility) */
   hidden?: boolean
   className?: string
+  /** When true, shows a yellow "Reconnecting..." state instead of the code banner */
+  reconnecting?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +67,7 @@ export function StudioConnectionBanner({
   onDismiss,
   hidden = false,
   className = '',
+  reconnecting = false,
 }: StudioConnectionBannerProps) {
   type BannerState = 'loading' | 'code' | 'connected' | 'error'
 
@@ -183,6 +186,46 @@ export function StudioConnectionBanner({
   // ── Don't render when hidden ──────────────────────────────────────────────
   if (hidden) return null
 
+  // ── RECONNECTING state — yellow indicator ─────────────────────────────────
+  if (reconnecting && bannerState !== 'connected') {
+    return (
+      <div
+        className={`flex items-center gap-2 px-3 h-8 transition-all duration-300 ${className}`}
+        style={{
+          background: 'rgba(234,179,8,0.06)',
+          borderBottom: '1px solid rgba(234,179,8,0.18)',
+        }}
+        role="status"
+        aria-label="Reconnecting to Roblox Studio"
+      >
+        {/* Spinning reconnect icon */}
+        <svg
+          className="w-3 h-3 flex-shrink-0"
+          viewBox="0 0 16 16"
+          fill="none"
+          style={{ animation: 'spin 1.2s linear infinite' }}
+        >
+          <circle cx="8" cy="8" r="6.5" stroke="rgba(234,179,8,0.25)" strokeWidth="1.5"/>
+          <path d="M8 1.5A6.5 6.5 0 0 1 14.5 8" stroke="#EAB308" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+        <span className="text-[11px] font-medium text-yellow-500">
+          Reconnecting to Studio...
+        </span>
+        <div className="flex-1" />
+        <button
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="flex items-center justify-center w-5 h-5 rounded text-zinc-600 hover:text-zinc-400 transition-colors"
+        >
+          <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+            <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </button>
+        <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+      </div>
+    )
+  }
+
   // ── CONNECTED state — compact pill ───────────────────────────────────────
   if (bannerState === 'connected') {
     return (
@@ -276,7 +319,7 @@ export function StudioConnectionBanner({
       }}
       role="status"
     >
-      {/* Top row: label + countdown + dismiss */}
+      {/* Top row: title + countdown + dismiss */}
       <div className="flex items-center gap-2 w-full">
         <svg className="w-4 h-4 text-[#D4AF37] flex-shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <rect x="1" y="1" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.3"/>
@@ -284,7 +327,7 @@ export function StudioConnectionBanner({
           <path d="M3 12h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
         </svg>
         <span className="text-xs text-[#D4AF37] font-semibold">
-          Enter this code in the Roblox Studio plugin
+          Connect Roblox Studio to see builds appear live
         </span>
         <div className="flex-1" />
         <span
@@ -302,6 +345,34 @@ export function StudioConnectionBanner({
             <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </button>
+      </div>
+
+      {/* Step-by-step instructions */}
+      <div className="flex items-center gap-3 w-full" style={{ padding: '4px 0' }}>
+        {[
+          { num: '1', label: 'Install the plugin', done: false },
+          { num: '2', label: 'Open Studio', done: false },
+          { num: '3', label: 'Enter your code', done: false },
+        ].map((step, idx) => (
+          <div key={idx} className="flex items-center gap-1.5">
+            <span
+              className="flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold flex-shrink-0"
+              style={{
+                background: 'rgba(212,175,55,0.12)',
+                color: '#D4AF37',
+                border: '1px solid rgba(212,175,55,0.25)',
+              }}
+            >
+              {step.num}
+            </span>
+            <span className="text-[11px] text-zinc-400">{step.label}</span>
+            {idx < 2 && (
+              <svg className="w-3 h-3 text-zinc-600 flex-shrink-0" viewBox="0 0 12 12" fill="none">
+                <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* BIG CODE — the main focus */}
@@ -339,18 +410,26 @@ export function StudioConnectionBanner({
         </span>
       </button>
 
-      {/* Bottom row: plugin download link */}
-      <div className="flex items-center gap-3">
-        <span className="text-[11px] text-zinc-500">
-          Don&apos;t have the plugin?
-        </span>
+      {/* Bottom row: plugin download + note about optional Studio */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <a
+          href="/download"
+          className="text-[11px] text-[#D4AF37] font-semibold hover:underline underline-offset-2 transition-colors"
+        >
+          Get the Plugin
+        </a>
+        <span className="text-[10px] text-zinc-600">|</span>
         <a
           href="/plugin/ForjeGames.rbxmx"
           download="ForjeGames.rbxmx"
-          className="text-[11px] text-[#D4AF37] font-semibold hover:underline underline-offset-2 transition-colors"
+          className="text-[11px] text-zinc-400 hover:text-zinc-300 transition-colors"
         >
-          Download ForjeGames Plugin
+          Direct download (.rbxmx)
         </a>
+        <span className="text-[10px] text-zinc-600">|</span>
+        <span className="text-[10px] text-zinc-500 italic">
+          Studio is optional — code always appears in chat with copy button
+        </span>
       </div>
     </div>
   )

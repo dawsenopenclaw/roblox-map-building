@@ -267,6 +267,201 @@ function fallbackCopy(text: string): boolean {
   }
 }
 
+// ─── "What can you build?" help panel ─────────────────────────────────────────
+
+const HELP_CATEGORIES = [
+  {
+    title: 'Instant Builds',
+    subtitle: 'Always work, no AI wait',
+    color: '#D4AF37',
+    items: [
+      { label: 'Nature', examples: ['Tree', 'Pine Tree', 'Forest', 'Campfire'] },
+      { label: 'Buildings', examples: ['House', 'Castle', 'Tower', 'Shop'] },
+      { label: 'Vehicles', examples: ['Car', 'Truck', 'Tank', 'Helicopter', 'Airplane', 'Motorcycle', 'Boat', 'Spaceship'] },
+      { label: 'Furniture', examples: ['Chair', 'Table', 'Bed', 'Bench', 'Bookshelf', 'Throne'] },
+      { label: 'Props', examples: ['Sword', 'Barrel', 'Lamp Post', 'Fountain', 'Bridge', 'Fence', 'Treasure Chest'] },
+      { label: 'Characters', examples: ['Dog', 'Cat', 'Robot'] },
+      { label: 'Food', examples: ['Pizza'] },
+    ],
+  },
+  {
+    title: 'AI Builds',
+    subtitle: 'Complex scenes, may take a few seconds',
+    color: '#7C3AED',
+    items: [
+      { label: '', examples: ['Build me a modern city block', 'Create a medieval village', 'Make a space station', 'Build a racing track'] },
+    ],
+  },
+  {
+    title: 'Game Systems',
+    subtitle: 'Scripts + builds combined',
+    color: '#10B981',
+    items: [
+      { label: '', examples: ['Make me a tycoon game', 'Create an obby with checkpoints', 'Build a simulator game', 'Make an RPG with quests'] },
+    ],
+  },
+  {
+    title: 'Scripts Only',
+    subtitle: 'Game logic and systems',
+    color: '#60A5FA',
+    items: [
+      { label: '', examples: ['Add a shop system', 'Create a leaderboard', 'Make a day/night cycle', 'Add a combat system'] },
+    ],
+  },
+] as const
+
+function BuildHelpPanel({
+  open,
+  onClose,
+  onSelect,
+}: {
+  open: boolean
+  onClose: () => void
+  onSelect: (text: string) => void
+}) {
+  if (!open) return null
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 98,
+          background: 'rgba(0,0,0,0.3)',
+          animation: 'helpBackdropIn 0.2s ease-out forwards',
+        }}
+      />
+      {/* Panel */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '100%',
+          left: 0,
+          right: 0,
+          maxHeight: '60vh',
+          overflowY: 'auto',
+          zIndex: 99,
+          marginBottom: 8,
+          borderRadius: 18,
+          background: 'rgba(10,12,24,0.92)',
+          backdropFilter: 'blur(24px) saturate(1.3)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.1)',
+          padding: '16px 18px 12px',
+          animation: 'helpPanelSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          scrollbarWidth: 'thin' as React.CSSProperties['scrollbarWidth'],
+          scrollbarColor: 'rgba(212,175,55,0.2) transparent',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#FAFAFA', letterSpacing: '-0.01em' }}>
+              What can you build?
+            </h3>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#52525B' }}>
+              Click any example to try it
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 28, height: 28, borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.04)',
+              color: '#52525B', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#A1A1AA'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#52525B'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Categories */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {HELP_CATEGORIES.map((cat) => (
+            <div key={cat.title}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, color: cat.color,
+                  textTransform: 'uppercase' as const, letterSpacing: '0.06em',
+                }}>
+                  {cat.title}
+                </span>
+                <span style={{ fontSize: 10, color: '#3F3F46' }}>{cat.subtitle}</span>
+              </div>
+              {cat.items.map((group, gi) => (
+                <div key={gi} style={{ marginBottom: group.label ? 6 : 0 }}>
+                  {group.label && (
+                    <span style={{ fontSize: 10, color: '#52525B', fontWeight: 600, marginBottom: 4, display: 'block' }}>
+                      {group.label}
+                    </span>
+                  )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {group.examples.map((ex) => (
+                      <button
+                        key={ex}
+                        onClick={() => onSelect(ex)}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: 20,
+                          border: `1px solid ${cat.color}25`,
+                          background: `${cat.color}08`,
+                          color: '#A1A1AA',
+                          fontSize: 11,
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                          whiteSpace: 'nowrap',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.borderColor = `${cat.color}60`
+                          e.currentTarget.style.background = `${cat.color}18`
+                          e.currentTarget.style.color = cat.color
+                          e.currentTarget.style.transform = 'translateY(-1px)'
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.borderColor = `${cat.color}25`
+                          e.currentTarget.style.background = `${cat.color}08`
+                          e.currentTarget.style.color = '#A1A1AA'
+                          e.currentTarget.style.transform = 'translateY(0)'
+                        }}
+                      >
+                        {ex}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes helpPanelSlideUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes helpBackdropIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+      `}</style>
+    </>
+  )
+}
+
 // ─── Simple hash for feedback dedup ───────────────────────────────────────────
 function simpleHash(str: string): string {
   let h = 0
@@ -2745,6 +2940,93 @@ function MessageBubbleImpl({
             : <RenderMessageContent content={msg.content} onSendToStudio={onSendToStudio} studioConnected={studioConnected} prompt={userPrompt} />
           }
         </div>
+        {/* ── Try Again / Simplify buttons — shown when assistant message looks like an error ── */}
+        {!msg.streaming && msg.role === 'assistant' && onSend && userPrompt && (() => {
+          const cl = msg.content.toLowerCase()
+          const isErrorMsg =
+            (cl.includes('sorry') && (cl.includes('error') || cl.includes('failed') || cl.includes('unable'))) ||
+            cl.includes('models are busy') ||
+            cl.includes("couldn't generate") ||
+            cl.includes('could not generate') ||
+            cl.includes('generation failed') ||
+            cl.includes('all models failed') ||
+            cl.includes('please try again') ||
+            cl.includes('something went wrong') ||
+            cl.includes('rate limit') ||
+            cl.includes('timed out')
+          if (!isErrorMsg) return null
+          return (
+            <div style={{
+              display: 'flex',
+              gap: 8,
+              marginTop: 10,
+              animation: 'bubbleReveal 0.3s ease-out forwards',
+            }}>
+              <button
+                onClick={() => onSend(userPrompt)}
+                style={{
+                  background: 'transparent',
+                  color: '#D4AF37',
+                  border: '1px solid rgba(212,175,55,0.35)',
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(212,175,55,0.1)'
+                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.5)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)'
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M1 8a7 7 0 0 1 12.07-4.82" strokeLinecap="round"/>
+                  <path d="M15 8A7 7 0 0 1 2.93 12.82" strokeLinecap="round"/>
+                  <path d="M13 1v3.5h-3.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3 15v-3.5h3.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Try Again
+              </button>
+              <button
+                onClick={() => {
+                  const simplified = userPrompt.slice(0, 50).trim() + (userPrompt.length > 50 ? '...' : '') + ' (simplified)'
+                  onSend(simplified)
+                }}
+                style={{
+                  background: 'transparent',
+                  color: 'rgba(255,255,255,0.5)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.7)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.5)'
+                }}
+              >
+                Simplify &amp; Retry
+              </button>
+            </div>
+          )
+        })()}
         {!msg.streaming && msg.meshResult && (
           <MeshResultCard mesh={msg.meshResult} onSendToStudio={onSendToStudio} />
         )}
@@ -4711,6 +4993,7 @@ export function ChatPanel({
   const [mobileImageControlsOpen, setMobileImageControlsOpen] = useState(false)
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
   const [plusPanelOpen, setPlusPanelOpen] = useState(false)
+  const [helpPanelOpen, setHelpPanelOpen] = useState(false)
   const [showScrollBtn, setShowScrollBtn] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [isPulsing, setIsPulsing] = useState(false)
@@ -5124,8 +5407,19 @@ export function ChatPanel({
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
+          position: 'relative',
         }}
       >
+        {/* ── Build Help Panel — slides up from input ── */}
+        <BuildHelpPanel
+          open={helpPanelOpen}
+          onClose={() => setHelpPanelOpen(false)}
+          onSelect={(text) => {
+            setInput(text)
+            setHelpPanelOpen(false)
+            setTimeout(() => taRef.current?.focus(), 50)
+          }}
+        />
         {/* Suggestion pills — above input */}
         {suggestions.length > 0 && !loading && (
           <div style={{
@@ -5652,6 +5946,27 @@ export function ChatPanel({
             paddingTop: 6, marginTop: 2,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {/* Help button — opens "What can you build?" panel */}
+              <button
+                onClick={() => setHelpPanelOpen(v => !v)}
+                title="What can you build?"
+                style={{
+                  width: 20, height: 20, borderRadius: '50%',
+                  border: `1px solid ${helpPanelOpen ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                  background: helpPanelOpen ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.03)',
+                  color: helpPanelOpen ? '#D4AF37' : '#52525B',
+                  fontSize: 10, fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, transition: 'all 0.15s',
+                  fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
+                  padding: 0, lineHeight: 1,
+                }}
+                onMouseEnter={e => { if (!helpPanelOpen) { e.currentTarget.style.color = '#D4AF37'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)' } }}
+                onMouseLeave={e => { if (!helpPanelOpen) { e.currentTarget.style.color = '#52525B'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' } }}
+              >
+                ?
+              </button>
               {/* Saved indicator */}
               <span style={{
                 fontSize: 10, color: 'rgba(74,222,128,0.55)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)',
