@@ -9,13 +9,10 @@ import { useUser, UserProfile } from '@clerk/nextjs'
 import useSWR from 'swr'
 import { NotificationPreferences } from '@/components/NotificationPreferences'
 import RobloxLinkCard from '@/components/settings/RobloxLinkCard'
-import { useTheme as useThemeHook } from '@/components/ThemeProvider'
-import { useEditorSettings } from '@/app/(app)/editor/hooks/useEditorSettings'
 import {
   User,
   Key,
   Bell,
-  Palette,
   Link2,
   Trash2,
   Plus,
@@ -23,8 +20,6 @@ import {
   Eye,
   EyeOff,
   Github,
-  Sun,
-  Moon,
   Check,
   Upload,
   TrendingUp,
@@ -37,14 +32,13 @@ import {
   Twitter,
   MessageCircle,
   AtSign,
-  Sparkles,
 } from 'lucide-react'
 
 const fetcher = (url: string) => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'profile' | 'billing' | 'studio' | 'api-keys' | 'notifications' | 'appearance' | 'connected'
+type Tab = 'profile' | 'billing' | 'studio' | 'api-keys' | 'notifications' | 'connected'
 
 type ApiKey = {
   id: string
@@ -580,7 +574,8 @@ function ProfileTab() {
                   maxLength={50}
                   placeholder="Twitter / X handle"
                   aria-label="Twitter handle"
-                  className="input-premium pl-9"
+                  className="input-premium"
+                  style={{ paddingLeft: '36px' }}
                 />
               </div>
               <div className="relative">
@@ -592,7 +587,8 @@ function ProfileTab() {
                   maxLength={50}
                   placeholder="Discord username"
                   aria-label="Discord username"
-                  className="input-premium pl-9"
+                  className="input-premium"
+                  style={{ paddingLeft: '36px' }}
                 />
               </div>
               <div className="relative">
@@ -604,7 +600,8 @@ function ProfileTab() {
                   maxLength={50}
                   placeholder="GitHub username"
                   aria-label="GitHub username"
-                  className="input-premium pl-9"
+                  className="input-premium"
+                  style={{ paddingLeft: '36px' }}
                 />
               </div>
             </div>
@@ -719,11 +716,16 @@ function BillingTab() {
   const { data: tokenData } = useSWR('/api/tokens/balance', fetcher, { refreshInterval: 30_000 })
   const { data: billingData } = useSWR('/api/billing/status', fetcher, { refreshInterval: 60_000 })
 
-  const plan = billingData?.tier ?? 'Free'
+  const plan = billingData?.plan ?? billingData?.tier ?? 'Free'
   const tokenBalance = tokenData?.balance ?? 0
   const tokenLimit = billingData?.tokenLimit ?? 1_000
-  const tokensUsed = tokenLimit - tokenBalance
-  const tokenPct = Math.min(100, Math.round((tokensUsed / tokenLimit) * 100))
+  // Use actual spend from API (tracks real transactions), not derived math.
+  // If balance > tokenLimit (token packs purchased), derived math goes negative.
+  const tokensUsed = Math.max(0, billingData?.tokensUsed ?? 0)
+  const effectiveTotal = Math.max(tokenLimit, tokenBalance + tokensUsed)
+  const tokenPct = effectiveTotal > 0
+    ? Math.min(100, Math.max(0, Math.round((tokensUsed / effectiveTotal) * 100)))
+    : 0
 
   return (
     <div className="space-y-4">
@@ -792,7 +794,7 @@ function BillingTab() {
           </span>
           <span className="text-gray-300 text-sm mb-1">remaining</span>
         </div>
-        <p className="text-gray-400 text-xs mb-4">of {tokenLimit.toLocaleString()} total this month</p>
+        <p className="text-gray-400 text-xs mb-4">of {effectiveTotal.toLocaleString()} total this month</p>
 
         <div className="relative h-3 bg-white/10 rounded-full overflow-hidden mb-1">
           <div
@@ -825,11 +827,9 @@ function BillingTab() {
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Usage This Month</p>
         <div className="space-y-5">
           {[
-            ...(billingData?.usageBreakdown ?? [
-            { label: 'AI Generations', used: 0, limit: 200, color: '#D4AF37' },
-            { label: 'Marketplace Searches', used: 0, limit: 500, color: '#60a5fa' },
-            { label: 'API Calls', used: 0, limit: 10_000, color: '#a78bfa' },
-          ]),
+            { label: 'AI Generations', used: billingData?.buildsThisMonth ?? 0, limit: 200, color: '#D4AF37' },
+            { label: 'Marketplace Searches', used: billingData?.marketplaceSearches ?? 0, limit: 500, color: '#60a5fa' },
+            { label: 'API Calls', used: billingData?.apiCallsThisMonth ?? 0, limit: 10_000, color: '#a78bfa' },
           ].map((stat) => {
             const pct = Math.min(100, Math.round((stat.used / stat.limit) * 100))
             return (
@@ -1241,332 +1241,6 @@ function NotificationsTab() {
   )
 }
 
-// ─── Appearance Tab ───────────────────────────────────────────────────────────
-
-type ThemeCategoryKey = 'minimal' | 'vibrant' | 'aesthetic' | 'luxury'
-
-const CATEGORY_META: { key: ThemeCategoryKey; label: string; description: string; icon: string }[] = [
-  { key: 'minimal',   label: 'Minimal',   description: 'Clean and understated',  icon: '◻' },
-  { key: 'vibrant',   label: 'Vibrant',   description: 'Bold and energetic',      icon: '⚡' },
-  { key: 'aesthetic', label: 'Aesthetic', description: 'Curated vibes',           icon: '✦' },
-  { key: 'luxury',    label: 'Luxury',    description: 'Premium and refined',     icon: '◆' },
-]
-
-function ThemePreviewCard({
-  t,
-  isActive,
-  onSelect,
-}: {
-  t: { id: string; name: string; description: string; preview: { bg: string; accent: string; surface: string } }
-  isActive: boolean
-  onSelect: () => void
-}) {
-  return (
-    <button
-      onClick={onSelect}
-      title={t.description}
-      className={`group relative rounded-xl overflow-hidden transition-all duration-200 ${
-        isActive ? 'scale-[1.02]' : 'hover:scale-[1.01]'
-      }`}
-      style={{
-        outline: isActive ? `2px solid ${t.preview.accent}` : '1px solid rgba(255,255,255,0.07)',
-        boxShadow: isActive ? `0 0 18px ${t.preview.accent}30` : undefined,
-      }}
-    >
-      {/* Preview swatch */}
-      <div className="h-24 relative overflow-hidden" style={{ background: t.preview.bg }}>
-        {/* Simulated sidebar */}
-        <div className="absolute left-0 top-0 bottom-0 w-3 opacity-60" style={{ background: t.preview.surface }} />
-        {/* Simulated top bar */}
-        <div className="absolute top-0 left-3 right-0 h-4" style={{ background: t.preview.surface }} />
-        {/* Accent button in top bar */}
-        <div className="absolute top-1 right-2 h-2 w-5 rounded-sm" style={{ background: t.preview.accent }} />
-        {/* Content lines */}
-        <div className="absolute top-7 left-6 right-3 space-y-1.5">
-          <div className="h-1 rounded-full w-3/4 opacity-25" style={{ background: t.preview.accent }} />
-          <div className="h-1 rounded-full w-1/2 opacity-12" style={{ background: t.preview.surface }} />
-          <div className="h-1 rounded-full w-2/3 opacity-10" style={{ background: t.preview.surface }} />
-        </div>
-        {/* Surface card at bottom */}
-        <div className="absolute bottom-2 left-5 right-3 h-5 rounded-md" style={{ background: t.preview.surface, opacity: 0.85 }} />
-        <div className="absolute bottom-3.5 left-7 w-2 h-2 rounded-full" style={{ background: t.preview.accent }} />
-      </div>
-
-      {/* Label row */}
-      <div
-        className="px-3 py-2 flex items-center justify-between gap-2"
-        style={{ background: '#111113' }}
-      >
-        <p className={`text-xs font-semibold truncate transition-colors ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
-          {t.name}
-        </p>
-        {isActive && (
-          <span className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: t.preview.accent }}>
-            <Check size={9} className="text-black" />
-          </span>
-        )}
-      </div>
-    </button>
-  )
-}
-
-const ACCENT_PRESETS = [
-  { label: 'Gold',    value: '#D4AF37' },
-  { label: 'Blue',    value: '#60A5FA' },
-  { label: 'Purple',  value: '#A78BFA' },
-  { label: 'Green',   value: '#34D399' },
-  { label: 'Rose',    value: '#FB7185' },
-  { label: 'Orange',  value: '#FB923C' },
-  { label: 'Cyan',    value: '#22D3EE' },
-  { label: 'Default', value: undefined as string | undefined },
-]
-
-function AppearanceTab() {
-  const { show } = useToast()
-  const { theme: currentTheme, setTheme, themes, accentColor, setAccentColor } = useThemeHook()
-  const { settings, update } = useEditorSettings()
-  const [activeCategory, setActiveCategory] = useState<ThemeCategoryKey>('minimal')
-  const [syncing, setSyncing] = useState(false)
-
-  // Default to the category of the current active theme
-  useEffect(() => {
-    const cat = currentTheme.category as ThemeCategoryKey
-    if (CATEGORY_META.some((c) => c.key === cat)) setActiveCategory(cat)
-  }, [currentTheme.category])
-
-  // On mount: pull server preferences and apply them (cross-device sync).
-  // Read localStorage directly here — settings state may not have hydrated yet
-  // (useEditorSettings also hydrates in a useEffect, creating a race).
-  useEffect(() => {
-    let localSettings: Record<string, unknown> = {}
-    try {
-      const raw = localStorage.getItem('fg_editor_settings')
-      if (raw) localSettings = JSON.parse(raw) as Record<string, unknown>
-    } catch { /* corrupt storage — treat as empty */ }
-
-    fetch('/api/settings/preferences')
-      .then((r) => r.json())
-      .then((data: { preferences?: { theme?: string; fontSize?: string; accentColor?: string | null } }) => {
-        const p = data.preferences
-        if (!p) return
-        // Server wins only if localStorage has no stored value for that key
-        // (localStorage is the source of truth for the current device)
-        if (p.theme && !localSettings.theme) update('theme', p.theme)
-        if (p.fontSize && !localSettings.fontSize) {
-          update('fontSize', p.fontSize as 'small' | 'medium' | 'large')
-        }
-        if ('accentColor' in p && !('accentColor' in localSettings)) {
-          update('accentColor', p.accentColor ?? undefined)
-        }
-      })
-      .catch(() => {/* non-fatal — offline or DB unreachable */})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const persistPreferences = async (patch: { theme?: string; fontSize?: string; accentColor?: string | null }) => {
-    setSyncing(true)
-    try {
-      await fetch('/api/settings/preferences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      })
-    } catch {
-      /* non-fatal */
-    } finally {
-      setSyncing(false)
-    }
-  }
-
-  const handleSelectTheme = (id: string) => {
-    setTheme(id)
-    void persistPreferences({ theme: id })
-    const t = themes.find((th) => th.id === id)
-    show({ variant: 'info', title: `Theme: ${t?.name ?? 'Applied'}` })
-  }
-
-  const handleFontSize = (size: 'small' | 'medium' | 'large') => {
-    update('fontSize', size)
-    void persistPreferences({ fontSize: size })
-  }
-
-  const handleAccent = (value: string | undefined) => {
-    setAccentColor(value)
-    void persistPreferences({ accentColor: value ?? null })
-  }
-
-  const catThemes = themes.filter((t) => t.category === activeCategory && !t.hidden)
-  const isLight = currentTheme.id === 'light' || currentTheme.id === 'paper'
-
-  return (
-    <div className="space-y-5">
-      {/* Active theme banner */}
-      <div
-        className="rounded-xl p-4 flex items-center gap-4 border transition-all duration-500"
-        style={{
-          background: `linear-gradient(120deg, ${currentTheme.preview.bg} 0%, ${currentTheme.preview.surface} 100%)`,
-          borderColor: `${currentTheme.preview.accent}30`,
-        }}
-      >
-        <div
-          className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden"
-          style={{ border: `1px solid ${currentTheme.preview.accent}40` }}
-        >
-          <div className="w-full h-full" style={{ background: currentTheme.preview.bg }}>
-            <div className="w-full h-1/2" style={{ background: currentTheme.preview.surface }} />
-            <div className="mx-auto mt-1 w-4 h-1 rounded-full" style={{ background: currentTheme.preview.accent }} />
-          </div>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <p className="text-white font-bold text-sm">{currentTheme.name}</p>
-            <span
-              className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-              style={{
-                background: `${currentTheme.preview.accent}18`,
-                color: currentTheme.preview.accent,
-                border: `1px solid ${currentTheme.preview.accent}35`,
-              }}
-            >
-              Active
-            </span>
-            {syncing && (
-              <span className="text-[10px] text-gray-500">syncing...</span>
-            )}
-          </div>
-          <p className="text-gray-400 text-xs truncate">{currentTheme.description}</p>
-        </div>
-        <Sparkles size={16} style={{ color: currentTheme.preview.accent }} className="flex-shrink-0 opacity-60" />
-      </div>
-
-      {/* Light / Dark quick toggle */}
-      <div className="card-premium rounded-xl p-5">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Mode</p>
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleSelectTheme('default')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-              !isLight
-                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/25'
-                : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/15'
-            }`}
-          >
-            <Moon size={14} />
-            Dark
-          </button>
-          <button
-            onClick={() => handleSelectTheme('light')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-              isLight
-                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/25'
-                : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/15'
-            }`}
-          >
-            <Sun size={14} />
-            Light
-          </button>
-        </div>
-      </div>
-
-      {/* Accent color */}
-      <div className="card-premium rounded-xl p-5">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Accent Color</p>
-        <div className="flex flex-wrap gap-2">
-          {ACCENT_PRESETS.map((preset) => {
-            const displayColor = preset.value ?? currentTheme.preview.accent
-            const isActive = preset.value === undefined
-              ? accentColor === undefined
-              : accentColor === preset.value
-            return (
-              <button
-                key={preset.label}
-                onClick={() => handleAccent(preset.value)}
-                title={preset.label}
-                className={`w-8 h-8 rounded-full border-2 transition-all ${
-                  isActive ? 'scale-110 border-white' : 'border-transparent hover:scale-105 hover:border-white/40'
-                }`}
-                style={{ background: displayColor }}
-                aria-label={`${preset.label} accent${preset.value === undefined ? ' (default)' : ''}`}
-              >
-                {isActive && (
-                  <Check size={12} className="mx-auto" style={{ color: '#000' }} />
-                )}
-              </button>
-            )
-          })}
-        </div>
-        <p className="text-[11px] text-gray-600 mt-2">
-          Overrides the theme&apos;s default accent across buttons, highlights, and indicators.
-        </p>
-      </div>
-
-      {/* Font size */}
-      <div className="card-premium rounded-xl p-5">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Font Size</p>
-        <div className="flex gap-2">
-          {(['small', 'medium', 'large'] as const).map((size) => (
-            <button
-              key={size}
-              onClick={() => handleFontSize(size)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all capitalize ${
-                settings.fontSize === size
-                  ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/25'
-                  : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/15'
-              }`}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Category tab strip */}
-      <div>
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Theme</p>
-        <div className="flex gap-1.5 flex-wrap mb-3">
-          {CATEGORY_META.map((cat) => {
-            const isSelected = activeCategory === cat.key
-            const count = themes.filter((t) => t.category === cat.key && !t.hidden).length
-            return (
-              <button
-                key={cat.key}
-                onClick={() => setActiveCategory(cat.key)}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
-                  isSelected
-                    ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/25'
-                    : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/15'
-                }`}
-              >
-                <span className="text-[11px]">{cat.icon}</span>
-                {cat.label}
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isSelected ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-white/[0.07] text-gray-500'}`}>
-                  {count}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Theme grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {catThemes.map((t) => (
-            <ThemePreviewCard
-              key={t.id}
-              t={t}
-              isActive={currentTheme.id === t.id}
-              onSelect={() => handleSelectTheme(t.id)}
-            />
-          ))}
-        </div>
-      </div>
-
-      <p className="text-[11px] text-gray-600 px-1">
-        Preferences sync across devices. Toggle light/dark quickly via the Sun/Moon button in the topbar.
-      </p>
-    </div>
-  )
-}
-
 // ─── Connected Accounts Tab ───────────────────────────────────────────────────
 
 type PlatformKey = 'roblox' | 'github'
@@ -1913,7 +1587,6 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: 'profile', label: 'Profile', icon: <User size={16} strokeWidth={1.8} /> },
   { key: 'billing', label: 'Billing', icon: <CreditCard size={16} strokeWidth={1.8} /> },
   { key: 'notifications', label: 'Notifications', icon: <Bell size={16} strokeWidth={1.8} /> },
-  { key: 'appearance', label: 'Appearance', icon: <Palette size={16} strokeWidth={1.8} /> },
   { key: 'studio', label: 'Studio', icon: <Plug size={16} strokeWidth={1.8} /> },
   { key: 'api-keys', label: 'API Keys', icon: <Key size={16} strokeWidth={1.8} /> },
   { key: 'connected', label: 'Connected', icon: <Link2 size={16} strokeWidth={1.8} /> },
@@ -1934,7 +1607,7 @@ export default function SettingsClient() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white">Account</h1>
-          <p className="text-gray-300 mt-1 text-sm">Manage your profile, notifications, appearance, and integrations.</p>
+          <p className="text-gray-300 mt-1 text-sm">Manage your profile, notifications, billing, and integrations.</p>
         </div>
         <a
           href="/admin"
@@ -1967,7 +1640,6 @@ export default function SettingsClient() {
       {tab === 'profile' && <ProfileTab />}
       {tab === 'billing' && <BillingTab />}
       {tab === 'notifications' && <NotificationsTab />}
-      {tab === 'appearance' && <AppearanceTab />}
       {tab === 'studio' && <StudioTab />}
       {tab === 'api-keys' && <ApiKeysTab />}
       {tab === 'connected' && <ConnectedTab />}

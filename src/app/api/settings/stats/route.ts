@@ -50,19 +50,32 @@ export async function GET() {
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
+    // Build table may be empty — also count chat sessions as a more
+    // realistic "total builds" metric since each session is a build interaction
+    let totalBuilds = user._count.builds
+    if (totalBuilds === 0) {
+      const chatSessionCount = await db.chatSession.count({
+        where: { userId: user.id },
+      })
+      totalBuilds = chatSessionCount
+    }
+
     const tier = user.subscription?.tier ?? 'FREE'
 
     const tierMeta: Record<string, { label: string; color: string }> = {
-      FREE:    { label: 'Free',    color: '#9CA3AF' },
-      HOBBY:   { label: 'Hobby',   color: '#60A5FA' },
-      CREATOR: { label: 'Creator', color: '#A78BFA' },
-      STUDIO:  { label: 'Studio',  color: '#D4AF37' },
+      FREE:    { label: 'Test Drive', color: '#9CA3AF' },
+      STARTER: { label: 'Starter',  color: '#60A5FA' },
+      HOBBY:   { label: 'Starter',  color: '#60A5FA' },
+      BUILDER: { label: 'Builder',  color: '#34D399' },
+      CREATOR: { label: 'Creator',  color: '#A78BFA' },
+      PRO:     { label: 'Pro',      color: '#FB923C' },
+      STUDIO:  { label: 'Studio',   color: '#D4AF37' },
     }
 
     const { label: tierLabel, color: tierColor } = tierMeta[tier] ?? tierMeta.FREE
 
     return NextResponse.json({
-      totalBuilds:      user._count.builds,
+      totalBuilds,
       tokensUsed:       user.tokenBalance?.lifetimeSpent ?? 0,
       tokensRemaining:  user.tokenBalance?.balance ?? 0,
       memberSince:      user.createdAt.toISOString(),

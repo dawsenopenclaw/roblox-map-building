@@ -96,7 +96,7 @@ export async function GET() {
           : `$${priceInDollars.toFixed(2)}`
 
       return NextResponse.json({
-        plan: tierConfig.name,
+        plan: tier === 'FREE' ? 'Test Drive' : tierConfig.name,
         tier,
         status: user.subscription?.status ?? 'ACTIVE',
         tokensUsed,
