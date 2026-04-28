@@ -75,6 +75,8 @@ import {
   dailyRewardGui, miniMapGui, craftingGui, auctionHouseGui,
   guildGui, battlePassGui, achievementGui, mapTeleportGui,
   clanWarGui, fishingGui, garageGui, emoteWheelGui,
+  damageNumbersGui, killFeedGui, characterCustomizationGui,
+  bossHealthBarGui, countdownTimerGui, victoryDefeatGui, levelUpGui,
 } from '@/lib/ai/gui-templates'
 import { formatAdditiveRetryPrompt } from '@/lib/ai/build-blueprint'
 import { detectRecommendations, recordRecommendation, getTopRecommendations, formatRecommendations } from '@/lib/ai/recommendation-tracker'
@@ -7397,7 +7399,7 @@ USE THIS DATA:
         if (/\b(animat|emote|dance|wave|idle anim|walk anim)\b/.test(lower))
           return animationSystem({ animationName: 'Custom', animId: 'rbxassetid://0', speed: 1, looping: false, priority: 'Action' })
 
-        // ── UI/GUI templates (15 premium templates from gui-templates.ts) ──
+        // ── UI/GUI templates (32 premium templates from gui-templates.ts) ──
         if (/\b(shop|store|buy|purchase|item shop|shop ui|shop gui|shop menu|shop screen|shop system)\b/.test(lower))
           return shopGui()
         if (/\b(inventory|backpack|items|slots|equip|bag|storage)\b/.test(lower))
@@ -7448,8 +7450,20 @@ USE THIS DATA:
           return garageGui()
         if (/\b(emote|emote ?wheel|gesture|expression|dance ?wheel)\b/.test(lower))
           return emoteWheelGui()
+        if (/\b(damage ?number|floating ?damage|hit ?number|damage ?popup|combat ?text)\b/.test(lower))
+          return damageNumbersGui()
+        if (/\b(kill ?feed|kill ?log|elimination ?feed|death ?log|frag ?feed)\b/.test(lower))
+          return killFeedGui()
+        if (/\b(boss ?health|boss ?bar|boss ?hp|boss ?fight ?ui|raid ?boss)\b/.test(lower))
+          return bossHealthBarGui()
+        if (/\b(countdown|timer|round ?start|match ?start|game ?countdown|3 ?2 ?1)\b/.test(lower))
+          return countdownTimerGui()
+        if (/\b(victory|defeat|win ?screen|lose ?screen|match ?result|game ?over|end ?screen)\b/.test(lower))
+          return victoryDefeatGui()
+        if (/\b(level ?up|lvl ?up|level.*celebrat|rank ?up|prestige ?up)\b/.test(lower))
+          return levelUpGui()
         if (/\b(character|customiz|avatar|outfit|appearance|wardrobe|skin)\b/.test(lower))
-          return CHARACTER_CUSTOMIZATION_TEMPLATE
+          return characterCustomizationGui()
         if (/\b(select|selector|choose|pick|car select|vehicle select|class select|team select)\b/.test(lower))
           return SELECTION_UI_TEMPLATE
         if (/\b(gui|ui|screen|menu|interface|panel|popup|modal)\b/.test(lower))

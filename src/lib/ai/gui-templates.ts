@@ -1,5 +1,5 @@
 /**
- * gui-templates.ts — 15 Premium GUI/UI Templates
+ * gui-templates.ts — 32 Premium GUI/UI Templates
  *
  * Every template returns complete Luau code that creates a polished ScreenGui.
  * Industry-standard dark theme based on DevForum research + PSX/Adopt Me analysis.
@@ -4779,5 +4779,1542 @@ main.Position = UDim2.new(0.5, 0, 0.5, 0)
 TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
   Size = UDim2.new(0, 320, 0, 380), Position = UDim2.new(0.5, -160, 0.5, -190)
 }):Play()
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 26. DAMAGE NUMBERS GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface DamageNumbersGuiParams {
+  critMultiplier?: number
+  floatDistance?: number
+  fadeTime?: number
+}
+
+export function damageNumbersGui(params: DamageNumbersGuiParams = {}): string {
+  const critMult = params.critMultiplier || 2
+  const floatDist = params.floatDistance || 3
+  const fadeTime = params.fadeTime || 0.8
+
+  return wrapTemplate('DamageNumbersGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeDamageNumbers"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- ═══ CONFIG ═══
+local CRIT_MULTIPLIER = ${critMult}
+local FLOAT_DISTANCE = ${floatDist}
+local FADE_TIME = ${fadeTime}
+
+local Workspace = game:GetService("Workspace")
+local camera = Workspace.CurrentCamera
+
+-- Show a floating damage number at a world position
+local function showDamageNumber(worldPos, amount, isCrit, isHeal)
+  local billboard = Instance.new("BillboardGui")
+  billboard.Name = "DmgNum"
+  billboard.Size = UDim2.new(0, 120, 0, 60)
+  billboard.StudsOffset = Vector3.new(math.random(-10, 10) / 10, 1, 0)
+  billboard.AlwaysOnTop = true
+  billboard.LightInfluence = 0
+  billboard.MaxDistance = 80
+
+  -- Anchor to workspace (attach to a temporary part)
+  local anchor = Instance.new("Part")
+  anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+  anchor.Position = worldPos
+  anchor.Anchored = true
+  anchor.Transparency = 1
+  anchor.CanCollide = false
+  anchor.CanQuery = false
+  anchor.Parent = Workspace
+
+  billboard.Adornee = anchor
+  billboard.Parent = screenGui
+
+  -- Determine color and text
+  local displayText = tostring(math.floor(amount))
+  local textColor = RED
+  local textSize = math.clamp(18 + amount / 5, 18, 48)
+
+  if isHeal then
+    textColor = GREEN
+    displayText = "+" .. displayText
+  end
+
+  if isCrit then
+    textColor = GOLD
+    displayText = "CRIT! " .. displayText
+    textSize = math.clamp(textSize * 1.5, 28, 64)
+  end
+
+  local label = Instance.new("TextLabel")
+  label.Size = UDim2.new(1, 0, 1, 0)
+  label.BackgroundTransparency = 1
+  label.Text = displayText
+  label.TextColor3 = textColor
+  label.Font = Enum.Font.GothamBlack
+  label.TextSize = textSize
+  label.TextStrokeColor3 = TEXT_SHADOW
+  label.TextStrokeTransparency = 0.3
+  label.TextScaled = false
+  label.Parent = billboard
+
+  -- Scale punch on appear
+  local uiScale = Instance.new("UIScale")
+  uiScale.Scale = 0.3
+  uiScale.Parent = label
+  TweenService:Create(uiScale, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+
+  -- Float upward + fade out
+  local floatTween = TweenService:Create(billboard, TweenInfo.new(FADE_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    StudsOffset = billboard.StudsOffset + Vector3.new(0, FLOAT_DISTANCE, 0)
+  })
+  local fadeTween = TweenService:Create(label, TweenInfo.new(FADE_TIME * 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+    TextTransparency = 1,
+    TextStrokeTransparency = 1
+  })
+
+  floatTween:Play()
+  task.delay(FADE_TIME * 0.5, function()
+    fadeTween:Play()
+  end)
+
+  -- Cleanup
+  task.delay(FADE_TIME + 0.1, function()
+    if billboard.Parent then billboard:Destroy() end
+    if anchor.Parent then anchor:Destroy() end
+  end)
+end
+
+-- Listen for damage events from server
+local damageEvent = game.ReplicatedStorage:FindFirstChild("DamageNumber")
+if not damageEvent then
+  damageEvent = Instance.new("RemoteEvent")
+  damageEvent.Name = "DamageNumber"
+  damageEvent.Parent = game.ReplicatedStorage
+end
+
+damageEvent.OnClientEvent:Connect(function(worldPos, amount, isCrit, isHeal)
+  showDamageNumber(worldPos, amount, isCrit, isHeal)
+end)
+
+-- Demo: spawn some test numbers
+task.wait(1)
+local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+if rootPart then
+  local pos = rootPart.Position + Vector3.new(0, 3, 0)
+  showDamageNumber(pos, 25, false, false)
+  task.wait(0.3)
+  showDamageNumber(pos + Vector3.new(1, 0, 0), 15, false, true)
+  task.wait(0.3)
+  showDamageNumber(pos + Vector3.new(-1, 0, 0), 150, true, false)
+end
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 27. KILL FEED GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function killFeedGui(): string {
+  return wrapTemplate('KillFeedGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeKillFeed"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- ═══ KILL FEED CONTAINER (top-right) ═══
+local container = Instance.new("Frame")
+container.Size = UDim2.new(0, 320, 0, 220)
+container.Position = UDim2.new(1, -330, 0, 10)
+container.BackgroundTransparency = 1
+container.Parent = screenGui
+
+local list = Instance.new("UIListLayout")
+list.VerticalAlignment = Enum.VerticalAlignment.Top
+list.Padding = UDim.new(0, 4)
+list.SortOrder = Enum.SortOrder.LayoutOrder
+list.Parent = container
+
+local feedOrder = 0
+local MAX_ENTRIES = 5
+local ENTRY_LIFETIME = 5
+
+local function getEntryColor(killerName, victimName)
+  local myName = player.Name
+  if killerName == myName then
+    return GOLD, GOLD_DIM  -- your kill = gold
+  elseif victimName == myName then
+    return RED, RED_DARK  -- your death = red
+  end
+  return TEXT_SUB, TEXT_MUTED  -- others = white/gray
+end
+
+local function addKillEntry(killerName, victimName, weaponName)
+  feedOrder = feedOrder + 1
+  local entryColor, accentColor = getEntryColor(killerName, victimName)
+
+  local entry = Instance.new("Frame")
+  entry.Size = UDim2.new(1, 0, 0, 32)
+  entry.BackgroundColor3 = BG
+  entry.BackgroundTransparency = 0.3
+  entry.LayoutOrder = -feedOrder
+  entry.Parent = container
+  addCorner(entry, 6)
+
+  -- Killer name
+  local killerLbl = Instance.new("TextLabel")
+  killerLbl.Size = UDim2.new(0, 110, 1, 0)
+  killerLbl.Position = UDim2.new(0, 8, 0, 0)
+  killerLbl.BackgroundTransparency = 1
+  killerLbl.Text = killerName
+  killerLbl.TextColor3 = entryColor
+  killerLbl.Font = Enum.Font.GothamBold
+  killerLbl.TextSize = 13
+  killerLbl.TextXAlignment = Enum.TextXAlignment.Right
+  killerLbl.TextTruncate = Enum.TextTruncate.AtEnd
+  killerLbl.Parent = entry
+
+  -- Weapon icon / separator
+  local weaponLbl = Instance.new("TextLabel")
+  weaponLbl.Size = UDim2.new(0, 70, 1, 0)
+  weaponLbl.Position = UDim2.new(0, 122, 0, 0)
+  weaponLbl.BackgroundTransparency = 1
+  weaponLbl.Text = "[ " .. (weaponName or "???") .. " ]"
+  weaponLbl.TextColor3 = TEXT_MUTED
+  weaponLbl.Font = Enum.Font.GothamMedium
+  weaponLbl.TextSize = 10
+  weaponLbl.Parent = entry
+
+  -- Victim name
+  local victimLbl = Instance.new("TextLabel")
+  victimLbl.Size = UDim2.new(0, 110, 1, 0)
+  victimLbl.Position = UDim2.new(0, 196, 0, 0)
+  victimLbl.BackgroundTransparency = 1
+  victimLbl.Text = victimName
+  victimLbl.TextColor3 = accentColor
+  victimLbl.Font = Enum.Font.GothamBold
+  victimLbl.TextSize = 13
+  victimLbl.TextXAlignment = Enum.TextXAlignment.Left
+  victimLbl.TextTruncate = Enum.TextTruncate.AtEnd
+  victimLbl.Parent = entry
+
+  -- Slide in from right
+  entry.Position = UDim2.new(1, 20, 0, 0)
+  TweenService:Create(entry, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Position = UDim2.new(0, 0, 0, 0)
+  }):Play()
+
+  -- Fade out after lifetime
+  task.delay(ENTRY_LIFETIME, function()
+    TweenService:Create(entry, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+      BackgroundTransparency = 1
+    }):Play()
+    -- Fade all child text
+    for _, child in entry:GetChildren() do
+      if child:IsA("TextLabel") then
+        TweenService:Create(child, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
+      end
+    end
+    task.wait(0.5)
+    if entry.Parent then entry:Destroy() end
+  end)
+
+  -- Cap visible entries
+  local children = {}
+  for _, c in container:GetChildren() do
+    if c:IsA("Frame") then table.insert(children, c) end
+  end
+  while #children > MAX_ENTRIES do
+    children[#children]:Destroy()
+    table.remove(children, #children)
+  end
+
+  playSound(SFX.notify, 0.15)
+end
+
+-- Listen for kill events from server
+local killEvent = game.ReplicatedStorage:FindFirstChild("KillFeed")
+if not killEvent then
+  killEvent = Instance.new("RemoteEvent")
+  killEvent.Name = "KillFeed"
+  killEvent.Parent = game.ReplicatedStorage
+end
+
+killEvent.OnClientEvent:Connect(function(killerName, victimName, weaponName)
+  addKillEntry(killerName, victimName, weaponName)
+end)
+
+-- Demo entries
+task.wait(1)
+addKillEntry("ProGamer99", "NoobSlayer", "Sword")
+task.wait(0.8)
+addKillEntry(player.Name, "EnemyPlayer", "Bow")
+task.wait(0.8)
+addKillEntry("SomePlayer", player.Name, "Cannon")
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 28. CHARACTER CUSTOMIZATION GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface CharacterCustomizationGuiParams {
+  skinColors?: string[]
+  hairStyles?: string[]
+  outfits?: string[]
+}
+
+export function characterCustomizationGui(params: CharacterCustomizationGuiParams = {}): string {
+  const skinColors = params.skinColors || [
+    '255,220,185', '240,200,160', '210,170,130', '180,140,100',
+    '150,110,70', '120,80,50', '90,60,40', '70,45,30',
+    '255,200,200', '200,180,255', '180,255,200', '255,240,180'
+  ]
+  const skinColorsLua = skinColors.map(c => `Color3.fromRGB(${c})`).join(',')
+
+  return wrapTemplate('CharacterCustomizationGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeCharacterCustomize"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- ═══ BACKGROUND OVERLAY ═══
+local overlay = Instance.new("Frame")
+overlay.Size = UDim2.new(1, 0, 1, 0)
+overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+overlay.BackgroundTransparency = 0.5
+overlay.Parent = screenGui
+
+-- ═══ MAIN PANEL ═══
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 500, 0, 420)
+main.Position = UDim2.new(0.5, -250, 0.5, -210)
+main.BackgroundColor3 = BG
+main.Parent = screenGui
+addCorner(main, 16)
+addStroke(main, BORDER, 3)
+addGradient(main, BG, BG_DEEP)
+
+-- Header
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 50)
+header.BackgroundColor3 = HEADER
+header.Parent = main
+addCorner(header, 16)
+addGradient(header, HEADER, HEADER_DARK)
+
+local headerClip = Instance.new("Frame")
+headerClip.Size = UDim2.new(1, 0, 0, 20)
+headerClip.Position = UDim2.new(0, 0, 1, -20)
+headerClip.BackgroundColor3 = HEADER_DARK
+headerClip.BorderSizePixel = 0
+headerClip.Parent = header
+
+local titleLbl = Instance.new("TextLabel")
+titleLbl.Size = UDim2.new(1, -60, 1, 0)
+titleLbl.Position = UDim2.new(0, 16, 0, 0)
+titleLbl.BackgroundTransparency = 1
+titleLbl.Text = "CHARACTER CUSTOMIZATION"
+titleLbl.TextColor3 = GOLD
+titleLbl.Font = Enum.Font.GothamBlack
+titleLbl.TextSize = 18
+titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+titleLbl.Parent = header
+
+-- Close button
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 36, 0, 36)
+closeBtn.Position = UDim2.new(1, -42, 0, 7)
+closeBtn.BackgroundColor3 = RED
+closeBtn.Text = "X"
+closeBtn.TextColor3 = TEXT
+closeBtn.Font = Enum.Font.GothamBlack
+closeBtn.TextSize = 16
+closeBtn.Parent = header
+addCorner(closeBtn, 18)
+closeBtn.MouseButton1Click:Connect(function()
+  playSound(SFX.close, 0.3)
+  screenGui:Destroy()
+end)
+
+-- ═══ TAB BAR ═══
+local tabs = {"Body", "Face", "Hair", "Outfit", "Colors"}
+local tabBar = Instance.new("Frame")
+tabBar.Size = UDim2.new(1, -16, 0, 40)
+tabBar.Position = UDim2.new(0, 8, 0, 56)
+tabBar.BackgroundTransparency = 1
+tabBar.Parent = main
+
+local tabLayout = Instance.new("UIListLayout")
+tabLayout.FillDirection = Enum.FillDirection.Horizontal
+tabLayout.Padding = UDim.new(0, 4)
+tabLayout.Parent = tabBar
+
+local contentFrame = Instance.new("Frame")
+contentFrame.Size = UDim2.new(1, -16, 1, -108)
+contentFrame.Position = UDim2.new(0, 8, 0, 100)
+contentFrame.BackgroundColor3 = SURFACE_DARK
+contentFrame.BackgroundTransparency = 0.5
+contentFrame.ClipsDescendants = true
+contentFrame.Parent = main
+addCorner(contentFrame, 10)
+
+-- Pages for each tab
+local pages = {}
+for i, tabName in ipairs(tabs) do
+  local page = Instance.new("Frame")
+  page.Size = UDim2.new(1, 0, 1, 0)
+  page.BackgroundTransparency = 1
+  page.Visible = (i == 1)
+  page.Parent = contentFrame
+  pages[tabName] = page
+end
+
+local activeTab = nil
+local tabButtons = {}
+
+for i, tabName in ipairs(tabs) do
+  local btn = Instance.new("TextButton")
+  btn.Size = UDim2.new(0, 90, 1, 0)
+  btn.BackgroundColor3 = (i == 1) and SURFACE or CARD
+  btn.Text = tabName
+  btn.TextColor3 = TEXT
+  btn.Font = Enum.Font.GothamBold
+  btn.TextSize = 13
+  btn.AutoButtonColor = false
+  btn.Parent = tabBar
+  addCorner(btn, 8)
+  tabButtons[tabName] = btn
+
+  btn.MouseButton1Click:Connect(function()
+    playSound(SFX.click, 0.2)
+    for _, p in pairs(pages) do p.Visible = false end
+    pages[tabName].Visible = true
+    for _, tb in pairs(tabButtons) do
+      TweenService:Create(tb, TWEEN_FAST, {BackgroundColor3 = CARD}):Play()
+    end
+    TweenService:Create(btn, TWEEN_FAST, {BackgroundColor3 = SURFACE}):Play()
+  end)
+end
+
+-- ═══ BODY TAB — Sliders ═══
+local bodyPage = pages["Body"]
+local function makeSlider(parent, label, yPos, defaultVal)
+  local sliderLbl = Instance.new("TextLabel")
+  sliderLbl.Size = UDim2.new(0, 100, 0, 30)
+  sliderLbl.Position = UDim2.new(0, 10, 0, yPos)
+  sliderLbl.BackgroundTransparency = 1
+  sliderLbl.Text = label
+  sliderLbl.TextColor3 = TEXT
+  sliderLbl.Font = Enum.Font.GothamBold
+  sliderLbl.TextSize = 14
+  sliderLbl.TextXAlignment = Enum.TextXAlignment.Left
+  sliderLbl.Parent = parent
+
+  local track = Instance.new("Frame")
+  track.Size = UDim2.new(0, 280, 0, 8)
+  track.Position = UDim2.new(0, 120, 0, yPos + 11)
+  track.BackgroundColor3 = BORDER
+  track.Parent = parent
+  addCorner(track, 4)
+
+  local fill = Instance.new("Frame")
+  fill.Size = UDim2.new(defaultVal or 0.5, 0, 1, 0)
+  fill.BackgroundColor3 = GOLD
+  fill.Parent = track
+  addCorner(fill, 4)
+
+  local knob = Instance.new("TextButton")
+  knob.Size = UDim2.new(0, 20, 0, 20)
+  knob.Position = UDim2.new(defaultVal or 0.5, -10, 0.5, -10)
+  knob.BackgroundColor3 = GOLD_BRIGHT
+  knob.Text = ""
+  knob.Parent = track
+  addCorner(knob, 10)
+  addStroke(knob, GOLD_DIM, 2)
+
+  local valueLbl = Instance.new("TextLabel")
+  valueLbl.Size = UDim2.new(0, 40, 0, 30)
+  valueLbl.Position = UDim2.new(0, 410, 0, yPos)
+  valueLbl.BackgroundTransparency = 1
+  valueLbl.Text = tostring(math.floor((defaultVal or 0.5) * 100)) .. "%"
+  valueLbl.TextColor3 = TEXT_SUB
+  valueLbl.Font = Enum.Font.GothamMedium
+  valueLbl.TextSize = 12
+  valueLbl.Parent = parent
+
+  -- Drag logic
+  local dragging = false
+  knob.MouseButton1Down:Connect(function() dragging = true end)
+  game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+  end)
+  game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+      local absPos = track.AbsolutePosition.X
+      local absSize = track.AbsoluteSize.X
+      local pct = math.clamp((input.Position.X - absPos) / absSize, 0, 1)
+      fill.Size = UDim2.new(pct, 0, 1, 0)
+      knob.Position = UDim2.new(pct, -10, 0.5, -10)
+      valueLbl.Text = tostring(math.floor(pct * 100)) .. "%"
+    end
+  end)
+end
+
+makeSlider(bodyPage, "Height", 20, 0.5)
+makeSlider(bodyPage, "Width", 70, 0.5)
+
+-- ═══ FACE TAB — Grid of face options ═══
+local facePage = pages["Face"]
+local faces = {"Happy", "Cool", "Serious", "Cute", "Angry", "Silly"}
+for idx, faceName in ipairs(faces) do
+  local row = math.floor((idx - 1) / 3)
+  local col = (idx - 1) % 3
+  local card = Instance.new("TextButton")
+  card.Size = UDim2.new(0, 130, 0, 80)
+  card.Position = UDim2.new(0, 15 + col * 145, 0, 15 + row * 95)
+  card.BackgroundColor3 = CARD
+  card.Text = faceName
+  card.TextColor3 = TEXT
+  card.Font = Enum.Font.GothamBold
+  card.TextSize = 14
+  card.AutoButtonColor = false
+  card.Parent = facePage
+  addCorner(card, 10)
+  addStroke(card, BORDER, 2)
+  local cardScale = Instance.new("UIScale") cardScale.Parent = card
+  card.MouseEnter:Connect(function()
+    TweenService:Create(cardScale, TWEEN_FAST, {Scale = 1.05}):Play()
+    TweenService:Create(card, TWEEN_FAST, {BackgroundColor3 = ELEVATED}):Play()
+  end)
+  card.MouseLeave:Connect(function()
+    TweenService:Create(cardScale, TWEEN_FAST, {Scale = 1}):Play()
+    TweenService:Create(card, TWEEN_FAST, {BackgroundColor3 = CARD}):Play()
+  end)
+  card.MouseButton1Click:Connect(function()
+    playSound(SFX.click, 0.3)
+    -- Highlight selected
+    for _, c in facePage:GetChildren() do
+      if c:IsA("TextButton") then
+        local stroke = c:FindFirstChildWhichIsA("UIStroke")
+        if stroke then stroke.Color = BORDER end
+      end
+    end
+    local stroke = card:FindFirstChildWhichIsA("UIStroke")
+    if stroke then stroke.Color = GOLD end
+  end)
+end
+
+-- ═══ HAIR TAB — 8 hair style cards ═══
+local hairPage = pages["Hair"]
+local hairStyles = {"Bald", "Short", "Long", "Mohawk", "Ponytail", "Afro", "Spiky", "Bangs"}
+for idx, style in ipairs(hairStyles) do
+  local row = math.floor((idx - 1) / 4)
+  local col = (idx - 1) % 4
+  local card = Instance.new("TextButton")
+  card.Size = UDim2.new(0, 100, 0, 80)
+  card.Position = UDim2.new(0, 10 + col * 112, 0, 10 + row * 95)
+  card.BackgroundColor3 = CARD
+  card.Text = style
+  card.TextColor3 = TEXT
+  card.Font = Enum.Font.GothamBold
+  card.TextSize = 12
+  card.AutoButtonColor = false
+  card.Parent = hairPage
+  addCorner(card, 10)
+  addStroke(card, BORDER, 2)
+  card.MouseButton1Click:Connect(function()
+    playSound(SFX.click, 0.3)
+    for _, c in hairPage:GetChildren() do
+      if c:IsA("TextButton") then
+        local s = c:FindFirstChildWhichIsA("UIStroke")
+        if s then s.Color = BORDER end
+      end
+    end
+    local s = card:FindFirstChildWhichIsA("UIStroke")
+    if s then s.Color = GOLD end
+  end)
+end
+
+-- ═══ OUTFIT TAB — 6 outfit options ═══
+local outfitPage = pages["Outfit"]
+local outfits = {"Casual", "Formal", "Sporty", "Military", "Medieval", "Sci-Fi"}
+for idx, outfit in ipairs(outfits) do
+  local row = math.floor((idx - 1) / 3)
+  local col = (idx - 1) % 3
+  local card = Instance.new("TextButton")
+  card.Size = UDim2.new(0, 130, 0, 80)
+  card.Position = UDim2.new(0, 15 + col * 145, 0, 15 + row * 95)
+  card.BackgroundColor3 = CARD
+  card.Text = outfit
+  card.TextColor3 = TEXT
+  card.Font = Enum.Font.GothamBold
+  card.TextSize = 14
+  card.AutoButtonColor = false
+  card.Parent = outfitPage
+  addCorner(card, 10)
+  addStroke(card, BORDER, 2)
+  card.MouseButton1Click:Connect(function()
+    playSound(SFX.click, 0.3)
+    for _, c in outfitPage:GetChildren() do
+      if c:IsA("TextButton") then
+        local s = c:FindFirstChildWhichIsA("UIStroke")
+        if s then s.Color = BORDER end
+      end
+    end
+    local s = card:FindFirstChildWhichIsA("UIStroke")
+    if s then s.Color = GOLD end
+  end)
+end
+
+-- ═══ COLORS TAB — Skin, shirt, pants color pickers ═══
+local colorsPage = pages["Colors"]
+local skinColors = {${skinColorsLua}}
+
+local skinTitle = Instance.new("TextLabel")
+skinTitle.Size = UDim2.new(1, 0, 0, 24)
+skinTitle.Position = UDim2.new(0, 10, 0, 5)
+skinTitle.BackgroundTransparency = 1
+skinTitle.Text = "Skin Color"
+skinTitle.TextColor3 = GOLD
+skinTitle.Font = Enum.Font.GothamBold
+skinTitle.TextSize = 14
+skinTitle.TextXAlignment = Enum.TextXAlignment.Left
+skinTitle.Parent = colorsPage
+
+for idx, clr in ipairs(skinColors) do
+  local row = math.floor((idx - 1) / 6)
+  local col = (idx - 1) % 6
+  local swatch = Instance.new("TextButton")
+  swatch.Size = UDim2.new(0, 50, 0, 35)
+  swatch.Position = UDim2.new(0, 10 + col * 58, 0, 32 + row * 42)
+  swatch.BackgroundColor3 = clr
+  swatch.Text = ""
+  swatch.Parent = colorsPage
+  addCorner(swatch, 6)
+  addStroke(swatch, BORDER, 2)
+  swatch.MouseButton1Click:Connect(function()
+    playSound(SFX.click, 0.2)
+    for _, c in colorsPage:GetChildren() do
+      if c:IsA("TextButton") then
+        local s = c:FindFirstChildWhichIsA("UIStroke")
+        if s then s.Color = BORDER end
+      end
+    end
+    local s = swatch:FindFirstChildWhichIsA("UIStroke")
+    if s then s.Color = GOLD end
+  end)
+end
+
+-- Apply button
+local applyBtn = Instance.new("TextButton")
+applyBtn.Size = UDim2.new(0, 180, 0, 44)
+applyBtn.Position = UDim2.new(0.5, -90, 1, -55)
+applyBtn.BackgroundColor3 = GREEN
+applyBtn.Text = "APPLY CHANGES"
+applyBtn.TextColor3 = TEXT
+applyBtn.Font = Enum.Font.GothamBlack
+applyBtn.TextSize = 16
+applyBtn.AutoButtonColor = false
+applyBtn.Parent = main
+addCorner(applyBtn, 12)
+addStroke(applyBtn, GREEN_DARK, 2)
+local applyScale = Instance.new("UIScale") applyScale.Parent = applyBtn
+applyBtn.MouseEnter:Connect(function()
+  TweenService:Create(applyScale, TWEEN_FAST, {Scale = 1.05}):Play()
+end)
+applyBtn.MouseLeave:Connect(function()
+  TweenService:Create(applyScale, TWEEN_FAST, {Scale = 1}):Play()
+end)
+applyBtn.MouseButton1Click:Connect(function()
+  playSound(SFX.purchase, 0.5)
+  applyBtn.Text = "SAVED!"
+  TweenService:Create(applyBtn, TWEEN_FAST, {BackgroundColor3 = GOLD}):Play()
+  task.wait(1.5)
+  applyBtn.Text = "APPLY CHANGES"
+  TweenService:Create(applyBtn, TWEEN_FAST, {BackgroundColor3 = GREEN}):Play()
+end)
+
+-- Open animation
+main.Size = UDim2.new(0, 0, 0, 0)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+TweenService:Create(main, TWEEN_OPEN, {
+  Size = UDim2.new(0, 500, 0, 420), Position = UDim2.new(0.5, -250, 0.5, -210)
+}):Play()
+playSound(SFX.open, 0.4)
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 29. BOSS HEALTH BAR GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface BossHealthBarGuiParams {
+  bossName?: string
+  maxHealth?: number
+}
+
+export function bossHealthBarGui(params: BossHealthBarGuiParams = {}): string {
+  const bossName = params.bossName || 'Ancient Dragon'
+  const maxHp = params.maxHealth || 5000
+
+  return wrapTemplate('BossHealthBarGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeBossHealthBar"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local MAX_HEALTH = ${maxHp}
+local currentHealth = MAX_HEALTH
+local isActive = false
+
+-- ═══ CONTAINER (top center, full-width) ═══
+local container = Instance.new("Frame")
+container.Size = UDim2.new(0.7, 0, 0, 65)
+container.Position = UDim2.new(0.15, 0, 0, -80)  -- starts hidden above screen
+container.BackgroundColor3 = BG_DEEP
+container.BackgroundTransparency = 0.15
+container.Parent = screenGui
+addCorner(container, 12)
+addStroke(container, RED_DARK, 3)
+
+-- Boss name
+local nameLbl = Instance.new("TextLabel")
+nameLbl.Size = UDim2.new(1, 0, 0, 22)
+nameLbl.Position = UDim2.new(0, 0, 0, 2)
+nameLbl.BackgroundTransparency = 1
+nameLbl.Text = "${bossName}"
+nameLbl.TextColor3 = RED
+nameLbl.Font = Enum.Font.GothamBlack
+nameLbl.TextSize = 16
+nameLbl.Parent = container
+
+-- Health bar track
+local barTrack = Instance.new("Frame")
+barTrack.Size = UDim2.new(1, -24, 0, 28)
+barTrack.Position = UDim2.new(0, 12, 0, 26)
+barTrack.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+barTrack.Parent = container
+addCorner(barTrack, 6)
+addStroke(barTrack, BORDER, 1)
+
+-- Damage flash layer (behind fill)
+local flashLayer = Instance.new("Frame")
+flashLayer.Size = UDim2.new(1, 0, 1, 0)
+flashLayer.BackgroundColor3 = RED
+flashLayer.BackgroundTransparency = 1
+flashLayer.Parent = barTrack
+addCorner(flashLayer, 6)
+
+-- Health fill bar
+local barFill = Instance.new("Frame")
+barFill.Size = UDim2.new(1, 0, 1, 0)
+barFill.BackgroundColor3 = GREEN
+barFill.Parent = barTrack
+addCorner(barFill, 6)
+
+-- Gradient on fill: green to yellow
+local barGradient = Instance.new("UIGradient")
+barGradient.Color = ColorSequence.new({
+  ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 220, 100)),
+  ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 210, 50)),
+  ColorSequenceKeypoint.new(1, Color3.fromRGB(240, 70, 70))
+})
+barGradient.Rotation = 0
+barGradient.Parent = barFill
+
+-- Phase markers at 60% and 30%
+for _, pct in ipairs({0.6, 0.3}) do
+  local marker = Instance.new("Frame")
+  marker.Size = UDim2.new(0, 2, 1, 0)
+  marker.Position = UDim2.new(pct, -1, 0, 0)
+  marker.BackgroundColor3 = TEXT
+  marker.BackgroundTransparency = 0.4
+  marker.Parent = barTrack
+  marker.ZIndex = 3
+end
+
+-- Health text overlay
+local healthText = Instance.new("TextLabel")
+healthText.Size = UDim2.new(1, 0, 1, 0)
+healthText.BackgroundTransparency = 1
+healthText.Text = tostring(MAX_HEALTH) .. " / " .. tostring(MAX_HEALTH)
+healthText.TextColor3 = TEXT
+healthText.Font = Enum.Font.GothamBlack
+healthText.TextSize = 14
+healthText.TextStrokeColor3 = TEXT_SHADOW
+healthText.TextStrokeTransparency = 0.4
+healthText.ZIndex = 4
+healthText.Parent = barTrack
+
+-- Defeated overlay
+local defeatedFrame = Instance.new("Frame")
+defeatedFrame.Size = UDim2.new(1, 0, 1, 0)
+defeatedFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+defeatedFrame.BackgroundTransparency = 1
+defeatedFrame.Visible = false
+defeatedFrame.ZIndex = 10
+defeatedFrame.Parent = container
+addCorner(defeatedFrame, 12)
+
+local defeatedLbl = Instance.new("TextLabel")
+defeatedLbl.Size = UDim2.new(1, 0, 1, 0)
+defeatedLbl.BackgroundTransparency = 1
+defeatedLbl.Text = "DEFEATED!"
+defeatedLbl.TextColor3 = GOLD
+defeatedLbl.Font = Enum.Font.GothamBlack
+defeatedLbl.TextSize = 28
+defeatedLbl.TextStrokeColor3 = TEXT_SHADOW
+defeatedLbl.TextStrokeTransparency = 0.2
+defeatedLbl.ZIndex = 11
+defeatedLbl.Parent = defeatedFrame
+
+local function updateBar(newHealth)
+  currentHealth = math.clamp(newHealth, 0, MAX_HEALTH)
+  local pct = currentHealth / MAX_HEALTH
+
+  -- Smooth tween the fill
+  TweenService:Create(barFill, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    Size = UDim2.new(pct, 0, 1, 0)
+  }):Play()
+
+  healthText.Text = tostring(math.floor(currentHealth)) .. " / " .. tostring(MAX_HEALTH)
+
+  -- Flash red on hit
+  flashLayer.BackgroundTransparency = 0.3
+  TweenService:Create(flashLayer, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+
+  -- Boss defeated
+  if currentHealth <= 0 then
+    defeatedFrame.Visible = true
+    TweenService:Create(defeatedFrame, TweenInfo.new(0.5), {BackgroundTransparency = 0.4}):Play()
+    local dScale = Instance.new("UIScale") dScale.Scale = 0.5 dScale.Parent = defeatedLbl
+    TweenService:Create(dScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+    playSound(SFX.reward, 0.6)
+    task.delay(3, function()
+      TweenService:Create(container, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Position = UDim2.new(0.15, 0, 0, -80)
+      }):Play()
+    end)
+  end
+end
+
+local function showBossBar()
+  isActive = true
+  currentHealth = MAX_HEALTH
+  barFill.Size = UDim2.new(1, 0, 1, 0)
+  healthText.Text = tostring(MAX_HEALTH) .. " / " .. tostring(MAX_HEALTH)
+  defeatedFrame.Visible = false
+  defeatedFrame.BackgroundTransparency = 1
+  TweenService:Create(container, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Position = UDim2.new(0.15, 0, 0, 12)
+  }):Play()
+end
+
+local function hideBossBar()
+  isActive = false
+  TweenService:Create(container, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+    Position = UDim2.new(0.15, 0, 0, -80)
+  }):Play()
+end
+
+-- Listen for boss events
+local bossEvent = game.ReplicatedStorage:FindFirstChild("BossHealth")
+if not bossEvent then
+  bossEvent = Instance.new("RemoteEvent")
+  bossEvent.Name = "BossHealth"
+  bossEvent.Parent = game.ReplicatedStorage
+end
+
+bossEvent.OnClientEvent:Connect(function(action, value)
+  if action == "show" then
+    showBossBar()
+  elseif action == "hide" then
+    hideBossBar()
+  elseif action == "damage" and isActive then
+    updateBar(currentHealth - (value or 0))
+  elseif action == "set" and isActive then
+    updateBar(value or 0)
+  end
+end)
+
+-- Demo sequence
+task.wait(1)
+showBossBar()
+task.wait(1.5)
+updateBar(MAX_HEALTH * 0.75)
+task.wait(1)
+updateBar(MAX_HEALTH * 0.45)
+task.wait(1)
+updateBar(MAX_HEALTH * 0.15)
+task.wait(1)
+updateBar(0)
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 30. COUNTDOWN TIMER GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface CountdownTimerGuiParams {
+  countFrom?: number
+  headerText?: string
+}
+
+export function countdownTimerGui(params: CountdownTimerGuiParams = {}): string {
+  const countFrom = params.countFrom || 3
+  const headerText = params.headerText || 'Round starting in...'
+
+  return wrapTemplate('CountdownTimerGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeCountdown"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local COUNT_FROM = ${countFrom}
+
+-- ═══ MAIN CONTAINER (centered) ═══
+local container = Instance.new("Frame")
+container.Size = UDim2.new(1, 0, 1, 0)
+container.BackgroundTransparency = 1
+container.Parent = screenGui
+
+-- Header text
+local headerLbl = Instance.new("TextLabel")
+headerLbl.Size = UDim2.new(0, 400, 0, 40)
+headerLbl.Position = UDim2.new(0.5, -200, 0.3, 0)
+headerLbl.BackgroundTransparency = 1
+headerLbl.Text = "${headerText}"
+headerLbl.TextColor3 = TEXT_SUB
+headerLbl.Font = Enum.Font.GothamBold
+headerLbl.TextSize = 22
+headerLbl.TextStrokeColor3 = TEXT_SHADOW
+headerLbl.TextStrokeTransparency = 0.4
+headerLbl.TextTransparency = 1
+headerLbl.Parent = container
+
+-- Big number
+local numberLbl = Instance.new("TextLabel")
+numberLbl.Size = UDim2.new(0, 300, 0, 200)
+numberLbl.Position = UDim2.new(0.5, -150, 0.35, 0)
+numberLbl.BackgroundTransparency = 1
+numberLbl.Text = ""
+numberLbl.TextColor3 = TEXT
+numberLbl.Font = Enum.Font.GothamBlack
+numberLbl.TextSize = 140
+numberLbl.TextStrokeColor3 = TEXT_SHADOW
+numberLbl.TextStrokeTransparency = 0.2
+numberLbl.TextTransparency = 1
+numberLbl.Parent = container
+
+local numScale = Instance.new("UIScale")
+numScale.Scale = 1
+numScale.Parent = numberLbl
+
+local function showNumber(text, color, size)
+  numberLbl.Text = text
+  numberLbl.TextColor3 = color or TEXT
+  numberLbl.TextSize = size or 140
+  numberLbl.TextTransparency = 0
+  numScale.Scale = 1.8
+
+  -- Scale down + fade sequence
+  TweenService:Create(numScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+
+  -- Play tick sound
+  playSound(SFX.click, 0.6)
+
+  task.wait(0.7)
+
+  -- Fade out
+  TweenService:Create(numberLbl, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
+  task.wait(0.3)
+end
+
+local function runCountdown()
+  -- Fade in header
+  TweenService:Create(headerLbl, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+  task.wait(0.5)
+
+  -- Count down
+  for i = COUNT_FROM, 1, -1 do
+    showNumber(tostring(i), TEXT, 140)
+  end
+
+  -- GO!
+  headerLbl.TextTransparency = 1
+  numberLbl.Text = "GO!"
+  numberLbl.TextColor3 = GOLD
+  numberLbl.TextSize = 100
+  numberLbl.TextTransparency = 0
+  numScale.Scale = 0.3
+
+  TweenService:Create(numScale, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1.2}):Play()
+  playSound(SFX.reward, 0.7)
+
+  task.wait(1)
+
+  -- Fade out everything
+  TweenService:Create(numberLbl, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
+  task.wait(0.5)
+  screenGui:Destroy()
+end
+
+-- Listen for countdown event
+local cdEvent = game.ReplicatedStorage:FindFirstChild("Countdown")
+if not cdEvent then
+  cdEvent = Instance.new("RemoteEvent")
+  cdEvent.Name = "Countdown"
+  cdEvent.Parent = game.ReplicatedStorage
+end
+
+cdEvent.OnClientEvent:Connect(function()
+  runCountdown()
+end)
+
+-- Auto-run demo
+task.wait(1)
+runCountdown()
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 31. VICTORY / DEFEAT GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface VictoryDefeatGuiParams {
+  autoCloseTime?: number
+}
+
+export function victoryDefeatGui(params: VictoryDefeatGuiParams = {}): string {
+  const autoClose = params.autoCloseTime || 10
+
+  return wrapTemplate('VictoryDefeatGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeVictoryDefeat"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local AUTO_CLOSE = ${autoClose}
+
+local function showResult(isVictory, stats)
+  stats = stats or {}
+  local kills = stats.kills or 0
+  local deaths = stats.deaths or 0
+  local score = stats.score or 0
+  local timeSurvived = stats.timeSurvived or "0:00"
+  local xpEarned = stats.xpEarned or 100
+  local coinsEarned = stats.coinsEarned or 50
+  local mvpName = stats.mvpName or player.Name
+
+  -- Black overlay fade in
+  local overlay = Instance.new("Frame")
+  overlay.Size = UDim2.new(1, 0, 1, 0)
+  overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+  overlay.BackgroundTransparency = 1
+  overlay.ZIndex = 50
+  overlay.Parent = screenGui
+  TweenService:Create(overlay, TweenInfo.new(0.5), {BackgroundTransparency = 0.6}):Play()
+
+  task.wait(0.5)
+
+  -- Main container
+  local main = Instance.new("Frame")
+  main.Size = UDim2.new(0, 480, 0, 400)
+  main.Position = UDim2.new(0.5, -240, 0.5, -200)
+  main.BackgroundColor3 = BG_DEEP
+  main.BackgroundTransparency = 0.05
+  main.ZIndex = 51
+  main.Parent = screenGui
+  addCorner(main, 18)
+  addStroke(main, isVictory and GOLD or RED, 3)
+
+  -- Result title
+  local titleLbl = Instance.new("TextLabel")
+  titleLbl.Size = UDim2.new(1, 0, 0, 70)
+  titleLbl.Position = UDim2.new(0, 0, 0, 10)
+  titleLbl.BackgroundTransparency = 1
+  titleLbl.Text = isVictory and "VICTORY!" or "DEFEAT"
+  titleLbl.TextColor3 = isVictory and GOLD or RED
+  titleLbl.Font = Enum.Font.GothamBlack
+  titleLbl.TextSize = 48
+  titleLbl.TextStrokeColor3 = TEXT_SHADOW
+  titleLbl.TextStrokeTransparency = 0.2
+  titleLbl.ZIndex = 52
+  titleLbl.Parent = main
+
+  local titleScale = Instance.new("UIScale") titleScale.Scale = 0.3 titleScale.Parent = titleLbl
+  TweenService:Create(titleScale, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+
+  -- MVP display
+  local mvpLbl = Instance.new("TextLabel")
+  mvpLbl.Size = UDim2.new(1, 0, 0, 24)
+  mvpLbl.Position = UDim2.new(0, 0, 0, 80)
+  mvpLbl.BackgroundTransparency = 1
+  mvpLbl.Text = "MVP: " .. mvpName
+  mvpLbl.TextColor3 = GOLD_BRIGHT
+  mvpLbl.Font = Enum.Font.GothamBold
+  mvpLbl.TextSize = 16
+  mvpLbl.ZIndex = 52
+  mvpLbl.Parent = main
+
+  -- Stats grid
+  local statsData = {
+    {"Kills", tostring(kills)},
+    {"Deaths", tostring(deaths)},
+    {"Score", tostring(score)},
+    {"Survived", timeSurvived}
+  }
+
+  local statsFrame = Instance.new("Frame")
+  statsFrame.Size = UDim2.new(1, -40, 0, 70)
+  statsFrame.Position = UDim2.new(0, 20, 0, 115)
+  statsFrame.BackgroundColor3 = SURFACE_DARK
+  statsFrame.BackgroundTransparency = 0.4
+  statsFrame.ZIndex = 52
+  statsFrame.Parent = main
+  addCorner(statsFrame, 10)
+
+  for i, stat in ipairs(statsData) do
+    local statFrame = Instance.new("Frame")
+    statFrame.Size = UDim2.new(0.25, 0, 1, 0)
+    statFrame.Position = UDim2.new(0.25 * (i - 1), 0, 0, 0)
+    statFrame.BackgroundTransparency = 1
+    statFrame.ZIndex = 53
+    statFrame.Parent = statsFrame
+
+    local statVal = Instance.new("TextLabel")
+    statVal.Size = UDim2.new(1, 0, 0.55, 0)
+    statVal.BackgroundTransparency = 1
+    statVal.Text = stat[2]
+    statVal.TextColor3 = TEXT
+    statVal.Font = Enum.Font.GothamBlack
+    statVal.TextSize = 22
+    statVal.ZIndex = 53
+    statVal.Parent = statFrame
+
+    local statName = Instance.new("TextLabel")
+    statName.Size = UDim2.new(1, 0, 0.4, 0)
+    statName.Position = UDim2.new(0, 0, 0.55, 0)
+    statName.BackgroundTransparency = 1
+    statName.Text = stat[1]
+    statName.TextColor3 = TEXT_MUTED
+    statName.Font = Enum.Font.GothamMedium
+    statName.TextSize = 12
+    statName.ZIndex = 53
+    statName.Parent = statFrame
+  end
+
+  -- XP Earned bar
+  local xpFrame = Instance.new("Frame")
+  xpFrame.Size = UDim2.new(1, -40, 0, 40)
+  xpFrame.Position = UDim2.new(0, 20, 0, 200)
+  xpFrame.BackgroundTransparency = 1
+  xpFrame.ZIndex = 52
+  xpFrame.Parent = main
+
+  local xpTitle = Instance.new("TextLabel")
+  xpTitle.Size = UDim2.new(0.4, 0, 0, 18)
+  xpTitle.BackgroundTransparency = 1
+  xpTitle.Text = "XP Earned"
+  xpTitle.TextColor3 = TEXT_SUB
+  xpTitle.Font = Enum.Font.GothamBold
+  xpTitle.TextSize = 13
+  xpTitle.TextXAlignment = Enum.TextXAlignment.Left
+  xpTitle.ZIndex = 53
+  xpTitle.Parent = xpFrame
+
+  local xpVal = Instance.new("TextLabel")
+  xpVal.Size = UDim2.new(0.4, 0, 0, 18)
+  xpVal.Position = UDim2.new(0.6, 0, 0, 0)
+  xpVal.BackgroundTransparency = 1
+  xpVal.Text = "+" .. tostring(xpEarned) .. " XP"
+  xpVal.TextColor3 = PURPLE
+  xpVal.Font = Enum.Font.GothamBlack
+  xpVal.TextSize = 14
+  xpVal.TextXAlignment = Enum.TextXAlignment.Right
+  xpVal.ZIndex = 53
+  xpVal.Parent = xpFrame
+
+  local xpTrack = Instance.new("Frame")
+  xpTrack.Size = UDim2.new(1, 0, 0, 14)
+  xpTrack.Position = UDim2.new(0, 0, 0, 22)
+  xpTrack.BackgroundColor3 = BORDER
+  xpTrack.ZIndex = 53
+  xpTrack.Parent = xpFrame
+  addCorner(xpTrack, 7)
+
+  local xpFill = Instance.new("Frame")
+  xpFill.Size = UDim2.new(0, 0, 1, 0)
+  xpFill.BackgroundColor3 = PURPLE
+  xpFill.ZIndex = 54
+  xpFill.Parent = xpTrack
+  addCorner(xpFill, 7)
+
+  -- Animate XP bar
+  task.delay(0.8, function()
+    TweenService:Create(xpFill, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+      Size = UDim2.new(math.clamp(xpEarned / 500, 0.05, 1), 0, 1, 0)
+    }):Play()
+  end)
+
+  -- Coins earned (count-up animation)
+  local coinsLbl = Instance.new("TextLabel")
+  coinsLbl.Size = UDim2.new(1, -40, 0, 30)
+  coinsLbl.Position = UDim2.new(0, 20, 0, 250)
+  coinsLbl.BackgroundTransparency = 1
+  coinsLbl.Text = "Coins: 0"
+  coinsLbl.TextColor3 = GOLD
+  coinsLbl.Font = Enum.Font.GothamBlack
+  coinsLbl.TextSize = 20
+  coinsLbl.ZIndex = 52
+  coinsLbl.Parent = main
+
+  -- Animated coin counter using NumberValue
+  local coinCounter = Instance.new("NumberValue")
+  coinCounter.Value = 0
+  coinCounter.Parent = coinsLbl
+  coinCounter.Changed:Connect(function(val)
+    coinsLbl.Text = "Coins: " .. tostring(math.floor(val))
+  end)
+  task.delay(1, function()
+    TweenService:Create(coinCounter, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+      Value = coinsEarned
+    }):Play()
+  end)
+
+  -- Buttons
+  local playAgainBtn = Instance.new("TextButton")
+  playAgainBtn.Size = UDim2.new(0, 180, 0, 44)
+  playAgainBtn.Position = UDim2.new(0, 30, 1, -65)
+  playAgainBtn.BackgroundColor3 = GREEN
+  playAgainBtn.Text = "PLAY AGAIN"
+  playAgainBtn.TextColor3 = TEXT
+  playAgainBtn.Font = Enum.Font.GothamBlack
+  playAgainBtn.TextSize = 16
+  playAgainBtn.AutoButtonColor = false
+  playAgainBtn.ZIndex = 52
+  playAgainBtn.Parent = main
+  addCorner(playAgainBtn, 10)
+  addStroke(playAgainBtn, GREEN_DARK, 2)
+
+  local lobbyBtn = Instance.new("TextButton")
+  lobbyBtn.Size = UDim2.new(0, 180, 0, 44)
+  lobbyBtn.Position = UDim2.new(1, -210, 1, -65)
+  lobbyBtn.BackgroundColor3 = CARD
+  lobbyBtn.Text = "RETURN TO LOBBY"
+  lobbyBtn.TextColor3 = TEXT
+  lobbyBtn.Font = Enum.Font.GothamBold
+  lobbyBtn.TextSize = 14
+  lobbyBtn.AutoButtonColor = false
+  lobbyBtn.ZIndex = 52
+  lobbyBtn.Parent = main
+  addCorner(lobbyBtn, 10)
+  addStroke(lobbyBtn, BORDER, 2)
+
+  -- Hover effects
+  for _, btn in ipairs({playAgainBtn, lobbyBtn}) do
+    local s = Instance.new("UIScale") s.Parent = btn
+    btn.MouseEnter:Connect(function()
+      TweenService:Create(s, TWEEN_FAST, {Scale = 1.05}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+      TweenService:Create(s, TWEEN_FAST, {Scale = 1}):Play()
+    end)
+    btn.MouseButton1Click:Connect(function()
+      playSound(SFX.click, 0.3)
+    end)
+  end
+
+  -- Open animation
+  main.Size = UDim2.new(0, 0, 0, 0)
+  main.Position = UDim2.new(0.5, 0, 0.5, 0)
+  TweenService:Create(main, TWEEN_OPEN, {
+    Size = UDim2.new(0, 480, 0, 400), Position = UDim2.new(0.5, -240, 0.5, -200)
+  }):Play()
+  playSound(isVictory and SFX.reward or SFX.error, 0.6)
+
+  -- Auto-close
+  task.delay(AUTO_CLOSE, function()
+    TweenService:Create(overlay, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(main, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+      Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0)
+    }):Play()
+    task.wait(0.5)
+    if screenGui.Parent then screenGui:Destroy() end
+  end)
+end
+
+-- Listen for result event
+local resultEvent = game.ReplicatedStorage:FindFirstChild("MatchResult")
+if not resultEvent then
+  resultEvent = Instance.new("RemoteEvent")
+  resultEvent.Name = "MatchResult"
+  resultEvent.Parent = game.ReplicatedStorage
+end
+
+resultEvent.OnClientEvent:Connect(function(isVictory, stats)
+  showResult(isVictory, stats)
+end)
+
+-- Demo: show victory
+task.wait(1)
+showResult(true, {kills = 12, deaths = 3, score = 2450, timeSurvived = "4:32", xpEarned = 350, coinsEarned = 125, mvpName = player.Name})
+`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 32. LEVEL UP GUI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface LevelUpGuiParams {
+  dismissTime?: number
+}
+
+export function levelUpGui(params: LevelUpGuiParams = {}): string {
+  const dismissTime = params.dismissTime || 5
+
+  return wrapTemplate('LevelUpGui', `
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForjeLevelUp"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local DISMISS_TIME = ${dismissTime}
+
+local function showLevelUp(oldLevel, newLevel, rewards, xpProgress)
+  oldLevel = oldLevel or 4
+  newLevel = newLevel or 5
+  rewards = rewards or {"New Sword Unlocked", "Desert Zone Access", "Fire Ability"}
+  xpProgress = xpProgress or 0.15
+
+  -- Flash overlay
+  local flash = Instance.new("Frame")
+  flash.Size = UDim2.new(1, 0, 1, 0)
+  flash.BackgroundColor3 = GOLD
+  flash.BackgroundTransparency = 0.5
+  flash.ZIndex = 80
+  flash.Parent = screenGui
+  TweenService:Create(flash, TweenInfo.new(0.6), {BackgroundTransparency = 1}):Play()
+  task.delay(0.7, function() if flash.Parent then flash:Destroy() end end)
+
+  -- Main popup
+  local main = Instance.new("Frame")
+  main.Size = UDim2.new(0, 380, 0, 400)
+  main.Position = UDim2.new(0.5, -190, 0.5, -200)
+  main.BackgroundColor3 = BG_DEEP
+  main.BackgroundTransparency = 0.05
+  main.ZIndex = 81
+  main.Parent = screenGui
+  addCorner(main, 20)
+  addStroke(main, GOLD, 3)
+
+  -- Sparkle ring (decorative circle)
+  local ring = Instance.new("Frame")
+  ring.Size = UDim2.new(0, 120, 0, 120)
+  ring.Position = UDim2.new(0.5, -60, 0, 15)
+  ring.BackgroundTransparency = 1
+  ring.ZIndex = 82
+  ring.Parent = main
+
+  local ringStroke = Instance.new("UIStroke")
+  ringStroke.Color = GOLD
+  ringStroke.Thickness = 4
+  ringStroke.Transparency = 0
+  ringStroke.Parent = ring
+  local ringCorner = Instance.new("UICorner")
+  ringCorner.CornerRadius = UDim.new(0.5, 0)
+  ringCorner.Parent = ring
+
+  -- Pulse the ring
+  TweenService:Create(ringStroke, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+    Thickness = 6, Transparency = 0.4
+  }):Play()
+
+  -- Level number inside ring
+  local levelCircle = Instance.new("TextLabel")
+  levelCircle.Size = UDim2.new(1, -8, 1, -8)
+  levelCircle.Position = UDim2.new(0, 4, 0, 4)
+  levelCircle.BackgroundColor3 = GOLD
+  levelCircle.Text = tostring(newLevel)
+  levelCircle.TextColor3 = BG_DEEP
+  levelCircle.Font = Enum.Font.GothamBlack
+  levelCircle.TextSize = 52
+  levelCircle.ZIndex = 83
+  levelCircle.Parent = ring
+  local lvlCorner = Instance.new("UICorner")
+  lvlCorner.CornerRadius = UDim.new(0.5, 0)
+  lvlCorner.Parent = levelCircle
+
+  -- "LEVEL UP!" text with glow
+  local titleLbl = Instance.new("TextLabel")
+  titleLbl.Size = UDim2.new(1, 0, 0, 40)
+  titleLbl.Position = UDim2.new(0, 0, 0, 140)
+  titleLbl.BackgroundTransparency = 1
+  titleLbl.Text = "LEVEL UP!"
+  titleLbl.TextColor3 = GOLD
+  titleLbl.Font = Enum.Font.GothamBlack
+  titleLbl.TextSize = 36
+  titleLbl.TextStrokeColor3 = GOLD_DIM
+  titleLbl.TextStrokeTransparency = 0.5
+  titleLbl.ZIndex = 82
+  titleLbl.Parent = main
+
+  -- Level transition text
+  local transLbl = Instance.new("TextLabel")
+  transLbl.Size = UDim2.new(1, 0, 0, 24)
+  transLbl.Position = UDim2.new(0, 0, 0, 178)
+  transLbl.BackgroundTransparency = 1
+  transLbl.Text = "Level " .. tostring(oldLevel) .. "  ->  Level " .. tostring(newLevel)
+  transLbl.TextColor3 = TEXT_SUB
+  transLbl.Font = Enum.Font.GothamBold
+  transLbl.TextSize = 16
+  transLbl.ZIndex = 82
+  transLbl.Parent = main
+
+  -- Rewards unlocked
+  local rewardsTitle = Instance.new("TextLabel")
+  rewardsTitle.Size = UDim2.new(1, 0, 0, 20)
+  rewardsTitle.Position = UDim2.new(0, 0, 0, 210)
+  rewardsTitle.BackgroundTransparency = 1
+  rewardsTitle.Text = "REWARDS UNLOCKED"
+  rewardsTitle.TextColor3 = GOLD_DIM
+  rewardsTitle.Font = Enum.Font.GothamBold
+  rewardsTitle.TextSize = 11
+  rewardsTitle.ZIndex = 82
+  rewardsTitle.Parent = main
+
+  local rewardsFrame = Instance.new("Frame")
+  rewardsFrame.Size = UDim2.new(1, -40, 0, 80)
+  rewardsFrame.Position = UDim2.new(0, 20, 0, 232)
+  rewardsFrame.BackgroundColor3 = SURFACE_DARK
+  rewardsFrame.BackgroundTransparency = 0.5
+  rewardsFrame.ZIndex = 82
+  rewardsFrame.Parent = main
+  addCorner(rewardsFrame, 8)
+
+  local rewardsList = Instance.new("UIListLayout")
+  rewardsList.Padding = UDim.new(0, 2)
+  rewardsList.Parent = rewardsFrame
+  addPadding(rewardsFrame, 6)
+
+  for _, reward in ipairs(rewards) do
+    local rLbl = Instance.new("TextLabel")
+    rLbl.Size = UDim2.new(1, 0, 0, 20)
+    rLbl.BackgroundTransparency = 1
+    rLbl.Text = "+ " .. reward
+    rLbl.TextColor3 = GREEN
+    rLbl.Font = Enum.Font.GothamMedium
+    rLbl.TextSize = 13
+    rLbl.TextXAlignment = Enum.TextXAlignment.Left
+    rLbl.ZIndex = 83
+    rLbl.Parent = rewardsFrame
+  end
+
+  -- XP bar to next level
+  local xpFrame = Instance.new("Frame")
+  xpFrame.Size = UDim2.new(1, -40, 0, 30)
+  xpFrame.Position = UDim2.new(0, 20, 0, 320)
+  xpFrame.BackgroundTransparency = 1
+  xpFrame.ZIndex = 82
+  xpFrame.Parent = main
+
+  local xpLabel = Instance.new("TextLabel")
+  xpLabel.Size = UDim2.new(1, 0, 0, 14)
+  xpLabel.BackgroundTransparency = 1
+  xpLabel.Text = "Progress to Level " .. tostring(newLevel + 1)
+  xpLabel.TextColor3 = TEXT_MUTED
+  xpLabel.Font = Enum.Font.GothamMedium
+  xpLabel.TextSize = 11
+  xpLabel.TextXAlignment = Enum.TextXAlignment.Left
+  xpLabel.ZIndex = 83
+  xpLabel.Parent = xpFrame
+
+  local xpTrack = Instance.new("Frame")
+  xpTrack.Size = UDim2.new(1, 0, 0, 12)
+  xpTrack.Position = UDim2.new(0, 0, 0, 16)
+  xpTrack.BackgroundColor3 = BORDER
+  xpTrack.ZIndex = 83
+  xpTrack.Parent = xpFrame
+  addCorner(xpTrack, 6)
+
+  local xpFill = Instance.new("Frame")
+  xpFill.Size = UDim2.new(0, 0, 1, 0)
+  xpFill.BackgroundColor3 = BLUE
+  xpFill.ZIndex = 84
+  xpFill.Parent = xpTrack
+  addCorner(xpFill, 6)
+
+  task.delay(0.5, function()
+    TweenService:Create(xpFill, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+      Size = UDim2.new(math.clamp(xpProgress, 0.02, 1), 0, 1, 0)
+    }):Play()
+  end)
+
+  -- Click to dismiss
+  local dismissLbl = Instance.new("TextLabel")
+  dismissLbl.Size = UDim2.new(1, 0, 0, 18)
+  dismissLbl.Position = UDim2.new(0, 0, 1, -24)
+  dismissLbl.BackgroundTransparency = 1
+  dismissLbl.Text = "Click to dismiss"
+  dismissLbl.TextColor3 = TEXT_MUTED
+  dismissLbl.Font = Enum.Font.GothamMedium
+  dismissLbl.TextSize = 11
+  dismissLbl.ZIndex = 82
+  dismissLbl.Parent = main
+
+  -- Open animation: bounce scale
+  main.Size = UDim2.new(0, 0, 0, 0)
+  main.Position = UDim2.new(0.5, 0, 0.5, 0)
+  TweenService:Create(main, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0, 380, 0, 400), Position = UDim2.new(0.5, -190, 0.5, -200)
+  }):Play()
+  playSound(SFX.reward, 0.7)
+
+  local function dismiss()
+    TweenService:Create(main, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+      Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0)
+    }):Play()
+    task.wait(0.35)
+    if main.Parent then main:Destroy() end
+  end
+
+  -- Click anywhere on main to dismiss
+  local clickCatcher = Instance.new("TextButton")
+  clickCatcher.Size = UDim2.new(1, 0, 1, 0)
+  clickCatcher.BackgroundTransparency = 1
+  clickCatcher.Text = ""
+  clickCatcher.ZIndex = 85
+  clickCatcher.Parent = main
+  clickCatcher.MouseButton1Click:Connect(function()
+    playSound(SFX.click, 0.2)
+    dismiss()
+  end)
+
+  -- Auto-dismiss
+  task.delay(DISMISS_TIME, function()
+    if main.Parent then dismiss() end
+  end)
+end
+
+-- Listen for level-up event
+local lvlEvent = game.ReplicatedStorage:FindFirstChild("LevelUp")
+if not lvlEvent then
+  lvlEvent = Instance.new("RemoteEvent")
+  lvlEvent.Name = "LevelUp"
+  lvlEvent.Parent = game.ReplicatedStorage
+end
+
+lvlEvent.OnClientEvent:Connect(function(oldLevel, newLevel, rewards, xpProgress)
+  showLevelUp(oldLevel, newLevel, rewards, xpProgress)
+end)
+
+-- Demo
+task.wait(1)
+showLevelUp(5, 6, {"New Sword Unlocked", "Desert Zone Access", "Fire Ability"}, 0.15)
 `)
 }
