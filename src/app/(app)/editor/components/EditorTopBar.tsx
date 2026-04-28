@@ -55,9 +55,9 @@ export function EditorTopBar({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
-        padding: '0 20px',
-        height: 52,
+        gap: isMobile ? 6 : 10,
+        padding: isMobile ? `calc(6px + env(safe-area-inset-top, 0px)) 12px 6px` : '0 20px',
+        height: isMobile ? `calc(44px + env(safe-area-inset-top, 0px))` : 52,
         borderBottom: '1px solid rgba(212,175,55,0.06)',
         background: 'rgba(5,8,16,0.85)',
         backdropFilter: 'blur(24px)',
@@ -87,7 +87,7 @@ export function EditorTopBar({
           style={{
             background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.04)',
             color: '#71717A', cursor: 'pointer',
-            padding: 6, borderRadius: 10, width: 36, height: 36,
+            padding: 6, borderRadius: 10, width: isMobile ? 44 : 36, height: isMobile ? 44 : 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.2s',
           }}
@@ -185,7 +185,7 @@ export function EditorTopBar({
 
       {/* ── Right: Tokens + Model + Settings + New Chat ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <TokenBalanceWidget compact />
+        {!isMobile && <TokenBalanceWidget compact />}
 
         {/* Model selector */}
         {selectedModel && onModelChange && (
@@ -266,7 +266,7 @@ export function EditorTopBar({
           title="Settings & API Keys"
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: 36, height: 36, borderRadius: 10,
+            width: isMobile ? 44 : 36, height: isMobile ? 44 : 36, borderRadius: 10,
             border: '1px solid rgba(255,255,255,0.04)',
             background: 'rgba(255,255,255,0.03)',
             color: '#52525B', cursor: 'pointer',
@@ -298,7 +298,7 @@ export function EditorTopBar({
             title="New chat (Ctrl+Shift+N)"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 36, height: 36, borderRadius: 10,
+              width: isMobile ? 44 : 36, height: isMobile ? 44 : 36, borderRadius: 10,
               border: '1px solid rgba(212,175,55,0.12)',
               background: 'rgba(212,175,55,0.06)',
               color: '#D4AF37', cursor: 'pointer',

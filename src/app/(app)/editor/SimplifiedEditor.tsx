@@ -276,6 +276,29 @@ function EditorInner() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  // ── Mobile keyboard handling: scroll textarea into view when keyboard opens ──
+  useEffect(() => {
+    if (!isMobile || typeof window === 'undefined' || !window.visualViewport) return
+    const vv = window.visualViewport
+    let prevHeight = vv.height
+    const onResize = () => {
+      const newHeight = vv.height
+      // Keyboard opened (viewport shrunk by > 100px)
+      if (prevHeight - newHeight > 100) {
+        // Scroll focused element into view so input sticks above keyboard
+        setTimeout(() => {
+          const active = document.activeElement as HTMLElement | null
+          if (active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) {
+            active.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          }
+        }, 50)
+      }
+      prevHeight = newHeight
+    }
+    vv.addEventListener('resize', onResize)
+    return () => vv.removeEventListener('resize', onResize)
+  }, [isMobile])
+
   // ── Funnel: track editor opened ──
   useEffect(() => {
     try { captureClientEvent('editor_opened') } catch { /* analytics never breaks the app */ }
@@ -600,7 +623,7 @@ function EditorInner() {
                 }}
               />
               {/* Floating input bar on welcome screen — cyberglass */}
-              <div style={{ padding: isMobile ? '0 12px 16px' : '0 20px 24px', background: 'transparent', position: 'relative', zIndex: 2 }}>
+              <div style={{ padding: isMobile ? `0 12px calc(16px + env(safe-area-inset-bottom, 0px))` : '0 20px 24px', background: 'transparent', position: 'relative', zIndex: 2 }}>
                 <div style={{ maxWidth: 780, margin: '0 auto' }}>
                   <div
                     style={{
@@ -678,9 +701,10 @@ function EditorInner() {
                       rows={1}
                       style={{
                         flex: 1, background: 'transparent', border: 'none',
-                        padding: '8px 0', color: '#FAFAFA', fontSize: 15,
+                        padding: '8px 0', color: '#FAFAFA', fontSize: isMobile ? 16 : 15,
                         fontFamily: 'inherit', resize: 'none', outline: 'none',
                         lineHeight: 1.5, fontWeight: 400,
+                        minHeight: isMobile ? 48 : undefined,
                       }}
                     />
 

@@ -1269,6 +1269,7 @@ function LuauCodeBlock({
             fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
             display: 'flex',
             transition: 'max-height 0.3s ease-out',
+            WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
           }}
         >
           {/* Line numbers gutter */}
@@ -2634,7 +2635,7 @@ function MessageBubbleImpl({
                 boxShadow: '0 4px 16px rgba(212,175,55,0.06), 0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,230,160,0.06)',
               }}
             >
-              <p style={{ margin: 0, fontSize: 14.5, color: 'rgba(255,255,255,0.97)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontWeight: 500, letterSpacing: '-0.01em' }}>
+              <p style={{ margin: 0, fontSize: isMobile ? 15 : 14.5, color: 'rgba(255,255,255,0.97)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontWeight: 500, letterSpacing: '-0.01em' }}>
                 {displayContent}
               </p>
             </div>
@@ -2680,7 +2681,7 @@ function MessageBubbleImpl({
       </div>
       <div
         style={{
-          maxWidth: isMobile ? '92%' : '90%',
+          maxWidth: isMobile ? '95%' : '90%',
           padding: isMobile ? '14px 16px' : '18px 24px',
           borderRadius: '20px 20px 20px 6px',
           background: msg.streaming
@@ -2731,7 +2732,7 @@ function MessageBubbleImpl({
             }}
           />
         )}
-        <div style={{ margin: 0, fontSize: 14.5, color: 'rgba(255,255,255,0.92)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', lineHeight: 1.7, letterSpacing: '-0.01em' }}>
+        <div style={{ margin: 0, fontSize: isMobile ? 15 : 14.5, color: 'rgba(255,255,255,0.92)', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)', lineHeight: 1.7, letterSpacing: '-0.01em' }}>
           {msg.streaming
             ? (msg.content
                 ? <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{stripCodeBlocksForDisplay(msg.content)}</span>
@@ -4620,6 +4621,26 @@ export function ChatPanel({
     window.addEventListener('resize', compute)
     return () => window.removeEventListener('resize', compute)
   }, [isMobile])
+
+  // ── Mobile keyboard: scroll to bottom when virtual keyboard opens ──
+  useEffect(() => {
+    if (!isMobile || typeof window === 'undefined' || !window.visualViewport) return
+    const vv = window.visualViewport
+    let prevHeight = vv.height
+    const onResize = () => {
+      const newHeight = vv.height
+      // Keyboard opened (viewport shrunk by > 100px)
+      if (prevHeight - newHeight > 100) {
+        // Scroll messages to bottom so input stays visible
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        }, 100)
+      }
+      prevHeight = newHeight
+    }
+    vv.addEventListener('resize', onResize)
+    return () => vv.removeEventListener('resize', onResize)
+  }, [isMobile])
   const modeConfig = getModeConfig(aiMode)
   const [creativity, setCreativity] = useState(50)
   const [styleRefs, setStyleRefs] = useState<File[]>([])
@@ -4988,8 +5009,8 @@ export function ChatPanel({
             position: 'absolute',
             bottom: 100,
             right: 20,
-            width: 32,
-            height: 32,
+            width: isMobile ? 44 : 32,
+            height: isMobile ? 44 : 32,
             borderRadius: '50%',
             background: '#D4AF37',
             border: 'none',
@@ -5395,7 +5416,7 @@ export function ChatPanel({
                 onClick={() => setPlusPanelOpen(v => !v)}
                 title="Modes & presets"
                 style={{
-                  width: 36, height: 36, borderRadius: 10,
+                  width: isMobile ? 44 : 36, height: isMobile ? 44 : 36, borderRadius: 10,
                   border: 'none',
                   background: plusPanelOpen ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.04)',
                   color: plusPanelOpen ? '#D4AF37' : '#52525B',
@@ -5417,7 +5438,7 @@ export function ChatPanel({
             <label
               title="Attach image"
               style={{
-                width: 36, height: 36, borderRadius: 10,
+                width: isMobile ? 44 : 36, height: isMobile ? 44 : 36, borderRadius: 10,
                 border: 'none', background: 'rgba(255,255,255,0.04)',
                 color: '#52525B', cursor: loading ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -5472,7 +5493,7 @@ export function ChatPanel({
                 maxHeight: textareaMaxHeight,
                 overflowY: 'auto',
                 opacity: loading ? 0.5 : 1,
-                minHeight: isMobile ? 44 : undefined,
+                minHeight: isMobile ? 48 : undefined,
               }}
               onInput={(e) => {
                 const el = e.currentTarget
@@ -5502,7 +5523,7 @@ export function ChatPanel({
                 aria-label="Stop generating"
                 title="Stop generating"
                 style={{
-                  width: 38, height: 38, borderRadius: 12,
+                  width: isMobile ? 44 : 38, height: isMobile ? 44 : 38, borderRadius: 12,
                   border: '1.5px solid rgba(239,68,68,0.4)',
                   background: 'rgba(239,68,68,0.1)',
                   color: '#EF4444',
@@ -5530,7 +5551,7 @@ export function ChatPanel({
                 disabled={!input.trim() && !imageFile}
                 aria-label="Send message"
                 style={{
-                  width: 38, height: 38, borderRadius: 12,
+                  width: isMobile ? 44 : 38, height: isMobile ? 44 : 38, borderRadius: 12,
                   border: 'none',
                   background: (input.trim() || imageFile)
                     ? 'linear-gradient(135deg, #D4AF37 0%, #C49B2F 100%)'
