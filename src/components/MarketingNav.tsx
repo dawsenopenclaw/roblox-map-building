@@ -42,11 +42,9 @@ interface NavLink {
  * the mobile hamburger anyway.
  */
 function buildNavLinks(pathname: string | null): NavLink[] {
-  const onHome = pathname === '/' || pathname === ''
   return [
-    { href: onHome ? '#features' : '/#features',  label: 'Features',  scroll: onHome,  Icon: Sparkles     },
-    { href: onHome ? '#showcase' : '/showcase',   label: 'Showcase',  scroll: onHome,  Icon: Layout       },
-    { href: onHome ? '#pricing'  : '/pricing',    label: 'Pricing',   scroll: onHome,  Icon: CreditCard   },
+    { href: '/showcase',  label: 'Showcase',  scroll: false,  Icon: Layout       },
+    { href: '/pricing',   label: 'Pricing',   scroll: false,  Icon: CreditCard   },
     { href: '/docs',      label: 'Docs',      scroll: false, Icon: BookOpen     },
     { href: '/whats-new', label: "What's New", scroll: false, Icon: Rocket,      badge: 'New', lgOnly: true },
     { href: '/download',  label: 'Download',  scroll: false, Icon: DownloadIcon, lgOnly: true },

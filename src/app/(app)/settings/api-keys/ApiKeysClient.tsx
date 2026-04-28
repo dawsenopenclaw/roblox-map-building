@@ -66,7 +66,7 @@ export default function ApiKeysPage() {
     setLoading(true)
     setFetchError(null)
     try {
-      const url = API_BASE ? `${API_BASE}/api/keys` : '/api/keys'
+      const url = API_BASE ? `${API_BASE}/api/settings/api-keys` : '/api/settings/api-keys'
       const res = await fetch(url, { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
@@ -89,7 +89,7 @@ export default function ApiKeysPage() {
     setCreating(true)
     setCreateError(null)
     try {
-      const url = API_BASE ? `${API_BASE}/api/keys` : '/api/keys'
+      const url = API_BASE ? `${API_BASE}/api/settings/api-keys` : '/api/settings/api-keys'
       const res = await fetch(url, {
         method: 'POST',
         credentials: 'include',
@@ -116,8 +116,13 @@ export default function ApiKeysPage() {
   async function deleteKey(id: string) {
     setDeleteError(null)
     try {
-      const url = API_BASE ? `${API_BASE}/api/keys/${id}` : `/api/keys/${id}`
-      const res = await fetch(url, { method: 'DELETE', credentials: 'include' })
+      const url = API_BASE ? `${API_BASE}/api/settings/api-keys` : '/api/settings/api-keys'
+      const res = await fetch(url, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyId: id }),
+      })
       if (!res.ok) throw new Error('Delete failed')
     } catch {
       setDeleteError('Failed to revoke key. Please try again.')

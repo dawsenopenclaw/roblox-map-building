@@ -761,7 +761,7 @@ function BillingTab() {
           </div>
           <div className="flex flex-col gap-2 flex-shrink-0">
             <Link
-              href="/#pricing"
+              href="/pricing"
               className="inline-flex items-center gap-1.5 bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
             >
               <TrendingUp size={14} />
