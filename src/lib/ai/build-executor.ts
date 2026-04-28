@@ -22,6 +22,7 @@ import { spendTokens } from '@/lib/tokens-server'
 import { serverEnv } from '@/lib/env'
 import type { BuildPlan, BuildTask, BuildTaskType } from './build-planner'
 import { DEEP_BUILDING_KNOWLEDGE } from './deep-building-knowledge'
+import { BUILDING_BIBLE } from './building-bible'
 import { extractModifiers, modifiersToInstructions } from './prompt-modifiers'
 import {
   getAdvancedBuildingKnowledge,
@@ -1037,7 +1038,7 @@ This task is chunk ${chunkIndex ?? 0} of a larger build called "${parentName}".
   // Inject deep building knowledge for building/terrain/prop tasks (the types that construct geometry)
   const needsBuildingKnowledge = ['building', 'terrain', 'prop', 'npc'].includes(task.type)
   const buildingKnowledgeChunk = needsBuildingKnowledge
-    ? `\n\n--- DEEP BUILDING KNOWLEDGE REFERENCE ---\n${DEEP_BUILDING_KNOWLEDGE}\n--- END BUILDING KNOWLEDGE ---\n`
+    ? `\n\n--- DEEP BUILDING KNOWLEDGE REFERENCE ---\n${DEEP_BUILDING_KNOWLEDGE}\n--- END BUILDING KNOWLEDGE ---\n\n--- BUILDING BIBLE (150+ OBJECT GUIDES) ---\n${BUILDING_BIBLE}\n--- END BUILDING BIBLE ---\n`
     : ''
 
   // Inject deep game design knowledge for script/economy/ui/npc tasks
