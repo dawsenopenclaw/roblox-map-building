@@ -143,89 +143,33 @@ function FloatingOrbs() {
   )
 }
 
-// ─── Quick-start cards ──────────────────────────────────────────────────
+// ─── Quick-start cards — just 2 clear options ──────────────────────────
 const QUICK_CARDS = [
   {
     icon: (
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="3" />
-        <path d="M9 3v18M3 9h18" />
-        <path d="M14 14l3 3M14 17l3-3" />
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+        <rect x="9" y="3" width="6" height="4" rx="1" />
+        <path d="M9 12h6M9 16h4" />
       </svg>
     ),
-    title: 'Build a Game',
-    description: 'Tycoon, obby, simulator, RPG — pick a genre and go',
-    prompt: '/plan Build me a complete game. What genre should we start with?',
+    title: 'Plan a Game',
+    description: 'Tell the AI your idea — it plans every phase, then builds it step by step',
+    prompt: 'Let\'s plan a game together',
     color: '#D4AF37',
   },
   {
     icon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M16 18l2-2-2-2" />
-        <path d="M8 18l-2-2 2-2" />
-        <path d="M14 4l-4 16" />
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" />
+        <circle cx="12" cy="12" r="4" />
       </svg>
     ),
-    title: 'Write a Script',
-    description: 'Leaderboards, shops, combat, doors — any game logic',
-    prompt: 'Write a script that ',
+    title: 'Free Build',
+    description: 'Build anything — castles, spaceships, terrain, scripts, UI, whatever you want',
+    prompt: '',
     autoSend: false,
-    color: '#7C3AED',
-  },
-  {
-    icon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="3" />
-        <circle cx="8.5" cy="8.5" r="1.5" />
-        <path d="M21 15l-5-5L5 21" />
-      </svg>
-    ),
-    title: 'Generate an Image',
-    description: 'Thumbnails, icons, decals, textures — any style',
-    prompt: '/image ',
-    autoSend: false,
-    color: '#10B981',
-  },
-  {
-    icon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 3L2 12h3v8h14v-8h3L12 3z" />
-        <path d="M9 21v-6h6v6" />
-      </svg>
-    ),
-    title: 'Create 3D Model',
-    description: 'Weapons, characters, props — AI mesh generation',
-    prompt: '/mesh ',
-    autoSend: false,
-    color: '#F59E0B',
-  },
-  {
-    icon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 22L12 2l10 20H2z" />
-        <path d="M7 17h10" />
-        <path d="M9 13h6" />
-      </svg>
-    ),
-    title: 'Design Terrain',
-    description: 'Islands, mountains, cities — natural landscapes',
-    prompt: '/terrain Generate natural terrain with ',
-    autoSend: false,
-    color: '#06B6D4',
-  },
-  {
-    icon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#EC4899" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
-        <circle cx="12" cy="17" r="0.5" fill="#EC4899" />
-      </svg>
-    ),
-    title: 'Get Game Advice',
-    description: 'Monetization, design, marketing — expert guidance',
-    prompt: '/think I need advice on ',
-    autoSend: false,
-    color: '#EC4899',
+    color: '#22C55E',
   },
 ]
 

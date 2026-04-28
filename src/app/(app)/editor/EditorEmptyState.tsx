@@ -12,12 +12,12 @@ interface SuggestionChip {
 
 // Quick-access chips — each pre-fills the chat input with a full prompt
 const SUGGESTION_CHIPS: SuggestionChip[] = [
-  { icon: '🏠', label: 'Modern house',         prompt: 'Build me a modern house with an open-plan living room, kitchen, garden, and driveway' },
-  { icon: '🏭', label: 'Tycoon factory',        prompt: 'Create a factory tycoon starter kit with a conveyor belt, droppers, upgraders, and a cash collector pad' },
-  { icon: '🏰', label: 'Medieval castle',       prompt: 'Build a medieval castle with stone towers, iron portcullis, and a water moat with drawbridge' },
-  { icon: '🏃', label: 'Obby stage',            prompt: 'Design a challenging obby stage with moving platforms, lava traps, spinning barriers, and checkpoints' },
-  { icon: '🚀', label: 'Space station',         prompt: 'Build a futuristic space station with docking bays, corridors, a command bridge, and starfield windows' },
-  { icon: '✨', label: 'Custom...',             prompt: '' },
+  { icon: '🏰', label: 'Castle',        prompt: 'Build me a medieval castle with towers and a moat' },
+  { icon: '🏠', label: 'House',         prompt: 'Build me a modern house with interior' },
+  { icon: '🚀', label: 'Spaceship',     prompt: 'Build me a spaceship' },
+  { icon: '🏃', label: 'Obby',          prompt: 'Make me an obby with checkpoints' },
+  { icon: '🏭', label: 'Tycoon',        prompt: 'Plan a tycoon game for me' },
+  { icon: '🌲', label: 'Forest',        prompt: 'Build a forest scene with trees and rocks' },
 ]
 
 // Rich example builds shown in the welcome card grid
@@ -33,40 +33,22 @@ interface ExampleBuild {
 
 const EXAMPLE_BUILDS: ExampleBuild[] = [
   {
-    emoji: '🏠',
-    title: 'Modern House',
-    subtitle: 'Interior + garden',
-    prompt: 'Build me a modern house with an open-plan living room, kitchen, garden, and driveway',
+    emoji: '📋',
+    title: 'Plan a Game',
+    subtitle: 'AI plans every phase, then builds it',
+    prompt: 'Let\'s plan a game together',
     color: '#D4AF37',
     bg: 'rgba(212,175,55,0.08)',
     border: 'rgba(212,175,55,0.25)',
   },
   {
-    emoji: '🏭',
-    title: 'Tycoon Factory',
-    subtitle: 'Conveyors + cash pad',
-    prompt: 'Create a factory tycoon starter kit with a conveyor belt, droppers, upgraders, and a cash collector pad',
-    color: '#F97316',
-    bg: 'rgba(249,115,22,0.08)',
-    border: 'rgba(249,115,22,0.2)',
-  },
-  {
-    emoji: '🏰',
-    title: 'Medieval Castle',
-    subtitle: 'Towers + moat',
-    prompt: 'Build a medieval castle with stone towers, iron portcullis, and a water moat with drawbridge',
-    color: '#C084FC',
-    bg: 'rgba(192,132,252,0.08)',
-    border: 'rgba(192,132,252,0.2)',
-  },
-  {
-    emoji: '🚀',
-    title: 'Space Station',
-    subtitle: 'Sci-fi + docking bays',
-    prompt: 'Build a futuristic space station with docking bays, corridors, a command bridge, and starfield windows',
-    color: '#06B6D4',
-    bg: 'rgba(6,182,212,0.08)',
-    border: 'rgba(6,182,212,0.2)',
+    emoji: '✨',
+    title: 'Free Build',
+    subtitle: 'Build anything — just describe it',
+    prompt: '',
+    color: '#22C55E',
+    bg: 'rgba(34,197,94,0.08)',
+    border: 'rgba(34,197,94,0.2)',
   },
 ]
 
