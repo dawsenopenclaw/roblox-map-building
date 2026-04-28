@@ -430,203 +430,189 @@ function HowItWorks() {
   )
 }
 
-/* ─── Demo Section — animated build flow preview ──────────────────────────── */
+/* ─── See It In Action — video demo + proof cards ────────────────────────── */
 
-const DEMO_STEPS = [
-  {
-    step: 1,
-    label: 'Type your prompt',
-    detail: '"Build a medieval castle with a throne room and dungeon"',
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-      </svg>
-    ),
-    color: '#D4AF37',
-  },
-  {
-    step: 2,
-    label: 'AI agents generate',
-    detail: 'Terrain, walls, towers, scripts, lighting — all at once',
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8l2.8-2.8M17 7l2.8-2.8" />
-      </svg>
-    ),
-    color: '#FFD966',
-  },
-  {
-    step: 3,
-    label: 'Appears in Studio',
-    detail: 'Hit play. Walk around your creation. Done.',
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
-      </svg>
-    ),
-    color: '#A3E635',
-  },
+const DEMO_VIDEO_URL = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || ''
+
+/** Extract YouTube embed ID from various URL formats */
+function getYouTubeEmbedUrl(url: string): string | null {
+  if (!url) return null
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/)
+  return m ? `https://www.youtube-nocookie.com/embed/${m[1]}?rel=0&modestbranding=1` : null
+}
+
+const PROOF_CARDS = [
+  { label: '200+ AI Specialists', icon: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z" />
+      <path d="M10 21h4" />
+    </svg>
+  )},
+  { label: 'Works in Roblox Studio', icon: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <path d="M6 12h4M14 12h4M12 10v4" />
+    </svg>
+  )},
+  { label: 'Free to Start', icon: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6" />
+      <path d="M12 2l3.5 3.5L12 9 8.5 5.5z" />
+      <rect x="2" y="10" width="20" height="4" rx="1" />
+    </svg>
+  )},
 ]
 
-function DemoSection() {
-  const [activeStep, setActiveStep] = useState(0)
+/** Animated typing mockup when no video URL is provided */
+function DemoMockup() {
+  return (
+    <div style={{
+      position: 'relative', width: '100%', aspectRatio: '16/9',
+      background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.04) 0%, rgba(5,8,16,1) 70%)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      gap: 20, padding: 24, overflow: 'hidden',
+    }}>
+      {/* Grid background */}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, opacity: 0.12,
+        backgroundImage: 'linear-gradient(rgba(212,175,55,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,55,0.1) 1px, transparent 1px)',
+        backgroundSize: '40px 40px',
+      }} />
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveStep((prev) => (prev + 1) % DEMO_STEPS.length)
-    }, 3000)
-    return () => clearInterval(timer)
-  }, [])
+      {/* User chat bubble with typing animation */}
+      <div style={{
+        position: 'relative', zIndex: 1, width: '100%', maxWidth: 440,
+        background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.18)',
+        borderRadius: 12, padding: '14px 18px',
+      }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: '#D4AF37', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>You</p>
+        <p className="demo-typing" style={{ fontSize: 15, color: '#E8EAF0', fontFamily: 'inherit', overflow: 'hidden', whiteSpace: 'nowrap', borderRight: '2px solid #D4AF37' }}>
+          build me a medieval castle with towers
+        </p>
+      </div>
+
+      {/* AI response bubble */}
+      <div style={{
+        position: 'relative', zIndex: 1, width: '100%', maxWidth: 440,
+        background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 12, padding: '14px 18px',
+      }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: '#A3E635', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>ForjeGames AI</p>
+        <pre style={{ fontSize: 12, color: '#A1A1AA', fontFamily: 'var(--font-mono, monospace)', lineHeight: 1.6, whiteSpace: 'pre-wrap', margin: 0 }}>
+{`Creating castle_base (120x80 studs)
+Adding 4 corner towers (height: 48)
+Placing drawbridge + gate mechanism
+Generating throne room interior...
+✓ 47 parts built — syncing to Studio`}
+        </pre>
+      </div>
+
+      <style jsx>{`
+        .demo-typing {
+          animation: demoType 2.8s steps(38) 0.5s both, demoBlink 0.6s step-end infinite 3.3s;
+          width: 0;
+        }
+        @keyframes demoType { to { width: 100%; } }
+        @keyframes demoBlink { 50% { border-color: transparent; } }
+      `}</style>
+    </div>
+  )
+}
+
+function SeeItInAction() {
+  const [playing, setPlaying] = useState(false)
+  const embedUrl = getYouTubeEmbedUrl(DEMO_VIDEO_URL)
 
   return (
-    <section className="reveal relative py-20 sm:py-28 px-6" style={{ background: '#050810' }}>
+    <section className="reveal relative py-20 sm:py-28 px-4 sm:px-6" style={{ background: '#050810' }}>
       {/* Top divider */}
       <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', maxWidth: 500, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.15), transparent)' }} />
 
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-[800px] mx-auto w-full" style={{ maxWidth: 800 }}>
         {/* Heading */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '2px', color: '#D4AF37', textTransform: 'uppercase', marginBottom: 12, fontFamily: 'var(--font-mono, monospace)' }}>
-            Watch it build
+            See it in action
           </p>
           <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 800, color: '#f0f0f0', lineHeight: 1.2, letterSpacing: '-0.03em', marginBottom: 8 }}>
-            From idea to playable game in seconds
+            Type anything. Watch it build.
           </h2>
-          <p style={{ fontSize: 15, color: '#71717A', maxWidth: 460, margin: '0 auto' }}>
-            No video editing tricks. This is what the AI actually builds.
+          <p style={{ fontSize: 15, color: '#71717A', maxWidth: 400, margin: '0 auto' }}>
+            Real AI output — no editing, no tricks.
           </p>
         </div>
 
-        {/* Main demo card */}
+        {/* Video / Mockup container */}
         <div style={{
           background: 'linear-gradient(180deg, rgba(10,14,26,0.95) 0%, rgba(5,8,16,0.98) 100%)',
           border: '1px solid rgba(212,175,55,0.12)',
-          borderRadius: 16,
-          overflow: 'hidden',
-          maxWidth: 800,
-          margin: '0 auto',
+          borderRadius: 16, overflow: 'hidden',
         }}>
-          {/* Fake video player area */}
-          <div style={{
-            position: 'relative',
-            aspectRatio: '16/9',
-            background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.04) 0%, rgba(5,8,16,1) 70%)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 16,
-            padding: 32,
-          }}>
-            {/* Animated grid background */}
-            <div aria-hidden style={{
-              position: 'absolute', inset: 0, opacity: 0.15,
-              backgroundImage: 'linear-gradient(rgba(212,175,55,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,55,0.1) 1px, transparent 1px)',
-              backgroundSize: '40px 40px',
-            }} />
-
-            {/* Active step display */}
-            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-              {/* Step icon in animated ring */}
+          {embedUrl && !playing ? (
+            /* Thumbnail with play button */
+            <button
+              onClick={() => setPlaying(true)}
+              aria-label="Play demo video"
+              style={{
+                position: 'relative', display: 'block', width: '100%',
+                aspectRatio: '16/9', background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.06) 0%, rgba(5,8,16,1) 70%)',
+                border: 'none', cursor: 'pointer', overflow: 'hidden',
+              }}
+            >
+              {/* Grid overlay */}
+              <div aria-hidden style={{
+                position: 'absolute', inset: 0, opacity: 0.1,
+                backgroundImage: 'linear-gradient(rgba(212,175,55,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,55,0.1) 1px, transparent 1px)',
+                backgroundSize: '40px 40px',
+              }} />
+              {/* Play button */}
               <div style={{
-                width: 80, height: 80, borderRadius: '50%',
-                background: `rgba(${DEMO_STEPS[activeStep].color === '#D4AF37' ? '212,175,55' : DEMO_STEPS[activeStep].color === '#FFD966' ? '255,217,102' : '163,230,53'},0.08)`,
-                border: `2px solid ${DEMO_STEPS[activeStep].color}`,
+                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                width: 72, height: 72, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 16px auto',
-                color: DEMO_STEPS[activeStep].color,
-                transition: 'all 0.5s ease-out',
-                boxShadow: `0 0 32px -4px ${DEMO_STEPS[activeStep].color}40`,
+                boxShadow: '0 0 40px rgba(212,175,55,0.4), 0 0 80px rgba(212,175,55,0.15)',
+                transition: 'transform 0.2s ease',
               }}>
-                {DEMO_STEPS[activeStep].icon}
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="#09090b" stroke="none">
+                  <polygon points="8 5 20 12 8 19" />
+                </svg>
               </div>
-
-              <p style={{
-                fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
-                color: DEMO_STEPS[activeStep].color,
-                textTransform: 'uppercase', marginBottom: 8,
-                transition: 'color 0.5s ease-out',
-              }}>
-                Step {DEMO_STEPS[activeStep].step} of 3
-              </p>
-              <h3 style={{ fontSize: 22, fontWeight: 700, color: '#FAFAFA', marginBottom: 8, transition: 'all 0.3s ease' }}>
-                {DEMO_STEPS[activeStep].label}
-              </h3>
-              <p style={{ fontSize: 14, color: '#A1A1AA', maxWidth: 360, margin: '0 auto', fontStyle: DEMO_STEPS[activeStep].step === 1 ? 'italic' : 'normal' }}>
-                {DEMO_STEPS[activeStep].detail}
-              </p>
+            </button>
+          ) : embedUrl && playing ? (
+            /* YouTube iframe */
+            <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9' }}>
+              <iframe
+                src={`${embedUrl}&autoplay=1`}
+                title="ForjeGames Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+              />
             </div>
-
-            {/* Video coming soon badge */}
-            <div style={{
-              position: 'absolute', bottom: 16, right: 16,
-              background: 'rgba(212,175,55,0.1)',
-              border: '1px solid rgba(212,175,55,0.2)',
-              borderRadius: 8,
-              padding: '6px 12px',
-              fontSize: 11, fontWeight: 600,
-              color: '#D4AF37',
-              letterSpacing: '0.04em',
-            }}>
-              Full demo video coming soon
-            </div>
-          </div>
-
-          {/* Step indicators bar */}
-          <div style={{
-            display: 'flex', gap: 0,
-            borderTop: '1px solid rgba(255,255,255,0.04)',
-          }}>
-            {DEMO_STEPS.map((step, i) => (
-              <button
-                key={step.step}
-                onClick={() => setActiveStep(i)}
-                style={{
-                  flex: 1,
-                  padding: '14px 12px',
-                  background: i === activeStep ? 'rgba(212,175,55,0.06)' : 'transparent',
-                  border: 'none',
-                  borderBottom: i === activeStep ? '2px solid #D4AF37' : '2px solid transparent',
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  transition: 'all 0.3s ease',
-                  color: i === activeStep ? '#D4AF37' : '#52525B',
-                  fontSize: 12, fontWeight: 600,
-                  fontFamily: 'Inter, sans-serif',
-                }}
-              >
-                <span style={{
-                  width: 20, height: 20, borderRadius: '50%',
-                  background: i === activeStep ? '#D4AF37' : 'rgba(255,255,255,0.06)',
-                  color: i === activeStep ? '#09090b' : '#52525B',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 800,
-                  transition: 'all 0.3s ease',
-                }}>
-                  {step.step}
-                </span>
-                <span className="hidden sm:inline">{step.label}</span>
-              </button>
-            ))}
-          </div>
+          ) : (
+            /* No video URL — show animated mockup */
+            <DemoMockup />
+          )}
         </div>
 
-        {/* Progress bar below card */}
-        <div style={{ maxWidth: 800, margin: '12px auto 0 auto' }}>
-          <div style={{ height: 2, background: 'rgba(255,255,255,0.04)', borderRadius: 1, overflow: 'hidden' }}>
-            <div
-              key={activeStep}
-              style={{
-                height: '100%',
-                background: 'linear-gradient(90deg, #D4AF37, #FFD966)',
-                borderRadius: 1,
-                animation: 'demoProgress 3s linear',
-              }}
-            />
-          </div>
+        {/* Proof cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+          {PROOF_CARDS.map((card) => (
+            <div key={card.label} style={{
+              background: 'rgba(255,255,255,0.02)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 12, padding: '16px 18px',
+              display: 'flex', alignItems: 'center', gap: 12,
+              transition: 'border-color 0.2s ease',
+            }}
+            className="hover:border-[rgba(212,175,55,0.2)]"
+            >
+              <div style={{ color: '#D4AF37', flexShrink: 0 }}>{card.icon}</div>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#E8EAF0' }}>{card.label}</span>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -810,9 +796,9 @@ export default function HomeClient() {
         <HowItWorks />
 
         {/* ═══════════════════════════════════════════════════════════════
-            SECTION 3.75 — DEMO / WATCH IT BUILD
+            SECTION 3.75 — SEE IT IN ACTION (video demo)
         ═══════════════════════════════════════════════════════════════ */}
-        <DemoSection />
+        <SeeItInAction />
 
         {/* ═══════════════════════════════════════════════════════════════
             SECTION 4 — PLAYER REVIEWS
