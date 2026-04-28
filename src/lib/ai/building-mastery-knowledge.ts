@@ -117,57 +117,78 @@ export const BUILDING_MASTERY_KNOWLEDGE = {
   // SECTION 2: TREE AND PLANT CONSTRUCTION
   // ===========================================================================
   TREE_PLANT_CONSTRUCTION: `
-## TREE & PLANT CONSTRUCTION — Multiple Techniques
+## TREE & PLANT CONSTRUCTION — Pro Builder Techniques
 
-### LOW-POLY TREE (Most Common Style)
-**Trunk:**
-- Part with CylinderMesh (SpecialMesh Type = Cylinder)
-- Material: Wood
-- BrickColor: Brown tones — RGB(100, 70, 40) or "Brown"
-- Size: 2, 8, 2 (thin and tall but not excessively thin)
-- Branches should stick out to sides "just a little bit" — not extreme angles
+### PRO TREE CONSTRUCTION (how top Roblox games build trees)
+The #1 difference between amateur and pro trees is COLOR VARIATION in the canopy
+and SHORT THICK trunks. Study Pet Simulator, Adopt Me, Bloxburg — their trees follow
+these exact patterns.
 
-**Canopy Method 1 — Sphere Clusters:**
-- 3–5 Ball/Sphere Parts overlapping
-- Material: Grass
-- Color: Green tones — RGB(75, 151, 75) or "Bright green"
-- Enable UsePartColor: true
-- Vary sizes: main sphere 8x8x8, supporting 5x5x5 to 7x7x7
-- Rotate and offset each sphere slightly for organic look
-- Resize some randomly for variation
+**CRITICAL RULES — read these before building ANY tree:**
+- Trunks are SHORT and THICK (height:width ratio ~2:1, NOT 4:1). A trunk should be
+  Size 6x4x4 or similar, not a tall skinny pole like 12x2x2
+- Canopy uses 7-10 Ball parts with 3-4 DIFFERENT greens (NEVER all the same color)
+- Canopy balls are OFFSET from center: random 1-3 stud offsets on X and Z for natural look
+- ALWAYS add a shadow disc at the base (flat Cylinder, height 0.15-0.2, dark gray, 50-55% Transparency)
+- ALWAYS add a subtle PointLight inside the core canopy ball (Range 14, Brightness 0.3, soft green)
+- Branch arms are Cylinders rotated with CFrame.Angles at 50-60 degrees (not straight out)
+- Material: Wood for trunk/branches, LeafyGrass for canopy (NOT Grass, NOT SmoothPlastic)
 
-**Canopy Method 2 — CSG Carved Blob:**
-1. Start with a Block Part (cube shape)
-2. Position multiple Negate parts around edges to carve corners
-3. Copy negate parts and rotate them around the part
-4. Union everything simultaneously
-5. Result: organic blob shape from carved cube
-6. Copy blob multiple times
-7. Rotate, resize, randomize each copy
-8. Cluster them above trunk in big organic shape
+### PUFFY OAK TREE (default tree style — 20+ parts)
+**Trunk + Base:**
+- Main trunk: Cyl Size 6x4x4, RGB(101,67,33), Wood
+- Trunk base (flared): Cyl Size 2x4.5x4.5, RGB(90,58,28), same position but lower
+- 2-3 roots: flat Parts poking outward at ground level, RGB(85,55,28)
 
-### BRANCH SYSTEM (Detailed Trees)
-1. Add SpecialMesh sphere atop trunk (equal width and height)
-2. Attach cylinder Parts with CylinderMesh extending outward from sphere
-3. Cap each branch end with sphere mesh
-4. Subdivide: add more branches from branch tips
-5. TAPER: each branch level reduces scale by 0.1 in X/Z
-6. Sphere mesh scales match parent cylinder X/Z across all 3 dimensions
-7. Keep branch angles shallow — trees branch "to the sides just a little"
+**Branch Arms (3 total):**
+- Each: Cyl Size 3-4x1.2-1.5x1.2-1.5
+- Use CFrame.Angles to rotate at 50-60 degrees from vertical
+- Spread evenly around the trunk (120 degrees apart)
 
-### ROOT SYSTEM
-- Duplicate trunk part, flatten Y-axis "as thin as possible"
-- Rotate on Y-axis, then slight X or Z rotation
-- Extend downward from trunk base
-- Repeat 4–8 times around base
-- Optional: use Negate part at ground level to trim flush, union together
+**Canopy (8 balls, each a DIFFERENT green):**
+- Core ball: Size 10x10x10, RGB(65,135,55) — center, slightly above trunk top
+- Left ball: Size 7.5x7.5x7.5, RGB(55,125,45) — offset X=-3, Z=1.5
+- Right ball: Size 7x7x7, RGB(75,145,60) — offset X=3.5
+- Front ball: Size 6.5x6.5x6.5, RGB(50,115,40) — offset Z=-3
+- Back ball: Size 6x6x6, RGB(80,150,58) — offset Z=3
+- Top-left: Size 5x5x5, RGB(90,155,50) — offset X=-2, Y=+2
+- Top-right: Size 5.5x5.5x5.5, RGB(60,130,48) — offset X=2, Y=+1.5
+- Crown: Size 6x6x6, RGB(80,155,65) — centered on top
 
-### PINE / CONIFER TREE
-- Trunk: Cylinder, Material: Wood, Color: Dark Brown RGB(80, 55, 30)
-- Size: 1.5, 12, 1.5 (taller, thinner)
-- Canopy: 3–4 stacked cone shapes (WedgeParts or cone meshes)
-- Largest at bottom: 10x4x10, mid: 7x4x7, top: 4x4x4
-- Material: Grass, Color: Dark Green RGB(40, 100, 40)
+**Shadow disc:** Cyl Size 0.15x13x13, RGB(35,35,35), Transparency 0.55, at Y=0.08
+
+### PINE / CONIFER TREE (conical style — 10 parts)
+- Trunk: Cyl Size 5x3.5x3.5, RGB(101,67,33), Wood — SHORT
+- Bottom tier: Ball Size 13x7x13, RGB(40,100,40), LeafyGrass
+- Middle tier: Ball Size 10x6x10, RGB(50,120,45), LeafyGrass
+- Top tier: Ball Size 7x5x7, RGB(60,140,50), LeafyGrass
+- Tip: Ball Size 3x3x3, RGB(75,155,60), LeafyGrass
+- Optional snow caps: Ball Size 5x1.5x5 and 3.5x1x3.5, white, Snow material
+- Shadow disc at base
+
+### AUTUMN / FALL TREE
+- Same oak structure but canopy colors are warm:
+  - RGB(200,140,40) — golden amber
+  - RGB(180,100,30) — burnt orange
+  - RGB(220,160,50) — bright gold
+  - RGB(160,80,20) — deep brown
+  - RGB(190,120,35) — copper
+- Material: LeafyGrass or Fabric for softer autumn look
+- Trunk stays brown, roots stay brown
+
+### SMALL BACKGROUND TREE (filler/decoration — 3 parts)
+- Tiny trunk: Cyl Size 3x1.5x1.5
+- Single canopy: Ball Size 5x5x5, bright green
+- Shadow disc: Cyl Size 0.1x6x6
+- Total height ~6 studs. Use for distant scenery, map edges
+
+### FOREST / TREE GROUP (8-12 trees)
+- Use a positions table: {{x=0,z=0,s=1.0}, {x=15,z=8,s=0.85}, ...}
+- FOR loop through positions, creating each tree at that offset
+- Randomize: scale multiplier 0.7-1.15, green shade variation
+- Mix 70% oaks + 30% pines for natural variety
+- Space trees 12-20 studs apart minimum (avoid overlapping trunks)
+- Vary Y rotation randomly for each tree
 
 ### BUSH / SHRUB
 - 2–3 overlapping sphere Parts

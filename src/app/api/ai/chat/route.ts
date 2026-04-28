@@ -3936,32 +3936,118 @@ CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit)`
 function getInstantTemplate(msg: string): InstantTemplate | null {
   const m = msg.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim()
 
-  // ── TREE ─────────────────────────────────────────────────────────────
-  if (/\b(tree|oak|pine|birch)\b/.test(m) && !/forest|10|20|many|multiple/.test(m)) {
+  // ── PINE TREE ────────────────────────────────────────────────────────
+  if (/\b(pine|evergreen|christmas tree|conifer|spruce|fir)\b/.test(m) && !/forest|10|20|many|multiple/.test(m)) {
+    return {
+      name: 'Pine Tree',
+      response: "Here's a stylized pine tree — three stacked green cones tapering up to a point, short thick trunk, and a shadow disc at the base to ground it. This is the style you see in Pet Sim and top simulators. Clean low-poly look from every angle.\n\nWant me to make a forest of pines, or mix them with oak trees?",
+      code: BOILERPLATE_TOP + `
+-- Shadow disc
+local shadow = Cyl(m,"Shadow",Vector3.new(0.2,14,14),sp+Vector3.new(0,0.1,0),Color3.fromRGB(40,40,40),"Concrete")
+shadow.Transparency = 0.5
+-- Short thick trunk
+Cyl(m,"Trunk",Vector3.new(5,3.5,3.5),sp+Vector3.new(0,2.5,0),Color3.fromRGB(101,67,33),"Wood")
+-- Bottom cone (widest)
+Ball(m,"Cone1",Vector3.new(13,7,13),sp+Vector3.new(0,7,0),Color3.fromRGB(40,100,40),"LeafyGrass")
+-- Middle cone
+Ball(m,"Cone2",Vector3.new(10,6,10),sp+Vector3.new(0,11.5,0),Color3.fromRGB(50,120,45),"LeafyGrass")
+-- Top cone (smallest)
+Ball(m,"Cone3",Vector3.new(7,5,7),sp+Vector3.new(0,15,0),Color3.fromRGB(60,140,50),"LeafyGrass")
+-- Tip
+Ball(m,"Tip",Vector3.new(3,3,3),sp+Vector3.new(0,18,0),Color3.fromRGB(75,155,60),"LeafyGrass")
+-- Snow caps (subtle)
+Ball(m,"Snow1",Vector3.new(5,1.5,5),sp+Vector3.new(0,8.5,0),Color3.fromRGB(230,240,235),"Snow")
+Ball(m,"Snow2",Vector3.new(3.5,1,3.5),sp+Vector3.new(0,13,0),Color3.fromRGB(235,245,240),"Snow")
+` + BOILERPLATE_BOT,
+      suggestions: ['Make a pine forest', 'Build a cabin next to it', 'Add snow on the ground'],
+      partCount: 10,
+    }
+  }
+
+  // ── FOREST ──────────────────────────────────────────────────────────
+  if (/\b(forest|bunch of trees|group of trees|tree line|trees|lots of trees|many trees|woods)\b/.test(m)) {
+    return {
+      name: 'Forest',
+      response: "Here's a forest cluster — 10 trees scattered in a natural pattern. Mix of puffy oaks and pointy pines, each with slightly different sizes and green shades so it looks organic, not copy-pasted. Shadow discs under each one to ground them.\n\nWant me to add a path through the middle, or a clearing with a campfire?",
+      code: BOILERPLATE_TOP + `
+-- Forest: 10 trees in a natural cluster
+local treeData = {
+  {x=0,z=0,s=1.0,pine=false},{x=15,z=8,s=0.85,pine=true},{x=-12,z=5,s=1.1,pine=false},
+  {x=8,z=-14,s=0.9,pine=false},{x=-8,z=-10,s=0.75,pine=true},{x=20,z=-5,s=1.05,pine=false},
+  {x=-18,z=-2,s=0.8,pine=true},{x=5,z=18,s=0.95,pine=false},{x=-5,z=15,s=1.15,pine=false},
+  {x=18,z=16,s=0.7,pine=true}
+}
+local greens = {
+  Color3.fromRGB(55,125,45),Color3.fromRGB(65,135,55),Color3.fromRGB(50,115,40),
+  Color3.fromRGB(75,145,60),Color3.fromRGB(45,110,38),Color3.fromRGB(80,150,65),
+  Color3.fromRGB(60,130,50),Color3.fromRGB(70,140,55)
+}
+for i,td in ipairs(treeData) do
+  local base = sp + Vector3.new(td.x, 0, td.z)
+  local s = td.s
+  local g = greens[(i % #greens) + 1]
+  local g2 = greens[((i+3) % #greens) + 1]
+  -- Shadow
+  local sh = Cyl(m,"Shadow"..i,Vector3.new(0.15, 10*s, 10*s),base+Vector3.new(0,0.08,0),Color3.fromRGB(35,35,35),"Concrete")
+  sh.Transparency = 0.55
+  -- Trunk
+  Cyl(m,"Trunk"..i,Vector3.new(5*s, 3*s, 3*s),base+Vector3.new(0,2.5*s,0),Color3.fromRGB(101,67,33),"Wood")
+  if td.pine then
+    -- Pine style: stacked cones
+    Ball(m,"Pine"..i.."B",Vector3.new(10*s,6*s,10*s),base+Vector3.new(0,6*s,0),g,"LeafyGrass")
+    Ball(m,"Pine"..i.."M",Vector3.new(7*s,5*s,7*s),base+Vector3.new(0,10*s,0),g2,"LeafyGrass")
+    Ball(m,"Pine"..i.."T",Vector3.new(4*s,4*s,4*s),base+Vector3.new(0,13.5*s,0),g,"LeafyGrass")
+  else
+    -- Oak style: puffy canopy
+    Ball(m,"Oak"..i.."C",Vector3.new(9*s,9*s,9*s),base+Vector3.new(0,8*s,0),g,"LeafyGrass")
+    Ball(m,"Oak"..i.."L",Vector3.new(6*s,6*s,6*s),base+Vector3.new(2.5*s,7.5*s,1.5*s),g2,"LeafyGrass")
+    Ball(m,"Oak"..i.."R",Vector3.new(6.5*s,6.5*s,6.5*s),base+Vector3.new(-2*s,7*s,-1.5*s),g,"LeafyGrass")
+    Ball(m,"Oak"..i.."F",Vector3.new(5*s,5*s,5*s),base+Vector3.new(0.5*s,9*s,2*s),g2,"LeafyGrass")
+  end
+end
+` + BOILERPLATE_BOT,
+      suggestions: ['Add a path through the forest', 'Build a cabin in the middle', 'Add a campfire clearing'],
+      partCount: 70,
+    }
+  }
+
+  // ── TREE (default — pro-style puffy oak) ────────────────────────────
+  if (/\b(tree|oak|birch|willow)\b/.test(m)) {
     return {
       name: 'Tree',
-      response: "Check this out — thick oak tree with a textured bark trunk, three big branch arms splitting off, and a full bushy canopy of overlapping green spheres. The trunk tapers slightly as it goes up, and I added some roots poking out at the base. Looks solid from every angle.\n\nWant me to scatter a whole forest of these with random sizes?",
+      response: "Here's a proper low-poly oak — short thick trunk with bark texture, three branch arms splitting off at angles, and a big puffy canopy of 8 overlapping spheres in different greens so it looks full and natural from every angle. Shadow disc at the base grounds it. This is the style you see in Pet Sim and Adopt Me.\n\nWant me to scatter a whole forest, or build a park around it?",
       code: BOILERPLATE_TOP + `
--- Trunk
-Cyl(m,"Trunk",Vector3.new(12,3,3),sp+Vector3.new(0,6,0),Color3.fromRGB(101,67,33),"Wood")
-Cyl(m,"TrunkUpper",Vector3.new(8,2.5,2.5),sp+Vector3.new(0,12,0),Color3.fromRGB(90,60,30),"Wood")
--- Branches
-Cyl(m,"Branch1",Vector3.new(5,1.2,1.2),sp+Vector3.new(3,11,0),Color3.fromRGB(95,63,32),"Wood")
-Cyl(m,"Branch2",Vector3.new(4.5,1,1),sp+Vector3.new(-2,10,2),Color3.fromRGB(95,63,32),"Wood")
-Cyl(m,"Branch3",Vector3.new(4,1,1),sp+Vector3.new(0,11,-2.5),Color3.fromRGB(95,63,32),"Wood")
--- Canopy
-Ball(m,"Canopy1",Vector3.new(10,10,10),sp+Vector3.new(0,16,0),Color3.fromRGB(60,130,50),"LeafyGrass")
-Ball(m,"Canopy2",Vector3.new(8,8,8),sp+Vector3.new(3,15,2),Color3.fromRGB(50,120,40),"LeafyGrass")
-Ball(m,"Canopy3",Vector3.new(7,7,7),sp+Vector3.new(-3,14,-1),Color3.fromRGB(70,140,55),"LeafyGrass")
-Ball(m,"Canopy4",Vector3.new(6,6,6),sp+Vector3.new(1,17,3),Color3.fromRGB(55,125,45),"LeafyGrass")
-Ball(m,"Canopy5",Vector3.new(7,7,7),sp+Vector3.new(-1,15,-3),Color3.fromRGB(65,135,50),"LeafyGrass")
--- Roots
-P(m,"Root1",Vector3.new(3,0.5,0.8),sp+Vector3.new(1.5,0.25,0.5),Color3.fromRGB(85,55,28),"Wood")
-P(m,"Root2",Vector3.new(2.5,0.4,0.7),sp+Vector3.new(-1,0.2,-1),Color3.fromRGB(85,55,28),"Wood")
-P(m,"Root3",Vector3.new(2,0.4,0.6),sp+Vector3.new(0.5,0.2,-1.5),Color3.fromRGB(80,52,25),"Wood")
+-- Shadow disc (grounds the tree visually)
+local shadow = Cyl(m,"Shadow",Vector3.new(0.15,13,13),sp+Vector3.new(0,0.08,0),Color3.fromRGB(35,35,35),"Concrete")
+shadow.Transparency = 0.55
+-- Short thick trunk (height:width ratio ~2:1, not tall and skinny)
+Cyl(m,"Trunk",Vector3.new(6,4,4),sp+Vector3.new(0,3,0),Color3.fromRGB(101,67,33),"Wood")
+Cyl(m,"TrunkBase",Vector3.new(2,4.5,4.5),sp+Vector3.new(0,1,0),Color3.fromRGB(90,58,28),"Wood")
+-- Branch arms (angled outward)
+local b1=Cyl(m,"Branch1",Vector3.new(4,1.5,1.5),sp+Vector3.new(2.5,5.5,0),Color3.fromRGB(95,63,32),"Wood")
+b1.CFrame=CFrame.new(sp+Vector3.new(2.5,5.5,0))*CFrame.Angles(0,0,math.rad(55))
+local b2=Cyl(m,"Branch2",Vector3.new(3.5,1.3,1.3),sp+Vector3.new(-2,5,1.5),Color3.fromRGB(90,58,28),"Wood")
+b2.CFrame=CFrame.new(sp+Vector3.new(-2,5,1.5))*CFrame.Angles(0,math.rad(40),math.rad(-60))
+local b3=Cyl(m,"Branch3",Vector3.new(3,1.2,1.2),sp+Vector3.new(0,5.5,-2),Color3.fromRGB(95,63,32),"Wood")
+b3.CFrame=CFrame.new(sp+Vector3.new(0,5.5,-2))*CFrame.Angles(math.rad(55),0,0)
+-- Canopy: 8 balls with color variation (NO two the same green)
+Ball(m,"Canopy_Core",Vector3.new(10,10,10),sp+Vector3.new(0,9,0),Color3.fromRGB(65,135,55),"LeafyGrass")
+Ball(m,"Canopy_L",Vector3.new(7.5,7.5,7.5),sp+Vector3.new(-3,8.5,1.5),Color3.fromRGB(55,125,45),"LeafyGrass")
+Ball(m,"Canopy_R",Vector3.new(7,7,7),sp+Vector3.new(3.5,8,0),Color3.fromRGB(75,145,60),"LeafyGrass")
+Ball(m,"Canopy_F",Vector3.new(6.5,6.5,6.5),sp+Vector3.new(1,8,-3),Color3.fromRGB(50,115,40),"LeafyGrass")
+Ball(m,"Canopy_B",Vector3.new(6,6,6),sp+Vector3.new(-1.5,8.5,3),Color3.fromRGB(80,150,58),"LeafyGrass")
+Ball(m,"Canopy_TL",Vector3.new(5,5,5),sp+Vector3.new(-2,11,-1),Color3.fromRGB(90,155,50),"LeafyGrass")
+Ball(m,"Canopy_TR",Vector3.new(5.5,5.5,5.5),sp+Vector3.new(2,10.5,1.5),Color3.fromRGB(60,130,48),"LeafyGrass")
+Ball(m,"Canopy_Top",Vector3.new(6,6,6),sp+Vector3.new(0,12,0),Color3.fromRGB(80,155,65),"LeafyGrass")
+-- Roots poking out
+P(m,"Root1",Vector3.new(3,0.5,0.8),sp+Vector3.new(2,0.25,1),Color3.fromRGB(85,55,28),"Wood")
+P(m,"Root2",Vector3.new(2.8,0.4,0.7),sp+Vector3.new(-1.5,0.2,-1.5),Color3.fromRGB(80,52,25),"Wood")
+P(m,"Root3",Vector3.new(2.2,0.4,0.6),sp+Vector3.new(0.5,0.2,-2),Color3.fromRGB(82,54,26),"Wood")
+-- Subtle canopy glow (looks great in Future lighting)
+local glow = Instance.new("PointLight") glow.Range=14 glow.Brightness=0.3 glow.Color=Color3.fromRGB(140,200,120) glow.Parent=m.Canopy_Core
 ` + BOILERPLATE_BOT,
-      suggestions: ['Make a forest of these', 'Build a park around it', 'Add a swing to it'],
-      partCount: 16,
+      suggestions: ['Make a forest of these', 'Build a park around it', 'Make an autumn tree'],
+      partCount: 22,
     }
   }
 
@@ -4425,7 +4511,7 @@ HOW TO TALK:
 - DO use: "Alright", "Check this out", "Here's the plan", "One more thing", "Trust me on this"
 
 BAD (NEVER do this): "Create a detailed Roblox tree model with the following specifications: 1. Create a new Model named 'OakTree_01'. 2. Add a trunk part..."
-GOOD: "Alright, here's a solid oak tree — thick bark trunk, big bushy canopy of layered green spheres, roots poking out at the base. Want me to scatter a whole forest?"
+GOOD: "Here's a proper low-poly oak — short thick trunk, three branch arms at angles, and a big puffy canopy of 8 spheres in different greens. Shadow disc at the base grounds it. Pet Sim style. Want a whole forest?"
 
 More examples of the RIGHT energy for ANY build:
 - Castle → "Thick stone walls with battlements, two corner towers, main gate with a drawbridge, and a courtyard. Torches glow at night. Want a moat?"
@@ -7732,7 +7818,7 @@ GOOD (atmospheric, game-dev focused, makes the dev excited):
 "Alright here's your house — warm brick walls with a dark slate pitched roof that overhangs just enough to cast a shadow on the porch. Two big windows on the front so you can see the warm PointLight glow from outside at night. I gave it a proper front door with a gold knob and a welcome mat. Inside there's a living room with a couch facing a fireplace, a kitchen counter with stools, and a bedroom upstairs. The chimney has a subtle smoke effect. Your players are going to want to live here."
 
 MORE GOOD EXAMPLES — memorize this energy for ALL build types:
-User: "build me a tree" → "Check this out — thick oak tree with gnarly bark trunk, three big branch arms, and a full canopy of overlapping green spheres. Looks solid from every angle. Want me to scatter a whole forest?"
+User: "build me a tree" → "Here's a proper low-poly oak — short thick trunk, three branch arms at natural angles, and a big puffy canopy of 8 overlapping spheres in different greens so it looks full from every angle. Shadow disc at the base grounds it. This is the style you see in Pet Sim and Adopt Me. Want me to scatter a whole forest?"
 User: "make a trampoline" → "Here's a bouncy trampoline — metal frame legs, springy blue fabric mat, wired up so you actually BOUNCE when you land on it. Try it out!"
 User: "build a house" → "Alright, cozy two-story house — brick walls, dark roof with overhang, front porch with a warm light. Inside: living room, kitchen, bedroom upstairs. Your players are gonna want to live here."
 User: "build a castle" → "Here's your castle — thick stone walls with battlements you can walk along, two corner towers with spiral stairs inside, a main gate with a working drawbridge, and a courtyard with a well. I gave it torches that glow at night. Want me to add a moat?"
