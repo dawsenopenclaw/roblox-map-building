@@ -9450,8 +9450,8 @@ ${effectiveInstruction}`
         : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block.
 Include the P()/W()/Cyl()/Ball()/vc()/Light() helper boilerplate at the top (ChangeHistoryService, camera raycast, model creation, ALL helpers).
 A tree = Cyl("Trunk",6,1.2,0,3.5,0,"Wood",90,60,30) + Ball("Canopy",7,0,8,0,"Grass",60,120,40). NEVER use flat Part blocks for organic shapes.
-Set Anchored=true, Color3.fromRGB with vc() variation. Default to SmoothPlastic material with vibrant colors for clean modern look. Use textured materials (Brick, Wood, Cobblestone) only for rustic/medieval builds.
-Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements. BRIGHT warm colors, not dark/muddy.`
+Set Anchored=true, Color3.fromRGB with vc() variation. NEVER use SmoothPlastic or Plastic — use Concrete for clean surfaces, Wood/Brick/Metal for textured. Use bright saturated colors.
+Minimum 60 parts for buildings, 15 for props. Use FOR LOOPS for repeated elements. BRIGHT warm colors, not dark/muddy.`
       const lightInstruction = isScriptIntent
         ? `Script "${message}" in Roblox. Output a complete runnable Luau script. Create Script instances with .Source property containing the game logic. Parent to ServerScriptService. First write 2 sentences explaining what it does, then the code.`
         : `Build "${message}" in Roblox Studio. Output working Luau code with 60+ parts minimum. Use P()/W()/Cyl()/Ball() helpers. Use FOR LOOPS for repeated elements (windows, fence posts, lamps). Include ChangeHistoryService boilerplate, foundation, trim, exterior landscaping. Use varied materials (Concrete, Wood, Brick, Slate, Metal, Glass). Add PointLight. First write 2 sentences, then the code.`
