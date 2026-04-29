@@ -18,27 +18,55 @@ export type BuildScale = 'prop' | 'furniture' | 'vehicle' | 'building' | 'scene'
 
 export function detectBuildScale(message: string): BuildScale {
   const lower = message.toLowerCase()
+  // Size modifiers can bump scale UP
+  const hasSizeUp = /\b(massive|huge|giant|enormous|colossal|mega|sprawling|towering|grand|epic|big|large)\b/.test(lower)
   if (/\b(world|full map|town|city|village|neighborhood|district|open world)\b/.test(lower)) return 'world'
   if (/\b(game map|map|lobby|hub|spawn area|plaza|arena|zone)\b/.test(lower)) return 'map'
   if (/\b(scene|environment|landscape|park|garden|yard|courtyard)\b/.test(lower)) return 'scene'
-  if (/\b(house|building|castle|shop|store|barn|school|hospital|tower|mansion|cottage|cabin|temple|church|warehouse|factory|office)\b/.test(lower)) return 'building'
-  if (/\b(car|truck|boat|ship|airplane|helicopter|vehicle|motorcycle|bike|kart|train)\b/.test(lower)) return 'vehicle'
-  if (/\b(table|chair|bed|desk|couch|shelf|lamp|bench|throne|counter|cabinet|wardrobe)\b/.test(lower)) return 'furniture'
+  if (/\b(house|building|castle|shop|store|barn|school|hospital|tower|mansion|cottage|cabin|temple|church|warehouse|factory|office|hotel|apartment|restaurant|prison|library|museum|stadium)\b/.test(lower)) {
+    // "massive hotel" → bump to scene/map scale
+    if (hasSizeUp) return 'scene'
+    return 'building'
+  }
+  if (/\b(car|truck|boat|ship|airplane|helicopter|vehicle|motorcycle|bike|kart|train)\b/.test(lower)) return hasSizeUp ? 'building' : 'vehicle'
+  if (/\b(table|chair|bed|desk|couch|shelf|lamp|bench|throne|counter|cabinet|wardrobe)\b/.test(lower)) return hasSizeUp ? 'vehicle' : 'furniture'
+  // If just "massive" with no category, at least treat as building
+  if (hasSizeUp) return 'building'
   return 'prop' // default for small items
+}
+
+/** Detect size multiplier from user words — "massive" = 2x, "small" = 0.5x */
+export function detectSizeMultiplier(message: string): number {
+  const lower = message.toLowerCase()
+  if (/\b(massive|enormous|colossal|mega|sprawling|gigantic)\b/.test(lower)) return 2.5
+  if (/\b(huge|giant|towering|grand|epic)\b/.test(lower)) return 2.0
+  if (/\b(big|large|spacious|wide|tall)\b/.test(lower)) return 1.5
+  if (/\b(small|little|mini|compact|tiny|petite)\b/.test(lower)) return 0.6
+  if (/\b(miniature|micro|teeny)\b/.test(lower)) return 0.3
+  return 1.0
 }
 
 // ─── Part count targets per scale ───────────────────────────────────────────
 
-export function getPartTargets(scale: BuildScale): { min: number; target: number; max: number } {
+export function getPartTargets(scale: BuildScale, sizeMultiplier = 1.0): { min: number; target: number; max: number } {
+  let base: { min: number; target: number; max: number }
   switch (scale) {
-    case 'prop': return { min: 10, target: 25, max: 50 }
-    case 'furniture': return { min: 15, target: 35, max: 60 }
-    case 'vehicle': return { min: 30, target: 60, max: 120 }
-    case 'building': return { min: 80, target: 200, max: 500 }
-    case 'scene': return { min: 120, target: 300, max: 600 }
-    case 'map': return { min: 200, target: 500, max: 2500 }
-    case 'world': return { min: 400, target: 1200, max: 12000 }
+    case 'prop': base = { min: 10, target: 25, max: 50 }; break
+    case 'furniture': base = { min: 15, target: 35, max: 60 }; break
+    case 'vehicle': base = { min: 30, target: 60, max: 120 }; break
+    case 'building': base = { min: 80, target: 200, max: 500 }; break
+    case 'scene': base = { min: 120, target: 300, max: 600 }; break
+    case 'map': base = { min: 200, target: 500, max: 2500 }; break
+    case 'world': base = { min: 400, target: 1200, max: 12000 }; break
   }
+  if (sizeMultiplier !== 1.0) {
+    return {
+      min: Math.round(base.min * sizeMultiplier),
+      target: Math.round(base.target * sizeMultiplier),
+      max: Math.round(base.max * sizeMultiplier),
+    }
+  }
+  return base
 }
 
 // ─── Category-specific few-shot examples ────────────────────────────────────

@@ -8289,7 +8289,20 @@ COMMON MODIFY PATTERNS:
 
 Wrap in ChangeHistoryService but do NOT create a new Model.
 ` : ''
-    const buildInstruction = `${isModifyIntent ? 'Modify' : 'Build'}: ${message}${continuationContext}${fullgameOverride}${blueprintContext}${tierModifier}${interiorOverride}${modifyOverride}${customizationContext}
+    // ── HARD PART COUNT from scale detection (overrides vague blueprint estimates) ──
+    let hardPartCountRule = ''
+    if (!isModifyIntent && !isScriptIntent) {
+      try {
+        const { detectBuildScale: dbs, getPartTargets: gpt, detectSizeMultiplier: dsm } = await import('@/lib/ai/focused-prompt')
+        const scale = dbs(message)
+        const sizeMult = dsm(message)
+        const targets = gpt(scale, sizeMult)
+        hardPartCountRule = `\n\n=== HARD MINIMUM — DO NOT IGNORE ===\nScale: ${scale.toUpperCase()}${sizeMult > 1 ? ` (${sizeMult}x size multiplier)` : ''}\nYou MUST generate AT LEAST ${targets.min} parts. Target: ${targets.target} parts.\nA ${scale} with fewer than ${targets.min} parts is UNACCEPTABLE and will be rejected.\nUse FOR LOOPS to efficiently create repeated elements (windows, floor tiles, fence posts, rooms).\nEvery wall needs trim. Every room needs furniture. Every exterior needs landscaping.\n=== END HARD MINIMUM ===`
+        console.log(`[PartTargets] Scale: ${scale}, multiplier: ${sizeMult}x, min: ${targets.min}, target: ${targets.target}`)
+      } catch { /* non-blocking */ }
+    }
+
+    const buildInstruction = `${isModifyIntent ? 'Modify' : 'Build'}: ${message}${continuationContext}${fullgameOverride}${blueprintContext}${hardPartCountRule}${tierModifier}${interiorOverride}${modifyOverride}${customizationContext}
 
 First write 4-6 sentences describing what you're ${isModifyIntent ? 'changing' : 'creating'} (the mood, one cool detail, what to do next).
 Then output the Luau code in a \`\`\`lua block.${isModifyIntent ? ' Use workspace:FindFirstChild to find and modify existing objects.' : ' Use the REQUIRED PATTERN with these helpers:'}
