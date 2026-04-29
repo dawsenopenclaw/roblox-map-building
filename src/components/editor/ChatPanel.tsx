@@ -5261,22 +5261,18 @@ export function ChatPanel({
 
   // ── Mode switcher config ──
   const MODE_PILLS: { mode: AIMode; label: string; color: string }[] = [
-    { mode: 'build', label: 'Build', color: '#D4AF37' },
-    { mode: 'script', label: 'Script', color: '#7C3AED' },
-    { mode: 'image', label: 'Image', color: '#10B981' },
-    { mode: 'mesh', label: '3D Mesh', color: '#F59E0B' },
-    { mode: 'terrain' as AIMode, label: 'Terrain', color: '#06B6D4' },
-    { mode: 'plan', label: 'Plan', color: '#60A5FA' },
+    { mode: 'build', label: 'Develop a Game', color: '#D4AF37' },
+    { mode: 'plan', label: 'Plan a Game', color: '#60A5FA' },
   ]
 
   // Placeholder text per mode
   const modePlaceholders: Record<string, string> = {
-    build: 'Build a castle, spaceship, tycoon factory...',
+    build: 'Build anything — maps, scripts, GUIs, NPCs, systems...',
     script: 'Leaderboard, shop system, NPC dialog...',
     image: 'Game thumbnail, icon, texture, decal...',
     mesh: 'Sword, helmet, potion, character model...',
     terrain: 'Island, mountain range, city landscape...',
-    plan: 'Plan a tycoon, RPG, simulator...',
+    plan: 'What kind of game do you want to make?',
   }
 
   return (
