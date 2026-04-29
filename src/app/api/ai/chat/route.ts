@@ -97,6 +97,16 @@ import { getStudioMechanicsKnowledge } from '@/lib/ai/studio-mechanics'
 import { selectRelevantKnowledge } from '@/lib/ai/knowledge-selector'
 import type { BuildTaskType } from '@/lib/ai/build-planner'
 import { recordKnowledgeMetrics, startTracking, trackSection, trackInjectedSections } from '@/lib/ai/knowledge-metrics'
+
+// ── New AI Brain Systems ───────────────────────────────────────────────────
+import { createVisionDocument, extractVisionFromMessage, visionToPromptContext, assessVisionReadiness } from '@/lib/ai/vision-document'
+import { createStyleFingerprint, learnFromBuild as learnStyleFromBuild, fingerprintToPromptContext } from '@/lib/ai/style-fingerprint'
+import { createSessionMemory, createUserMemory, createGlobalPatterns, learnFromMessage, memoryToPromptContext, recordBuildAttempt as recordMemoryBuild } from '@/lib/ai/conversation-learner'
+import { findBestReference, referenceToPromptContext } from '@/lib/ai/visual-reference'
+// detectMaterialsInCode moved to codegraph learning internals
+import { quickSpatialCheck } from '@/lib/ai/spatial-awareness'
+import { estimateComplexity, planChunks, getChunkPrompt } from '@/lib/ai/chunked-generation'
+import { compileReferenceContext as compileGameRefContext } from '@/lib/ai/roblox-game-analysis'
 import { moderateContent, getModerationMessage, MODERATION_SUGGESTIONS } from '@/lib/content-moderation'
 import {
   formatPreferencesForPrompt,
@@ -6507,7 +6517,15 @@ Tell me about your vision and I'll create a full build plan with estimated parts
   // BUT still inject relevant Roblox knowledge so the AI can answer technical questions accurately
   if (!isBuildIntent) {
     const conversationKnowledge = buildRobloxContext(message) + selectRelevantKnowledge(message, 'script')
-    const convPrompt = CONVERSATION_PROMPT + (conversationKnowledge ? `\n\n=== ROBLOX TECHNICAL KNOWLEDGE (use to answer questions accurately) ===\n${conversationKnowledge}\n=== END KNOWLEDGE ===` : '') + (cameraContext ? '\n\n' + cameraContext : '')
+    // Inject per-user build profile so the AI knows their history
+    let userProfileContext = ''
+    if (userId) {
+      try {
+        const { formatUserBuildProfile } = await import('@/lib/eli/codegraph')
+        userProfileContext = await formatUserBuildProfile(userId)
+      } catch { /* non-blocking */ }
+    }
+    const convPrompt = CONVERSATION_PROMPT + (userProfileContext ? `\n\n=== USER BUILD PROFILE ===\n${userProfileContext}\n=== END PROFILE ===` : '') + (conversationKnowledge ? `\n\n=== ROBLOX TECHNICAL KNOWLEDGE (use to answer questions accurately) ===\n${conversationKnowledge}\n=== END KNOWLEDGE ===` : '') + (cameraContext ? '\n\n' + cameraContext : '')
     const convRace = await raceNonNull(
       callGroq(convPrompt, message, history, 1024),
       callAnthropicChat(convPrompt, message, history, 1024),
@@ -6603,7 +6621,16 @@ Tell me about your vision and I'll create a full build plan with estimated parts
   const deepBuildKnowledge = isBuildIntent ? '\n\n--- DEEP BUILDING KNOWLEDGE (proportions, materials, variation) ---\n' + getTrimmedBuildingKnowledge(8000) + '\n--- END DEEP BUILDING KNOWLEDGE ---\n' : ''
   // Style bible injected EARLY so the AI's art direction is set before everything else
   const styleBibleContext = isBuildIntent ? '\n\n' + DEFAULT_ART_DIRECTION + '\n\n' + COLOR_PALETTES + '\n\n' + GOOD_VS_BAD : ''
-  const codePrompt = studioMechanics + styleBibleContext + specialistPrefix + userPreferencesPrompt + styleConstraintPrompt + gameStatePrompt + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + deepBuildKnowledge + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
+  // Inject per-user CodeGraph build profile for personalized builds
+  let userBuildProfileContext = ''
+  if (userId && isBuildIntent) {
+    try {
+      const { formatUserBuildProfile } = await import('@/lib/eli/codegraph')
+      userBuildProfileContext = await formatUserBuildProfile(userId)
+      if (userBuildProfileContext) console.log(`[CodeGraph] Injected user build profile for ${userId.slice(0, 8)}`)
+    } catch { /* non-blocking */ }
+  }
+  const codePrompt = studioMechanics + styleBibleContext + specialistPrefix + userPreferencesPrompt + userBuildProfileContext + styleConstraintPrompt + gameStatePrompt + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + deepBuildKnowledge + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
 
 HOW TO TALK:
 - Talk like a real person. "Alright, check this out —" not "Create a detailed Roblox tree model with the following specifications:"
@@ -6662,9 +6689,8 @@ Use FOR LOOPS to efficiently create many parts: one loop = 50+ parts from 3 line
 Your builds MUST look like modern Roblox games (Adopt Me, Pet Simulator, Blox Fruits style).
 NOT like 2016 gray textured slabs. The #1 complaint is builds look UGLY and GENERIC.
 
-DEFAULT STYLE — LOW-POLY STYLIZED:
-- Use SmoothPlastic material for MOST parts. This gives the clean, smooth look players expect.
-- Reserve textured materials (Brick, Cobblestone, Wood) for ACCENT details only, not entire walls.
+DEFAULT STYLE — MODERN ROBLOX:
+- NEVER use SmoothPlastic or Plastic materials. Use Concrete for clean surfaces, Wood/WoodPlanks for organic, Brick for walls.
 - Colors must be VIBRANT and SATURATED — not muddy/dark/gray.
   Good: RGB(80, 180, 70) bright green, RGB(230, 160, 60) warm orange, RGB(100, 170, 230) sky blue
   Bad: RGB(60, 60, 55) dark gray, RGB(90, 80, 70) muddy brown, RGB(40, 40, 45) near-black
@@ -6672,35 +6698,38 @@ DEFAULT STYLE — LOW-POLY STYLIZED:
 - Grass/nature: bright cheerful greens RGB(80,180,70), not dark forest RGB(30,60,25)
 - Trees: cone (WedgePart) or ball (Ball shape) canopy in bright green + cylinder trunk in warm brown
   NEVER dark gray-green spheres on dark sticks.
-- Rocks: smooth rounded Ball shapes in warm gray RGB(160,155,150), NOT dark Granite blocks
-- Buildings: clean smooth walls in pastel/warm colors with contrasting trim
+- Rocks: smooth rounded Ball shapes in warm gray RGB(160,155,150), Concrete material
+- Buildings: clean walls in pastel/warm colors with contrasting trim, Concrete base material
 
 LOW-POLY TREE EXAMPLE (modern style):
   local trunk = Instance.new("Part")
   trunk.Shape = Enum.PartType.Cylinder
   trunk.Size = Vector3.new(5, 1.5, 1.5)
   trunk.CFrame = CFrame.new(0, 2.5, 0) * CFrame.Angles(0, 0, math.rad(90))
-  trunk.Material = Enum.Material.SmoothPlastic
+  trunk.Material = Enum.Material.Wood
   trunk.Color = Color3.fromRGB(140, 100, 55)
   local canopy = Instance.new("Part")
   canopy.Shape = Enum.PartType.Ball
   canopy.Size = Vector3.new(7, 6, 7)
   canopy.CFrame = CFrame.new(0, 7, 0)
-  canopy.Material = Enum.Material.SmoothPlastic
+  canopy.Material = Enum.Material.Concrete
   canopy.Color = Color3.fromRGB(80, 180, 70)
 
 LOW-POLY ROCK EXAMPLE:
   local rock = Instance.new("Part")
   rock.Shape = Enum.PartType.Ball
   rock.Size = Vector3.new(4, 3, 3.5)
-  rock.Material = Enum.Material.SmoothPlastic
+  rock.Material = Enum.Material.Concrete
   rock.Color = Color3.fromRGB(155, 150, 145)
 
-WHEN TO USE TEXTURED MATERIALS:
-- Medieval/rustic builds: Cobblestone walls, Wood beams — OK
-- Industrial: Concrete, Metal — OK
-- Realistic/gritty: Brick, Granite — OK
-- EVERYTHING ELSE: default to SmoothPlastic with nice colors
+MATERIAL GUIDE:
+- Walls/floors: Concrete (clean), Brick (textured), Wood (warm)
+- Roofs: Slate, Concrete
+- Medieval: Cobblestone, Wood, Granite
+- Modern: Concrete, Glass, Metal
+- Industrial: Metal, DiamondPlate, Concrete
+- Nature: Concrete for smooth organic shapes, Grass for terrain
+- NEVER: SmoothPlastic, Plastic — these look cheap and dated
 
 COLOR PALETTE CHEAT SHEET (use these, not dark muddy colors):
   Grass green: RGB(80, 180, 70) | Tree green: RGB(60, 160, 55)
@@ -8041,28 +8070,9 @@ USE THIS DATA:
     // Reference game injection — fires for ALL intents that match a game genre
     const referenceGameCode = getReferenceGame(message)
 
-    // GUI TEMPLATES: If we have a perfect premium template (from gui-templates.ts),
-    // use it DIRECTLY — don't let the AI rewrite it into garbage.
-    // Check if the template is from our premium GUI system (starts with our wrapper pattern)
-    const isGuiTemplate = scriptTemplate && scriptTemplate.includes('ForjeGames') && scriptTemplate.includes('ScreenGui')
-    if (isGuiTemplate && sessionId) {
-      console.log('[GUI-Direct] Using premium GUI template directly (not as reference)')
-      try {
-        const sent = await sendCodeToStudio(sessionId, scriptTemplate)
-        if (sent) {
-          return {
-            conversationText: `Set up a premium GUI for you — dark theme with gold accents, smooth animations, sounds on every interaction, and close/toggle buttons. Check your StarterGui in Studio!\n\nThe GUI includes:\n- UICorner + UIStroke on everything\n- TweenService open/close animations\n- Button bounce on press\n- Gold gradient shimmer\n- Auto-wired to RemoteEvents`,
-            luauCode: scriptTemplate,
-            executedInStudio: true,
-            suggestions: ['Customize the colors', 'Add more items', 'Connect to a server script'],
-            model: 'gui-template',
-          }
-        }
-      } catch (err) {
-        console.warn('[GUI-Direct] Failed to send to Studio:', err)
-        // Fall through to use as reference
-      }
-    }
+    // GUI templates disabled — all builds are fully custom AI-generated
+    // Templates may exist as knowledge reference but are NEVER sent directly
+    const isGuiTemplate = false // disabled
 
     // ── BUILDING TEMPLATES: instant high-quality buildings from luau-templates-buildings.ts ──
     // If user asks for a common building type, use our pre-built generator as reference code
@@ -8642,6 +8652,19 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       return true
     }
 
+    // ── PLAN→BUILD HANDOFF: If user was chatting and now builds, summarize their vision ──
+    if (history.length > 2 && isBuildIntent) {
+      try {
+        const { summarizeConversationForBuild } = await import('@/lib/eli/codegraph')
+        const historyForSummary = history.map(h => ({ role: h.role, content: typeof h.content === 'string' ? h.content : '' }))
+        const summary = summarizeConversationForBuild(historyForSummary)
+        if (summary) {
+          enrichedCodePrompt = summary + '\n\n' + enrichedCodePrompt
+          console.log(`[PlanBuild] Injected conversation summary (${summary.length} chars from ${history.length} messages)`)
+        }
+      } catch { /* non-blocking */ }
+    }
+
     // ── ENHANCED PROMPT PLAN: inject FIRST (highest priority for budget) ──────
     // Gives the AI a structured "architect blueprint" with exact materials, colors,
     // section-by-section plans, blueprint specs, and reference game context.
@@ -8850,6 +8873,28 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     )
     // Full game detection: trigger world planner + staged pipeline
     const isFullGameReq = /\b(full game|complete game|make me a .+ game|build me a .+ game|create a .+ game|entire game|whole game|game from scratch)\b/i.test(message)
+
+    // ── AGENT CHAIN: For complex builds, use multi-agent orchestration ──
+    // Think → Plan → Build chain produces better results than single-shot
+    if (isComplexBuild && !isFullGameReq && intent !== 'fullgame' && !luauCode) {
+      try {
+        const { orchestrateToText } = await import('@/lib/ai/orchestrator')
+        console.log(`[AgentChain] Running multi-agent chain for complex build: "${message.slice(0, 50)}"`)
+        const chainResult = await orchestrateToText(message, { sessionHint: sessionId ?? undefined })
+        if (chainResult) {
+          const chainCode = extractLuauCode(chainResult)
+          if (chainCode) {
+            luauCode = chainCode
+            conversationText = chainResult.replace(/```lua[\s\S]*?```/g, '').trim() || `Building your complex creation now — check Studio!`
+            model = 'agent-chain'
+            console.log(`[AgentChain] Chain produced ${chainCode.length} chars of code`)
+          }
+        }
+      } catch (chainErr) {
+        console.warn('[AgentChain] Chain failed, falling through to single-shot:', chainErr instanceof Error ? chainErr.message : chainErr)
+      }
+    }
+
     if ((isComplexBuild || isFullGameReq || intent === 'fullgame') && !luauCode) {
       console.log(`[FullGame] ${isFullGameReq ? 'FULL GAME' : 'Complex build'} detected for:`, message.slice(0, 50))
 
@@ -9075,7 +9120,7 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
         // Gemini first for strict retry too — Groq produces garbage code-only output
         const strictPrompt = isScriptIntent
           ? `You are a Roblox Luau script generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE.`
-          : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE. Use the P()/W()/Cyl()/Ball() helpers. Include ChangeHistoryService boilerplate. Minimum 60 parts for buildings. Use FOR LOOPS for repeated elements. Default to SmoothPlastic material with vibrant colors for modern low-poly Roblox style.`
+          : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE. Use the P()/W()/Cyl()/Ball() helpers. Include ChangeHistoryService boilerplate. Minimum 60 parts for buildings. Use FOR LOOPS for repeated elements. Use Concrete, Wood, Brick, Metal, Slate — NEVER SmoothPlastic. Use CodeGraph component intelligence.`
         const strictRetryResult = await callGemini(strictPrompt, effectiveInstruction, history.slice(-2), 16384)
         const strictRetry = strictRetryResult ? { result: strictRetryResult, index: 0 } : await raceNonNull(
           callGroq(strictPrompt, effectiveInstruction, history.slice(-2), 16384),
@@ -9433,11 +9478,20 @@ ${effectiveInstruction}`
           passed: finalVerificationScore >= 60,
           retryCount: 0,
         }).catch(() => {})
-        // CodeGraph learning — record successful pattern components
+        // CodeGraph learning — record successful pattern components + materials
         if (finalVerificationScore >= 65 && luauCode && category) {
           try {
             const graphComponents = detectComponentsInCode(luauCode)
-            recordBuildSuccess(category, graphComponents, finalVerificationScore)
+            recordBuildSuccess(category, graphComponents, finalVerificationScore, userId ?? undefined, message)
+          } catch { /* non-blocking */ }
+        }
+        // Spatial awareness — quick post-build validation (non-blocking)
+        if (luauCode && finalVerificationScore >= 50) {
+          try {
+            const spatialResult = quickSpatialCheck(luauCode)
+            if (spatialResult.hasIssues) {
+              console.log(`[spatial] ${spatialResult.errorCount} errors, ${spatialResult.warningCount} warnings, score: ${spatialResult.score}/100`)
+            }
           } catch { /* non-blocking */ }
         }
       }
@@ -16190,72 +16244,53 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 'gpt-4o' stays as-is (already handled by isOpenAIModel check)
   const requestedModel = rawRequestedModel === 'claude-sonnet-4' ? '' : rawRequestedModel
 
-  // AI Mode — determines how the prompt is processed and what system prompt modifiers to inject
-  const aiMode = ((parsed.data as Record<string, unknown>).aiMode as string | undefined) || 'build'
-  const wantsEnhance = ((parsed.data as Record<string, unknown>).enhance as boolean | undefined) === true || aiMode === 'plan'
+  // ── Unified AI Mode: plan or build ──────────────────────────────────────
+  const rawAiMode = ((parsed.data as Record<string, unknown>).aiMode as string | undefined) || 'build'
+  const aiMode = (rawAiMode === 'plan' || rawAiMode === 'chat' || rawAiMode === 'idea' || rawAiMode === 'think') ? 'plan' : 'build'
+  const wantsEnhance = ((parsed.data as Record<string, unknown>).enhance as boolean | undefined) === true
+
+  // Unified mode prefixes — ONE bot that handles everything.
+  // PLAN mode: creative game design partner. NO code. Remembers everything.
+  // BUILD mode: auto-detects what to generate (builds, scripts, terrain, UI, etc.)
   const AI_MODE_PREFIXES: Record<string, string> = {
-    think: '\n\n[THINKING_MODE] Think step-by-step. Show your reasoning process in detail before giving the final answer. Consider multiple approaches, evaluate trade-offs, and pick the best one. Wrap your reasoning in <thinking>...</thinking> tags, then provide the final answer.',
-    plan: '\n\n[PLAN_MODE] Before writing ANY code, create a detailed numbered build plan. List every Part, Model, Script, and Service that will be needed. Include sizes, positions, and colors. Present this as a clear checklist. DO NOT write code yet — wait for the user to approve the plan first.',
-    script: `\n\n[SCRIPT_MODE] You are a Luau scripting expert. Generate ONLY executable Luau code in a \`\`\`lua code block.
+    plan: `\n\n[PLAN_MODE] You are Forje — a creative game design partner for Roblox developers.
+In this mode, you are ONLY having a conversation. Do NOT generate any code or lua blocks.
+Instead:
+- Discuss game ideas, mechanics, and design decisions
+- Help the user clarify their vision — ask about theme, style, mechanics, audience
+- Remember EVERYTHING the user tells you — every detail feeds into their build later
+- Suggest features, mechanics, and improvements based on successful Roblox games
+- Be fun, enthusiastic, and creative — you love game design
+- Reference real successful games (Adopt Me, Blox Fruits, Doors, Tower of Hell, etc.)
+- Think about retention hooks, monetization, viral mechanics, player psychology
+- Help them think through spatial layout, game flow, and player experience
+- If they describe buildings/structures, discuss proportions, materials, and style
+- NO CODE OUTPUT. Just conversation. When they're ready, they toggle Build mode.`,
 
-RULES:
-- Output MUST be a complete, runnable Luau script — NOT a description or architecture plan
-- Use proper Roblox services: DataStoreService, Players, ReplicatedStorage, RunService, etc.
-- Use task.wait() not wait(), task.spawn() not spawn()
-- Use ModuleScript patterns where appropriate
-- Add brief inline comments for complex logic
-- NO Part creation, NO building, NO P() helpers — pure scripting only
-- The script should be ready to paste into ServerScriptService or appropriate container
-- Wrap in ChangeHistoryService recording so the user can undo
-- ALWAYS output code, never just describe what the code would do
-- Always start with --!strict, type-annotate function params and returns
-- Use generalized iteration (for k,v in t do) — NEVER pairs/ipairs
-- Use table.freeze() on all config tables
-- Validate ALL client input on server — never trust RemoteEvent args
+    build: `\n\n[BUILD_MODE] You are Forje — the most capable Roblox build AI in existence.
+Generate COMPLETE, CUSTOM builds from scratch. NEVER use templates or presets.
 
-SCRIPT TEMPLATES — use these patterns as starting points:
+You are a UNIFIED builder — auto-detect what to generate from the user's message:
+- If they describe a STRUCTURE → Generate P()/W()/Cyl()/Ball() build code
+- If they ask for a SCRIPT → Generate complete Luau code (DataStore, UI, systems, etc.)
+- If they want TERRAIN → Use Terrain:FillRegion(), FillBall() etc.
+- If they want UI/GUI → Generate ScreenGui with proper layout
+- If they describe a GAME → Use the staged pipeline for multi-system generation
+- If they want to DEBUG → Analyze and fix code, explain the root cause
 
-LEADERBOARD + DATA SAVE:
-  local Players=game:GetService("Players") local DSS=game:GetService("DataStoreService")
-  local store=DSS:GetDataStore("PlayerData_v1")
-  Players.PlayerAdded:Connect(function(p) local ls=Instance.new("Folder") ls.Name="leaderstats" ls.Parent=p
-    local coins=Instance.new("IntValue") coins.Name="Coins" coins.Parent=ls
-    local ok,v=pcall(function() return store:GetAsync("p_"..p.UserId) end)
-    if ok and type(v)=="number" then coins.Value=v end end)
-  Players.PlayerRemoving:Connect(function(p) local c=p:FindFirstChild("leaderstats") and p.leaderstats:FindFirstChild("Coins")
-    if c then pcall(function() store:SetAsync("p_"..p.UserId,c.Value) end) end end)
-
-SHOP WITH REMOTEVENT:
-  local buyEvent=Instance.new("RemoteEvent") buyEvent.Name="Buy" buyEvent.Parent=RS
-  local PRICES={SpeedBoost=100,DoubleJump=250,Shield=500}
-  buyEvent.OnServerEvent:Connect(function(p,item) if type(item)~="string" then return end
-    local price=PRICES[item] if not price then return end
-    local coins=p.leaderstats and p.leaderstats:FindFirstChild("Coins")
-    if not coins or coins.Value<price then return end coins.Value-=price end)
-
-NPC PATROL:
-  local humanoid=npc:FindFirstChildOfClass("Humanoid") local points={Vector3.new(0,0,0),Vector3.new(20,0,0),Vector3.new(20,0,20)}
-  task.spawn(function() local idx=1 while humanoid and humanoid.Health>0 do
-    humanoid:MoveTo(points[idx]) humanoid.MoveToFinished:Wait() task.wait(2)
-    idx=idx%#points+1 end end)
-
-DAILY REWARDS:
-  local REWARDS={50,75,100,150,200,300,500} local DAY=86400
-  -- On join: check os.time()-lastClaim>=DAY, increment streak (reset if >2*DAY), grant REWARDS[streak], save
-
-DAMAGE MODULE:
-  local function applyDamage(target:Model,amount:number,knockback:Vector3?)
-    local h=target:FindFirstChildOfClass("Humanoid") if not h or h.Health<=0 then return false end
-    h:TakeDamage(amount) if knockback then local rp=target:FindFirstChild("HumanoidRootPart")
-    if rp then local bv=Instance.new("BodyVelocity") bv.Velocity=knockback bv.MaxForce=Vector3.one*1e5 bv.Parent=rp
-    task.delay(0.15,function() bv:Destroy() end) end end return true end`,
-    image: '\n\n[IMAGE_MODE] The user wants to generate a visual asset (icon, thumbnail, GFX). Describe what the image should look like in detail, including art style, color palette, composition, and Roblox-appropriate aesthetics.',
-    terrain: '\n\n[TERRAIN_MODE] Focus on terrain generation. Use Terrain:FillRegion(), Terrain:FillBall(), Terrain:FillCylinder(), and related APIs. Paint materials (Grass, Sand, Rock, Snow, Water, etc.), sculpt heights, and create natural biomes.',
-    debug: '\n\n[DEBUG_MODE] The user needs help debugging. First, analyze the code or error description thoroughly. Identify the root cause. Then provide a fixed version with clear explanations of what was wrong and why the fix works. Use <thinking>...</thinking> tags to show your analysis.',
-    idea: '\n\n[IDEA_MODE] Brainstorm 3 viral Roblox game concepts. For EACH idea include:\n1) **Hook** — what draws players in within 5 seconds\n2) **Core Loop** — the main gameplay cycle that keeps players engaged\n3) **Monetization** — GamePass, DevProduct, and Premium strategies\n4) **Unique Twist** — what makes this different from existing games\n5) **Technical Scope** — estimated complexity and key systems needed',
-    mesh: '\n\n[MESH_MODE] Generate a 3D model/mesh asset for the user. Describe the asset in detail for 3D generation.',
+CRITICAL BUILD RULES:
+- Every build is UNIQUE and CUSTOM — designed from the conversation context
+- Use the user's described theme, mood, colors, materials, and style
+- Never use SmoothPlastic — use Concrete, Wood, Brick, Metal, Glass, Slate, etc.
+- Minimum 30 parts for buildings with proper architectural detail
+- Include: foundation, wall frames, window frames+sills, door frames+knobs, roof with overhang
+- Interior furniture proportional to rooms (table ~3 studs, chair ~2.5 studs)
+- Lighting: PointLights inside, SpotLights at entrances, AAA atmosphere
+- Landscaping: trees (Cyl trunk + Ball canopy), pathways, fences
+- For scripts: --!strict, task.wait(), table.freeze(), validate client input
+- Wrap ALL code in ChangeHistoryService for undo support`,
   }
-  const modePrefix = AI_MODE_PREFIXES[aiMode] || ''
+  const modePrefix = AI_MODE_PREFIXES[aiMode] || AI_MODE_PREFIXES['build']
 
   // Merge history sources: `messages` is the frontend alias, `history` is legacy.
   // Accept up to the last 20 turns from whichever field the client sends.
@@ -16266,6 +16301,53 @@ DAMAGE MODULE:
   )
     .slice(-20)
     .map((h) => ({ role: h.role, content: h.content.slice(0, 2000) }))
+
+  // ── Inject New AI Brain Systems ─────────────────────────────────────────
+  // Vision Document, Visual Reference, Conversation Memory, Complexity Estimation
+  let brainContext = ''
+  try {
+    // 1. Vision Document — extract vision from current message
+    const sessionVision = createVisionDocument('session', authedUserId ?? 'anon')
+    const updatedVision = extractVisionFromMessage(sessionVision, message, '', rawHistory.length)
+    const visionContext = visionToPromptContext(updatedVision)
+    if (visionContext.length > 100) brainContext += '\n' + visionContext
+
+    // 2. Visual Reference — find matching reference for build mode
+    if (aiMode === 'build') {
+      const buildType = detectBuildType(message) || detectCategory(message) || ''
+      const ref = findBestReference(buildType)
+      if (ref) brainContext += '\n' + referenceToPromptContext(ref)
+    }
+
+    // 3. Conversation Memory — context from conversation
+    const sessionMem = createSessionMemory('session', authedUserId ?? 'anon')
+    const userMem = createUserMemory(authedUserId ?? 'anon')
+    const globalPatterns = createGlobalPatterns()
+    const { session: updatedSession } = learnFromMessage(sessionMem, userMem, globalPatterns, message, rawHistory.length)
+    const memoryContext = memoryToPromptContext({ session: updatedSession, user: userMem, global: globalPatterns })
+    if (memoryContext.length > 100) brainContext += '\n' + memoryContext
+
+    // 4. Complexity estimation for build mode
+    if (aiMode === 'build') {
+      const complexity = estimateComplexity(message)
+      if (complexity.complexity === 'complex' || complexity.complexity === 'massive') {
+        brainContext += `\n[COMPLEXITY: ${complexity.complexity.toUpperCase()}] ${complexity.factors.join(', ')}. Focus on most important elements first.`
+      }
+    }
+
+    // 5. Roblox Game Analysis — inject genre patterns and top game references
+    if (aiMode === 'build') {
+      const detectedGenre = detectCategory(message) || ''
+      const buildType = detectBuildType(message) || ''
+      const gameRefContext = compileGameRefContext(detectedGenre, buildType)
+      if (gameRefContext.length > 100) {
+        brainContext += '\n' + gameRefContext.slice(0, 1500) // Cap to avoid context bloat
+      }
+    }
+  } catch (err) {
+    console.warn('[brain-context] Non-blocking:', err instanceof Error ? err.message : err)
+  }
+  const fullModePrefix = modePrefix + brainContext
 
   // Learn from every Studio error — permanent negative signal loop
   const lastError = (
@@ -16389,34 +16471,13 @@ DAMAGE MODULE:
   let intent = await smartDetectIntent(message, rawHistory)
 
   // ── AI Mode → Intent override ──────────────────────────────────────────
-  // When the user explicitly selects a mode in the UI, force the intent to
-  // match. This prevents Script mode from falling into the build path, and
-  // ensures terrain mode routes to terrain generation, etc.
-  if (aiMode === 'script' && intent !== 'script' && intent !== 'chat' && intent !== 'conversation') {
-    console.log(`[chat] aiMode=script overriding intent "${intent}" → "script"`)
-    intent = 'script'
-  }
-  if (aiMode === 'terrain' && intent !== 'terrain') {
-    console.log(`[chat] aiMode=terrain overriding intent "${intent}" → "terrain"`)
-    intent = 'terrain'
-  }
-  if (aiMode === 'image' && intent !== 'image') {
-    console.log(`[chat] aiMode=image overriding intent "${intent}" → "image"`)
-    intent = 'image'
-  }
-  if (aiMode === 'mesh' && intent !== 'mesh') {
-    console.log(`[chat] aiMode=mesh overriding intent "${intent}" → "mesh"`)
-    intent = 'mesh'
-  }
-  // Plan mode = conversation only, NO code generation. User must click Build when ready.
-  if (aiMode === 'plan' && intent !== 'gameplan' && intent !== 'conversation' && intent !== 'chat') {
-    console.log(`[chat] aiMode=plan overriding intent "${intent}" → "gameplan" (conversation-only)`)
-    intent = 'gameplan'
-  }
-  // Idea mode = brainstorming, NO code generation
-  if (aiMode === 'idea' && intent !== 'conversation' && intent !== 'chat') {
-    console.log(`[chat] aiMode=idea overriding intent "${intent}" → "conversation" (brainstorm-only)`)
-    intent = 'conversation'
+  // 2-mode system: plan (conversation only, FREE) or build (code generation)
+  // Plan mode = conversation only, no code generation, FREE
+  if (aiMode === 'plan') {
+    if (!['conversation', 'chat', 'help', 'gameplan'].includes(intent)) {
+      console.log(`[chat] aiMode=plan overriding intent "${intent}" → "conversation"`)
+      intent = 'conversation'
+    }
   }
 
   // ── Multi-step build orchestration detection ─────────────────────────────
@@ -17181,7 +17242,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       await buildRAGSystemPrompt(
         (isBuildIntentGroq
           ? await getSpecializedPrompt(message) + gameKnowledgeGroq + groqBibles + cameraContext
-          : FORJEAI_CORE_PROMPT + gameKnowledgeGroq + cameraContext) + modePrefix,
+          : FORJEAI_CORE_PROMPT + gameKnowledgeGroq + cameraContext) + fullModePrefix,
         message,
       ),
       message,
@@ -17379,7 +17440,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         await buildRAGSystemPrompt(
           (isBuildingIntent
             ? await getSpecializedPrompt(message) + gameKnowledge + knowledgeBrain + cameraContext + multiStepContext + enhancedPlanContext
-            : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
+            : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + fullModePrefix,
           message,
         ),
         message,
@@ -17603,7 +17664,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         await buildRAGSystemPrompt(
           (isBuildingIntent
             ? await getSpecializedPrompt(message) + gameKnowledge + fallbackBibles + cameraContext + multiStepContext + enhancedPlanContext
-            : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
+            : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + fullModePrefix,
           message,
         ),
         message,

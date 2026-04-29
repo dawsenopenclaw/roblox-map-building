@@ -72,10 +72,13 @@ export function getTierTokenAllowance(tier: SubscriptionTier | string): number {
 }
 
 export const TOKEN_PACKS = [
-  { slug: 'boost', name: 'Boost', tokens: 5000, priceCents: 1000, stripePriceId: serverEnv.STRIPE_TOKEN_STARTER_PRICE_ID || '' },
-  { slug: 'builder', name: 'Builder Pack', tokens: 25000, priceCents: 4000, stripePriceId: serverEnv.STRIPE_TOKEN_CREATOR_PRICE_ID || '' },
-  { slug: 'studio', name: 'Studio Pack', tokens: 100000, priceCents: 12000, stripePriceId: serverEnv.STRIPE_TOKEN_PRO_PRICE_ID || '' },
+  { slug: 'boost', name: 'Boost', tokens: 5_000, priceCents: 1000, stripePriceId: serverEnv.STRIPE_TOKEN_STARTER_PRICE_ID || '' },
+  { slug: 'builder', name: 'Builder Pack', tokens: 25_000, priceCents: 4000, stripePriceId: serverEnv.STRIPE_TOKEN_CREATOR_PRICE_ID || '' },
+  { slug: 'studio', name: 'Studio Pack', tokens: 100_000, priceCents: 12000, stripePriceId: serverEnv.STRIPE_TOKEN_PRO_PRICE_ID || '' },
 ] as const
+
+// Enterprise / contact-sales threshold
+export const CONTACT_SALES_THRESHOLD = 1_000_000
 
 export function getTokenPackBySlug(slug: string) {
   return TOKEN_PACKS.find(p => p.slug === slug) || null

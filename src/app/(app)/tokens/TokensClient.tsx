@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 
@@ -10,9 +10,9 @@ const GOLD = '#D4AF37'
 const fetcher = (url: string) => fetch(url).then((r) => r.ok ? r.json() : null)
 
 const TOKEN_PACKS = [
-  { slug: 'starter', name: 'Starter', tokens: 1_000,  price: '$10.00', pricePerK: '$10.00', badge: null,           popular: false },
-  { slug: 'creator', name: 'Creator', tokens: 5_000,  price: '$45.00', pricePerK: '$9.00',  badge: 'Most Popular', popular: true  },
-  { slug: 'pro',     name: 'Pro',     tokens: 15_000, price: '$120.00', pricePerK: '$8.00',  badge: 'Best Value',   popular: false },
+  { slug: 'boost',   name: 'Boost',        tokens: 5_000,   price: '$10.00',  pricePerK: '$2.00', badge: null,           popular: false },
+  { slug: 'builder', name: 'Builder Pack', tokens: 25_000,  price: '$40.00',  pricePerK: '$1.60', badge: 'Best Value',   popular: true  },
+  { slug: 'studio',  name: 'Studio Pack',  tokens: 100_000, price: '$120.00', pricePerK: '$1.20', badge: 'Max Power',    popular: false },
 ]
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
@@ -139,124 +139,33 @@ function PurchaseButton({ pack }: { pack: typeof TOKEN_PACKS[number] }) {
   )
 }
 
-// ─── Custom Token Purchase ────────────────────────────────────────────────────
+// ─── Contact Sales (1M+ tokens) ──────────────────────────────────────────────
 
-function CustomTokenPurchase() {
-  const [amount, setAmount] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
-
-  const tokenCount = Math.max(0, Math.min(100000, Math.floor(Number(amount) || 0)))
-  // Rate: $1 per 100 tokens = $0.01 per token
-  const priceCents = tokenCount
-  const priceDisplay = (priceCents / 100).toFixed(2)
-
-  const handlePurchase = useCallback(async () => {
-    if (tokenCount < 100) return
-    setLoading(true)
-    setErrorMsg(null)
-    try {
-      const res = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'custom_tokens', tokenAmount: tokenCount }),
-      })
-      const data = await res.json() as { url?: string; error?: string; redirect?: string }
-      if (!res.ok) {
-        if (data.redirect) { window.location.href = data.redirect; return }
-        setErrorMsg(data.error ?? 'Something went wrong.')
-        return
-      }
-      if (data.url) window.location.href = data.url
-    } catch {
-      setErrorMsg('Network error. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }, [tokenCount])
-
+function ContactSalesBanner() {
   return (
     <div
-      className="mt-6 rounded-2xl border p-6"
+      className="mt-6 rounded-2xl border p-6 text-center"
       style={{
-        background: `linear-gradient(160deg, ${GOLD}08 0%, rgba(255,255,255,0.02) 60%)`,
-        borderColor: `${GOLD}30`,
+        background: `linear-gradient(160deg, ${GOLD}06 0%, rgba(255,255,255,0.02) 60%)`,
+        borderColor: `${GOLD}20`,
       }}
     >
-      <h3 className="text-sm font-bold text-white mb-1">Custom Amount</h3>
-      <p className="text-xs text-gray-500 mb-4">Buy exactly as many tokens as you need — from 100 to 100,000</p>
-
-      <div className="flex items-end gap-4">
-        {/* Token Input */}
-        <div className="flex-1">
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-            How many tokens?
-          </label>
-          <div className="relative">
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="e.g. 2500"
-              min={100}
-              max={100000}
-              step={100}
-              className="w-full py-3 px-4 pr-16 rounded-xl text-xl font-bold text-white placeholder-gray-600 outline-none transition-all duration-200"
-              style={{
-                background: 'rgba(0,0,0,0.4)',
-                border: `1.5px solid ${tokenCount >= 100 ? `${GOLD}40` : 'rgba(255,255,255,0.1)'}`,
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = `${GOLD}80` }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = tokenCount >= 100 ? `${GOLD}40` : 'rgba(255,255,255,0.1)' }}
-            />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500">tokens</span>
-          </div>
-        </div>
-
-        {/* Price Display */}
-        <div className="text-center min-w-[100px]">
-          <p className="text-[10px] text-gray-500 mb-1">Total</p>
-          <p className="text-3xl font-black tabular-nums" style={{ color: tokenCount >= 100 ? GOLD : '#52525B' }}>
-            ${priceDisplay}
-          </p>
-          <p className="text-[10px] text-gray-600">$10 per 1K</p>
-        </div>
-
-        {/* Buy Button */}
-        <button
-          onClick={handlePurchase}
-          disabled={loading || tokenCount < 100}
-          className="py-3 px-6 rounded-xl text-sm font-bold transition-all duration-150 disabled:opacity-40 hover:opacity-90 active:scale-[0.98]"
-          style={{
-            background: tokenCount >= 100 ? GOLD : 'rgba(255,255,255,0.05)',
-            color: tokenCount >= 100 ? '#000' : '#52525B',
-            boxShadow: tokenCount >= 100 ? `0 2px 14px ${GOLD}50` : 'none',
-            minWidth: 120,
-          }}
-        >
-          {loading ? 'Redirecting...' : tokenCount >= 100 ? `Buy ${tokenCount.toLocaleString()}` : 'Min 100'}
-        </button>
-      </div>
-
-      {/* Quick amounts */}
-      <div className="flex gap-2 mt-3">
-        {[500, 1000, 2500, 5000, 10000, 25000].map((n) => (
-          <button
-            key={n}
-            onClick={() => setAmount(String(n))}
-            className="px-3 py-1 rounded-lg text-[11px] font-medium transition-all duration-150 hover:opacity-80"
-            style={{
-              background: tokenCount === n ? `${GOLD}20` : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${tokenCount === n ? `${GOLD}40` : 'rgba(255,255,255,0.08)'}`,
-              color: tokenCount === n ? GOLD : 'rgba(255,255,255,0.5)',
-            }}
-          >
-            {n >= 1000 ? `${n / 1000}K` : n}
-          </button>
-        ))}
-      </div>
-
-      {errorMsg && <p className="text-red-400 text-xs mt-2">{errorMsg}</p>}
+      <h3 className="text-sm font-bold text-white mb-1">Need 1,000,000+ tokens?</h3>
+      <p className="text-xs text-gray-500 mb-4">For studios and teams with high-volume needs, we offer custom enterprise pricing.</p>
+      <a
+        href="mailto:contact@forjegames.com?subject=Enterprise%20Token%20Pricing&body=Hi%20Forje%20team%2C%0A%0AI%27m%20interested%20in%20enterprise%20token%20pricing%20for%20my%20team.%0A%0AEstimated%20monthly%20usage%3A%20%0ATeam%20size%3A%20%0A%0AThanks!"
+        className="inline-flex items-center gap-2 py-3 px-8 rounded-xl text-sm font-bold transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
+        style={{
+          background: 'rgba(255,255,255,0.06)',
+          color: GOLD,
+          border: `1px solid ${GOLD}30`,
+        }}
+      >
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        Contact Sales
+      </a>
     </div>
   )
 }
@@ -579,7 +488,7 @@ export default function TokensClient() {
         </div>
 
         {/* Custom Token Amount */}
-        <CustomTokenPurchase />
+        <ContactSalesBanner />
       </div>
 
     </div>

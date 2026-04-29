@@ -832,7 +832,7 @@ interface PricingClientProps {
 }
 
 export default function PricingClient({ initialBillingConfig }: PricingClientProps = {}) {
-  const [annual, setAnnual]     = useState(true)
+  const [annual, setAnnual]     = useState(false)
   const [openFaq, setOpenFaq]   = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   // Plans are shown immediately on /pricing — the earlier "click to reveal"
@@ -1398,6 +1398,34 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
 
         {/* Token Packs — supplementary */}
         <TokenPacksSection onError={showError} packConfig={config.tokenPacks} />
+
+        {/* Enterprise / Contact Sales */}
+        <section className="mb-16">
+          <div
+            className="max-w-2xl mx-auto rounded-2xl border p-8 text-center"
+            style={{
+              background: 'linear-gradient(160deg, rgba(212,175,55,0.04) 0%, rgba(255,255,255,0.01) 60%)',
+              borderColor: 'rgba(212,175,55,0.15)',
+            }}
+          >
+            <h3 className="text-xl font-bold text-white mb-2">Need 1,000,000+ tokens?</h3>
+            <p className="text-[#6B7699] text-sm mb-6 max-w-md mx-auto leading-relaxed">
+              For studios and teams with high-volume needs, we offer custom enterprise pricing with dedicated support, SLA guarantees, and volume discounts.
+            </p>
+            <a
+              href="mailto:contact@forjegames.com?subject=Enterprise%20Pricing%20Inquiry&body=Hi%20Forje%20team%2C%0A%0AI%27m%20interested%20in%20enterprise%20pricing.%0A%0AEstimated%20monthly%20token%20usage%3A%20%0ATeam%20size%3A%20%0AUse%20case%3A%20%0A%0AThanks!"
+              className="inline-flex items-center gap-2 py-3.5 px-10 rounded-xl text-sm font-bold transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                color: '#D4AF37',
+                border: '1px solid rgba(212,175,55,0.3)',
+              }}
+            >
+              <Mail className="w-4 h-4" />
+              Contact Sales
+            </a>
+          </div>
+        </section>
 
         {/* ------------------------------------------------------------------ */}
         {/* Trust bar                                                           */}

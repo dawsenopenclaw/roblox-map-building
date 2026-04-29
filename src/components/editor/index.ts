@@ -46,7 +46,7 @@ export { SkeletonCard, SkeletonList, SkeletonProgress, EmptyState, ErrorState } 
 export { ModelPreview } from './ModelPreview'
 export type { ModelPreviewProps } from './ModelPreview'
 
-export { AIModeSelector, ThinkingIndicator, PlanDisplay, CreativitySlider, StyleReferenceUpload, ImageStylePresetSelector, getModeConfig } from './AIModeSelector'
+export { AIModeSelector, ThinkingIndicator, PlanDisplay, CreativitySlider, StyleReferenceUpload, ImageStylePresetSelector, getModeConfig, normalizeAIMode } from './AIModeSelector'
 export type { AIMode, AIModeConfig } from './AIModeSelector'
 
 export { ImageCanvas } from './ImageCanvas'

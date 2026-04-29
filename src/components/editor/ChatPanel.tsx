@@ -5261,8 +5261,8 @@ export function ChatPanel({
 
   // ── Mode switcher config ──
   const MODE_PILLS: { mode: AIMode; label: string; color: string }[] = [
-    { mode: 'build', label: 'Develop a Game', color: '#D4AF37' },
-    { mode: 'plan', label: 'Plan a Game', color: '#60A5FA' },
+    { mode: 'build', label: 'Build', color: '#D4AF37' },
+    { mode: 'plan', label: 'Plan', color: '#38BDF8' },
   ]
 
   // Placeholder text per mode
@@ -5491,7 +5491,7 @@ export function ChatPanel({
         )}
 
         {/* Image mode controls — collapsible on mobile to keep input visible */}
-        {aiMode === 'image' && (
+        {(aiMode as string) === 'image' && (
           isMobile ? (
             <div>
               <button
@@ -6031,8 +6031,8 @@ export function ChatPanel({
                   fontVariantNumeric: 'tabular-nums',
                 }}>
                   ~{Math.max(1, Math.ceil(input.split(/\s+/).length * (
-                    aiMode === 'image' ? 3 : aiMode === 'mesh' ? 5 : aiMode === 'think' ? 2 : aiMode === 'terrain' ? 2 : 1
-                  )))} tokens · ~{aiMode === 'mesh' ? '30-60s' : aiMode === 'image' ? '10-20s' : input.length > 100 ? '15-30s' : '5-15s'}
+                    aiMode === 'plan' ? 0 : 1
+                  )))} tokens · ~{aiMode === 'plan' ? '3-8s' : input.length > 100 ? '15-30s' : '5-15s'}
                 </span>
               )}
               {totalTokens > 0 && (

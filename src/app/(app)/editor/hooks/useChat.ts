@@ -479,8 +479,8 @@ export function useChat(options: UseChatOptions = {}) {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [totalTokens, setTotalTokens] = useState(0)
   const [guestMessageCount, setGuestMessageCount] = useState(0)
-  // AI Mode state — determines how prompts are processed
-  const [aiMode, setAIMode] = useState<AIMode>('build')
+  // AI Mode state — unified: 'plan' (talk freely) or 'build' (generate code)
+  const [aiMode, setAIMode] = useState<AIMode>('plan')
   // Auto-playtest: when true, agentic playtest runs automatically after code is sent to Studio
   const [autoPlaytest, setAutoPlaytest] = useState(true)
   // Pre-build preview: when true, shows 3 concept options before generating code
@@ -1140,16 +1140,18 @@ export function useChat(options: UseChatOptions = {}) {
         timestamp: new Date(),
       }
       const statusMsgId = uid()
-      const modeLabels: Record<AIMode, string> = {
+      const modeLabels: Record<string, string> = {
+        plan: 'Forje is thinking...',
         build: 'Forje is building...',
-        think: 'Forje is thinking deeply...',
-        plan: 'Forje is creating a build plan...',
+        // Legacy mode labels (kept for backward compat)
+        think: 'Forje is thinking...',
+        chat: 'Forje is thinking...',
         image: 'Forje is generating your image...',
-        script: 'Forje is writing Luau code...',
-        terrain: 'Forje is sculpting terrain...',
+        script: 'Forje is building...',
+        terrain: 'Forje is building...',
         mesh: 'Forje is creating a 3D model...',
-        debug: 'Forje is analyzing for bugs...',
-        idea: 'Forje is brainstorming ideas...',
+        debug: 'Forje is building...',
+        idea: 'Forje is thinking...',
       }
       const statusMsg: ChatMessage = {
         id: statusMsgId,
@@ -1158,7 +1160,7 @@ export function useChat(options: UseChatOptions = {}) {
         timestamp: new Date(),
       }
       // Set thinking state for modes that show reasoning
-      if (aiMode === 'think' || aiMode === 'debug') {
+      if (aiMode === 'plan') {
         setIsThinking(true)
         setThinkingText('')
       }
@@ -1209,7 +1211,7 @@ export function useChat(options: UseChatOptions = {}) {
       // ── Pre-Build Preview: show 3 concept options before full generation ──
       // Triggers when: user enabled preview mode OR confidence scoring says to
       // Only for build/script/terrain modes, not for selected blueprints
-      const isBuildMode = aiMode === 'build' || aiMode === 'script' || aiMode === 'terrain'
+      const isBuildMode = aiMode === 'build'
       const isBlueprint = trimmed.startsWith('Build "')
       let shouldPreview = previewMode && isBuildMode && !isBlueprint
 
@@ -1296,14 +1298,19 @@ export function useChat(options: UseChatOptions = {}) {
 
         // ── Specialized mode routing ─────────────────────────────────────────
         // Image/Mesh/Clothing modes call dedicated APIs instead of chat
-        const SPECIALIZED_MODES = ['image', 'mesh'] as const
-        type SpecializedMode = (typeof SPECIALIZED_MODES)[number]
-        if (SPECIALIZED_MODES.includes(aiMode as SpecializedMode)) {
+        // ── Auto-detect image/mesh intent from message content ─────────
+        const IMAGE_KEYWORDS = ['generate image', 'make an image', 'create image', 'draw', 'icon', 'thumbnail', 'gfx', 'render image', 'picture of']
+        const MESH_KEYWORDS = ['3d model', '3d mesh', 'generate mesh', 'create model', 'make a model']
+        const promptForDetection = trimmed.toLowerCase()
+        const isImageIntent = IMAGE_KEYWORDS.some(k => promptForDetection.includes(k))
+        const isMeshIntent = MESH_KEYWORDS.some(k => promptForDetection.includes(k))
+        const detectedSpecialMode = isImageIntent ? 'image' : isMeshIntent ? 'mesh' : null
+        if (aiMode === 'build' && detectedSpecialMode) {
           try {
             let apiUrl = ''
             let apiBody: Record<string, unknown> = {}
 
-            if (aiMode === 'image') {
+            if (detectedSpecialMode === 'image') {
               // Detect style from imageOptions or keywords
               let style = imageOptions.style
               if (!style || style === 'auto') {
@@ -1344,7 +1351,7 @@ export function useChat(options: UseChatOptions = {}) {
                 provider: 'auto',
                 size: 'auto',
               }
-            } else if (aiMode === 'mesh') {
+            } else if (detectedSpecialMode === 'mesh') {
               apiUrl = '/api/ai/mesh'
               apiBody = { prompt: trimmed.slice(0, 200), quality: 'draft', withTextures: true }
             }
@@ -1373,7 +1380,7 @@ export function useChat(options: UseChatOptions = {}) {
             // The client has already enhanced the prompt above (when
             // enhancePrompts is on), so tell /api/ai/image to skip its own
             // server-side enhancement to avoid a duplicate Groq call (BUG 12).
-            if (aiMode === 'image' && enhancePrompts) {
+            if (detectedSpecialMode === 'image' && enhancePrompts) {
               apiBody.skipEnhance = true
             }
 
@@ -1386,7 +1393,7 @@ export function useChat(options: UseChatOptions = {}) {
             let specialData = await specialRes.json()
 
             // If Nano Banana failed, fall back to FAL
-            if (aiMode === 'image' && !specialRes.ok && apiUrl === '/api/ai/image-nano') {
+            if (detectedSpecialMode === 'image' && !specialRes.ok && apiUrl === '/api/ai/image-nano') {
               // Fallback to secondary image provider
               const falRes = await fetch('/api/ai/image', {
                 method: 'POST',
@@ -1419,7 +1426,7 @@ export function useChat(options: UseChatOptions = {}) {
             )
 
             let guiCode = ''
-            if (aiMode === 'image' && isUIStyle && imageUrls.length > 0) {
+            if (detectedSpecialMode === 'image' && isUIStyle && imageUrls.length > 0) {
               // Generate Roblox ScreenGui code that recreates this UI design
               try {
                 const guiRes = await fetch('/api/ai/chat', {
@@ -1472,7 +1479,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
               }
             }
 
-            const resultContent = aiMode === 'image'
+            const resultContent = detectedSpecialMode === 'image'
               ? `**Generated Image${imageUrls.length > 1 ? 's' : ''}** (${apiBody.style || 'roblox-icon'}${specialData.model ? ` · ${specialData.model}` : ''})\n\n${
                   imageUrls.map((url, i) => `![Generated ${i + 1}](${url})`).join('\n\n')
                 }${imageUrls.length === 0 ? '⚠️ No image was generated. Try rephrasing your prompt.' : ''}${enhancedPrompt !== trimmed ? `\n\n*Enhanced prompt: "${enhancedPrompt}"*` : ''}${
@@ -1498,13 +1505,13 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
             // For image/mesh mode: show the error, DON'T fall through to chat API
             // (falling through makes the chat generate Luau code instead of an image)
             console.error(`[useChat] Specialized ${aiMode} mode failed:`, err)
-            if (aiMode === 'image' || aiMode === 'mesh') {
+            if (detectedSpecialMode === 'image' || detectedSpecialMode === 'mesh') {
               setMessagesSync((prev) => [
                 ...prev.filter((m) => m.id !== statusMsgId),
                 {
                   id: uid(),
                   role: 'assistant',
-                  content: aiMode === 'image'
+                  content: detectedSpecialMode === 'image'
                     ? 'Image generation failed — the AI image service is temporarily unavailable. Try again in a moment, or try a different prompt.'
                     : '3D mesh generation failed — the service is temporarily unavailable. Try again in a moment.',
                   timestamp: new Date(),
@@ -1969,7 +1976,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
             studioSessionId &&
             studioConnected &&
             (meta.executedInStudio || (onBuildComplete && lastLuauRef.current)) &&
-            (aiMode === 'build' || aiMode === 'debug' || aiMode === 'script')
+            (aiMode === 'build')
           ) {
             void triggerAutoPlaytest(luauCode, studioSessionId, assistantMsgId, trimmed)
           }
@@ -2348,7 +2355,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
             studioSessionId &&
             studioConnected &&
             (meta.executedInStudio || (onBuildComplete && lastLuauRef.current)) &&
-            (aiMode === 'build' || aiMode === 'debug' || aiMode === 'script')
+            (aiMode === 'build')
           ) {
             void triggerAutoPlaytest(luauCode, studioSessionId, assistantMsgId, trimmed)
           }
@@ -2730,9 +2737,11 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
         const cmd = slashMatch[1].toLowerCase()
         const rest = slashMatch[2]
         const modeMap: Record<string, AIMode> = {
-          build: 'build', think: 'think', plan: 'plan', image: 'image',
-          script: 'script', terrain: 'terrain', mesh: 'mesh', debug: 'debug',
-          idea: 'idea', ideas: 'idea', fix: 'debug', code: 'script',
+          build: 'build', plan: 'plan', chat: 'plan', talk: 'plan',
+          think: 'plan', idea: 'plan', ideas: 'plan',
+          // All generation commands auto-switch to build mode
+          script: 'build', terrain: 'build', mesh: 'build',
+          debug: 'build', fix: 'build', code: 'build', image: 'build',
         }
         if (cmd in modeMap) {
           setAIMode(modeMap[cmd])
