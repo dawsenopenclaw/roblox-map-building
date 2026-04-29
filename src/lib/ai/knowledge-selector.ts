@@ -59,6 +59,29 @@ import { COMMERCIAL_INTERIORS_BIBLE } from './commercial-interiors-bible'
 import { EXAMPLE_BUILDS_BIBLE } from './example-builds-bible'
 import { LOWPOLY_STYLE_BIBLE, LOWPOLY_STYLE_GUIDE, LOWPOLY_MAP_EXAMPLE, LOWPOLY_OBJECTS, LOWPOLY_ITEMS, LOWPOLY_COLOR_DEPTH } from './lowpoly-style-bible'
 
+// ── Crawled Roblox Creator Hub Knowledge (Apr 2026) ─────────────────────────
+import { SCRIPTING_FUNDAMENTALS } from './crawled-knowledge/scripting-fundamentals'
+import { NETWORKING_SECURITY } from './crawled-knowledge/networking-security'
+import { PHYSICS_UI_DATA } from './crawled-knowledge/physics-ui-data'
+import { ENGINE_API_CORE } from './crawled-knowledge/engine-api-core'
+import { ENGINE_API_SERVICES } from './crawled-knowledge/engine-api-services'
+import { ENGINE_API_VISUALS } from './crawled-knowledge/engine-api-visuals'
+// ── GitHub Open-Source Game Patterns (Apr 2026) ─────────────────────────────
+import { GITHUB_GAME_ARCHITECTURES } from './crawled-knowledge/github-game-architectures'
+import { GITHUB_SYSTEM_PATTERNS } from './crawled-knowledge/github-system-patterns'
+// ── DevForum Community Knowledge (Apr 2026) ─────────────────────────────────
+import { DEVFORUM_GAME_SYSTEMS } from './crawled-knowledge/devforum-game-systems'
+import { DEVFORUM_SCRIPTING_PATTERNS } from './crawled-knowledge/devforum-scripting-patterns'
+import { DEVFORUM_UI_BUILDING } from './crawled-knowledge/devforum-ui-building'
+// ── Official Roblox Creator Hub: Parts, CFrames, Materials, Constraints (Apr 2026) ──
+import { BUILDING_PARTS_CFRAME } from './crawled-knowledge/building-parts-cframe'
+// ── Official Roblox Creator Hub: Terrain, Lighting, Atmosphere (Apr 2026) ────────
+import { ENVIRONMENT_TERRAIN_LIGHTING } from './crawled-knowledge/environment-terrain-lighting'
+// ── Official Roblox Creator Hub: Characters, Animation (Apr 2026) ──────────────
+import { CHARACTERS_ANIMATION } from './crawled-knowledge/characters-animation'
+// ── Official Roblox Creator Hub: Monetization, Performance, Streaming, Chat (Apr 2026) ──
+import { MONETIZATION_PERFORMANCE } from './crawled-knowledge/monetization-performance'
+
 // ── Knowledge Section Registry ───────────────────────────────────────────────
 
 interface KnowledgeSection {
@@ -307,6 +330,43 @@ const SECTIONS: KnowledgeSection[] = [
     getter: () => SCRIPTING_PATTERNS_EXPANDED,
     maxChars: 5000,
   },
+  // ── Crawled Creator Hub Knowledge ──────────────────────────────────────────
+  {
+    id: 'scripting-fundamentals-crawled',
+    keywords: ['luau', 'script', 'localscript', 'modulescript', 'pcall', 'task.wait', 'coroutine', 'type checking', 'type annotation', 'metatables', 'scope', 'ipairs', 'pairs', 'generalized iteration', 'events', 'connect', 'disconnect', 'runservice', 'heartbeat', 'starterplayerscripts', 'serverscriptservice', 'replicatedstorage'],
+    getter: () => SCRIPTING_FUNDAMENTALS,
+    maxChars: 8000,
+  },
+  {
+    id: 'networking-security-crawled',
+    keywords: ['remoteevent', 'remotefunction', 'fireserver', 'fireclient', 'onserverevent', 'onclientevent', 'invokeserver', 'unreliableremoteevent', 'anti-exploit', 'exploit prevention', 'security', 'server authority', 'rate limit', 'validate', 'trust client', 'client-server boundary', 'replication', 'network ownership', 'setnetworkowner', 'bindableevent'],
+    getter: () => NETWORKING_SECURITY,
+    maxChars: 7000,
+  },
+  {
+    id: 'physics-ui-data-crawled',
+    keywords: ['physics', 'constraint', 'hingeconstraint', 'springconstraint', 'ropeconstraint', 'weldconstraint', 'assembly', 'touched', 'collision group', 'raycasting', 'udim2', 'screengui', 'frame', 'textlabel', 'textbutton', 'imagelabel', 'anchorpoint', 'zindex', 'uilistlayout', 'uigridlayout', 'uicorner', 'proximityprompt', 'billboardgui', 'surfacegui', 'datastoreservice', 'setasync', 'getasync', 'updateasync', 'incrementasync', 'orderedatastore', 'particleemitter', 'bloom', 'sound', 'soundservice', 'tween'],
+    getter: () => PHYSICS_UI_DATA,
+    maxChars: 8000,
+  },
+  {
+    id: 'engine-api-core-crawled',
+    keywords: ['basepart', 'part', 'model', 'workspace', 'lighting', 'players', 'humanoid', 'collectionservice', 'runservice', 'debris', 'anchored', 'cancollide', 'cframe', 'size', 'material', 'transparency', 'touched', 'touchended', 'playeradded', 'playerremoving', 'characteradded', 'health', 'maxhealth', 'walkspeed', 'jumpheight', 'died', 'movedirection', 'gravity', 'raycast', 'getpartsboundsinradius', 'clocktime', 'brightness', 'globalwind', 'heartbeat', 'renderstep', 'bindtorenderste', 'addtag', 'gettag', 'additem'],
+    getter: () => ENGINE_API_CORE,
+    maxChars: 8000,
+  },
+  {
+    id: 'engine-api-services-crawled',
+    keywords: ['datastoreservice', 'getdatastore', 'getasync', 'setasync', 'updateasync', 'removeasync', 'incrementasync', 'orderedatastore', 'tweenservice', 'tweeninfo', 'easingstyle', 'easing', 'tween', 'remoteevent', 'remotefunction', 'fireserver', 'fireclient', 'fireallclients', 'onserverevent', 'onclientevent', 'invokeserver', 'invokeclient', 'userinputservice', 'iskeydown', 'inputbegan', 'inputended', 'keycode', 'mousedelta', 'touchenabled', 'marketplaceservice', 'promptproductpurchase', 'processreceipt', 'userownsgamepassasync', 'pathfindingservice', 'createpath', 'computeasync', 'getwaypoints', 'pathblocked', 'soundservice', 'ambientreverb'],
+    getter: () => ENGINE_API_SERVICES,
+    maxChars: 8000,
+  },
+  {
+    id: 'engine-api-visuals-crawled',
+    keywords: ['proximityprompt', 'actiontext', 'triggered', 'holdduration', 'particleemitter', 'emit', 'rate', 'lifetime', 'pointlight', 'spotlight', 'surfacelight', 'range', 'shadows', 'atmosphere', 'density', 'haze', 'glare', 'vehicleseat', 'occupant', 'throttle', 'steer', 'uicorner', 'cornerradius', 'uistroke', 'thickness', 'uilistlayout', 'filldirection', 'padding', 'sortorder', 'sound', 'soundid', 'volume', 'looped', 'play', 'beam', 'attachment0', 'attachment1', 'trail', 'linearvelocity', 'alignposition', 'responsiveness'],
+    getter: () => ENGINE_API_VISUALS,
+    maxChars: 9000,
+  },
   {
     id: 'interior-residential-deep',
     keywords: ['bedroom', 'master bedroom', 'teen room', 'child room', 'kitchen', 'bathroom', 'living room', 'home gym', 'home theater', 'laundry', 'study', 'home office', 'cabin', 'dorm', 'luxury', 'farmhouse kitchen', 'modern kitchen', 'residential'],
@@ -342,6 +402,66 @@ const SECTIONS: KnowledgeSection[] = [
     keywords: ['tree', 'rock', 'flower', 'mushroom', 'bush', 'fence', 'bridge', 'campfire', 'lantern', 'barrel', 'crate', 'bench', 'sign', 'path', 'pond', 'waterfall', 'prop', 'decoration', 'detail'],
     getter: () => LOWPOLY_OBJECTS + '\n' + LOWPOLY_ITEMS,
     maxChars: 6000,
+  },
+  // ── GitHub Real-Game Architecture Patterns (Apr 2026) ───────────────────────
+  {
+    id: 'github-game-architectures',
+    keywords: ['knit', 'framework', 'service', 'controller', 'architecture', 'game structure', 'folder organization', 'module pattern', 'service pattern', 'arena', 'round', 'match', 'queue', 'team', 'lobby', 'battle', 'tournament', 'melee', 'pad', 'state machine', 'player state', 'attribute', 'leaderstats', 'surface gui', 'scoreboard', 'in-world ui', 'kill log', 'notification', 'announcement', 'spawn point', 'respawn', 'teleport', 'checkpoint', 'forcefield', 'creator tag', 'kill attribution'],
+    getter: () => GITHUB_GAME_ARCHITECTURES,
+    maxChars: 9000,
+  },
+  {
+    id: 'github-system-patterns',
+    keywords: ['datastore2', 'data store wrapper', 'save load', 'safe datastore', 'pcall retry', 'combat pattern', 'hitbox', 'sword', 'damage', 'area damage', 'aoe', 'round loop', 'intermission', 'economy', 'currency', 'shop', 'purchase', 'game pass', 'developer product', 'receipt', 'matchmaking queue', 'physical queue', 'npc ai', 'pathfinding npc', 'mob controller', 'tycoon', 'dropper', 'collector', 'conveyor', 'inventory system', 'item system', 'equip', 'pet follow', 'orbit', 'progress bar', 'tween helper', 'ui animation', 'pop in', 'obby', 'checkpoint system', 'kill block', 'remote rate limit', 'unreliable remote'],
+    getter: () => GITHUB_SYSTEM_PATTERNS,
+    maxChars: 9000,
+  },
+  // ── DevForum Community Knowledge (Apr 2026) ──────────────────────────────────
+  {
+    id: 'devforum-game-systems',
+    keywords: ['tycoon', 'simulator', 'inventory', 'pet system', 'trading', 'quest', 'purchase button', 'plot', 'tycoon ownership', 'income rate', 'leaderstats', 'rebirth', 'click tool', 'orbit', 'pet follow', 'trade state', 'accept trade', 'offer', 'quest objective', 'quest reward', 'collect', 'dropper', 'idle game', 'auto collect', 'sell zone'],
+    getter: () => DEVFORUM_GAME_SYSTEMS,
+    maxChars: 9000,
+  },
+  {
+    id: 'devforum-scripting-patterns',
+    keywords: ['datastore best practices', 'session lock', 'updateasync', 'save load', 'retry', 'exponential backoff', 'bind to close', 'autosave', 'combat damage', 'stat manager', 'take damage', 'status effect', 'hitbox', 'sphere hitbox', 'box hitbox', 'raycast hitbox', 'pathfinding', 'waypoint', 'wander', 'npc state', 'customer npc', 'anti exploit', 'rate limit', 'validate', 'honeypot', 'luau optimize', 'table preallocation', 'instance pooling', 'delay parent', 'dupclosure', 'local cache'],
+    getter: () => DEVFORUM_SCRIPTING_PATTERNS,
+    maxChars: 9000,
+  },
+  {
+    id: 'devforum-ui-building',
+    keywords: ['screengui', 'modern ui', 'button hover', 'tween button', 'panel animation', 'slide in', 'slide out', 'notification', 'health bar', 'damage number', 'floating damage', 'viewport frame', 'item preview', 'obby checkpoint', 'kill brick', 'moving platform', 'spinner', 'obstacle', 'color system', 'dark theme', 'uicorner', 'uistroke', 'uilistlayout', 'responsive ui', 'mobile ui', 'lighting setup', 'bloom', 'atmosphere', 'color correction', 'material guide'],
+    getter: () => DEVFORUM_UI_BUILDING,
+    maxChars: 9000,
+  },
+  // ── Characters & Animation (Apr 2026) ──────────────────────────────────────
+  {
+    id: 'characters-animation-crawled',
+    keywords: ['animation', 'animator', 'animationtrack', 'loadanimation', 'play animation', 'stop animation', 'animationpriority', 'animationcontroller', 'getmarkerreachedsignal', 'marker', 'animation event', 'humanoiddescription', 'applydescription', 'loadcharacterwithhumanoiddescription', 'gethumanoiddescriptionfromuserid', 'gethumanoiddescriptionfromoutfitid', 'r6', 'r15', 'rig type', 'character appearance', 'character customization', 'avatar', 'bodycolor', 'hat accessory', 'hair accessory', 'face accessory', 'body parts', 'character scale', 'heightscale', 'widthscale', 'npc animation', 'npc rig', 'animationcontroller', 'ik', 'ikcontrol', 'inverse kinematics', 'facecontrols', 'facial expression', 'looat', 'sprint', 'walk animation', 'run animation', 'idle animation', 'jump animation', 'custom animation', 'wrapLayer', 'wrapTarget', 'layered clothing', 'humanoid state', 'walkspeed', 'jumpheight'],
+    getter: () => CHARACTERS_ANIMATION,
+    maxChars: 9000,
+  },
+  // ── Monetization, Performance, Streaming, Teleporting, TextChat (Apr 2026) ──
+  {
+    id: 'monetization-performance-crawled',
+    keywords: ['gamepass', 'game pass', 'developer product', 'devproduct', 'processreceipt', 'promptproductpurchase', 'promptgamepasspurchase', 'userownsgamepassasync', 'purchasegranted', 'notprocessedyet', 'receiptinfo', 'purchaseid', 'playerid', 'productid', 'subscription', 'issubscribed', 'getusersubscriptionstatus', 'promptsubscription', 'monetize', 'robux', 'marketplace', 'vip', 'premium', 'shop', 'store purchase', 'rankproductsasync', 'recommendtopproductsasync', 'streaming', 'streamingenabled', 'streamingminradius', 'streamingtargetradius', 'streamoutbehavior', 'modelstreamingmode', 'persistent model', 'atomic model', 'requeststreamaroundasync', 'teleport', 'teleportasync', 'teleportpartyasync', 'teleportoptions', 'seteleportdata', 'getjoindata', 'teleportdata', 'reserveserver', 'teleportinitfailed', 'between places', 'textchatservice', 'textchannel', 'textsource', 'textchatcommand', 'sendasyc', 'shoulddelivercallback', 'onincomingmessage', 'chat filter', 'chat command', 'proximity chat', 'performance', 'fps', 'optimize', 'anchor', 'castShadow', 'renderfidelity', 'draw call', 'contentprovider', 'preloadasync', 'memory leak', 'connection disconnect', 'runservice throttle', 'task.wait', 'native code', 'collision fidelity', 'canCollide', 'canTouch', 'canQuery'],
+    getter: () => MONETIZATION_PERFORMANCE,
+    maxChars: 9000,
+  },
+  // ── Official Roblox Creator Hub: Parts, CFrame, Materials, Constraints ─────
+  {
+    id: 'building-parts-cframe-crawled',
+    keywords: ['cframe', 'part', 'block', 'sphere', 'cylinder', 'wedge', 'size', 'position', 'anchored', 'cancollide', 'material', 'color3', 'transparency', 'reflectance', 'meshpart', 'meshid', 'textureid', 'specialmesh', 'surfaceappearance', 'texture', 'decal', 'face', 'weldconstraint', 'hingeconstraint', 'prismaticconstraint', 'springconstraint', 'ropeconstraint', 'ballsocketconstraint', 'attachment', 'primarypart', 'pivotto', 'moveto', 'getboundingbox', 'lookvector', 'rightvector', 'upvector', 'toworldspace', 'lerp', 'fromeuleraxyz', 'angles', 'lookat', 'grid of parts', 'circle arrangement', 'ring of parts', 'stack parts', 'row of parts', 'neon', 'enum material', 'woodplanks', 'concrete', 'brick material', 'basalt', 'granite', 'marble', 'asphalt', 'cobblestone', 'glass', 'fabric', 'carpet', 'cardboard', 'plaster', 'rubber', 'clonerow', 'buildwall', 'renderfidelity', 'collisionfidelity'],
+    getter: () => BUILDING_PARTS_CFRAME,
+    maxChars: 9000,
+  },
+  // ── Official Roblox Creator Hub: Terrain, Lighting, Atmosphere, Wind ────────
+  {
+    id: 'environment-terrain-lighting-crawled',
+    keywords: ['terrain', 'fillblock', 'fillball', 'fillcylinder', 'fillwedge', 'readvoxels', 'writevoxels', 'replacematerial', 'voxel', 'terrain material', 'terrain clear', 'lighting', 'ambient', 'brightness', 'clocktime', 'timeof day', 'outdoorambient', 'globalwind', 'wind', 'fog', 'fogcolor', 'fogend', 'fogstart', 'shadowsoftness', 'globalshadows', 'colorshift', 'exposurecompensation', 'technology', 'future lighting', 'atmosphere', 'density', 'haze', 'glare', 'decay', 'sky', 'skybox', 'celestialbodiesshown', 'starcount', 'suntextureid', 'bloom', 'blur', 'colorcorrection', 'sunrays', 'depthoffield', 'colorgrading', 'tonemapper', 'bloomeffect', 'blureffect', 'post processing', 'pointlight', 'spotlight', 'surfacelight', 'neon glow', 'day night cycle', 'golden hour', 'horror lighting', 'sci-fi lighting', 'underwater lighting', 'forest vibe', 'alien atmosphere', 'generate terrain', 'flat island', 'mountainous terrain', 'noise terrain', 'math.noise terrain'],
+    getter: () => ENVIRONMENT_TERRAIN_LIGHTING,
+    maxChars: 9000,
   },
 ]
 
@@ -384,17 +504,49 @@ export function selectRelevantKnowledge(taskPrompt: string, taskType: BuildTaskT
     if (taskType === 'ui' && section.id === 'ui-ux-bible') score += 2
     // New bible boosts
     if (taskType === 'script' && ['multiplayer-bible', 'scripting-patterns-expanded'].includes(section.id)) score += 2
+    // Crawled Creator Hub knowledge boosts
+    if (taskType === 'script' && ['scripting-fundamentals-crawled', 'networking-security-crawled', 'physics-ui-data-crawled'].includes(section.id)) score += 3
+    if (taskType === 'ui' && section.id === 'physics-ui-data-crawled') score += 3
+    if (taskType === 'building' && section.id === 'physics-ui-data-crawled') score += 1
+    // Engine API crawled boosts
+    if (taskType === 'script' && ['engine-api-core-crawled', 'engine-api-services-crawled'].includes(section.id)) score += 3
+    if (taskType === 'ui' && section.id === 'engine-api-visuals-crawled') score += 3
+    if (taskType === 'building' && section.id === 'engine-api-core-crawled') score += 1
+    if (taskType === 'lighting' && section.id === 'engine-api-visuals-crawled') score += 2
+    if (taskType === 'npc' && ['engine-api-services-crawled', 'engine-api-core-crawled'].includes(section.id)) score += 3
     if (taskType === 'building' && ['architectural-styles-bible', 'exterior-construction-bible', 'building-math-bible', 'color-material-bible'].includes(section.id)) score += 2
     if (taskType === 'lighting' && section.id === 'lighting-atmosphere-bible') score += 3
     if (taskType === 'prop' && ['weapon-tool-bible', 'interior-residential-deep', 'commercial-interiors-bible'].includes(section.id)) score += 2
     if (taskType === 'terrain' && section.id === 'world-design-bible') score += 1
     if (taskType === 'economy' && section.id === 'game-progression-bible') score += 2
+    // GitHub real-game architecture + system boosts
+    if (taskType === 'script' && ['github-game-architectures', 'github-system-patterns'].includes(section.id)) score += 4
+    if (taskType === 'npc' && section.id === 'github-system-patterns') score += 3
+    if (taskType === 'economy' && section.id === 'github-system-patterns') score += 4
+    if (taskType === 'ui' && section.id === 'github-game-architectures') score += 2
     // Example builds always relevant for any building/prop task
     if (['building', 'prop', 'terrain'].includes(taskType) && section.id === 'example-builds') score += 3
     // Low-poly style ALWAYS injected for visual builds — this is the default look
     if (['building', 'prop', 'terrain'].includes(taskType) && section.id === 'lowpoly-style') score += 4
     if (taskType === 'terrain' && section.id === 'lowpoly-map') score += 4
     if (taskType === 'prop' && section.id === 'lowpoly-objects') score += 3
+    // Characters & animation crawled boosts
+    if (taskType === 'npc' && section.id === 'characters-animation-crawled') score += 5
+    if (taskType === 'script' && section.id === 'characters-animation-crawled') score += 2
+    // Monetization, performance, streaming, teleport, chat crawled boosts
+    if (taskType === 'economy' && section.id === 'monetization-performance-crawled') score += 5
+    if (taskType === 'script' && section.id === 'monetization-performance-crawled') score += 3
+    if (taskType === 'npc' && section.id === 'monetization-performance-crawled') score += 1
+    // Building parts, CFrame, materials, constraints crawled boosts
+    if (taskType === 'building' && section.id === 'building-parts-cframe-crawled') score += 5
+    if (taskType === 'prop' && section.id === 'building-parts-cframe-crawled') score += 4
+    if (taskType === 'terrain' && section.id === 'building-parts-cframe-crawled') score += 2
+    if (taskType === 'script' && section.id === 'building-parts-cframe-crawled') score += 2
+    // Environment, terrain, lighting, atmosphere crawled boosts
+    if (taskType === 'terrain' && section.id === 'environment-terrain-lighting-crawled') score += 5
+    if (taskType === 'lighting' && section.id === 'environment-terrain-lighting-crawled') score += 5
+    if (taskType === 'building' && section.id === 'environment-terrain-lighting-crawled') score += 2
+    if (taskType === 'script' && section.id === 'environment-terrain-lighting-crawled') score += 1
 
     return { section, score }
   })
