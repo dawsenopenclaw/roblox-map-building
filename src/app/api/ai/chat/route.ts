@@ -6527,7 +6527,7 @@ Tell me about your vision and I'll create a full build plan with estimated parts
   // Non-build intents: conversation only (no code generation)
   // BUT still inject relevant Roblox knowledge so the AI can answer technical questions accurately
   if (!isBuildIntent) {
-    const conversationKnowledge = buildRobloxContext(message) + getRelevantScriptingKnowledge(message)
+    const conversationKnowledge = buildRobloxContext(message) + selectRelevantKnowledge(message, 'script')
     const convPrompt = CONVERSATION_PROMPT + (conversationKnowledge ? `\n\n=== ROBLOX TECHNICAL KNOWLEDGE (use to answer questions accurately) ===\n${conversationKnowledge}\n=== END KNOWLEDGE ===` : '') + (cameraContext ? '\n\n' + cameraContext : '')
     const convRace = await raceNonNull(
       callGroq(convPrompt, message, history, 1024),
@@ -6588,26 +6588,19 @@ Tell me about your vision and I'll create a full build plan with estimated parts
     }
   }
   const msgLower = message.toLowerCase()
-  const freeMatchUI = /\b(gui|ui|shop|inventory|hud|menu|health|bar|settings|quest|dialog|notification|loading|screen|button|frame|on\s?(my\s?)?screen|display|show\s?(me|on|the)|popup|overlay|dashboard|minimap|crosshair|hotbar|toolbar)\b/i.test(msgLower)
-  const freeMatchSound = /\b(sound|audio|music|sfx|ambient|footstep|voice|hear|listen|volume|explosion|gunshot|whoosh|splash)\b/i.test(msgLower)
-  const freeMatchAnim = /\b(animat|tween|motion|spin|rotate|cutscene|camera\s?(shake|move|pan)|door\s?(open|close)|elevator|slide|fade|bounce|spring|easing|moving|animated)\b/i.test(msgLower)
-  const freeMatchNPC = /\b(npc|enemy|enemies|mob|boss|monster|zombie|guard|villager|merchant|shopkeeper|quest\s?giver|follower|patrol|wander|chase|pathfind|dialogue|conversation|talk\s?to|spawn\s?(enemy|npc|mob|wave)|hostile|turret)\b/i.test(msgLower)
   const freeMatchMobile = /\b(mobile|phone|touch|tablet|joystick|swipe|pinch|tap|gesture|on\s?(my\s?)?(phone|mobile|tablet)|gamepad|console\s?controls?|cross\s?platform|safe\s?area)\b/i.test(msgLower)
   const freeMatchWater = /\b(water|swim|ocean|sea|lake|river|pond|pool|underwater|diving|boat|ship|sail|float|buoyan|drown|wave|waterfall|fountain|splash|fish|fishing|submarine|beach|dock|moat|lagoon)\b/i.test(msgLower)
+
+  // Map intent to task type for bible selection
+  const freeTaskType: BuildTaskType = (({ building: 'building', terrain: 'terrain', lighting: 'lighting', npc: 'npc', script: 'script', ui: 'ui', fullgame: 'building' } as Record<string, BuildTaskType>)[intent]) || 'building'
 
   const freeSources: Array<{ name: string; get: () => string }> = [
     { name: 'modifiers', get: () => modifiersToInstructions(extractModifiers(message)) },
     { name: 'roblox', get: () => buildRobloxContext(message) },
     { name: 'codegraph', get: () => formatGraphPrompt(message) },
     { name: 'focused', get: () => buildFocusedPrompt(message) },
-    { name: 'devforum', get: () => getRelevantBuildingKnowledge(message) },
-    { name: 'scripting', get: () => getRelevantScriptingKnowledge(message) },
-    { name: 'gamedesign', get: () => getRelevantGameDesign(message) },
-    { name: 'mastery', get: () => getRelevantBuildingMastery(message) },
-    ...(freeMatchUI ? [{ name: 'ui', get: () => getRelevantUIKnowledge(message) }] : []),
-    ...(freeMatchSound ? [{ name: 'sound', get: () => getRelevantSoundKnowledge(message) }] : []),
-    ...(freeMatchAnim ? [{ name: 'animation', get: () => getRelevantAnimationKnowledge(message) }] : []),
-    ...(freeMatchNPC ? [{ name: 'npc', get: () => getRelevantNPCKnowledge(message) }] : []),
+    // Bible knowledge — supersedes devforum, scripting, gamedesign, mastery, ui, sound, animation, npc
+    { name: 'bibles', get: () => selectRelevantKnowledge(message, freeTaskType) },
     ...(freeMatchMobile ? [{ name: 'mobile', get: () => getRelevantMobileControlsKnowledge(message) }] : []),
     ...(freeMatchWater ? [{ name: 'water', get: () => getRelevantWaterKnowledge(message) }] : []),
   ]
