@@ -22,10 +22,7 @@ import {
   Github,
   Check,
   Upload,
-  TrendingUp,
-  Zap,
   ChevronDown,
-  CreditCard,
   Plug,
   Download,
   BarChart,
@@ -38,7 +35,7 @@ const fetcher = (url: string) => fetch(url).then(r => { if (!r.ok) throw new Err
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'profile' | 'billing' | 'studio' | 'api-keys' | 'notifications' | 'connected'
+type Tab = 'profile' | 'studio' | 'api-keys' | 'notifications' | 'connected'
 
 type ApiKey = {
   id: string
@@ -538,7 +535,7 @@ function ProfileTab() {
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
                 maxLength={30}
                 placeholder="your_username"
-                className="input-premium pl-7"
+                className="input-premium pl-8"
               />
             </div>
             <p className="text-gray-500 text-xs mt-1.5">Letters, numbers, underscores, hyphens only.</p>
@@ -706,169 +703,6 @@ function ProfileTab() {
         )}
       </div>
 
-    </div>
-  )
-}
-
-// ─── Billing Tab ──────────────────────────────────────────────────────────────
-
-function BillingTab() {
-  const { data: tokenData } = useSWR('/api/tokens/balance', fetcher, { refreshInterval: 30_000 })
-  const { data: billingData } = useSWR('/api/billing/status', fetcher, { refreshInterval: 60_000 })
-
-  const plan = billingData?.plan ?? billingData?.tier ?? 'Free'
-  const tokenBalance = tokenData?.balance ?? 0
-  const tokenLimit = billingData?.tokenLimit ?? 1_000
-  // Use actual spend from API (tracks real transactions), not derived math.
-  // If balance > tokenLimit (token packs purchased), derived math goes negative.
-  const tokensUsed = Math.max(0, billingData?.tokensUsed ?? 0)
-  const effectiveTotal = Math.max(tokenLimit, tokenBalance + tokensUsed)
-  const tokenPct = effectiveTotal > 0
-    ? Math.min(100, Math.max(0, Math.round((tokensUsed / effectiveTotal) * 100)))
-    : 0
-
-  return (
-    <div className="space-y-4">
-      {/* Plan */}
-      <div className="card-premium rounded-xl p-6">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Current Plan</p>
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2.5 mb-2">
-              <span className="text-2xl font-bold text-white">{plan}</span>
-              {/* Gold active badge */}
-              <span className="inline-flex items-center gap-1.5 bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30 text-xs font-bold px-2.5 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] inline-block" />
-                Active
-              </span>
-            </div>
-            <p className="text-gray-300 text-sm">
-              {billingData?.tokenLimit
-                ? `${billingData.tokenLimit.toLocaleString()} tokens/month`
-                : 'Loading plan details…'}
-              {billingData?.tier && billingData.tier !== 'FREE' ? ' · Full AI · Priority builds' : billingData?.tier === 'FREE' ? ' · Basic AI access' : ''}
-            </p>
-            <p className="text-gray-400 text-xs mt-1.5">
-              {billingData?.monthlyPrice ? (
-                <>
-                  <span className="text-white font-semibold">
-                    {billingData.monthlyPrice}{billingData.monthlyPrice !== 'Free' ? '/mo' : ''}
-                  </span>
-                  {billingData.renewDate && (
-                    <> · {billingData.cancelAtPeriodEnd ? 'Cancels' : 'Renews'} {billingData.renewDate}</>
-                  )}
-                </>
-              ) : null}
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 flex-shrink-0">
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-1.5 bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
-            >
-              <TrendingUp size={14} />
-              Change Plan
-            </Link>
-            <button
-              onClick={async () => {
-                try {
-                  const res = await fetch('/api/billing/portal', { method: 'POST' })
-                  const data = await res.json() as { url?: string }
-                  if (data.url) window.location.href = data.url
-                } catch { window.location.href = '/billing' }
-              }}
-              className="text-xs text-gray-300 hover:text-blue-400 text-center transition-colors"
-            >
-              Manage billing →
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Token Balance */}
-      <div className="card-premium rounded-xl p-6">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Token Balance</p>
-        <div className="flex items-end gap-3 mb-1">
-          <span className="text-5xl font-bold text-[#D4AF37] tabular-nums leading-none">
-            {tokenBalance.toLocaleString()}
-          </span>
-          <span className="text-gray-300 text-sm mb-1">remaining</span>
-        </div>
-        <p className="text-gray-400 text-xs mb-4">of {effectiveTotal.toLocaleString()} total this month</p>
-
-        <div className="relative h-3 bg-white/10 rounded-full overflow-hidden mb-1">
-          <div
-            className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-            style={{
-              width: `${tokenPct}%`,
-              background:
-                tokenPct >= 80
-                  ? 'linear-gradient(90deg, #f87171, #ef4444)'
-                  : 'linear-gradient(90deg, #D4AF37, #E6A519)',
-            }}
-          />
-        </div>
-        <div className="flex justify-between text-xs text-gray-500 mb-5">
-          <span>{tokensUsed.toLocaleString()} used</span>
-          <span>{tokenPct}% used</span>
-        </div>
-
-        <Link
-          href="/tokens"
-          className="inline-flex items-center gap-2 text-sm font-semibold border border-[#D4AF37]/30 hover:border-[#D4AF37]/60 hover:bg-[#D4AF37]/5 text-[#D4AF37] px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <Zap size={14} />
-          Buy More Tokens
-        </Link>
-      </div>
-
-      {/* Usage Breakdown */}
-      <div className="card-premium rounded-xl p-6">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Usage This Month</p>
-        <div className="space-y-5">
-          {[
-            { label: 'AI Generations', used: billingData?.buildsThisMonth ?? 0, limit: 200, color: '#D4AF37' },
-            { label: 'Marketplace Searches', used: billingData?.marketplaceSearches ?? 0, limit: 500, color: '#60a5fa' },
-            { label: 'API Calls', used: billingData?.apiCallsThisMonth ?? 0, limit: 10_000, color: '#a78bfa' },
-          ].map((stat) => {
-            const pct = Math.min(100, Math.round((stat.used / stat.limit) * 100))
-            return (
-              <div key={stat.label} className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-gray-300 text-sm">{stat.label}</span>
-                  <span className="text-gray-300 text-xs tabular-nums">
-                    {stat.used.toLocaleString()} / {stat.limit.toLocaleString()}
-                  </span>
-                </div>
-                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: pct >= 80 ? '#f87171' : stat.color,
-                    }}
-                  />
-                </div>
-                <p className="text-gray-500 text-xs text-right">{pct}% used</p>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Payment History */}
-      <div className="card-premium rounded-xl p-6">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Payment History</p>
-        <div className="py-4 text-center">
-          <p className="text-gray-500 text-sm mb-2">Full payment history is available on the billing page.</p>
-          <Link
-            href="/billing"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#D4AF37] hover:text-[#E6A519] transition-colors"
-          >
-            View invoices →
-          </Link>
-        </div>
-      </div>
     </div>
   )
 }
@@ -1351,19 +1185,16 @@ function ConnectedTab() {
   ]
 
   return (
-    <div className="space-y-6">
-      {/* Clerk-managed sign-in methods — Google, Apple, phone, email.
-          Users can add/remove sign-in methods, connect social accounts,
-          and manage their phone number all from this embedded profile.
-          The appearance overrides match ForjeGames' dark theme. */}
-      <div className="card-premium rounded-xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/10 flex items-center justify-center flex-shrink-0">
-            <Link2 size={20} className="text-[#D4AF37]" />
+    <div className="space-y-4">
+      {/* Clerk-managed sign-in methods */}
+      <div className="card-premium rounded-xl p-5">
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center flex-shrink-0">
+            <Link2 size={16} className="text-[#D4AF37]" />
           </div>
           <div>
             <p className="text-white font-semibold text-sm">Sign-in Methods</p>
-            <p className="text-gray-400 text-xs">Add Google, phone, or other sign-in options to your account</p>
+            <p className="text-gray-500 text-[11px]">Google, phone, and other sign-in options</p>
           </div>
         </div>
         <UserProfile
@@ -1415,30 +1246,31 @@ function ConnectedTab() {
         const conn = connections[item.key]
         const isOpen = inputOpen === item.key
         return (
-          <div key={item.key} className="card-premium rounded-xl p-6">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="flex items-start gap-4 flex-1 min-w-0">
+          <div key={item.key} className="card-premium rounded-xl p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 flex-1 min-w-0">
                 <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${item.iconBg}`}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${item.iconBg}`}
                 >
                   {item.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
+                  <div className="flex items-center gap-2">
                     <p className="text-white font-semibold text-sm">{item.label}</p>
                     {conn.connected && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                      <span className="inline-flex items-center gap-1 text-[10px] bg-green-500/10 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded-full">
+                        <span className="w-1 h-1 rounded-full bg-green-400 inline-block" />
                         Connected
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-400 text-xs">{item.description}</p>
-                  {conn.connected && conn.username && (
-                    <p className="text-gray-400 text-xs mt-1">
-                      @{conn.username}{conn.connectedAt && conn.connectedAt !== 'now' ? ` · Since ${conn.connectedAt}` : ''}
-                    </p>
-                  )}
+                  <p className="text-gray-500 text-[11px]">
+                    {conn.connected && conn.username ? (
+                      <>@{conn.username}{conn.connectedAt && conn.connectedAt !== 'now' ? ` · Since ${conn.connectedAt}` : ''}</>
+                    ) : (
+                      item.description
+                    )}
+                  </p>
                 </div>
               </div>
 
@@ -1446,14 +1278,14 @@ function ConnectedTab() {
                 {conn.connected ? (
                   <button
                     onClick={() => handleDisconnect(item.key)}
-                    className="text-xs border border-white/20 hover:border-red-500/30 hover:text-red-400 text-gray-300 px-3 py-2 rounded-xl transition-colors"
+                    className="text-xs border border-white/15 hover:border-red-500/30 hover:text-red-400 text-gray-400 px-3 py-1.5 rounded-lg transition-colors"
                   >
                     Disconnect
                   </button>
                 ) : (
                   <button
                     onClick={() => handleOpenConnect(item.key)}
-                    className="inline-flex items-center gap-1.5 text-xs bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold px-3 py-2 rounded-xl transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold px-3 py-1.5 rounded-lg transition-colors"
                   >
                     <Link2 size={12} />
                     Connect
@@ -1462,12 +1294,8 @@ function ConnectedTab() {
               </div>
             </div>
 
-            {/* Username input form — shown when Connect is clicked */}
             {isOpen && (
-              <div className="mt-4 pt-4 border-t border-white/[0.06]">
-                <p className="text-xs text-gray-400 mb-2">
-                  Enter your {item.label} username to link your account:
-                </p>
+              <div className="mt-3 pt-3 border-t border-white/[0.06]">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <AtSign size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -1479,19 +1307,19 @@ function ConnectedTab() {
                       placeholder={item.placeholder}
                       maxLength={100}
                       autoFocus
-                      className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
+                      className="w-full bg-white/[0.04] border border-white/10 rounded-lg pl-8 pr-4 py-2 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
                     />
                   </div>
                   <button
                     onClick={() => void handleSaveConnect()}
                     disabled={saving || !inputValue.trim()}
-                    className="px-4 py-2.5 bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold rounded-xl text-sm transition-colors disabled:opacity-50"
+                    className="px-3 py-2 bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 text-white font-bold rounded-lg text-sm transition-colors disabled:opacity-50"
                   >
-                    {saving ? 'Saving…' : 'Save'}
+                    {saving ? '...' : 'Save'}
                   </button>
                   <button
                     onClick={() => { setInputOpen(null); setInputValue('') }}
-                    className="px-3 py-2.5 border border-white/10 text-gray-400 hover:text-white rounded-xl text-sm transition-colors"
+                    className="px-2 py-2 text-gray-500 hover:text-white text-sm transition-colors"
                   >
                     Cancel
                   </button>
@@ -1585,7 +1413,6 @@ function StudioTab() {
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: 'profile', label: 'Profile', icon: <User size={16} strokeWidth={1.8} /> },
-  { key: 'billing', label: 'Billing', icon: <CreditCard size={16} strokeWidth={1.8} /> },
   { key: 'notifications', label: 'Notifications', icon: <Bell size={16} strokeWidth={1.8} /> },
   { key: 'studio', label: 'Studio', icon: <Plug size={16} strokeWidth={1.8} /> },
   { key: 'api-keys', label: 'API Keys', icon: <Key size={16} strokeWidth={1.8} /> },
@@ -1638,7 +1465,6 @@ export default function SettingsClient() {
 
       {/* Content */}
       {tab === 'profile' && <ProfileTab />}
-      {tab === 'billing' && <BillingTab />}
       {tab === 'notifications' && <NotificationsTab />}
       {tab === 'studio' && <StudioTab />}
       {tab === 'api-keys' && <ApiKeysTab />}

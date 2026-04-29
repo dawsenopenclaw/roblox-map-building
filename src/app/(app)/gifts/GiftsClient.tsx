@@ -28,9 +28,10 @@ interface GiftHistoryResponse {
 // ── Static data ───────────────────────────────────────────────────────────────
 
 const SUBSCRIPTION_TIERS = [
-  { value: 'HOBBY',   label: 'Hobby',   price: '$9.99/mo'  },
-  { value: 'CREATOR', label: 'Creator', price: '$24.99/mo' },
-  { value: 'STUDIO',  label: 'Studio',  price: '$49.99/mo' },
+  { value: 'BUILDER', label: 'Builder',  price: '$25/mo'  },
+  { value: 'CREATOR', label: 'Creator',  price: '$50/mo'  },
+  { value: 'PRO',     label: 'Pro',      price: '$150/mo' },
+  { value: 'STUDIO',  label: 'Studio',   price: '$200/mo' },
 ] as const
 
 const TOKEN_PACKS = [
@@ -56,7 +57,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-xl border border-white/[0.08] bg-[#111113] p-5 ${className}`}
+      className={`rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 ${className}`}
     >
       {children}
     </div>
@@ -83,7 +84,7 @@ function StatusBadge({ status }: { status: GiftStatus }) {
 // ── Input / Select helpers ────────────────────────────────────────────────────
 
 const inputCls =
-  'w-full rounded-lg border border-white/[0.1] bg-[#0d0d0f] px-3 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/20 transition-colors'
+  'w-full rounded-lg border border-white/[0.1] bg-white/[0.03] px-3 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/20 transition-colors'
 
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${inputCls} ${props.className ?? ''}`} />
@@ -177,8 +178,8 @@ function SendGiftSection() {
             onClick={() => setGiftType(t)}
             className="flex-1 rounded-xl border px-4 py-4 text-sm font-medium transition-all text-left"
             style={{
-              borderColor: giftType === t ? '#D4AF37' : 'rgba(255,255,255,0.08)',
-              background: giftType === t ? 'rgba(212,175,55,0.07)' : '#111113',
+              borderColor: giftType === t ? '#D4AF37' : 'rgba(255,255,255,0.06)',
+              background: giftType === t ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.02)',
               color: giftType === t ? '#D4AF37' : '#9ca3af',
             }}
           >
@@ -416,17 +417,16 @@ function GiftHistorySection() {
       </SectionHeading>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 p-1 rounded-lg bg-[#0d0d0f] border border-white/[0.06] w-fit">
+      <div className="flex gap-1 mb-4">
         {(['sent', 'received'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className="px-4 py-1.5 rounded-md text-sm font-medium transition-all capitalize"
-            style={{
-              background: activeTab === tab ? '#1a1a1d' : 'transparent',
-              color: activeTab === tab ? '#fff' : '#6b7280',
-              boxShadow: activeTab === tab ? '0 1px 3px rgba(0,0,0,0.4)' : 'none',
-            }}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all capitalize border ${
+              activeTab === tab
+                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20'
+                : 'text-gray-500 hover:text-white border-transparent hover:bg-white/[0.04]'
+            }`}
           >
             {tab}
             <span
@@ -537,7 +537,7 @@ export default function GiftsPage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#050810] flex items-center justify-center">
         <svg className="w-6 h-6 animate-spin text-[#D4AF37]" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -548,31 +548,19 @@ export default function GiftsPage() {
 
   if (!isSignedIn) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center text-gray-400 text-sm">
+      <div className="min-h-screen bg-[#050810] flex items-center justify-center text-gray-400 text-sm">
         Please sign in to access gifts.
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 font-inter">
-      <div className="max-w-4xl mx-auto px-4 py-10 sm:px-6">
+    <div className="min-h-screen bg-[#050810]">
+      <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6">
         {/* Page header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-1">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)' }}
-            >
-              <svg className="w-5 h-5" style={{ color: '#D4AF37' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Gifts</h1>
-              <p className="text-sm text-gray-500">Send subscriptions or token packs to other ForjeGames users.</p>
-            </div>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Gifts</h1>
+          <p className="text-gray-400 mt-1 text-sm">Send subscriptions or token packs to other ForjeGames users.</p>
         </div>
 
         <SendGiftSection />

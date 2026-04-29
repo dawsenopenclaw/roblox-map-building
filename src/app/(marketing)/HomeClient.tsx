@@ -378,7 +378,8 @@ function HowItWorksSection() {
           <p className="text-zinc-500 max-w-xl mx-auto">No coding. No 3D modeling. Just describe what you want and the AI handles everything.</p>
         </motion.div>
 
-        {/* Video placeholder — replace with actual video */}
+        {/* How It Works video — self-hosted MP4 */}
+        {/* Drop your file at: public/videos/how-it-works.mp4 */}
         <motion.div
           className="mb-20 rounded-2xl overflow-hidden relative aspect-video max-w-3xl mx-auto"
           style={{ ...glass.card, borderColor: 'rgba(212,175,55,0.15)' }}
@@ -386,13 +387,16 @@ function HowItWorksSection() {
           initial="hidden"
           animate={isInView ? 'visible' : 'hidden'}
         >
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(212,175,55,0.15)', border: '2px solid rgba(212,175,55,0.3)' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="#D4AF37"><polygon points="9.5,7.5 16.5,12 9.5,16.5" /></svg>
-            </div>
-            <p className="text-zinc-400 text-sm font-medium">Watch the full walkthrough</p>
-            <p className="text-zinc-600 text-xs">Demo video coming soon</p>
-          </div>
+          <video
+            className="absolute inset-0 w-full h-full object-cover"
+            src="/videos/how-it-works.mp4"
+            controls
+            playsInline
+            preload="metadata"
+            poster="/videos/how-it-works-poster.jpg"
+          >
+            Your browser does not support video playback.
+          </video>
         </motion.div>
 
         {/* 3 Steps with connector lines */}
@@ -581,7 +585,7 @@ const PLANS = [
     name: 'Test Drive',
     price: 'Free',
     sub: '1,000 tokens, one-time',
-    features: ['Small builds & props', 'Basic AI models', 'Studio plugin', 'Community support'],
+    features: ['Props only — no full games', 'Basic AI models', 'Studio plugin', 'Community support'],
     cta: 'Start Free',
     href: '/sign-up',
     highlight: false,

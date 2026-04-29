@@ -3,6 +3,38 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import type { ProjectData } from '@/hooks/useProject'
 
+// ─── Cloud session type ──────────────────────────────────────────────────────
+
+interface CloudSession {
+  id: string
+  title: string
+  aiMode: string
+  createdAt: string
+  updatedAt: string
+  _count?: { messages: number }
+}
+
+// ─── Folder helpers ──────────────────────────────────────────────────────────
+
+const FOLDERS_KEY = 'forje_project_folders'
+
+interface FolderData {
+  id: string
+  name: string
+  projectIds: string[]
+}
+
+function loadFolders(): FolderData[] {
+  try {
+    const raw = localStorage.getItem(FOLDERS_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+function saveFolders(folders: FolderData[]) {
+  try { localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders)) } catch {}
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatRelativeTime(iso: string): string {
@@ -325,8 +357,17 @@ export function ProjectsSidebarPanel({
   currentProjectName,
 }: ProjectsSidebarPanelProps) {
   const [projects, setProjects] = useState<ProjectData[]>([])
+  const [cloudSessions, setCloudSessions] = useState<CloudSession[]>([])
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [search, setSearch] = useState('')
+  const [folders, setFolders] = useState<FolderData[]>([])
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+  const [creatingFolder, setCreatingFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [activeTab, setActiveTab] = useState<'local' | 'cloud'>('local')
+
+  // Load folders from localStorage
+  useEffect(() => { setFolders(loadFolders()) }, [])
 
   // Lazy import to avoid SSR issues — only runs client-side
   const refresh = useCallback(() => {
@@ -336,7 +377,17 @@ export function ProjectsSidebarPanel({
     }).catch(() => { /* ignore */ })
   }, [])
 
-  useEffect(() => { refresh() }, [refresh])
+  // Fetch cloud chat sessions from DB
+  const refreshCloud = useCallback(() => {
+    fetch('/api/sessions')
+      .then(r => r.ok ? r.json() : { sessions: [] })
+      .then((data: { sessions: CloudSession[] }) => {
+        setCloudSessions(data.sessions ?? [])
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => { refresh(); refreshCloud() }, [refresh, refreshCloud])
 
   const handleDelete = useCallback((id: string) => {
     import('@/hooks/useProject').then(({ deleteProject }) => {
@@ -390,9 +441,29 @@ export function ProjectsSidebarPanel({
         Save Project
       </button>
 
+      {/* Tabs: Local / Cloud */}
+      <div style={{ display: 'flex', gap: 2, marginBottom: 6, flexShrink: 0 }}>
+        {(['local', 'cloud'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              flex: 1, padding: '6px 0', borderRadius: 7, border: 'none',
+              fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              background: activeTab === tab ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.03)',
+              color: activeTab === tab ? '#D4AF37' : 'rgba(255,255,255,0.35)',
+              transition: 'all 0.15s',
+            }}
+          >
+            {tab === 'local' ? `Local (${projects.length})` : `Cloud (${cloudSessions.length})`}
+          </button>
+        ))}
+      </div>
+
       {/* Search */}
-      {projects.length > 0 && (
-        <div style={{ position: 'relative', marginBottom: 8, flexShrink: 0 }}>
+      {(projects.length > 0 || cloudSessions.length > 0) && (
+        <div style={{ position: 'relative', marginBottom: 6, flexShrink: 0 }}>
           <svg
             width="11" height="11" viewBox="0 0 11 11" fill="none"
             style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
@@ -402,7 +473,7 @@ export function ProjectsSidebarPanel({
           </svg>
           <input
             type="text"
-            placeholder="Search projects..."
+            placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
@@ -432,59 +503,232 @@ export function ProjectsSidebarPanel({
         </div>
       )}
 
-      {/* Project list */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {projects.length === 0 && (
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', gap: 8, padding: '32px 16px', textAlign: 'center',
-          }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 9, display: 'flex',
-              alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.15)',
-            }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: '#D4AF37' }}>
-                <path d="M3 3h8l2 2v8a1 1 0 01-1 1H4a1 1 0 01-1-1V3z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-                <path d="M6 3v4h4V3" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-              </svg>
+      {/* New Folder button */}
+      {activeTab === 'local' && (
+        <div style={{ marginBottom: 6, flexShrink: 0 }}>
+          {creatingFolder ? (
+            <div style={{ display: 'flex', gap: 4 }}>
+              <input
+                type="text"
+                value={newFolderName}
+                onChange={e => setNewFolderName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && newFolderName.trim()) {
+                    const f: FolderData = { id: `folder-${Date.now()}`, name: newFolderName.trim(), projectIds: [] }
+                    const updated = [...folders, f]
+                    setFolders(updated)
+                    saveFolders(updated)
+                    setCreatingFolder(false)
+                    setNewFolderName('')
+                  }
+                  if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName('') }
+                }}
+                placeholder="Folder name..."
+                autoFocus
+                maxLength={30}
+                style={{
+                  flex: 1, padding: '5px 8px', borderRadius: 6,
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(212,175,55,0.3)',
+                  color: 'rgba(255,255,255,0.8)', fontSize: 11, outline: 'none',
+                  fontFamily: 'Inter, sans-serif',
+                }}
+              />
+              <button
+                onClick={() => { setCreatingFolder(false); setNewFolderName('') }}
+                style={{
+                  padding: '4px 8px', borderRadius: 6, border: 'none',
+                  background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)',
+                  fontSize: 10, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
             </div>
-            <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>
-              No saved projects yet.<br />Click &ldquo;Save Project&rdquo; to save your work.
-            </p>
-          </div>
-        )}
+          ) : (
+            <button
+              onClick={() => setCreatingFolder(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+                padding: '5px 10px', borderRadius: 7, border: 'none',
+                background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.3)',
+                fontSize: 11, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M1 3h4l1-1h5v8H1V3z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                <path d="M6 5v4M4 7h4" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+              </svg>
+              New Folder
+            </button>
+          )}
+        </div>
+      )}
 
-        {filtered.length === 0 && projects.length > 0 && (
-          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '16px 0', margin: 0 }}>
-            No projects match &ldquo;{search}&rdquo;
-          </p>
-        )}
+      {/* Project / Session list */}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {activeTab === 'local' ? (
+          <>
+            {/* Folders */}
+            {folders.map(folder => {
+              const isExpanded = expandedFolders.has(folder.id)
+              const folderProjects = projects.filter(p => folder.projectIds.includes(p.id))
+              const filteredFolderProjects = search.trim()
+                ? folderProjects.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+                : folderProjects
+              if (search.trim() && filteredFolderProjects.length === 0) return null
+              return (
+                <div key={folder.id}>
+                  <div
+                    onClick={() => {
+                      const next = new Set(expandedFolders)
+                      isExpanded ? next.delete(folder.id) : next.add(folder.id)
+                      setExpandedFolders(next)
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '6px 10px', borderRadius: 7, cursor: 'pointer',
+                      color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600,
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
+                      style={{ transform: isExpanded ? 'rotate(90deg)' : '', transition: 'transform 0.15s' }}
+                    >
+                      <path d="M3 1l5 4-5 4V1z" fill="currentColor" />
+                    </svg>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M1 3h4l1-1h5v8H1V3z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                    </svg>
+                    {folder.name}
+                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', marginLeft: 'auto' }}>{folderProjects.length}</span>
+                  </div>
+                  {isExpanded && filteredFolderProjects.map(project => (
+                    <div key={project.id} style={{ paddingLeft: 16 }}>
+                      <ProjectRow
+                        project={project}
+                        isActive={project.id === activeProjectId}
+                        onLoad={(id) => { const p = projects.find(x => x.id === id); if (p) onLoadProject(p) }}
+                        onDelete={handleDelete}
+                        onRename={handleRename}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
 
-        {filtered.map((project) => (
-          <ProjectRow
-            key={project.id}
-            project={project}
-            isActive={project.id === activeProjectId}
-            onLoad={(id) => {
-              const p = projects.find((x) => x.id === id)
-              if (p) onLoadProject(p)
-            }}
-            onDelete={handleDelete}
-            onRename={handleRename}
-          />
-        ))}
+            {/* Unfiled projects */}
+            {(() => {
+              const folderedIds = new Set(folders.flatMap(f => f.projectIds))
+              const unfiled = projects.filter(p => !folderedIds.has(p.id))
+              const filteredUnfiled = search.trim()
+                ? unfiled.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+                : unfiled
+              if (unfiled.length === 0 && projects.length === 0) {
+                return (
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    justifyContent: 'center', gap: 8, padding: '32px 16px', textAlign: 'center',
+                  }}>
+                    <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>
+                      No saved projects yet.<br />Click &ldquo;Save Project&rdquo; to save your work.
+                    </p>
+                  </div>
+                )
+              }
+              return filteredUnfiled.map(project => (
+                <ProjectRow
+                  key={project.id}
+                  project={project}
+                  isActive={project.id === activeProjectId}
+                  onLoad={(id) => { const p = projects.find(x => x.id === id); if (p) onLoadProject(p) }}
+                  onDelete={handleDelete}
+                  onRename={handleRename}
+                />
+              ))
+            })()}
+          </>
+        ) : (
+          <>
+            {/* Cloud chat sessions */}
+            {cloudSessions.length === 0 ? (
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: 8, padding: '32px 16px', textAlign: 'center',
+              }}>
+                <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>
+                  No cloud chats yet.<br />Your AI conversations are automatically saved here.
+                </p>
+              </div>
+            ) : (
+              cloudSessions
+                .filter(s => !search.trim() || s.title.toLowerCase().includes(search.toLowerCase()))
+                .map(session => (
+                  <div
+                    key={session.id}
+                    onClick={() => {
+                      // Load cloud session as a project
+                      const asProject: ProjectData = {
+                        id: session.id,
+                        name: session.title,
+                        createdAt: session.createdAt,
+                        updatedAt: session.updatedAt,
+                        messages: [],
+                        sceneBlocks: [],
+                        messageCount: session._count?.messages ?? 0,
+                        objectCount: 0,
+                      }
+                      onLoadProject(asProject)
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 10px', borderRadius: 9, cursor: 'pointer',
+                      background: session.id === activeProjectId ? 'rgba(212,175,55,0.10)' : 'transparent',
+                      border: `1px solid ${session.id === activeProjectId ? 'rgba(212,175,55,0.22)' : 'transparent'}`,
+                      transition: 'all 0.12s ease-out',
+                    }}
+                    onMouseEnter={e => { if (session.id !== activeProjectId) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                    onMouseLeave={e => { if (session.id !== activeProjectId) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 7, flexShrink: 0,
+                      background: 'rgba(96,165,250,0.15)', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      border: '1px solid rgba(96,165,250,0.2)',
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(96,165,250,0.8)" strokeWidth="1.5">
+                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{
+                        margin: 0, fontSize: 12, fontWeight: 600,
+                        color: session.id === activeProjectId ? '#D4AF37' : 'rgba(255,255,255,0.8)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {session.title}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>
+                        {formatRelativeTime(session.updatedAt)} · {session._count?.messages ?? 0} msg
+                      </p>
+                    </div>
+                  </div>
+                ))
+            )}
+          </>
+        )}
       </div>
 
       {/* Footer count */}
-      {projects.length > 0 && (
-        <div style={{
-          paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)',
-          fontSize: 10, color: 'rgba(255,255,255,0.2)', textAlign: 'center', flexShrink: 0,
-        }}>
-          {projects.length} / 20 projects saved
-        </div>
-      )}
+      <div style={{
+        paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)',
+        fontSize: 10, color: 'rgba(255,255,255,0.2)', textAlign: 'center', flexShrink: 0,
+      }}>
+        {activeTab === 'local'
+          ? `${projects.length} local · ${folders.length} folders`
+          : `${cloudSessions.length} cloud sessions`
+        }
+      </div>
     </div>
   )
 }

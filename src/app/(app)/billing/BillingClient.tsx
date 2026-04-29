@@ -3,7 +3,7 @@
 import { useCallback } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { CreditCard, Zap, TrendingUp, Bot, Package, Star, Crown, Building2, Sparkles, ExternalLink, Download, AlertTriangle } from 'lucide-react'
+import { CreditCard, Zap, TrendingUp, Bot, Package, Star, Crown, Building2, Sparkles, ExternalLink, Download, AlertTriangle, Rocket } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -108,6 +108,43 @@ function getTierConfig(tier: string): TierConfig {
         badgeBorder: 'border-white/20',
       }
   }
+}
+
+// ─── Game Depth (mirrors pricing page) ───────────────────────────────────────
+
+const GAME_DEPTH: Record<string, { label: string; pct: number }> = {
+  FREE:    { label: 'Small builds & props',                pct: 0   },
+  STARTER: { label: '10% game completion / month',         pct: 10  },
+  BUILDER: { label: '25% game completion / month',         pct: 25  },
+  CREATOR: { label: '50% game completion / month',         pct: 50  },
+  PRO:     { label: '75% game completion / month',         pct: 75  },
+  STUDIO:  { label: '100% — unlimited full game building', pct: 100 },
+}
+
+function GameDepthBadge({ tier }: { tier: string }) {
+  const depth = GAME_DEPTH[tier] ?? GAME_DEPTH.FREE
+  return (
+    <div className="flex items-center gap-3 mt-4 p-3 rounded-xl bg-[#D4AF37]/[0.06] border border-[#D4AF37]/15">
+      <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/15 flex items-center justify-center flex-shrink-0">
+        <Rocket size={14} className="text-[#D4AF37]" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-bold text-[#D4AF37]/60 uppercase tracking-wider">Game Depth</p>
+        <p className="text-sm font-semibold text-[#D4AF37]">{depth.label}</p>
+      </div>
+      {depth.pct > 0 && (
+        <div className="w-16 flex-shrink-0">
+          <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
+            <div
+              className="h-full rounded-full bg-[#D4AF37] transition-all duration-500"
+              style={{ width: `${depth.pct}%` }}
+            />
+          </div>
+          <p className="text-[9px] text-[#D4AF37]/70 text-right mt-0.5 tabular-nums">{depth.pct}%</p>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
@@ -349,6 +386,7 @@ export default function BillingClient() {
                         </span>
                       )}
                     </p>
+                    <GameDepthBadge tier={activeBilling.tier} />
                   </>
                 )}
               </div>

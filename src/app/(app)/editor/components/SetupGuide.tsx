@@ -181,6 +181,21 @@ export function SetupGuide({
           </button>
         </div>
 
+        {/* Setup video — self-hosted MP4 */}
+        {/* Drop your file at: public/videos/setup-guide.mp4 */}
+        <div style={{ padding: '16px 24px 0' }}>
+          <div style={{ borderRadius: 12, overflow: 'hidden', aspectRatio: '16/9', background: 'rgba(0,0,0,0.3)' }}>
+            <video
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              src="/videos/setup-guide.mp4"
+              controls
+              playsInline
+              preload="metadata"
+              poster="/videos/setup-guide-poster.jpg"
+            />
+          </div>
+        </div>
+
         {/* Step indicator dots */}
         <div style={{ padding: '16px 24px 0', display: 'flex', gap: 6, alignItems: 'center' }}>
           {STEPS.map((_, i) => (

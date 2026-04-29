@@ -179,7 +179,7 @@ function CustomTokenPurchase() {
     <div
       className="mt-6 rounded-2xl border p-6"
       style={{
-        background: `linear-gradient(160deg, ${GOLD}08 0%, #111111 40%)`,
+        background: `linear-gradient(160deg, ${GOLD}08 0%, rgba(255,255,255,0.02) 60%)`,
         borderColor: `${GOLD}30`,
       }}
     >
@@ -340,24 +340,33 @@ export default function TokensClient() {
   return (
     <div className="max-w-5xl mx-auto text-white space-y-8 pb-12">
 
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Token Usage</h1>
-          <p className="text-gray-500 text-sm mt-1">Track consumption and top up your balance</p>
+      {/* Header — matches home page premium style */}
+      <div className="relative pb-8 mb-2">
+        <div className="absolute -top-6 -left-4 w-64 h-32 bg-[#D4AF37]/[0.06] rounded-full blur-3xl pointer-events-none" />
+        <div className="relative flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#D4AF37]/70 mb-2 font-mono">Token Usage</p>
+            <h1 className="text-3xl sm:text-4xl font-bold">
+              <span className="bg-gradient-to-br from-white to-white/70 bg-clip-text text-transparent">
+                Your Tokens
+              </span>
+            </h1>
+            <p className="text-gray-500 text-sm mt-2">Track consumption and top up your balance</p>
+          </div>
+          <a
+            href="#buy-tokens"
+            onClick={(e) => {
+              e.preventDefault()
+              document.getElementById('buy-tokens')?.scrollIntoView({ behavior: 'smooth' })
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-black transition-all hover:brightness-110 active:scale-[0.97] shadow-lg"
+            style={{ background: `linear-gradient(135deg, ${GOLD} 0%, #C8962A 100%)`, boxShadow: `0 0 20px ${GOLD}30` }}
+          >
+            <IconCoins className="w-4 h-4" />
+            Buy Tokens
+          </a>
         </div>
-        <a
-          href="#buy-tokens"
-          onClick={(e) => {
-            e.preventDefault()
-            document.getElementById('buy-tokens')?.scrollIntoView({ behavior: 'smooth' })
-          }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90"
-          style={{ background: GOLD, boxShadow: `0 0 16px ${GOLD}30` }}
-        >
-          <IconCoins className="w-4 h-4" />
-          Buy Tokens
-        </a>
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
       </div>
 
       {/* Demo mode notice */}
@@ -379,7 +388,7 @@ export default function TokensClient() {
       {/* Balance Hero */}
       <div
         className="rounded-2xl border border-white/[0.08] p-6"
-        style={{ background: 'linear-gradient(135deg, #161616 0%, #111111 100%)' }}
+        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)' }}
       >
         <div className="flex flex-wrap items-end justify-between gap-6 mb-6">
           <div>
@@ -477,7 +486,7 @@ export default function TokensClient() {
           </Link>
         </div>
 
-        <div className="rounded-2xl border border-white/[0.08] overflow-hidden" style={{ background: '#111111' }}>
+        <div className="rounded-2xl border border-white/[0.08] overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
           {/* Header row */}
           <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto] gap-4 px-5 py-3 border-b border-white/[0.06]">
             <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Description</span>
@@ -530,8 +539,8 @@ export default function TokensClient() {
                 className="rounded-2xl border p-5 flex flex-col transition-all duration-200 relative overflow-hidden"
                 style={{
                   background: pack.popular
-                    ? `linear-gradient(160deg, ${GOLD}0d 0%, #111111 60%)`
-                    : '#111111',
+                    ? `linear-gradient(160deg, ${GOLD}0d 0%, rgba(255,255,255,0.02) 60%)`
+                    : 'rgba(255,255,255,0.02)',
                   borderColor: pack.popular
                     ? `${GOLD}55`
                     : isBestValue

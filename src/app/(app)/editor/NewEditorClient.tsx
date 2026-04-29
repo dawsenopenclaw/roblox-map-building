@@ -29,6 +29,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { MobileBottomSheet } from '@/components/editor/MobileBottomSheet'
 import { PluginUpdateBanner } from '@/components/editor/PluginUpdateBanner'
 import ConsolePanel from '@/components/editor/ConsolePanel'
+import CommunityPanel from './panels/CommunityPanel'
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -2617,8 +2618,24 @@ function EditorInner() {
   // On first visit (no hasConnectedBefore flag) the wizard is never auto-shown.
   const [studioWizardOpen, setStudioWizardOpen] = useState(false)
   const [showConsole, setShowConsole] = useState(false)
+  const [showCommunity, setShowCommunity] = useState(false)
   const chatPanelRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
+
+  // ── Gamification: daily login XP + achievement check on editor load ──
+  const xpTrackedRef = useRef(false)
+  useEffect(() => {
+    if (xpTrackedRef.current) return
+    xpTrackedRef.current = true
+    // Daily login XP
+    fetch('/api/gamification/earn-xp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'DAILY_LOGIN' }),
+    }).catch(() => {})
+    // Auto-check for newly unlocked achievements
+    fetch('/api/gamification/achievements/check', { method: 'POST' }).catch(() => {})
+  }, [])
 
   // Build history — persisted to localStorage
   const buildHistory = useBuildHistory()
@@ -2725,6 +2742,14 @@ function EditorInner() {
         }
         studio.addActivity('Build sent to Studio — check your viewport!')
         toast('Build executed in Studio', 'success')
+
+        // Award BUILD XP + check achievements
+        fetch('/api/gamification/earn-xp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event: 'BUILD' }),
+        }).catch(() => {})
+        fetch('/api/gamification/achievements/check', { method: 'POST' }).catch(() => {})
 
         // First-build celebration — show upgrade nudge once, ever.
         // This is the #1 conversion lever for free→paid: strike while
@@ -3538,6 +3563,24 @@ function EditorInner() {
               compact={false}
               {...aiModeProps}
             />
+            {/* Community panel toggle */}
+            <button
+              onClick={() => setShowCommunity(!showCommunity)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors"
+              style={{
+                background: showCommunity ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.04)',
+                color: showCommunity ? '#D4AF37' : '#71717A',
+                borderTop: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+              </svg>
+              Community
+            </button>
+
             {/* Console panel toggle + panel (only when Studio connected) */}
             {studio.isConnected && (
               <>
@@ -4403,6 +4446,11 @@ function EditorInner() {
             </div>
           )}
         </MobileBottomSheet>
+      )}
+
+      {/* Community floating panel */}
+      {showCommunity && (
+        <CommunityPanel onClose={() => setShowCommunity(false)} />
       )}
 
       <style>{`
