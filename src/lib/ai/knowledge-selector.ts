@@ -91,6 +91,10 @@ import { ENGINE_API_ADVANCED_SERVICES } from './crawled-knowledge/engine-api-adv
 import { CONSTRAINTS_RIGGING_GUI } from './crawled-knowledge/constraints-rigging-gui'
 // ── Advanced Luau Idioms & Patterns — Promise, StateMachine, Signal, ObjectPool, Component, Command, Singleton, RateLimiter, Debounce, SafeRemote, DataMigration, TweenSequence (Apr 2026) ──
 import { LUAU_IDIOMS_PATTERNS } from './crawled-knowledge/luau-idioms-patterns'
+// ── Advanced Game Features — Camera, Character Controller, Tools, Day/Night, Weather, Dialog/Quest, Minimap, Loading Screen (Apr 2026) ──
+import ADVANCED_GAME_FEATURES from './crawled-knowledge/advanced-game-features'
+// ── Genre Deep Patterns — Tycoon, Simulator, Tower Defense, Murder Mystery, Battle Royale, Roleplay (Apr 2026) ──
+import { GENRE_DEEP_PATTERNS } from './crawled-knowledge/genre-deep-patterns'
 
 // ── Knowledge Section Registry ───────────────────────────────────────────────
 
@@ -508,6 +512,50 @@ const SECTIONS: KnowledgeSection[] = [
     getter: () => LUAU_IDIOMS_PATTERNS,
     maxChars: 12000,
   },
+  // ── Advanced Game Features — Camera, Character Controller, Tools, Day/Night, Weather, Dialog/Quest NPC, Minimap, Loading Screen (Apr 2026) ──
+  {
+    id: 'advanced-game-features',
+    keywords: [
+      // camera
+      'camera', 'third person camera', 'first person', 'top down', 'isometric', 'cutscene', 'camera shake', 'camera path', 'bezier camera', 'spectate', 'camera manipulation', 'zoom limit', 'cameratype', 'scriptable camera', 'cinematic',
+      // character controller
+      'sprint', 'stamina', 'double jump', 'wall jump', 'dash', 'dash ability', 'custom movement', 'character controller', 'walk animation override', 'sprint animation', 'movement system',
+      // tools
+      'tool system', 'tool activated', 'tool equipped', 'tool unequipped', 'melee tool', 'ranged tool', 'gun script', 'sword script', 'tool cooldown', 'hitscan', 'tool animation', 'swing animation',
+      // day/night
+      'day night', 'day/night', 'clocktime', 'time of day', 'lighting cycle', 'streetlight', 'night lights', 'npc schedule', 'environment time',
+      // weather
+      'weather', 'rain', 'snow', 'thunder', 'lightning', 'fog weather', 'weather system', 'puddle', 'rain particle', 'snow particle', 'storm',
+      // dialog/quest
+      'dialog', 'dialogue', 'quest', 'quest system', 'quest npc', 'proximityprompt dialog', 'npc dialog', 'branching dialog', 'typewriter', 'quest objective', 'quest reward', 'quest tracker', 'npc talk', 'quest accept',
+      // minimap
+      'minimap', 'mini map', 'radar', 'player blip', 'map marker', 'poi marker', 'viewportframe minimap', 'compass', 'top down map',
+      // loading screen
+      'loading screen', 'loading bar', 'preloadasync', 'contentprovider', 'load progress', 'custom loading', 'loading tips', 'loading fade',
+    ],
+    getter: () => ADVANCED_GAME_FEATURES,
+    maxChars: 12000,
+  },
+  // ── Genre Deep Patterns — Tycoon, Simulator, Tower Defense, Murder Mystery, Battle Royale, Roleplay (Apr 2026) ──
+  {
+    id: 'genre-deep-patterns',
+    keywords: [
+      // tycoon
+      'tycoon', 'dropper', 'conveyor', 'collector', 'upgrader', 'tycoon button', 'plot', 'tycoon pad', 'cash dropper', 'belt', 'income machine', 'rebirth tycoon', 'auto collect', 'idle tycoon', 'factory tycoon', 'buy button', 'tycoon upgrade',
+      // simulator
+      'simulator', 'clicker', 'click simulator', 'pet simulator', 'egg hatch', 'pet hatch', 'pet system', 'pet follow', 'pet equipped', 'coin multiplier', 'area unlock', 'rebirth simulator', 'prestige simulator', 'auto farm', 'gamepass auto', 'backpack capacity', 'rarity pet', 'weighted random pet',
+      // tower defense
+      'tower defense', 'tower defence', 'tower placement', 'wave spawner', 'enemy wave', 'wave system', 'tower upgrade', 'tower targeting', 'waypoint enemy', 'path enemy', 'kill currency', 'currency kill', 'defense tower', 'td game', 'place tower',
+      // murder mystery
+      'murder mystery', 'murderer', 'sheriff', 'innocent', 'role assignment', 'knife drop', 'gun drop', 'revolver', 'round timer mm', 'spectate', 'coin scatter', 'mm2', 'mm round', 'role game',
+      // battle royale
+      'battle royale', 'shrinking zone', 'storm barrier', 'safe zone', 'storm damage', 'zone shrink', 'loot spawn', 'loot table', 'weapon pickup', 'last player standing', 'last man standing', 'br game', 'zone ring',
+      // roleplay
+      'roleplay', 'rp game', 'job system', 'work shift', 'earn money job', 'property buy', 'house buy', 'vehicle spawn', 'car spawn', 'day night rp', 'proximity chat', 'rp money', 'job wage', 'uniform',
+    ],
+    getter: () => GENRE_DEEP_PATTERNS,
+    maxChars: 14000,
+  },
 ]
 
 // ── Main Selector ────────────────────────────────────────────────────────────
@@ -611,6 +659,16 @@ export function selectRelevantKnowledge(taskPrompt: string, taskType: BuildTaskT
     if (taskType === 'economy' && section.id === 'progression-social-crawled') score += 4
     if (taskType === 'npc' && section.id === 'progression-social-crawled') score += 3
     if (taskType === 'ui' && section.id === 'progression-social-crawled') score += 2
+    // Advanced game features — camera, sprint/dash, tools, day/night, weather, dialog, minimap, loading
+    if (taskType === 'script' && section.id === 'advanced-game-features') score += 4
+    if (taskType === 'npc' && section.id === 'advanced-game-features') score += 5  // dialog/quest NPC
+    if (taskType === 'ui' && section.id === 'advanced-game-features') score += 3   // minimap + loading screen
+    if (taskType === 'lighting' && section.id === 'advanced-game-features') score += 3  // day/night + weather
+    if (taskType === 'audio' && section.id === 'advanced-game-features') score += 2  // weather sounds
+    // Genre deep patterns — tycoon, simulator, tower defense, murder mystery, battle royale, roleplay
+    if (taskType === 'script' && section.id === 'genre-deep-patterns') score += 5
+    if (taskType === 'economy' && section.id === 'genre-deep-patterns') score += 6
+    if (taskType === 'npc' && section.id === 'genre-deep-patterns') score += 4
 
     return { section, score }
   })
