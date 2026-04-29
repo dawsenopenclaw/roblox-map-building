@@ -89,6 +89,8 @@ import { PROGRESSION_SOCIAL_SYSTEMS } from './crawled-knowledge/progression-soci
 import { ENGINE_API_ADVANCED_SERVICES } from './crawled-knowledge/engine-api-advanced-services'
 // ── Roblox Creator Docs: Constraints, Motor6D, Attachment, ScreenGui, BillboardGui, SurfaceGui, Folder (Apr 2026) ──
 import { CONSTRAINTS_RIGGING_GUI } from './crawled-knowledge/constraints-rigging-gui'
+// ── Advanced Luau Idioms & Patterns — Promise, StateMachine, Signal, ObjectPool, Component, Command, Singleton, RateLimiter, Debounce, SafeRemote, DataMigration, TweenSequence (Apr 2026) ──
+import { LUAU_IDIOMS_PATTERNS } from './crawled-knowledge/luau-idioms-patterns'
 
 // ── Knowledge Section Registry ───────────────────────────────────────────────
 
@@ -498,6 +500,13 @@ const SECTIONS: KnowledgeSection[] = [
     keywords: ['hingeconstraint', 'hinge constraint', 'swinging door', 'rotating door', 'spinning wheel', 'windmill', 'lever', 'springconstraint', 'spring constraint', 'trampoline', 'suspension', 'bouncy', 'shock absorber', 'vehicle suspension', 'ballsocketconstraint', 'ball socket', 'ragdoll', 'ragdoll death', 'ragdoll physics', 'loose joints', 'floppy', 'prismaticconstraint', 'prismatic', 'sliding door', 'elevator physics', 'drawer', 'piston', 'ropeconstraint', 'rope constraint', 'rope bridge', 'hanging', 'chandelier', 'rope physics', 'chain', 'swing', 'weldconstraint', 'weld', 'weld model', 'rigid weld', 'attachment', 'motor6d', 'motor 6d', 'custom rig', 'animated joint', 'rig animation', 'robot arm', 'mechanical arm', 'npc rig', 'animate motor', 'screengui', 'screen gui', 'hud', 'health bar', 'player ui', 'player hud', 'billboardgui', 'billboard gui', 'floating label', 'overhead label', 'overhead health', 'npc health bar', 'waypoint marker', 'surfacegui', 'surface gui', 'in-world sign', 'wall sign', 'scoreboard wall', 'shop sign', 'computer screen', 'folder', 'workspace folder', 'organize workspace', 'model folder'],
     getter: () => CONSTRAINTS_RIGGING_GUI,
     maxChars: 10000,
+  },
+  // ── Advanced Luau Idioms — Promise, StateMachine, Signal, ObjectPool, Component, Command, Singleton, RateLimiter, Debounce, SafeRemote, DataMigration, TweenSequence (Apr 2026) ──
+  {
+    id: 'luau-idioms-patterns',
+    keywords: ['promise', 'async', 'await', 'andthen', 'pcall chain', 'state machine', 'fsm', 'finite state', 'npc states', 'game phase', 'signal', 'observer', 'bindableevent', 'custom event', 'event system', 'object pool', 'pool', 'projectile pool', 'bullet pool', 'performance pool', 'pre-allocate', 'component system', 'collectionservice tag', 'ecs', 'entity component', 'behavior module', 'tag behavior', 'command pattern', 'undo', 'redo', 'action history', 'builder tools', 'singleton', 'module pattern', 'shared state', 'lazy init', 'rate limit', 'rate limiter', 'token bucket', 'anti-exploit', 'exploit protection', 'debounce', 'cooldown', 'throttle', 'leading edge', 'trailing edge', 'safe remote', 'remote validation', 'type check remote', 'data migration', 'schema migration', 'version stamp', 'data version', 'player data version', 'tween sequence', 'tween chain', 'chained tween', 'animation sequence', 'multi-step animation', 'tween completed wait'],
+    getter: () => LUAU_IDIOMS_PATTERNS,
+    maxChars: 12000,
   },
 ]
 

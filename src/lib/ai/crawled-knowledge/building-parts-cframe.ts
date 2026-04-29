@@ -482,5 +482,563 @@ part.BrickColor = BrickColor.new("Bright Red")
 part.BrickColor = BrickColor.new("Medium stone grey")
 part.BrickColor = BrickColor.new("Reddish brown")
 
+--- UNION OPERATIONS / CSG ---
+-- When to use CSG vs multi-part:
+--   USE unions for: curved cutouts, arch holes, complex silhouettes that can't be made from basic parts
+--   AVOID unions when: you need many instances (unions are expensive), physics precision matters,
+--                      or the part count would be <= 3 (just use WedgeParts/Cylinders instead)
+--   PREFER multi-part for: performance-critical builds, anything animated, large repeating elements
+
+-- CreateUnion: merge multiple parts into one solid
+local mainBlock = Instance.new("Part")
+mainBlock.Size = Vector3.new(10, 6, 2)
+mainBlock.Anchored = true
+mainBlock.Parent = workspace
+
+local cutter = Instance.new("Part")
+cutter.Size = Vector3.new(4, 4, 4)   -- will be subtracted
+cutter.CFrame = mainBlock.CFrame     -- overlapping
+cutter.Parent = workspace
+
+-- NegateAsync: mark a part as the "hole" cutter
+local negated = cutter:NegateAsync()   -- returns NegateOperation
+negated.Parent = workspace
+cutter:Destroy()
+
+-- SubtractAsync: cut negated parts from a base part
+local union = mainBlock:SubtractAsync({negated})  -- returns UnionOperation
+union.Parent = workspace
+mainBlock:Destroy()
+negated:Destroy()
+
+-- UnionAsync: combine parts into a solid union
+local partA = Instance.new("Part")
+partA.Size = Vector3.new(4, 4, 4)
+partA.Anchored = true
+partA.Parent = workspace
+
+local partB = Instance.new("Part")
+partB.Size = Vector3.new(4, 4, 4)
+partB.CFrame = partA.CFrame + Vector3.new(2, 0, 0)  -- overlapping
+partB.Anchored = true
+partB.Parent = workspace
+
+local unionResult = partA:UnionAsync({partB})
+unionResult.Anchored = true
+unionResult.Parent = workspace
+partA:Destroy()
+partB:Destroy()
+
+-- CSG performance notes:
+--   RenderFidelity.Performance on unions = LOD saves GPU cost
+--   CollisionFidelity.Box on unions = cheapest physics
+--   Never union more than 10 parts at once — diminishing returns + lag spike
+--   SplitApart() on a union gives back the original parts
+
+--- SURFACEAPPEARANCE (PBR TEXTURES) ---
+-- SurfaceAppearance applies realistic PBR maps to any BasePart or MeshPart.
+-- Much higher quality than Material alone. Maps are Roblox asset IDs.
+
+local sa = Instance.new("SurfaceAppearance")
+
+-- ColorMap (Albedo / Diffuse): base color texture
+sa.ColorMap = "rbxassetid://COLOR_ASSET_ID"
+
+-- NormalMap: surface detail / bump. R=X G=Y B=Z normals. Makes flat parts look detailed.
+sa.NormalMap = "rbxassetid://NORMAL_ASSET_ID"
+
+-- RoughnessMap: grayscale. Black = mirror-smooth. White = fully rough/matte.
+sa.RoughnessMap = "rbxassetid://ROUGHNESS_ASSET_ID"
+
+-- MetalnessMap: grayscale. Black = dielectric. White = full metal (reflective, tinted).
+sa.MetalnessMap = "rbxassetid://METALNESS_ASSET_ID"
+
+-- AlphaMode: how ColorMap alpha is used
+sa.AlphaMode = Enum.AlphaMode.Overlay       -- alpha blends with part color (default)
+sa.AlphaMode = Enum.AlphaMode.Transparency  -- alpha drives part transparency
+
+-- TextureTransparency: 0 = fully opaque, 1 = invisible
+sa.TextureTransparency = 0
+
+-- Parent to the target part (works on Part, MeshPart, UnionOperation)
+sa.Parent = mesh   -- or any BasePart
+
+-- Practical example: rusted metal plate
+local rustSA = Instance.new("SurfaceAppearance")
+rustSA.ColorMap    = "rbxassetid://7547304948"   -- rust color
+rustSA.NormalMap   = "rbxassetid://7547305897"   -- surface dents
+rustSA.RoughnessMap = "rbxassetid://7547306045"  -- rough except shiny spots
+rustSA.MetalnessMap = "rbxassetid://7547306200"  -- mostly metal
+rustSA.Parent = steelPart
+
+-- Note: SurfaceAppearance overrides Material textures.
+--       Set Material = Enum.Material.SmoothPlastic for cleanest PBR base (no competing texture).
+--       For Neon emission, use Material = Enum.Material.Neon — SurfaceAppearance still applies color.
+
+--- COLLISIONFIDELITY VS RENDERFIDELITY ---
+-- Only applies to MeshPart and UnionOperation (not regular Parts).
+
+-- RenderFidelity — controls visual LOD (Level of Detail)
+--   Automatic    — engine decides based on distance (best default)
+--   Precise      — always full detail, never simplifies (use for hero props)
+--   Performance  — always lowest LOD (use for background filler, vegetation)
+mesh.RenderFidelity = Enum.RenderFidelity.Automatic   -- recommended default
+mesh.RenderFidelity = Enum.RenderFidelity.Precise     -- never degrades
+mesh.RenderFidelity = Enum.RenderFidelity.Performance -- always low poly
+
+-- CollisionFidelity — controls physics collision mesh complexity
+--   Default                    — Roblox picks (usually Hull for MeshPart)
+--   Box                        — CHEAPEST: axis-aligned bounding box. Use for boxes, floors, walls.
+--   Hull                       — convex hull wrapping. Good for most props.
+--   PreciseConvexDecomposition — most accurate, MOST EXPENSIVE. Use only for hero interactive props.
+mesh.CollisionFidelity = Enum.CollisionFidelity.Box                        -- cheapest, flat surfaces
+mesh.CollisionFidelity = Enum.CollisionFidelity.Hull                       -- good general-purpose
+mesh.CollisionFidelity = Enum.CollisionFidelity.Default                    -- engine decides
+mesh.CollisionFidelity = Enum.CollisionFidelity.PreciseConvexDecomposition -- exact shape, use sparingly
+
+-- Performance guide:
+--   Background / decoration (trees, rubble, fences): CollisionFidelity.Box + RenderFidelity.Performance
+--   General props (crates, barrels, furniture):      CollisionFidelity.Hull + RenderFidelity.Automatic
+--   Hero / interactive (weapons, vehicles, stairs):  CollisionFidelity.PreciseConvexDecomposition + RenderFidelity.Precise
+--   If a MeshPart is Anchored and CanCollide=false: any CollisionFidelity is fine (no physics cost)
+
+--- CONSTRAINT EXAMPLES: DOOR, DRAWBRIDGE, SLIDING SHELF ---
+
+-- 1. Door hinge that opens (Servo mode — snaps to target angle)
+local doorFrame = Instance.new("Part")
+doorFrame.Size = Vector3.new(1, 8, 0.5)
+doorFrame.Anchored = true
+doorFrame.Parent = workspace
+
+local door = Instance.new("Part")
+door.Size = Vector3.new(4, 8, 0.3)
+door.Anchored = false
+door.Parent = workspace
+
+-- Hinge attachment on door frame edge
+local hingeAttFrame = Instance.new("Attachment", doorFrame)
+hingeAttFrame.Position = Vector3.new(0, 0, 0)
+
+-- Hinge attachment on door edge
+local hingeAttDoor = Instance.new("Attachment", door)
+hingeAttDoor.Position = Vector3.new(-2, 0, 0)   -- left edge of door
+
+local doorHinge = Instance.new("HingeConstraint")
+doorHinge.Attachment0 = hingeAttFrame
+doorHinge.Attachment1 = hingeAttDoor
+doorHinge.ActuatorType = Enum.ActuatorType.Servo
+doorHinge.TargetAngle = 0        -- 0 = closed
+doorHinge.ServoMaxTorque = 5000
+doorHinge.AngularSpeed = 2       -- rad/s
+doorHinge.Parent = doorFrame
+
+-- Open door: set TargetAngle = 90 (or -90)
+-- doorHinge.TargetAngle = 90
+
+-- 2. Drawbridge (Motor mode — spins until LimitsEnabled stops it)
+local bridgeBase = Instance.new("Part")
+bridgeBase.Size = Vector3.new(8, 1, 1)
+bridgeBase.Anchored = true
+bridgeBase.Parent = workspace
+
+local bridge = Instance.new("Part")
+bridge.Size = Vector3.new(8, 0.5, 10)
+bridge.Anchored = false
+bridge.Parent = workspace
+
+local bridgeAttBase = Instance.new("Attachment", bridgeBase)
+local bridgeAttBridge = Instance.new("Attachment", bridge)
+bridgeAttBridge.Position = Vector3.new(0, 0, -5)  -- pivot at back edge
+
+local drawHinge = Instance.new("HingeConstraint")
+drawHinge.Attachment0 = bridgeAttBase
+drawHinge.Attachment1 = bridgeAttBridge
+drawHinge.ActuatorType = Enum.ActuatorType.Servo
+drawHinge.TargetAngle = 0        -- flat (down)
+drawHinge.ServoMaxTorque = 20000
+drawHinge.AngularSpeed = 1
+drawHinge.LimitsEnabled = true
+drawHinge.LowerAngle = -90       -- max raised position
+drawHinge.UpperAngle = 0         -- flat position
+drawHinge.Parent = bridgeBase
+-- Raise: drawHinge.TargetAngle = -90
+
+-- 3. Sliding shelf (PrismaticConstraint — linear motor)
+local shelfTrack = Instance.new("Part")
+shelfTrack.Size = Vector3.new(0.5, 0.5, 20)
+shelfTrack.Anchored = true
+shelfTrack.Parent = workspace
+
+local shelf = Instance.new("Part")
+shelf.Size = Vector3.new(6, 0.5, 4)
+shelf.Anchored = false
+shelf.Parent = workspace
+
+local slideAttTrack = Instance.new("Attachment", shelfTrack)
+local slideAttShelf = Instance.new("Attachment", shelf)
+
+local slider = Instance.new("PrismaticConstraint")
+slider.Attachment0 = slideAttTrack
+slider.Attachment1 = slideAttShelf
+slider.ActuatorType = Enum.ActuatorType.Servo
+slider.TargetPosition = 0        -- starting position (studs along axis)
+slider.ServoMaxForce = 10000
+slider.Speed = 5                 -- studs/s
+slider.LimitsEnabled = true
+slider.LowerLimit = -8
+slider.UpperLimit = 8
+slider.Parent = shelfTrack
+-- Slide out: slider.TargetPosition = 8
+-- Slide in:  slider.TargetPosition = -8
+
+--- ADVANCED CFRAME PATTERNS ---
+
+-- 1. Spiral staircase
+local function buildSpiralStaircase(center: Vector3, steps: number, stepHeight: number,
+    stepWidth: number, radius: number, turnsPerStaircase: number): Model
+  local model = Instance.new("Model")
+  model.Name = "SpiralStaircase"
+  model.Parent = workspace
+  local anglePerStep = (turnsPerStaircase * math.pi * 2) / steps
+  for i = 0, steps - 1 do
+    local angle = i * anglePerStep
+    local x = center.X + math.cos(angle) * radius
+    local z = center.Z + math.sin(angle) * radius
+    local y = center.Y + i * stepHeight + stepHeight / 2
+    local step = Instance.new("WedgePart")
+    step.Size = Vector3.new(stepWidth, stepHeight, 2)
+    step.Anchored = true
+    step.Material = Enum.Material.Concrete
+    step.Color = Color3.fromRGB(140, 130, 120)
+    step.CFrame = CFrame.new(x, y, z) * CFrame.Angles(0, angle + math.pi / 2, 0)
+    step.Parent = model
+  end
+  -- Central pillar
+  local pillar = Instance.new("Part")
+  pillar.Shape = Enum.PartType.Cylinder
+  pillar.Size = Vector3.new(steps * stepHeight, radius * 0.4, radius * 0.4)
+  pillar.Anchored = true
+  pillar.Material = Enum.Material.Concrete
+  pillar.CFrame = CFrame.new(center.X, center.Y + (steps * stepHeight) / 2, center.Z)
+              * CFrame.Angles(0, 0, math.rad(90))
+  pillar.Parent = model
+  return model
+end
+
+-- Usage: buildSpiralStaircase(Vector3.new(0,0,0), 24, 1, 4, 5, 1.5)
+
+-- 2. Dome generation (hemisphere from wedge/block parts)
+local function buildDome(center: Vector3, radius: number, rings: number, segments: number): Model
+  local model = Instance.new("Model")
+  model.Name = "Dome"
+  model.Parent = workspace
+  for ring = 0, rings - 1 do
+    local phi = (ring / rings) * (math.pi / 2)          -- 0 = equator, pi/2 = top
+    local nextPhi = ((ring + 1) / rings) * (math.pi / 2)
+    local ringRadius = math.cos(phi) * radius
+    local ringY = center.Y + math.sin(phi) * radius
+    local ringHeight = (math.sin(nextPhi) - math.sin(phi)) * radius
+    for seg = 0, segments - 1 do
+      local theta = (seg / segments) * math.pi * 2
+      local x = center.X + math.cos(theta) * ringRadius
+      local z = center.Z + math.sin(theta) * ringRadius
+      local panel = Instance.new("Part")
+      panel.Size = Vector3.new(
+        (2 * math.pi * ringRadius) / segments - 0.1,
+        math.max(ringHeight, 0.3),
+        radius * 0.12
+      )
+      panel.Anchored = true
+      panel.Material = Enum.Material.Concrete
+      panel.Color = Color3.fromRGB(220, 200, 170)
+      -- Face inward + tilt to follow sphere surface
+      local midPhi = (phi + nextPhi) / 2
+      panel.CFrame = CFrame.new(x, ringY, z)
+                   * CFrame.Angles(0, -theta, 0)
+                   * CFrame.Angles(midPhi, 0, 0)
+      panel.Parent = model
+    end
+  end
+  -- Cap at top
+  local cap = Instance.new("Part")
+  cap.Shape = Enum.PartType.Ball
+  cap.Size = Vector3.new(radius * 0.2, radius * 0.2, radius * 0.2)
+  cap.Anchored = true
+  cap.CFrame = CFrame.new(center.X, center.Y + radius, center.Z)
+  cap.Parent = model
+  return model
+end
+
+-- Usage: buildDome(Vector3.new(0,0,0), 20, 6, 12)
+
+-- 3. Arch generation (Roman/Gothic arch over a doorway)
+local function buildArch(baseLeft: Vector3, baseRight: Vector3,
+    thickness: number, depth: number, segments: number): Model
+  local model = Instance.new("Model")
+  model.Name = "Arch"
+  model.Parent = workspace
+  local midX = (baseLeft.X + baseRight.X) / 2
+  local midY = baseLeft.Y
+  local midZ = (baseLeft.Z + baseRight.Z) / 2
+  local radius = (baseRight - baseLeft).Magnitude / 2
+  for i = 0, segments - 1 do
+    local t0 = i / segments
+    local t1 = (i + 1) / segments
+    local a0 = math.pi + t0 * math.pi   -- pi to 2pi = bottom-left to bottom-right (semicircle)
+    local a1 = math.pi + t1 * math.pi
+    local aMid = (a0 + a1) / 2
+    local x = midX + math.cos(aMid) * radius
+    local y = midY + math.sin(aMid) * radius  -- sin goes 0→1→0 across the arch
+    local segLen = radius * (a1 - a0)
+    local stone = Instance.new("Part")
+    stone.Size = Vector3.new(thickness, segLen, depth)
+    stone.Anchored = true
+    stone.Material = Enum.Material.Limestone
+    stone.Color = Color3.fromRGB(200, 185, 155)
+    stone.CFrame = CFrame.new(x, y, midZ) * CFrame.Angles(0, 0, -(aMid - math.pi / 2))
+    stone.Parent = model
+  end
+  return model
+end
+
+-- Usage: buildArch(Vector3.new(-5,0,0), Vector3.new(5,0,0), 1.5, 2, 10)
+
+-- 4. Procedural corridor (repeating room segment with walls/ceiling/floor)
+local function buildCorridor(startPos: Vector3, length: number, width: number,
+    height: number, segmentSize: number): Model
+  local model = Instance.new("Model")
+  model.Name = "Corridor"
+  model.Parent = workspace
+  local numSegs = math.floor(length / segmentSize)
+  local wallMat = Enum.Material.Concrete
+  local floorMat = Enum.Material.WoodPlanks
+  for i = 0, numSegs - 1 do
+    local segZ = startPos.Z + i * segmentSize + segmentSize / 2
+    -- Floor slab
+    local floor = Instance.new("Part")
+    floor.Size = Vector3.new(width, 0.5, segmentSize)
+    floor.Anchored = true
+    floor.Material = floorMat
+    floor.Color = Color3.fromRGB(140, 100, 60)
+    floor.CFrame = CFrame.new(startPos.X, startPos.Y, segZ)
+    floor.Parent = model
+    -- Ceiling slab
+    local ceiling = Instance.new("Part")
+    ceiling.Size = Vector3.new(width, 0.5, segmentSize)
+    ceiling.Anchored = true
+    ceiling.Material = wallMat
+    ceiling.Color = Color3.fromRGB(180, 170, 160)
+    ceiling.CFrame = CFrame.new(startPos.X, startPos.Y + height, segZ)
+    ceiling.Parent = model
+    -- Left wall
+    local leftWall = Instance.new("Part")
+    leftWall.Size = Vector3.new(0.5, height, segmentSize)
+    leftWall.Anchored = true
+    leftWall.Material = wallMat
+    leftWall.Color = Color3.fromRGB(160, 150, 140)
+    leftWall.CFrame = CFrame.new(startPos.X - width / 2, startPos.Y + height / 2, segZ)
+    leftWall.Parent = model
+    -- Right wall
+    local rightWall = leftWall:Clone()
+    rightWall.CFrame = CFrame.new(startPos.X + width / 2, startPos.Y + height / 2, segZ)
+    rightWall.Parent = model
+  end
+  return model
+end
+
+-- Usage: buildCorridor(Vector3.new(0,0,0), 60, 8, 5, 6)
+
+--- WELDCONSTRAINT AUTO-WELD FUNCTION ---
+-- Loops through a model and welds all BaseParts to the PrimaryPart (or first part found).
+-- Call after building a multi-part structure to make it behave as one rigid body.
+
+local function autoWeldModel(model: Model)
+  local primary = model.PrimaryPart
+  if not primary then
+    -- Use first BasePart found as anchor
+    for _, v in ipairs(model:GetDescendants()) do
+      if v:IsA("BasePart") then
+        primary = v
+        model.PrimaryPart = v
+        break
+      end
+    end
+  end
+  if not primary then return end
+  for _, part in ipairs(model:GetDescendants()) do
+    if part:IsA("BasePart") and part ~= primary then
+      local weld = Instance.new("WeldConstraint")
+      weld.Part0 = primary
+      weld.Part1 = part
+      weld.Parent = primary
+    end
+  end
+end
+
+-- Usage after building a structure:
+-- autoWeldModel(myHouseModel)
+
+-- Advanced: weld every part to its nearest neighbor (better for long chains)
+local function chainWeldModel(model: Model)
+  local parts = {}
+  for _, v in ipairs(model:GetDescendants()) do
+    if v:IsA("BasePart") then
+      table.insert(parts, v)
+    end
+  end
+  -- Weld each part to part[1] as root
+  local root = parts[1]
+  if not root then return end
+  root.Anchored = true
+  for i = 2, #parts do
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = root
+    weld.Part1 = parts[i]
+    weld.Parent = root
+    parts[i].Anchored = false  -- physics handled by weld
+  end
+end
+
+--- MODEL:GETBOUNDINGBOX() USAGE ---
+-- Returns (CFrame, Vector3) — the orientation + size of the model's full bounding box.
+-- Use for: measuring builds, centering on plot, scaling to fit, collision footprints.
+
+local model = workspace.MyBuild
+local boundCF: CFrame, boundSize: Vector3 = model:GetBoundingBox()
+
+-- Get world-space center position
+local centerPos: Vector3 = boundCF.Position
+
+-- Get total extents
+local width: number  = boundSize.X
+local height: number = boundSize.Y
+local depth: number  = boundSize.Z
+
+-- Center model on a plot
+local function centerOnPlot(model: Model, plotCenter: Vector3)
+  local cf, size = model:GetBoundingBox()
+  -- Calculate offset so model base sits on ground at plotCenter
+  local offsetY = -cf.Position.Y + size.Y / 2
+  model:PivotTo(CFrame.new(plotCenter.X, plotCenter.Y + offsetY, plotCenter.Z))
+end
+
+-- Scale model to fit within maxSize studs
+local function scaleModelToFit(model: Model, maxSize: number)
+  local cf, size = model:GetBoundingBox()
+  local currentMax = math.max(size.X, size.Y, size.Z)
+  if currentMax <= maxSize then return end
+  local scaleFactor = maxSize / currentMax
+  for _, part in ipairs(model:GetDescendants()) do
+    if part:IsA("BasePart") then
+      part.Size = part.Size * scaleFactor
+      local relCF = cf:ToObjectSpace(part.CFrame)
+      part.CFrame = cf:ToWorldSpace(CFrame.new(relCF.Position * scaleFactor)
+                  * CFrame.fromMatrix(Vector3.new(), relCF.XVector, relCF.YVector, relCF.ZVector))
+    end
+  end
+end
+
+-- Check if build fits inside a plot region
+local function buildFitsInPlot(model: Model, plotSize: Vector3): boolean
+  local _, size = model:GetBoundingBox()
+  return size.X <= plotSize.X and size.Z <= plotSize.Z
+end
+
+--- ASSEMBLY VELOCITY (PHYSICS-BASED MOVEMENT) ---
+-- AssemblyLinearVelocity / AssemblyAngularVelocity apply to the entire physics assembly
+-- (all parts welded together). More reliable than setting individual part velocities.
+-- Part must NOT be Anchored for these to have effect.
+
+local part = workspace.Projectile
+
+-- Launch in a direction (studs/s)
+part.AssemblyLinearVelocity = Vector3.new(0, 50, -100)    -- up + forward
+
+-- Spin (radians/s, relative to world axes)
+part.AssemblyAngularVelocity = Vector3.new(0, math.pi * 2, 0)  -- 1 full rotation/s around Y
+
+-- Combine: thrown ball with spin
+local ball = Instance.new("Part")
+ball.Shape = Enum.PartType.Ball
+ball.Size = Vector3.new(2, 2, 2)
+ball.Material = Enum.Material.Rubber
+ball.Anchored = false
+ball.CFrame = CFrame.new(0, 10, 0)
+ball.Parent = workspace
+ball.AssemblyLinearVelocity = Vector3.new(20, 30, 0)        -- throw right + up
+ball.AssemblyAngularVelocity = Vector3.new(5, 0, 0)         -- topspin
+
+-- Platform moving left/right (use LinearVelocity constraint for sustained movement,
+-- AssemblyLinearVelocity for a one-shot impulse-style set)
+local platform = workspace.MovingPlatform
+platform.Anchored = false
+-- Move platform right at 10 studs/s (one-shot, physics will take over)
+platform.AssemblyLinearVelocity = Vector3.new(10, 0, 0)
+
+-- Stop a moving assembly
+platform.AssemblyLinearVelocity = Vector3.zero
+platform.AssemblyAngularVelocity = Vector3.zero
+
+-- Note: For sustained / controlled movement, prefer LinearVelocity or AlignPosition constraints.
+--       AssemblyLinearVelocity is best for: launching projectiles, knockback, one-time boosts.
+
+--- TERRAIN:FILLREGION() VS TERRAIN:FILLBLOCK() ---
+-- Both fill terrain voxels with a material. Choose based on what you have: a Region3 or a CFrame.
+
+local Terrain = workspace.Terrain
+
+-- FillBlock(cframe, size, material) — fill a rotatable box
+-- USE WHEN: you need to place terrain at an angle, or you already have a CFrame to work with
+Terrain:FillBlock(
+  CFrame.new(0, 0, 0),                  -- center CFrame (can be rotated)
+  Vector3.new(100, 10, 100),            -- size in studs
+  Enum.Material.Ground
+)
+
+-- Rotated terrain fill (diagonal cliff)
+Terrain:FillBlock(
+  CFrame.new(50, 20, 50) * CFrame.Angles(0, 0, math.rad(30)),  -- tilted 30 degrees
+  Vector3.new(80, 8, 40),
+  Enum.Material.Rock
+)
+
+-- FillRegion(region3, resolution, material) — fill an axis-aligned Region3
+-- USE WHEN: you have a Region3 (e.g. from workspace:FindPartsInRegion3 or a fixed AABB zone)
+-- Resolution must be power of 2 between 2 and 2048 (4 is standard)
+local region = Region3.new(
+  Vector3.new(-50, -5, -50),   -- min corner
+  Vector3.new(50, 5, 50)       -- max corner
+)
+Terrain:FillRegion(region, 4, Enum.Material.Grass)
+
+-- Decision guide:
+--   FillBlock  → rotated terrain, angled hills, CFrame-driven placement (more flexible)
+--   FillRegion → flat AABB fills, map zones, clearing large areas, grid-aligned terrain
+
+-- Common terrain generation pattern: layered biome fill
+local function fillTerrain(cx: number, cz: number, radius: number)
+  local base = Region3.new(
+    Vector3.new(cx - radius, -20, cz - radius),
+    Vector3.new(cx + radius, 0, cz + radius)
+  )
+  Terrain:FillRegion(base, 4, Enum.Material.Rock)           -- bedrock layer
+  local soil = Region3.new(
+    Vector3.new(cx - radius, 0, cz - radius),
+    Vector3.new(cx + radius, 2, cz + radius)
+  )
+  Terrain:FillRegion(soil, 4, Enum.Material.Ground)         -- soil layer
+  local surface = Region3.new(
+    Vector3.new(cx - radius, 2, cz - radius),
+    Vector3.new(cx + radius, 4, cz + radius)
+  )
+  Terrain:FillRegion(surface, 4, Enum.Material.Grass)       -- grass top
+end
+
+-- FillWater: fill with water material (same signature as FillBlock)
+Terrain:FillBlock(CFrame.new(0, -2, 0), Vector3.new(200, 4, 200), Enum.Material.Water)
+
+-- ReplaceMaterial: swap one terrain material for another in a region
+Terrain:ReplaceMaterial(region, 4, Enum.Material.Grass, Enum.Material.Snow)
+
 === END BUILDING PARTS CFRAME REFERENCE ===
 `;
