@@ -9531,11 +9531,32 @@ Minimum 60 parts for buildings, 15 for props. Use FOR LOOPS for repeated element
         }
       }
 
-      // No code generated — be HONEST with the user
+      // No code generated — LAST RESORT: try a simplified prompt directly
+      if (!luauCode) {
+        console.warn('[SinglePass] ALL models failed — attempting emergency simplified generation')
+        try {
+          const { callAI } = await import('@/lib/ai/provider')
+          const simplifiedPrompt = `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. Generate a build for: "${message}". Use SmoothPlastic material with bright colors. Minimum 30 parts. Use Instance.new("Part"), WedgePart, etc. Include model creation, anchoring, and m.Parent = workspace at the end.`
+          const emergencyResult = await callAI(simplifiedPrompt, [{ role: 'user' as const, content: `Build: ${message}` }], { maxTokens: 16384, temperature: 0.7 })
+          if (emergencyResult) {
+            const emergencyCode = emergencyResult.match(/```(?:lua|luau)\s*\r?\n([\s\S]*?)```/)
+            if (emergencyCode?.[1]) {
+              luauCode = emergencyCode[1].trim()
+              model = 'emergency-simplified'
+              conversationText = `Alright, here's what I put together for "${message}". The full pipeline was busy so I went with a streamlined approach — let me know if you want me to add more detail!`
+              console.log(`[Emergency] Generated ${luauCode.length} chars of code`)
+            }
+          }
+        } catch (emergErr) {
+          console.warn('[Emergency] Also failed:', emergErr instanceof Error ? emergErr.message : emergErr)
+        }
+      }
+
+      // Still no code — inform user honestly
       if (!luauCode) {
         console.warn('[SinglePass] ALL models failed to generate code for:', message.slice(0, 50))
         model = 'failed'
-        conversationText = `The AI is catching its breath — a lot of people are building right now. Try again in 10-15 seconds.\n\nIn the meantime, these instant builds work every time (no AI needed):\n- "build a tree" / "build a house" / "build a car"\n- "build a castle" / "build a spaceship" / "build a helicopter"\n- "build a tank" / "build a robot" / "build a campfire"\n- "build a shop" / "build a table" / "build a fountain"\n\nType any of those and it'll appear instantly!\n\n[FOLLOWUP]\n- Try my prompt again\n- Build me a helicopter\n- Build me a castle\n\n[SUGGESTIONS]\n- Build me a robot\n- Build me a tank\n- Build me a shop`
+        conversationText = `I couldn't generate that build right now — the AI models are under heavy load. Here's what to try:\n\n1. **Simplify your prompt** — instead of "build a huge city game with tycoon mechanics and GUI", try "build a city block" first, then we add features one at a time.\n2. **Try again in 15 seconds** — the queue clears fast.\n3. **Use instant builds** — these always work: "build a tree", "build a house", "build a castle"\n\nComplex builds (full games, cities, maps) work best when built step-by-step!\n\n[FOLLOWUP]\n- Build me a city block\n- Build me a house\n- Let's plan the game first\n\n[SUGGESTIONS]\n- Build me a simple town\n- Build me a castle\n- Help me plan my game`
       }
     }
 
