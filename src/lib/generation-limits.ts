@@ -138,7 +138,7 @@ function nextMidnightUTC(): Date {
 const tierCache = new Map<string, { tier: TierKey; expiresAt: number }>()
 const TIER_CACHE_TTL_MS = 60_000 // 1 min
 
-async function getUserTier(userId: string): Promise<TierKey> {
+export async function getUserTier(userId: string): Promise<TierKey> {
   const cached = tierCache.get(userId)
   if (cached && cached.expiresAt > Date.now()) return cached.tier
 

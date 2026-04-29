@@ -3305,6 +3305,8 @@ async function callGemini(
   maxTokens: number = 8192,
   /** Optional base64 PNG screenshot to include as a vision input */
   screenshotBase64?: string | null,
+  /** Use pro model for premium users (better quality, slower) */
+  useProModel?: boolean,
 ): Promise<string | null> {
   // Try up to 3 different keys from the rotation pool
   for (let keyAttempt = 0; keyAttempt < 3; keyAttempt++) {
@@ -3321,8 +3323,9 @@ async function callGemini(
         userParts.push({ text: userMessage })
       }
 
+      const geminiModel = useProModel ? 'gemini-2.5-pro' : 'gemini-2.5-flash'
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3337,7 +3340,7 @@ async function callGemini(
             ],
             generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4 },
           }),
-          signal: AbortSignal.timeout(30_000),
+          signal: AbortSignal.timeout(useProModel ? 60_000 : 30_000),
         },
       )
       if (res.status === 429) {
@@ -6266,6 +6269,7 @@ async function freeModelTwoPass(
   cameraContext: string,
   sessionId: string | null,
   userId?: string | null,
+  isPremiumTier?: boolean,
 ): Promise<{
   conversationText: string
   luauCode: string | null
@@ -9033,8 +9037,8 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
           if (isPipelineTimedOut() || Date.now() >= retryDeadline) break
         }
 
-        // Try Gemini
-        const geminiResult = await callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens, attempt === 1 ? buildScreenshot : undefined)
+        // Try Gemini (premium users get Pro model for better quality)
+        const geminiResult = await callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens, attempt === 1 ? buildScreenshot : undefined, isPremiumTier)
         if (attempt === 1) logTiming('post-gemini')
 
         if (geminiResult && geminiResult.length > 200) {
@@ -16103,6 +16107,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.warn('[chat] Content moderation threw unexpectedly — allowing through')
   }
 
+  // ── User tier detection — determines queue priority + model access ──────
+  // STUDIO/PRO = priority queue + paid models (Gemini Pro, Claude)
+  // CREATOR/BUILDER = normal priority + standard models
+  // FREE = low priority + free models only
+  let userTier: 'FREE' | 'STARTER' | 'HOBBY' | 'BUILDER' | 'CREATOR' | 'PRO' | 'STUDIO' = 'FREE'
+  const isPaidUser = isAdmin // Admins always get paid treatment
+  if (authedUserId) {
+    try {
+      const { getUserTier } = await import('@/lib/generation-limits')
+      userTier = await getUserTier(authedUserId)
+    } catch { /* fail open as FREE */ }
+  }
+  const isPremiumTier = isAdmin || userTier === 'STUDIO' || userTier === 'PRO' || userTier === 'CREATOR'
+  if (isPremiumTier) {
+    console.log(`[chat] Premium user (${userTier}${isAdmin ? '+admin' : ''}) — priority queue + paid models`)
+  }
+
   // Simplify overly verbose prompts in the main POST path (paid models too)
   const originalPostMessage = message
   message = simplifyPrompt(message)
@@ -17108,7 +17129,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   // Bypasses the cascade and goes straight to Gemini.
   if (rawRequestedModel === 'gemini-flash' && !isAutoMode) {
     const historyForGemini = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
-    const twoPassResult = await freeModelTwoPass(message, intent, historyForGemini, cameraContext, sessionId, authedUserId)
+    const twoPassResult = await freeModelTwoPass(message, intent, historyForGemini, cameraContext, sessionId, authedUserId, isPremiumTier)
     if (twoPassResult) {
       // Spend tokens for this generation (skip for free intents, demo, admins)
       const tokenCostFree = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
@@ -17750,7 +17771,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
               // Attempt Gemini → Groq fallback inside the already-open stream
               try {
                 const historyForFallback = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
-                const fallback = await freeModelTwoPass(message, intent, historyForFallback, cameraContext, sessionId, authedUserId)
+                const fallback = await freeModelTwoPass(message, intent, historyForFallback, cameraContext, sessionId, authedUserId, isPremiumTier)
                 if (fallback) {
                   // Write only conversation text — code already sent to Studio
                   await writer.write(enc.encode(fallback.conversationText))
@@ -17941,7 +17962,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   // This produces dramatically better results than the old single-pass approach.
   {
     const historyForFree = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
-    const twoPassResult = await freeModelTwoPass(message, intent, historyForFree, cameraContext, sessionId, authedUserId)
+    const twoPassResult = await freeModelTwoPass(message, intent, historyForFree, cameraContext, sessionId, authedUserId, isPremiumTier)
 
     if (twoPassResult) {
       // Spend tokens for this generation
