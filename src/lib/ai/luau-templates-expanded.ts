@@ -3365,3 +3365,886 @@ end
 Players.PlayerRemoving:Connect(function(p) cooldowns[p.UserId]=nil end)
 print("[TeleporterNetwork] Ready. "..#PAIRS.." pairs. Cooldown=${cooldown}s")`
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 20. TRAIN / MONORAIL SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface TrainMonorailParams {
+  speed?: number
+  stationCount?: number
+  stopDuration?: number
+}
+
+export function trainMonorailSystem(params: TrainMonorailParams): string {
+  const speed = Math.max(5, params.speed ?? 20)
+  const stations = num(params.stationCount ?? 4, 2, 20)
+  const stopDur = Math.max(2, params.stopDuration ?? 5)
+
+  return `-- ══ Train / Monorail System (Script inside Train Model in workspace) ══
+-- Speed: ${speed} | Stations: ${stations} | Stop: ${stopDur}s
+local TweenService=game:GetService("TweenService"); local Players=game:GetService("Players")
+
+-- Train model must have a PrimaryPart (engine) and optional "DoorLeft","DoorRight" parts
+local train=script.Parent
+local engine=train.PrimaryPart or train:FindFirstChildWhichIsA("BasePart")
+assert(engine,"[Train] Train model needs a PrimaryPart")
+
+local SPEED=${speed}; local STOP_DURATION=${stopDur}; local STATION_COUNT=${stations}
+local isMoving=false; local currentStation=1
+
+-- Stations: Parts named "TrainStation_1", "TrainStation_2"... in workspace
+local function getStation(idx:number):BasePart?
+  return workspace:FindFirstChild("TrainStation_"..idx) :: BasePart?
+end
+
+-- Weld passengers
+local welds:{[Model]:WeldConstraint}={}
+local function weldChar(char:Model)
+  local hrp=char:FindFirstChild("HumanoidRootPart") :: BasePart?
+  if hrp and not welds[char] then
+    local w=Instance.new("WeldConstraint"); w.Part0=engine; w.Part1=hrp; w.Parent=engine; welds[char]=w
+  end
+end
+local function unweldChar(char:Model)
+  local w=welds[char]; if w then w:Destroy(); welds[char]=nil end
+end
+
+engine.Touched:Connect(function(hit)
+  local char=hit.Parent :: Model?
+  if char and Players:GetPlayerFromCharacter(char) then weldChar(char) end
+end)
+engine.TouchEnded:Connect(function(hit)
+  local char=hit.Parent :: Model?
+  if char then unweldChar(char) end
+end)
+
+-- Door control
+local function setDoors(open:boolean)
+  local doorL=train:FindFirstChild("DoorLeft"); local doorR=train:FindFirstChild("DoorRight")
+  if not doorL or not doorR then return end
+  if not train:GetAttribute("DLBase") then
+    train:SetAttribute("DLBase",doorL.Position.X); train:SetAttribute("DRBase",doorR.Position.X)
+  end
+  local dlb=train:GetAttribute("DLBase") :: number; local drb=train:GetAttribute("DRBase") :: number
+  TweenService:Create(doorL,TweenInfo.new(0.6,Enum.EasingStyle.Quad),
+    {Position=Vector3.new(dlb-(open and 3 or 0),doorL.Position.Y,doorL.Position.Z)}):Play()
+  TweenService:Create(doorR,TweenInfo.new(0.6,Enum.EasingStyle.Quad),
+    {Position=Vector3.new(drb+(open and 3 or 0),doorR.Position.Y,doorR.Position.Z)}):Play()
+  task.wait(0.65)
+end
+
+-- Announce via chat / notification
+local function announce(msg:string)
+  local RE=game:GetService("ReplicatedStorage"):FindFirstChild("NotificationRE")
+  if RE then RE:FireAllClients("[Train] "..msg,"info",4) end
+end
+
+-- Main train loop
+task.spawn(function()
+  while true do
+    local station=getStation(currentStation)
+    if station then
+      -- Tween to station
+      local dist=(station.Position-engine.Position).Magnitude
+      local travelTime=dist/SPEED
+      if travelTime>0.1 then
+        isMoving=true
+        TweenService:Create(engine,TweenInfo.new(travelTime,Enum.EasingStyle.Quad,Enum.EasingDirection.InOut),
+          {CFrame=CFrame.new(station.Position+Vector3.new(0,1,0),station.Position+Vector3.new(0,1,1))}):Play()
+        task.wait(travelTime)
+        isMoving=false
+      end
+
+      -- Arrived at station
+      announce("Arrived at Station "..currentStation)
+      setDoors(true)
+      task.wait(STOP_DURATION)
+      setDoors(false)
+      task.wait(0.5)
+    else
+      task.wait(1)
+    end
+
+    -- Advance to next station (loop)
+    currentStation=(currentStation%STATION_COUNT)+1
+  end
+end)
+
+print("[Train] Running. "..STATION_COUNT.." stations, speed="..SPEED)")`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 21. CAPTURE THE FLAG SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CaptureTheFlagParams {
+  scoreToWin?: number
+  respawnTime?: number
+  teams?: [string, string]
+}
+
+export function captureTheFlagSystem(params: CaptureTheFlagParams): string {
+  const scoreToWin = num(params.scoreToWin ?? 3, 1)
+  const respawnTime = Math.max(1, params.respawnTime ?? 5)
+  const teams = params.teams ?? ['RedTeam', 'BlueTeam']
+  const team1 = safe(teams[0] ?? 'RedTeam')
+  const team2 = safe(teams[1] ?? 'BlueTeam')
+
+  return `-- ══ Capture The Flag System (ServerScriptService) ══
+-- Score to win: ${scoreToWin} | Respawn: ${respawnTime}s | Teams: ${team1} vs ${team2}
+local Players=game:GetService("Players"); local Teams=game:GetService("Teams")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+
+local SCORE_TO_WIN=${scoreToWin}; local RESPAWN_TIME=${respawnTime}
+local TEAM_NAMES={"${team1}","${team2}"}
+
+local RE=Instance.new("RemoteEvent"); RE.Name="CTFRE"; RE.Parent=ReplicatedStorage
+local RF=Instance.new("RemoteFunction"); RF.Name="CTFRF"; RF.Parent=ReplicatedStorage
+
+-- Game state
+local scores:{[string]:number}={["${team1}"]=0,["${team2}"]=0}
+local flagCarriers:{[string]:Player?}={["${team1}"]=nil,["${team2}"]=nil}
+local flagHome:{[string]:boolean}={["${team1}"]=true,["${team2}"]=true}
+local gameActive=false
+
+-- Create teams if not exist
+for _,tName in ipairs(TEAM_NAMES) do
+  if not Teams:FindFirstChild(tName) then
+    local t=Instance.new("Team"); t.Name=tName; t.TeamColor=tName=="${team1}" and BrickColor.new("Bright red") or BrickColor.new("Bright blue")
+    t.AutoAssignable=true; t.Parent=Teams
+  end
+end
+
+local function getPlayerTeam(player:Player):string?
+  local t=player.Team; return t and t.Name or nil
+end
+
+local function broadcastScore()
+  RE:FireAllClients("ScoreUpdate",scores)
+end
+
+local function broadcastFlagStatus()
+  RE:FireAllClients("FlagStatus",{carriers={["${team1}"]=flagCarriers["${team1}"] and flagCarriers["${team1}"].Name,["${team2}"]=flagCarriers["${team2}"] and flagCarriers["${team2}"].Name},home=flagHome})
+end
+
+local function getEnemyTeam(team:string):string
+  return team==TEAM_NAMES[1] and TEAM_NAMES[2] or TEAM_NAMES[1]
+end
+
+local function getFlag(teamName:string):BasePart?
+  local flagFolder=workspace:FindFirstChild("CTFFlags")
+  return flagFolder and flagFolder:FindFirstChild(teamName.."_Flag") :: BasePart?
+end
+
+local function returnFlagToBase(teamName:string)
+  local flag=getFlag(teamName); if not flag then return end
+  local base=workspace:FindFirstChild("CTFBases") and workspace:FindFirstChild("CTFBases"):FindFirstChild(teamName.."_Base") :: BasePart?
+  if base then flag.CFrame=base.CFrame+Vector3.new(0,2,0) end
+  flag.Anchored=true; flagHome[teamName]=true; flagCarriers[teamName]=nil
+  RE:FireAllClients("FlagReturned",{team=teamName})
+  broadcastFlagStatus()
+end
+
+-- Flag touch detection
+local function setupFlagTouches()
+  for _,teamName in ipairs(TEAM_NAMES) do
+    local flag=getFlag(teamName)
+    if not flag then warn("[CTF] Flag not found: "..teamName.."_Flag"); continue end
+    flag.Touched:Connect(function(hit)
+      if not gameActive then return end
+      local char=hit.Parent :: Model?
+      local player=char and Players:GetPlayerFromCharacter(char)
+      if not player then return end
+      local playerTeam=getPlayerTeam(player)
+      if not playerTeam then return end
+      local enemyTeam=getEnemyTeam(playerTeam)
+      if teamName==enemyTeam and flagHome[teamName] then
+        -- Pick up enemy flag
+        flagHome[teamName]=false; flagCarriers[teamName]=player
+        flag.Anchored=false
+        local bv=Instance.new("BodyPosition"); bv.MaxForce=Vector3.new(1e5,1e5,1e5); bv.Parent=flag
+        RE:FireAllClients("FlagPickedUp",{team=teamName,carrier=player.Name})
+        broadcastFlagStatus()
+
+        -- Track carrier
+        task.spawn(function()
+          while flagCarriers[teamName]==player and player.Parent do
+            local c=player.Character
+            local hrp=c and c:FindFirstChild("HumanoidRootPart") :: BasePart?
+            if hrp and bv.Parent then bv.Position=hrp.Position+Vector3.new(0,3,0) end
+            task.wait(0.05)
+          end
+        end)
+
+        -- Check if carrier already has own flag at base
+        if flagHome[playerTeam] then
+          -- CAPTURE!
+          scores[playerTeam]+=1; broadcastScore()
+          RE:FireAllClients("FlagCaptured",{team=playerTeam,scorer=player.Name,score=scores[playerTeam]})
+          returnFlagToBase(teamName)
+          if scores[playerTeam]>=SCORE_TO_WIN then
+            RE:FireAllClients("GameOver",{winner=playerTeam,scores=scores})
+            gameActive=false; scores={}; for _,t in TEAM_NAMES do scores[t]=0 end
+          end
+        end
+      elseif teamName==playerTeam and not flagHome[teamName] and not flagCarriers[teamName] then
+        -- Return own dropped flag
+        returnFlagToBase(teamName)
+        RE:FireAllClients("Notification",{text="Flag returned by "..player.Name,type="info"})
+      end
+    end)
+  end
+end
+
+-- Respawn on death
+Players.PlayerAdded:Connect(function(player)
+  player.CharacterAdded:Connect(function(char)
+    local hum=char:WaitForChild("Humanoid") :: Humanoid
+    hum.Died:Connect(function()
+      -- Drop flag if carrying
+      for teamName,carrier in flagCarriers do
+        if carrier==player then
+          flagCarriers[teamName]=nil
+          local flag=getFlag(teamName)
+          if flag then
+            local bv=flag:FindFirstChildOfClass("BodyPosition")
+            if bv then bv:Destroy() end
+            flag.Anchored=true
+          end
+          broadcastFlagStatus()
+        end
+      end
+      task.delay(RESPAWN_TIME,function()
+        if player.Parent then player:LoadCharacter() end
+      end)
+    end)
+  end)
+end)
+
+RF.OnServerInvoke=function(player,action):any
+  if action=="start" then gameActive=true; setupFlagTouches(); RE:FireAllClients("GameStart"); return true
+  elseif action=="getScore" then return scores
+  elseif action=="getFlags" then return {home=flagHome,carriers={["${team1}"]=flagCarriers["${team1}"] and flagCarriers["${team1}"].Name,["${team2}"]=flagCarriers["${team2}"] and flagCarriers["${team2}"].Name}}
+  end
+  return false,"Unknown"
+end
+
+print("[CaptureTheFlag] Ready. Win at ${scoreToWin} caps. Teams: ${team1} vs ${team2}")`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 22. PROXIMITY INTERACTION SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ProximityInteractionParams {
+  interactions?: Array<{ partName: string; actionText: string; objectText: string; holdDuration?: number; serverEvent?: string }>
+  maxDistance?: number
+}
+
+export function proximityInteractionSystem(params: ProximityInteractionParams): string {
+  const maxDist = Math.max(3, params.maxDistance ?? 8)
+  const interactions = params.interactions ?? [
+    { partName: 'Chest', actionText: 'Open', objectText: 'Treasure Chest', holdDuration: 0, serverEvent: 'OpenChest' },
+    { partName: 'Anvil', actionText: 'Craft', objectText: 'Blacksmith Anvil', holdDuration: 1, serverEvent: 'OpenCrafting' },
+    { partName: 'Portal', actionText: 'Enter', objectText: 'Dungeon Portal', holdDuration: 0.5, serverEvent: 'EnterPortal' },
+  ]
+  const interactionDefs = interactions.map((i: any) =>
+    `  { partName="${safe(i.partName||'Part')}", action="${safeLuauString(i.actionText||'Use')}", object="${safeLuauString(i.objectText||'')}", hold=${Math.max(0,i.holdDuration??0)}, event="${safe(i.serverEvent||'Interact')}" },`
+  ).join('\n')
+
+  return `-- ══ Proximity Interaction System (ServerScriptService) ══
+-- MaxDist: ${maxDist}
+local Players=game:GetService("Players"); local ReplicatedStorage=game:GetService("ReplicatedStorage")
+
+local MAX_DISTANCE=${maxDist}
+local INTERACTIONS = {
+${interactionDefs}
+}
+
+local RE=Instance.new("RemoteEvent"); RE.Name="InteractionRE"; RE.Parent=ReplicatedStorage
+
+-- Setup ProximityPrompts on all matching parts
+local function setupInteraction(def:any)
+  for _,obj in ipairs(workspace:GetDescendants()) do
+    if obj.Name==def.partName and obj:IsA("BasePart") then
+      local existing=obj:FindFirstChildOfClass("ProximityPrompt")
+      if existing then continue end
+      local pp=Instance.new("ProximityPrompt")
+      pp.ActionText=def.action; pp.ObjectText=def.object
+      pp.HoldDuration=def.hold; pp.MaxActivationDistance=MAX_DISTANCE
+      pp.RequiresLineOfSight=false; pp.Parent=obj
+
+      pp.Triggered:Connect(function(player:Player)
+        -- Condition checks can be added here (inventory, level, etc.)
+        RE:FireAllClients("InteractionTriggered",{player=player.Name,event=def.event,partName=def.partName})
+        RE:FireClient(player,"Interact",{event=def.event,part=obj})
+      end)
+
+      -- Visual feedback: prompt style
+      pp.UIOffset=Vector2.new(0,25)
+      print("[ProximityInteraction] Setup '"..def.action.."' on "..obj:GetFullName())
+    end
+  end
+end
+
+for _,def in ipairs(INTERACTIONS) do setupInteraction(def) end
+
+-- Re-run when new parts added
+workspace.DescendantAdded:Connect(function(obj)
+  if not obj:IsA("BasePart") then return end
+  task.wait()
+  for _,def in ipairs(INTERACTIONS) do
+    if obj.Name==def.partName and not obj:FindFirstChildOfClass("ProximityPrompt") then
+      setupInteraction(def)
+    end
+  end
+end)
+
+-- Server handler for interactions: fire BindableEvent so other systems can hook in
+local interactBE=Instance.new("BindableEvent"); interactBE.Name="OnInteract"; interactBE.Parent=game:GetService("ServerStorage")
+RE.OnServerEvent:Connect(function(player,eventName,...)
+  interactBE:Fire(player,eventName,...)
+end)
+
+print("[ProximityInteraction] Ready. "..#INTERACTIONS.." interaction types")`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 23. DATASTORE WRAPPER SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DataStoreWrapperParams {
+  storeName?: string
+  maxRetries?: number
+  sessionLockSeconds?: number
+  defaultData?: Record<string, unknown>
+}
+
+export function dataStoreWrapperSystem(params: DataStoreWrapperParams): string {
+  const storeName = safe(params.storeName ?? 'GameData')
+  const maxRetries = num(params.maxRetries ?? 3, 1, 10)
+  const sessionLock = num(params.sessionLockSeconds ?? 30, 10)
+  const defaultDataStr = JSON.stringify(params.defaultData ?? { coins: 0, level: 1, xp: 0, inventory: [] }, null, 2)
+    .replace(/\n/g, '\n  ')
+
+  return `-- ══ DataStore Wrapper System (ModuleScript in ServerStorage) ══
+-- Store: ${storeName} | Retries: ${maxRetries} | SessionLock: ${sessionLock}s
+local DataStoreService=game:GetService("DataStoreService")
+local Players=game:GetService("Players")
+local RunService=game:GetService("RunService")
+
+local STORE_NAME="${storeName}"
+local MAX_RETRIES=${maxRetries}
+local SESSION_LOCK_SECONDS=${sessionLock}
+local RETRY_DELAY=1.5
+
+local mainStore=DataStoreService:GetDataStore(STORE_NAME.."_v1")
+local lockStore=DataStoreService:GetDataStore(STORE_NAME.."_Locks")
+
+-- Default data shape (will be deep-merged with saved data)
+local DEFAULT_DATA = {
+  coins=0, level=1, xp=0,
+  inventory={},
+  createdAt=os.time(),
+  version=1,
+}
+
+-- ── Utility ──
+local function deepMerge(defaults:any, saved:any):any
+  local result={}
+  for k,v in pairs(defaults) do result[k]=v end
+  if type(saved)~="table" then return result end
+  for k,v in pairs(saved) do
+    if type(v)=="table" and type(result[k])=="table" then
+      result[k]=deepMerge(result[k],v)
+    else
+      result[k]=v
+    end
+  end
+  return result
+end
+
+local function validateData(data:any):boolean
+  if type(data)~="table" then return false end
+  if type(data.coins)~="number" then return false end
+  if type(data.level)~="number" then return false end
+  return true
+end
+
+local function migrateData(data:any):any
+  -- Version migration: add new fields as needed
+  data.version=data.version or 1
+  if data.version<1 then data.coins=data.cash or 0 end  -- example migration
+  data.version=1
+  return data
+end
+
+-- ── Session lock ──
+local function acquireLock(userId:number):boolean
+  local key="lock_"..userId
+  local acquired=false
+  for attempt=1,3 do
+    local ok,err=pcall(function()
+      lockStore:UpdateAsync(key,function(current)
+        local now=os.time()
+        if current and type(current)=="table" and (now-current.time)<SESSION_LOCK_SECONDS then
+          return nil -- lock held
+        end
+        acquired=true
+        return {jobId=game.JobId, time=now}
+      end)
+    end)
+    if acquired then return true end
+    if attempt<3 then task.wait(RETRY_DELAY) end
+  end
+  return false
+end
+
+local function releaseLock(userId:number)
+  local key="lock_"..userId
+  pcall(function()
+    lockStore:UpdateAsync(key,function(current)
+      if current and type(current)=="table" and current.jobId==game.JobId then
+        return nil
+      end
+      return current
+    end)
+  end)
+end
+
+-- ── Core API ──
+local DataWrapper={}
+DataWrapper.__index=DataWrapper
+
+local sessions:{[number]:any}={}
+
+function DataWrapper.load(player:Player):(boolean,string)
+  local userId=player.UserId
+  if sessions[userId] then return true,"Already loaded" end
+
+  -- Acquire session lock
+  if not acquireLock(userId) then
+    return false,"Session lock held by another server"
+  end
+
+  local data=nil
+  local success=false
+  for attempt=1,MAX_RETRIES do
+    local ok,result=pcall(function()
+      return mainStore:GetAsync("player_"..userId)
+    end)
+    if ok then data=result; success=true; break end
+    if attempt<MAX_RETRIES then task.wait(RETRY_DELAY*attempt) end
+  end
+
+  if not success then
+    releaseLock(userId)
+    return false,"Failed to load data after "..MAX_RETRIES.." attempts"
+  end
+
+  -- Merge with defaults and migrate
+  local merged=deepMerge(DEFAULT_DATA, type(data)=="table" and data or {})
+  merged=migrateData(merged)
+
+  if not validateData(merged) then
+    warn("[DataStore] Invalid data for "..player.Name..", using defaults")
+    merged=deepMerge(DEFAULT_DATA,{})
+  end
+
+  sessions[userId]={data=merged,dirty=false,player=player}
+  return true,"Loaded"
+end
+
+function DataWrapper.get(player:Player, key:string):any
+  local s=sessions[player.UserId]; if not s then return nil end
+  return s.data[key]
+end
+
+function DataWrapper.set(player:Player, key:string, value:any)
+  local s=sessions[player.UserId]; if not s then return end
+  s.data[key]=value; s.dirty=true
+end
+
+function DataWrapper.increment(player:Player, key:string, amount:number)
+  local s=sessions[player.UserId]; if not s then return end
+  if type(s.data[key])=="number" then
+    s.data[key]=s.data[key]+amount; s.dirty=true
+  end
+end
+
+function DataWrapper.save(player:Player):(boolean,string)
+  local userId=player.UserId
+  local s=sessions[userId]; if not s then return false,"No session" end
+  if not s.dirty then return true,"No changes" end
+
+  for attempt=1,MAX_RETRIES do
+    local ok,err=pcall(function()
+      mainStore:UpdateAsync("player_"..userId,function(current)
+        return s.data
+      end)
+    end)
+    if ok then s.dirty=false; return true,"Saved" end
+    if attempt<MAX_RETRIES then task.wait(RETRY_DELAY*attempt) end
+    warn("[DataStore] Save attempt "..attempt.." failed for "..player.Name..": "..tostring(err))
+  end
+  return false,"Save failed after "..MAX_RETRIES.." attempts"
+end
+
+function DataWrapper.unload(player:Player)
+  local userId=player.UserId
+  DataWrapper.save(player)
+  releaseLock(userId)
+  sessions[userId]=nil
+end
+
+-- Auto-save every 60 seconds
+task.spawn(function()
+  while true do
+    task.wait(60)
+    for userId,session in sessions do
+      if session.dirty then
+        local p=Players:GetPlayerByUserId(userId)
+        if p then DataWrapper.save(p) end
+      end
+    end
+  end
+end)
+
+-- Lifecycle
+Players.PlayerAdded:Connect(function(p) DataWrapper.load(p) end)
+Players.PlayerRemoving:Connect(function(p) DataWrapper.unload(p) end)
+game:BindToClose(function()
+  for _,p in ipairs(Players:GetPlayers()) do DataWrapper.unload(p) end
+end)
+
+-- Expose as module
+return DataWrapper`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 24. UI TWEEN LIBRARY
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface UITweenLibraryParams {
+  defaultDuration?: number
+}
+
+export function uiTweenLibrary(params: UITweenLibraryParams): string {
+  const dur = Math.max(0.05, params.defaultDuration ?? 0.3)
+
+  return `-- ══ UI Tween Library (ModuleScript in ReplicatedStorage) ══
+-- Default duration: ${dur}s
+local TweenService=game:GetService("TweenService")
+local UITween={}
+
+local DEFAULT_DUR=${dur}
+
+-- ── slideIn: slides a GUI element in from a direction ──
+-- dir: "left"|"right"|"top"|"bottom"
+function UITween.slideIn(element:GuiObject, dir:string?, duration:number?)
+  dir=dir or "left"; duration=duration or DEFAULT_DUR
+  local original=element.Position
+  local offset
+  if dir=="left"     then offset=UDim2.new(-1,0,0,0)
+  elseif dir=="right"  then offset=UDim2.new(1,0,0,0)
+  elseif dir=="top"    then offset=UDim2.new(0,0,-1,0)
+  elseif dir=="bottom" then offset=UDim2.new(0,0,1,0)
+  else offset=UDim2.new(-1,0,0,0) end
+  element.Position=original+offset; element.Visible=true
+  TweenService:Create(element,TweenInfo.new(duration,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),
+    {Position=original}):Play()
+end
+
+-- ── slideOut: slides a GUI element out ──
+function UITween.slideOut(element:GuiObject, dir:string?, duration:number?, callback:(()->())?)
+  dir=dir or "left"; duration=duration or DEFAULT_DUR
+  local offset
+  if dir=="left"     then offset=UDim2.new(-1,0,0,0)
+  elseif dir=="right"  then offset=UDim2.new(1,0,0,0)
+  elseif dir=="top"    then offset=UDim2.new(0,0,-1,0)
+  elseif dir=="bottom" then offset=UDim2.new(0,0,1,0)
+  else offset=UDim2.new(-1,0,0,0) end
+  local target=element.Position+offset
+  local tween=TweenService:Create(element,TweenInfo.new(duration,Enum.EasingStyle.Quad,Enum.EasingDirection.In),{Position=target})
+  tween:Play()
+  tween.Completed:Connect(function() element.Visible=false; if callback then callback() end end)
+end
+
+-- ── fadeIn ──
+function UITween.fadeIn(element:GuiObject, duration:number?, targetTransparency:number?)
+  duration=duration or DEFAULT_DUR; targetTransparency=targetTransparency or 0
+  element.BackgroundTransparency=1; element.Visible=true
+  TweenService:Create(element,TweenInfo.new(duration,Enum.EasingStyle.Linear),
+    {BackgroundTransparency=targetTransparency}):Play()
+end
+
+-- ── fadeOut ──
+function UITween.fadeOut(element:GuiObject, duration:number?, callback:(()->())?)
+  duration=duration or DEFAULT_DUR
+  local tween=TweenService:Create(element,TweenInfo.new(duration,Enum.EasingStyle.Linear),{BackgroundTransparency=1})
+  tween:Play()
+  tween.Completed:Connect(function() element.Visible=false; if callback then callback() end end)
+end
+
+-- ── popIn: scale from 0 with a bounce ──
+function UITween.popIn(element:GuiObject, duration:number?)
+  duration=duration or (DEFAULT_DUR*1.3)
+  local originalSize=element.Size
+  element.Size=UDim2.new(0,0,0,0); element.Visible=true
+  TweenService:Create(element,TweenInfo.new(duration,Enum.EasingStyle.Back,Enum.EasingDirection.Out),
+    {Size=originalSize}):Play()
+end
+
+-- ── popOut ──
+function UITween.popOut(element:GuiObject, duration:number?, callback:(()->())?)
+  duration=duration or DEFAULT_DUR
+  local tween=TweenService:Create(element,TweenInfo.new(duration,Enum.EasingStyle.Back,Enum.EasingDirection.In),
+    {Size=UDim2.new(0,0,0,0)})
+  tween:Play()
+  tween.Completed:Connect(function() element.Visible=false; if callback then callback() end end)
+end
+
+-- ── shake: rapid left-right oscillation ──
+function UITween.shake(element:GuiObject, intensity:number?, duration:number?)
+  intensity=intensity or 8; duration=duration or 0.4
+  local originalPos=element.Position
+  local steps=math.floor(duration/0.05)
+  task.spawn(function()
+    for i=1,steps do
+      local offset=math.sin(i*math.pi*2)*intensity*(1-(i/steps))
+      element.Position=originalPos+UDim2.new(0,offset,0,0)
+      task.wait(0.05)
+    end
+    element.Position=originalPos
+  end)
+end
+
+-- ── pulse: scale up and back repeatedly ──
+function UITween.pulse(element:GuiObject, scale:number?, times:number?, interval:number?)
+  scale=scale or 1.1; times=times or 3; interval=interval or 0.3
+  local originalSize=element.Size
+  task.spawn(function()
+    for i=1,times do
+      TweenService:Create(element,TweenInfo.new(interval*0.5,Enum.EasingStyle.Quad),
+        {Size=UDim2.new(originalSize.X.Scale*scale,originalSize.X.Offset,originalSize.Y.Scale*scale,originalSize.Y.Offset)}):Play()
+      task.wait(interval*0.5)
+      TweenService:Create(element,TweenInfo.new(interval*0.5,Enum.EasingStyle.Quad),{Size=originalSize}):Play()
+      task.wait(interval*0.5)
+    end
+  end)
+end
+
+-- ── typewriter: animate text letter by letter ──
+function UITween.typewriter(label:TextLabel, text:string, speed:number?, callback:(()->())?)
+  speed=speed or 0.035
+  task.spawn(function()
+    label.Text=""
+    for i=1,#text do
+      label.Text=text:sub(1,i); task.wait(speed)
+    end
+    if callback then callback() end
+  end)
+end
+
+-- ── colorFlash: briefly flash background color ──
+function UITween.colorFlash(element:Frame, flashColor:Color3, duration:number?)
+  duration=duration or 0.2
+  local original=element.BackgroundColor3
+  element.BackgroundColor3=flashColor
+  TweenService:Create(element,TweenInfo.new(duration,Enum.EasingStyle.Linear),{BackgroundColor3=original}):Play()
+end
+
+-- ── numberTween: animate a TextLabel number value ──
+function UITween.numberTween(label:TextLabel, from:number, to:number, duration:number?, prefix:string?, suffix:string?)
+  prefix=prefix or ""; suffix=suffix or ""; duration=duration or 0.5
+  task.spawn(function()
+    local startTime=tick()
+    while true do
+      local elapsed=tick()-startTime
+      local t=math.min(elapsed/duration,1)
+      local val=math.floor(from+(to-from)*t)
+      label.Text=prefix..tostring(val)..suffix
+      if t>=1 then break end
+      task.wait(0.016)
+    end
+  end)
+end
+
+return UITween`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 25. SOUND MANAGER SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SoundManagerParams {
+  musicTracks?: Array<{ name: string; id: string }>
+  poolSize?: number
+  defaultMusicVolume?: number
+  defaultSfxVolume?: number
+}
+
+export function soundManagerSystem(params: SoundManagerParams): string {
+  const poolSize = num(params.poolSize ?? 10, 2, 50)
+  const musicVol = Math.max(0, Math.min(1, params.defaultMusicVolume ?? 0.6))
+  const sfxVol = Math.max(0, Math.min(1, params.defaultSfxVolume ?? 1.0))
+  const tracks = params.musicTracks ?? [
+    { name: 'MainMenu', id: 'rbxassetid://0' },
+    { name: 'Combat', id: 'rbxassetid://0' },
+    { name: 'Ambient', id: 'rbxassetid://0' },
+  ]
+  const trackDefs = tracks.map((t: any) =>
+    `  ["${safe(t.name||'Track')}"] = "${(t.id||'').replace(/"/g,'')}",`
+  ).join('\n')
+
+  return `-- ══ Sound Manager System (LocalScript → StarterPlayerScripts) ══
+-- Pool: ${poolSize} | Music: ${musicVol} | SFX: ${sfxVol}
+local SoundService=game:GetService("SoundService"); local TweenService=game:GetService("TweenService")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+
+local MUSIC_VOL=${musicVol}; local SFX_VOL=${sfxVol}; local POOL_SIZE=${poolSize}
+local FADE_TIME=1.5
+
+-- Music track registry
+local TRACKS:{[string]:string}={
+${trackDefs}
+}
+
+-- ── Music layer (single sound, crossfade) ──
+local musicGroup=Instance.new("SoundGroup"); musicGroup.Name="Music"; musicGroup.Volume=MUSIC_VOL; musicGroup.Parent=SoundService
+local currentMusicSound:Sound?=nil
+local currentTrackName:string?=nil
+
+local function playMusic(trackName:string, looped:boolean?)
+  if trackName==currentTrackName then return end
+  local id=TRACKS[trackName]; if not id then warn("[SoundManager] Track not found: "..trackName); return end
+  looped=looped~=false
+
+  -- Fade out current
+  if currentMusicSound and currentMusicSound.Parent then
+    local old=currentMusicSound
+    TweenService:Create(old,TweenInfo.new(FADE_TIME,Enum.EasingStyle.Linear),{Volume=0}):Play()
+    task.delay(FADE_TIME,function() old:Destroy() end)
+  end
+
+  -- Create new
+  local newSound=Instance.new("Sound"); newSound.Name="Music_"..trackName
+  newSound.SoundId=id; newSound.Volume=0; newSound.Looped=looped; newSound.RollOffMaxDistance=10000
+  newSound.Parent=musicGroup
+  newSound:Play()
+  TweenService:Create(newSound,TweenInfo.new(FADE_TIME,Enum.EasingStyle.Linear),{Volume=MUSIC_VOL}):Play()
+  currentMusicSound=newSound; currentTrackName=trackName
+end
+
+local function stopMusic()
+  if currentMusicSound then
+    TweenService:Create(currentMusicSound,TweenInfo.new(FADE_TIME,Enum.EasingStyle.Linear),{Volume=0}):Play()
+    task.delay(FADE_TIME,function()
+      if currentMusicSound then currentMusicSound:Destroy(); currentMusicSound=nil end
+    end)
+    currentTrackName=nil
+  end
+end
+
+-- ── SFX pool (pre-allocated Sound instances) ──
+local sfxGroup=Instance.new("SoundGroup"); sfxGroup.Name="SFX"; sfxGroup.Volume=SFX_VOL; sfxGroup.Parent=SoundService
+local sfxPool:{Sound}={}
+local poolIndex=1
+
+for i=1,POOL_SIZE do
+  local s=Instance.new("Sound"); s.Name="SFX_"..i; s.Parent=sfxGroup
+  table.insert(sfxPool,s)
+end
+
+local function getPooledSound():Sound
+  local s=sfxPool[poolIndex]
+  poolIndex=(poolIndex%POOL_SIZE)+1
+  if s.IsPlaying then s:Stop() end
+  return s
+end
+
+local function playSFX(soundId:string, volume:number?, pitch:number?)
+  local s=getPooledSound()
+  s.SoundId=soundId; s.Volume=(volume or 1)*SFX_VOL; s.PlaybackSpeed=pitch or 1
+  s:Play()
+  return s
+end
+
+-- ── 3D spatial audio ──
+local function play3D(soundId:string, position:Vector3, volume:number?, rolloffMax:number?):Sound?
+  local anchor=Instance.new("Part"); anchor.Anchored=true; anchor.CanCollide=false
+  anchor.Transparency=1; anchor.Size=Vector3.new(0.1,0.1,0.1); anchor.Position=position; anchor.Parent=workspace
+
+  local s=Instance.new("Sound"); s.SoundId=soundId; s.Volume=volume or 1
+  s.RollOffMaxDistance=rolloffMax or 40; s.RollOffMinDistance=5; s.Parent=anchor
+  s:Play()
+  s.Ended:Connect(function() anchor:Destroy() end)
+  task.delay(60,function() if anchor.Parent then anchor:Destroy() end end)
+  return s
+end
+
+-- ── Dialog ducking ──
+local function duckMusic(targetVolume:number?, duration:number?)
+  targetVolume=targetVolume or 0.15; duration=duration or 0.4
+  TweenService:Create(musicGroup,TweenInfo.new(duration,Enum.EasingStyle.Quad),{Volume=targetVolume}):Play()
+end
+local function unduckMusic(duration:number?)
+  duration=duration or 0.6
+  TweenService:Create(musicGroup,TweenInfo.new(duration,Enum.EasingStyle.Quad),{Volume=MUSIC_VOL}):Play()
+end
+
+-- ── Volume control ──
+local function setMusicVolume(vol:number)
+  MUSIC_VOL=math.clamp(vol,0,1); musicGroup.Volume=MUSIC_VOL
+  if currentMusicSound then currentMusicSound.Volume=MUSIC_VOL end
+end
+local function setSFXVolume(vol:number)
+  SFX_VOL=math.clamp(vol,0,1); sfxGroup.Volume=SFX_VOL
+end
+
+-- ── Expose global API ──
+_G.SoundManager={
+  playMusic=playMusic,
+  stopMusic=stopMusic,
+  playSFX=playSFX,
+  play3D=play3D,
+  duckMusic=duckMusic,
+  unduckMusic=unduckMusic,
+  setMusicVolume=setMusicVolume,
+  setSFXVolume=setSFXVolume,
+}
+
+-- Server can trigger sounds via RemoteEvent
+local RE=ReplicatedStorage:WaitForChild("SoundRE",5)
+if RE then
+  RE.OnClientEvent:Connect(function(action:string,...)
+    local args={...}
+    if action=="music" then playMusic(tostring(args[1] or ""),args[2])
+    elseif action=="sfx" then playSFX(tostring(args[1] or ""),tonumber(args[2]),tonumber(args[3]))
+    elseif action=="3d" then play3D(tostring(args[1] or ""),args[2],tonumber(args[3]))
+    elseif action=="duck" then duckMusic(tonumber(args[1]),tonumber(args[2]))
+    elseif action=="unduck" then unduckMusic(tonumber(args[1]))
+    elseif action=="stop" then stopMusic()
+    end
+  end)
+end
+
+-- Start with first track
+if next(TRACKS) then
+  local firstName
+  for name in pairs(TRACKS) do firstName=name; break end
+  if firstName then playMusic(firstName) end
+end
+
+-- SERVER SIDE SNIPPET:
+--[[
+  local RE=Instance.new("RemoteEvent"); RE.Name="SoundRE"; RE.Parent=game:GetService("ReplicatedStorage")
+  -- RE:FireAllClients("music","Combat")                          -- switch track
+  -- RE:FireAllClients("sfx","rbxassetid://131070686",0.8,1)     -- play SFX
+  -- RE:FireClient(player,"3d","rbxassetid://131070686",pos,0.9) -- spatial
+  -- RE:FireAllClients("duck",0.1,0.5)                           -- duck for dialog
+  -- RE:FireAllClients("unduck",0.8)                             -- restore
+]]
+print("[SoundManager] Ready. Tracks: "..#TRACKS..", Pool: ${poolSize}")`
+}

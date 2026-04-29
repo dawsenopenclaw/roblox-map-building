@@ -1,5 +1,23 @@
 import { rpgGame, horrorGame, towerDefenseGame, battleRoyaleGame, racingGame, survivalGame } from './luau-templates-games'
 import type { RPGGameParams, HorrorGameParams, TowerDefenseParams, BattleRoyaleParams, RacingGameParams, SurvivalGameParams } from './luau-templates-games'
+export {
+  auctionHouseSystem, guildSystem, gachaEggSystem, towerDefenseSystem,
+  racingCheckpointSystem, obbyCheckpointExpanded, battlePassSystem, notificationSystem,
+  settingsSystem, adminCommandSystem, cutsceneSystem, vehicleSpawnSystem,
+  backpackHotbarSystem, damageNumberSystem, minimapSystem, questBoardSystem,
+  dialogueTreeSystem, elevatorSystem, teleporterNetworkSystem, trainMonorailSystem,
+  captureTheFlagSystem, proximityInteractionSystem, dataStoreWrapperSystem,
+  uiTweenLibrary, soundManagerSystem,
+} from './luau-templates-expanded'
+export type {
+  AuctionHouseParams, GuildSystemParams, GachaEggParams, TowerDefenseSystemParams,
+  RacingCheckpointParams, ObbyCheckpointExpandedParams, BattlePassParams, NotificationSystemParams,
+  SettingsSystemParams, AdminCommandSystemParams, CutsceneSystemParams, VehicleSpawnSystemParams,
+  BackpackHotbarParams, DamageNumberParams, MinimapSystemParams, QuestBoardParams,
+  DialogueTreeParams, ElevatorSystemParams, TeleporterNetworkParams, TrainMonorailParams,
+  CaptureTheFlagParams, ProximityInteractionParams, DataStoreWrapperParams,
+  UITweenLibraryParams, SoundManagerParams,
+} from './luau-templates-expanded'
 
 /**
  * Luau Template Library — pre-built, parameterized Roblox game system scripts.
