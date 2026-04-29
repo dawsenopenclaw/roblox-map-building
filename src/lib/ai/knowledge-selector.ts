@@ -57,6 +57,7 @@ import { SCRIPTING_PATTERNS_EXPANDED } from './scripting-patterns-expanded'
 import { INTERIOR_RESIDENTIAL_DEEP } from './interior-residential-deep'
 import { COMMERCIAL_INTERIORS_BIBLE } from './commercial-interiors-bible'
 import { EXAMPLE_BUILDS_BIBLE } from './example-builds-bible'
+import { LOWPOLY_STYLE_BIBLE, LOWPOLY_STYLE_GUIDE, LOWPOLY_MAP_EXAMPLE, LOWPOLY_OBJECTS, LOWPOLY_ITEMS, LOWPOLY_COLOR_DEPTH } from './lowpoly-style-bible'
 
 // ── Knowledge Section Registry ───────────────────────────────────────────────
 
@@ -324,6 +325,24 @@ const SECTIONS: KnowledgeSection[] = [
     getter: () => EXAMPLE_BUILDS_BIBLE,
     maxChars: 8000,
   },
+  {
+    id: 'lowpoly-style',
+    keywords: ['low poly', 'lowpoly', 'stylized', 'cartoon', 'cute', 'colorful', 'vibrant', 'modern', 'clean', 'smooth', 'adopt me', 'pet sim', 'blox fruits', 'style', 'aesthetic', 'pretty', 'nice looking', 'good looking'],
+    getter: () => LOWPOLY_STYLE_GUIDE + '\n' + LOWPOLY_COLOR_DEPTH,
+    maxChars: 6000,
+  },
+  {
+    id: 'lowpoly-map',
+    keywords: ['map', 'world', 'scene', 'environment', 'forest', 'island', 'landscape', 'nature', 'outdoor', 'terrain', 'scattered', 'populate', 'fill', 'area', 'zone', 'spawn', 'lobby'],
+    getter: () => LOWPOLY_MAP_EXAMPLE,
+    maxChars: 8000,
+  },
+  {
+    id: 'lowpoly-objects',
+    keywords: ['tree', 'rock', 'flower', 'mushroom', 'bush', 'fence', 'bridge', 'campfire', 'lantern', 'barrel', 'crate', 'bench', 'sign', 'path', 'pond', 'waterfall', 'prop', 'decoration', 'detail'],
+    getter: () => LOWPOLY_OBJECTS + '\n' + LOWPOLY_ITEMS,
+    maxChars: 6000,
+  },
 ]
 
 // ── Main Selector ────────────────────────────────────────────────────────────
@@ -372,6 +391,10 @@ export function selectRelevantKnowledge(taskPrompt: string, taskType: BuildTaskT
     if (taskType === 'economy' && section.id === 'game-progression-bible') score += 2
     // Example builds always relevant for any building/prop task
     if (['building', 'prop', 'terrain'].includes(taskType) && section.id === 'example-builds') score += 3
+    // Low-poly style ALWAYS injected for visual builds — this is the default look
+    if (['building', 'prop', 'terrain'].includes(taskType) && section.id === 'lowpoly-style') score += 4
+    if (taskType === 'terrain' && section.id === 'lowpoly-map') score += 4
+    if (taskType === 'prop' && section.id === 'lowpoly-objects') score += 3
 
     return { section, score }
   })
