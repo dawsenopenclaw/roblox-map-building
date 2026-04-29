@@ -393,7 +393,7 @@ Cache hierarchy for frequently-accessed objects:
   local Players = game:GetService("Players")
   local RunService = game:GetService("RunService")
   local ReplicatedStorage = game:GetService("ReplicatedStorage")
-  local workspace = game:GetService("Workspace")  -- or just `workspace` global
+  local workspace = game:GetService("Workspace")  -- or just 'workspace' global
 
   -- Cache service children:
   local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -528,7 +528,7 @@ GOOD (single shared handler, passes data via upvalue or lookup):
   for i = 1, 100 do
     local part = parts[i]
     part.Touched:Connect(function(hit)
-      onTouched(part, hit)  -- closure captures `part` but reuses `onTouched`
+      onTouched(part, hit)  -- closure captures 'part' but reuses 'onTouched'
     end)
   end
 
@@ -664,8 +664,8 @@ Memory leak scenario:
   part.Parent = workspace
   -- Later:
   part.Parent = nil  -- removed from workspace
-  -- But `part` variable still holds Lua reference.
-  -- Instance stays in memory until `part = nil` AND GC runs.
+  -- But 'part' variable still holds Lua reference.
+  -- Instance stays in memory until part = nil AND GC runs.
 
 Correct cleanup:
   part:Destroy()

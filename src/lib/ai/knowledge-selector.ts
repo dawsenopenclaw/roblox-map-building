@@ -40,6 +40,23 @@ import { INTERIOR_DESIGN_BIBLE } from './interior-design-bible'
 import { FURNITURE_LIVING } from './furniture-props-bible'
 import { ANIM_TWEEN_RECIPES, ANIM_EASING } from './animation-bible'
 
+// ── Bible Imports (15 new) ──────────────────────────────────────────────────
+import { MULTIPLAYER_BIBLE } from './multiplayer-bible'
+import { OPTIMIZATION_BIBLE } from './optimization-bible'
+import { ARCHITECTURAL_STYLES_BIBLE } from './architectural-styles-bible'
+import { LIGHTING_ATMOSPHERE_BIBLE } from './lighting-atmosphere-bible'
+import { VEHICLE_TRANSPORT_BIBLE } from './vehicle-transport-bible'
+import { WEAPON_TOOL_BIBLE } from './weapon-tool-bible'
+import { COLOR_MATERIAL_BIBLE } from './color-material-bible'
+import { WORLD_DESIGN_BIBLE } from './world-design-bible'
+import { GAME_PROGRESSION_BIBLE } from './game-progression-bible'
+import { BUILDING_MATH_BIBLE } from './building-math-bible'
+import { TEMPLATE_TYCOON, TEMPLATE_SIMULATOR, TEMPLATE_RPG, TEMPLATE_OBBY, TEMPLATE_HORROR, TEMPLATE_FIGHTING, TEMPLATE_SURVIVAL, TEMPLATE_RACING, TEMPLATE_TD, TEMPLATE_SOCIAL } from './game-templates-expanded'
+import { EXTERIOR_CONSTRUCTION_BIBLE } from './exterior-construction-bible'
+import { SCRIPTING_PATTERNS_EXPANDED } from './scripting-patterns-expanded'
+import { INTERIOR_RESIDENTIAL_DEEP } from './interior-residential-deep'
+import { COMMERCIAL_INTERIORS_BIBLE } from './commercial-interiors-bible'
+
 // ── Knowledge Section Registry ───────────────────────────────────────────────
 
 interface KnowledgeSection {
@@ -208,6 +225,98 @@ const SECTIONS: KnowledgeSection[] = [
     getter: () => ANIM_TWEEN_RECIPES + '\n' + ANIM_EASING,
     maxChars: 4000,
   },
+
+  // ── New Bible Sections (15) ─────────────────────────────────────────────────
+  {
+    id: 'multiplayer-bible',
+    keywords: ['multiplayer', 'remote', 'server', 'client', 'networking', 'anti-cheat', 'exploit', 'replication', 'session', 'matchmaking', 'elo', 'mmr', 'queue', 'reserved server', 'messaging', 'cross-server', 'datastore', 'session lock', 'network owner', 'streaming'],
+    getter: () => MULTIPLAYER_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'optimization-bible',
+    keywords: ['optimize', 'performance', 'lag', 'fps', 'part count', 'draw call', 'lod', 'memory', 'garbage', 'pool', 'streaming', 'mobile', 'render', 'parallel luau', 'actor', 'microprofiler', 'preload', 'content provider'],
+    getter: () => OPTIMIZATION_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'architectural-styles-bible',
+    keywords: ['medieval', 'castle', 'gothic', 'tudor', 'victorian', 'colonial', 'art deco', 'modern', 'brutalist', 'japanese', 'chinese', 'pagoda', 'mediterranean', 'islamic', 'log cabin', 'futuristic', 'sci-fi', 'steampunk', 'cyberpunk', 'egyptian', 'greek', 'roman', 'viking', 'haunted', 'underwater', 'treehouse', 'pueblo', 'arctic', 'space station', 'architecture style'],
+    getter: () => ARCHITECTURAL_STYLES_BIBLE,
+    maxChars: 6000,
+  },
+  {
+    id: 'lighting-atmosphere-bible',
+    keywords: ['lighting', 'atmosphere', 'ambient', 'brightness', 'clocktime', 'time of day', 'dawn', 'sunset', 'night', 'mood', 'horror lighting', 'bloom', 'blur', 'depth of field', 'sun rays', 'color correction', 'fog', 'haze', 'sky', 'skybox', 'post processing', 'indoor light', 'point light', 'spot light'],
+    getter: () => LIGHTING_ATMOSPHERE_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'vehicle-transport-bible',
+    keywords: ['car', 'vehicle', 'drive', 'boat', 'ship', 'airplane', 'helicopter', 'train', 'motorcycle', 'truck', 'bus', 'racing', 'wheel', 'engine', 'speed', 'steering', 'suspension', 'vehicle seat', 'throttle', 'brake', 'fuel', 'nitro', 'flight', 'submarine', 'rocket', 'spaceship'],
+    getter: () => VEHICLE_TRANSPORT_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'weapon-tool-bible',
+    keywords: ['weapon', 'sword', 'gun', 'bow', 'axe', 'staff', 'wand', 'dagger', 'spear', 'hammer', 'mace', 'scythe', 'pistol', 'rifle', 'shotgun', 'rocket launcher', 'magic staff', 'tool', 'pickaxe', 'fishing rod', 'shovel', 'torch', 'combat system', 'hitbox', 'damage', 'combo', 'parry', 'projectile', 'ammo'],
+    getter: () => WEAPON_TOOL_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'color-material-bible',
+    keywords: ['color', 'palette', 'material', 'rgb', 'brick', 'concrete', 'metal', 'wood', 'glass', 'neon', 'fabric', 'granite', 'marble', 'ice', 'grass', 'sand', 'slate', 'theme', 'color theory', 'complementary', 'warm', 'cool', 'saturation', 'contrast'],
+    getter: () => COLOR_MATERIAL_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'world-design-bible',
+    keywords: ['map', 'layout', 'level design', 'world', 'zone', 'biome', 'sight line', 'landmark', 'breadcrumb', 'gating', 'pacing', 'scale', 'door size', 'ceiling height', 'road width', 'tree height', 'navigation', 'signage', 'minimap', 'dead end', 'storytelling', 'environmental'],
+    getter: () => WORLD_DESIGN_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'game-progression-bible',
+    keywords: ['xp', 'level', 'progression', 'unlock', 'achievement', 'badge', 'retention', 'daily login', 'streak', 'battle pass', 'season', 'quest', 'daily quest', 'prestige', 'rebirth', 'ascension', 'skill tree', 'comeback', 'event'],
+    getter: () => GAME_PROGRESSION_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'building-math-bible',
+    keywords: ['cframe', 'position', 'rotation', 'angle', 'radian', 'circle', 'spiral', 'arc', 'dome', 'grid', 'snap', 'align', 'no gap', 'stacking', 'procedural', 'noise', 'perlin', 'random', 'scatter', 'maze', 'dungeon', 'staircase', 'fence', 'arch', 'column', 'weld'],
+    getter: () => BUILDING_MATH_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'game-templates-expanded',
+    keywords: ['tycoon', 'simulator', 'rpg', 'obby', 'horror game', 'fighting game', 'survival game', 'racing game', 'tower defense', 'roleplay', 'game template', 'core loop', 'game design', 'game type', 'genre'],
+    getter: () => TEMPLATE_TYCOON + '\n' + TEMPLATE_SIMULATOR + '\n' + TEMPLATE_RPG + '\n' + TEMPLATE_OBBY + '\n' + TEMPLATE_HORROR + '\n' + TEMPLATE_FIGHTING + '\n' + TEMPLATE_SURVIVAL + '\n' + TEMPLATE_RACING + '\n' + TEMPLATE_TD + '\n' + TEMPLATE_SOCIAL,
+    maxChars: 6000,
+  },
+  {
+    id: 'exterior-construction-bible',
+    keywords: ['roof', 'gable', 'hip', 'mansard', 'dome', 'facade', 'siding', 'porch', 'deck', 'balcony', 'pergola', 'gazebo', 'fence', 'garage', 'shed', 'chimney', 'gutter', 'window frame', 'door frame', 'shutter', 'foundation', 'retaining wall', 'pool'],
+    getter: () => EXTERIOR_CONSTRUCTION_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'scripting-patterns-expanded',
+    keywords: ['singleton', 'observer', 'state machine', 'object pool', 'factory', 'datastore pattern', 'inventory system', 'quest system', 'combat system', 'pet system', 'trading system', 'service pattern', 'pathfinding', 'collection service', 'marketplace', 'receipt', 'memory leak', 'race condition', 'throttle'],
+    getter: () => SCRIPTING_PATTERNS_EXPANDED,
+    maxChars: 5000,
+  },
+  {
+    id: 'interior-residential-deep',
+    keywords: ['bedroom', 'master bedroom', 'teen room', 'child room', 'kitchen', 'bathroom', 'living room', 'home gym', 'home theater', 'laundry', 'study', 'home office', 'cabin', 'dorm', 'luxury', 'farmhouse kitchen', 'modern kitchen', 'residential'],
+    getter: () => INTERIOR_RESIDENTIAL_DEEP,
+    maxChars: 5000,
+  },
+  {
+    id: 'commercial-interiors-bible',
+    keywords: ['store', 'shop', 'retail', 'grocery', 'boutique', 'restaurant', 'cafe', 'coffee shop', 'bar', 'pub', 'pizza', 'fast food', 'fine dining', 'office', 'hotel', 'lobby', 'hospital', 'clinic', 'arcade', 'theater', 'bowling', 'commercial', 'bookstore', 'pet store'],
+    getter: () => COMMERCIAL_INTERIORS_BIBLE,
+    maxChars: 5000,
+  },
 ]
 
 // ── Main Selector ────────────────────────────────────────────────────────────
@@ -247,6 +356,13 @@ export function selectRelevantKnowledge(taskPrompt: string, taskType: BuildTaskT
     if (taskType === 'npc' && section.id === 'npc-character-bible') score += 2
     if (taskType === 'building' && ['interior-design-bible', 'furniture-props-bible'].includes(section.id)) score += 1
     if (taskType === 'ui' && section.id === 'ui-ux-bible') score += 2
+    // New bible boosts
+    if (taskType === 'script' && ['multiplayer-bible', 'scripting-patterns-expanded'].includes(section.id)) score += 2
+    if (taskType === 'building' && ['architectural-styles-bible', 'exterior-construction-bible', 'building-math-bible', 'color-material-bible'].includes(section.id)) score += 2
+    if (taskType === 'lighting' && section.id === 'lighting-atmosphere-bible') score += 3
+    if (taskType === 'prop' && ['weapon-tool-bible', 'interior-residential-deep', 'commercial-interiors-bible'].includes(section.id)) score += 2
+    if (taskType === 'terrain' && section.id === 'world-design-bible') score += 1
+    if (taskType === 'economy' && section.id === 'game-progression-bible') score += 2
 
     return { section, score }
   })
