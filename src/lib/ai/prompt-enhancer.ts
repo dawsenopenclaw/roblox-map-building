@@ -967,7 +967,7 @@ function buildFallbackPlan(
     ],
     assetCount: 1,
     assets: [],
-    styleDirective: `Use ${sm.materials.join(', ')} materials. Palette: ${sm.palette.map(c => `${c.name} (${c.rgb})`).join(', ')}. No SmoothPlastic.`,
+    styleDirective: `Use ${sm.materials.join(', ')} materials. Palette: ${sm.palette.map(c => `${c.name} (${c.rgb})`).join(', ')}. Default SmoothPlastic for modern look.`,
     estimatedComplexity: 'medium',
     estimatedCredits: 2,
     enhancedPrompt: rawPrompt,

@@ -6678,6 +6678,59 @@ Every exterior needs foundation + walls + roof + windows + doors + trim + landsc
 THE #1 RULE: YOUR CODE MUST WORK AND HAVE ENOUGH DETAIL.
 Code must run without errors in Studio. But a 15-part stub is NOT acceptable — users expect DETAILED builds.
 Use FOR LOOPS to efficiently create many parts: one loop = 50+ parts from 3 lines of code.
+
+=== CRITICAL: MODERN ROBLOX VISUAL STYLE ===
+Your builds MUST look like modern Roblox games (Adopt Me, Pet Simulator, Blox Fruits style).
+NOT like 2016 gray textured slabs. The #1 complaint is builds look UGLY and GENERIC.
+
+DEFAULT STYLE — LOW-POLY STYLIZED:
+- Use SmoothPlastic material for MOST parts. This gives the clean, smooth look players expect.
+- Reserve textured materials (Brick, Cobblestone, Wood) for ACCENT details only, not entire walls.
+- Colors must be VIBRANT and SATURATED — not muddy/dark/gray.
+  Good: RGB(80, 180, 70) bright green, RGB(230, 160, 60) warm orange, RGB(100, 170, 230) sky blue
+  Bad: RGB(60, 60, 55) dark gray, RGB(90, 80, 70) muddy brown, RGB(40, 40, 45) near-black
+- Use a WARM color palette: greens, browns, oranges, blues, pinks. NOT gray/black/dark.
+- Grass/nature: bright cheerful greens RGB(80,180,70), not dark forest RGB(30,60,25)
+- Trees: cone (WedgePart) or ball (Ball shape) canopy in bright green + cylinder trunk in warm brown
+  NEVER dark gray-green spheres on dark sticks.
+- Rocks: smooth rounded Ball shapes in warm gray RGB(160,155,150), NOT dark Granite blocks
+- Buildings: clean smooth walls in pastel/warm colors with contrasting trim
+
+LOW-POLY TREE EXAMPLE (modern style):
+  local trunk = Instance.new("Part")
+  trunk.Shape = Enum.PartType.Cylinder
+  trunk.Size = Vector3.new(5, 1.5, 1.5)
+  trunk.CFrame = CFrame.new(0, 2.5, 0) * CFrame.Angles(0, 0, math.rad(90))
+  trunk.Material = Enum.Material.SmoothPlastic
+  trunk.Color = Color3.fromRGB(140, 100, 55)
+  local canopy = Instance.new("Part")
+  canopy.Shape = Enum.PartType.Ball
+  canopy.Size = Vector3.new(7, 6, 7)
+  canopy.CFrame = CFrame.new(0, 7, 0)
+  canopy.Material = Enum.Material.SmoothPlastic
+  canopy.Color = Color3.fromRGB(80, 180, 70)
+
+LOW-POLY ROCK EXAMPLE:
+  local rock = Instance.new("Part")
+  rock.Shape = Enum.PartType.Ball
+  rock.Size = Vector3.new(4, 3, 3.5)
+  rock.Material = Enum.Material.SmoothPlastic
+  rock.Color = Color3.fromRGB(155, 150, 145)
+
+WHEN TO USE TEXTURED MATERIALS:
+- Medieval/rustic builds: Cobblestone walls, Wood beams — OK
+- Industrial: Concrete, Metal — OK
+- Realistic/gritty: Brick, Granite — OK
+- EVERYTHING ELSE: default to SmoothPlastic with nice colors
+
+COLOR PALETTE CHEAT SHEET (use these, not dark muddy colors):
+  Grass green: RGB(80, 180, 70) | Tree green: RGB(60, 160, 55)
+  Warm brown: RGB(140, 100, 55) | Dark wood: RGB(100, 70, 35)
+  Sky blue: RGB(100, 170, 230) | Water: RGB(60, 150, 210)
+  Warm orange: RGB(230, 160, 60) | Sand: RGB(220, 200, 150)
+  Pink: RGB(230, 130, 170) | Red: RGB(220, 70, 70)
+  White/cream: RGB(245, 240, 230) | Light gray: RGB(200, 195, 190)
+  Path brown: RGB(180, 140, 90) | Stone: RGB(160, 155, 150)
 A house needs 80+ parts. A hotel needs 200+. A castle needs 150+. NEVER output fewer than the target.
 
 RULES FOR CODE:
@@ -9018,7 +9071,7 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
         // Gemini first for strict retry too — Groq produces garbage code-only output
         const strictPrompt = isScriptIntent
           ? `You are a Roblox Luau script generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE.`
-          : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE. Use the P()/W()/Cyl()/Ball() helpers. Include ChangeHistoryService boilerplate. Minimum 60 parts for buildings. Use FOR LOOPS for repeated elements. Never use SmoothPlastic.`
+          : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. No text. No descriptions. JUST CODE. Use the P()/W()/Cyl()/Ball() helpers. Include ChangeHistoryService boilerplate. Minimum 60 parts for buildings. Use FOR LOOPS for repeated elements. Default to SmoothPlastic material with vibrant colors for modern low-poly Roblox style.`
         const strictRetryResult = await callGemini(strictPrompt, effectiveInstruction, history.slice(-2), 16384)
         const strictRetry = strictRetryResult ? { result: strictRetryResult, index: 0 } : await raceNonNull(
           callGroq(strictPrompt, effectiveInstruction, history.slice(-2), 16384),
@@ -9397,8 +9450,8 @@ ${effectiveInstruction}`
         : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block.
 Include the P()/W()/Cyl()/Ball()/vc()/Light() helper boilerplate at the top (ChangeHistoryService, camera raycast, model creation, ALL helpers).
 A tree = Cyl("Trunk",6,1.2,0,3.5,0,"Wood",90,60,30) + Ball("Canopy",7,0,8,0,"Grass",60,120,40). NEVER use flat Part blocks for organic shapes.
-Set Anchored=true, varied Materials (Concrete,Wood,Brick,Slate,Metal,Glass), Color3.fromRGB with vc() variation. Never SmoothPlastic.
-Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements.`
+Set Anchored=true, Color3.fromRGB with vc() variation. Default to SmoothPlastic material with vibrant colors for clean modern look. Use textured materials (Brick, Wood, Cobblestone) only for rustic/medieval builds.
+Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements. BRIGHT warm colors, not dark/muddy.`
       const lightInstruction = isScriptIntent
         ? `Script "${message}" in Roblox. Output a complete runnable Luau script. Create Script instances with .Source property containing the game logic. Parent to ServerScriptService. First write 2 sentences explaining what it does, then the code.`
         : `Build "${message}" in Roblox Studio. Output working Luau code with 60+ parts minimum. Use P()/W()/Cyl()/Ball() helpers. Use FOR LOOPS for repeated elements (windows, fence posts, lamps). Include ChangeHistoryService boilerplate, foundation, trim, exterior landscaping. Use varied materials (Concrete, Wood, Brick, Slate, Metal, Glass). Add PointLight. First write 2 sentences, then the code.`
@@ -10338,13 +10391,15 @@ SCALE REFERENCE (memorize these):
 - Table height = 3.5 studs, chair seat = 2.5 studs
 - Street width = 24-30 studs, sidewalk = 6-8 studs
 
-MATERIAL VARIETY:
-- Never use the same material on every surface
-- Walls: Brick, Concrete, Granite, or WoodPlanks
-- Roof: Slate, Concrete, or WoodPlanks
-- Floor: WoodPlanks (interior), Concrete (modern), Cobblestone (medieval), Grass (outdoor)
-- Trim/detail: Wood, Metal, or contrasting wall material
+VISUAL STYLE — MODERN LOW-POLY (default):
+- DEFAULT to SmoothPlastic with vibrant colors — this is the modern Roblox look
+- Use BRIGHT, WARM colors: greens RGB(80,180,70), browns RGB(140,100,55), blues RGB(100,170,230)
+- NOT dark muddy colors: no RGB(40,40,40), no RGB(60,55,50), no gray-everything
+- Trees = Ball/cone canopy (bright green) + cylinder trunk (warm brown) — the Pet Sim / Adopt Me style
+- Rocks = Ball shapes in warm gray, NOT dark angular blocks
+- Only use textured materials (Brick, Cobblestone, Granite) for medieval/rustic/realistic builds
 - Glass: always with Transparency 0.3-0.5, always with a frame Part
+- Vary colors within 10-20 RGB of each other for natural variation
 
 === PROMPT-DRIVEN CUSTOMIZATION (CRITICAL — NO GENERIC BUILDS) ===
 EVERY build must be uniquely tailored to what the user asked for. Analyze their prompt for:
@@ -13628,7 +13683,7 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
     // Must be checked BEFORE fullgame so "help me plan a game" doesn't jump to code gen
     patterns: [
       /\b(plan a game|plan my game|design a game|help me (?:make|build|create|design|plan) a (?:full )?game)\b/i,
-      /\b(let'?s plan|game idea|game plan|help me plan|plan out)\b/i,
+      /\b(let'?s plan|lets plan|game idea|game plan|help me plan|plan out|plan\s+a\s+game|plan\s+my\s+game)\b/i,
       /\b(i want to (?:build|make|create) a (?:full|complete|entire|whole|big) game)\b/i,
       /\b(game design|game concept|brainstorm.*game|outline.*game)\b/i,
       /\b(let'?s (?:build|make|create) a game)\b/i,

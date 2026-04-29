@@ -86,17 +86,13 @@ export function runQualityGate(code: string, intent: string): QualityGateResult 
   let fixed = code
   const script = isScriptCode(code)
 
-  // 1. Fix SmoothPlastic / Plastic in build code
+  // 1. SmoothPlastic is now the DEFAULT for modern low-poly Roblox style.
+  // Only flag Plastic (non-smooth) as it looks flat/unfinished.
   if (!script) {
-    const smoothPlasticRe = /Enum\.Material\.SmoothPlastic/g
-    const plasticRe = /Enum\.Material\.Plastic\b/g
-    if (smoothPlasticRe.test(fixed)) {
-      fixed = fixed.replace(/Enum\.Material\.SmoothPlastic/g, 'Enum.Material.Concrete')
-      fixes.push('Replaced SmoothPlastic with Concrete')
-    }
-    if (plasticRe.test(fixed)) {
-      fixed = fixed.replace(/Enum\.Material\.Plastic\b/g, 'Enum.Material.Concrete')
-      fixes.push('Replaced Plastic with Concrete')
+    const plasticOnlyRe = /Enum\.Material\.Plastic(?![\w])/g
+    if (plasticOnlyRe.test(fixed) && !fixed.includes('Enum.Material.SmoothPlastic')) {
+      fixed = fixed.replace(/Enum\.Material\.Plastic(?![\w])/g, 'Enum.Material.SmoothPlastic')
+      fixes.push('Upgraded Plastic to SmoothPlastic for modern look')
     }
   }
 
