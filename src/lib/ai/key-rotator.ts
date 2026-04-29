@@ -33,14 +33,27 @@ const roundRobinIndex: Record<string, number> = {}
 function initPool(provider: string): KeyState[] {
   if (keyPools[provider]) return keyPools[provider]
 
-  const multiKey = process.env[`${provider}_API_KEYS`] || ''
+  // Check multiple env var names for maximum flexibility
+  const multiKey = process.env[`${provider}_API_KEYS`] || process.env[`${provider}_API_KEYS2`] || ''
   const singleKey = process.env[`${provider}_API_KEY`] || process.env[`${provider}_API_KEY_MAIN`] || ''
 
-  const rawKeys = multiKey
-    ? multiKey.split(',').map(k => k.trim()).filter(Boolean)
-    : singleKey
-      ? [singleKey.trim()]
-      : []
+  // Merge ALL key sources (KEYS + KEYS2 + single KEY)
+  const allKeys = new Set<string>()
+  const keySources = [
+    process.env[`${provider}_API_KEYS`],
+    process.env[`${provider}_API_KEYS2`],
+    singleKey,
+  ]
+  for (const src of keySources) {
+    if (src) {
+      for (const k of src.split(',')) {
+        const trimmed = k.trim()
+        if (trimmed) allKeys.add(trimmed)
+      }
+    }
+  }
+
+  const rawKeys = allKeys.size > 0 ? Array.from(allKeys) : []
 
   const pool = rawKeys.map(key => ({
     key,
