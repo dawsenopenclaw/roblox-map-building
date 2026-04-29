@@ -9017,22 +9017,35 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
     if (!luauCode) {
       logTiming('pre-gemini')
       console.log(`[SinglePass] Gemini-first build gen for: "${message.slice(0, 50)}" | prompt: ${enrichedCodePrompt.length} chars (base: ${basePromptLength}, enriched: +${enrichmentChars})`)
-      // Try Gemini first — it's the best at structured code generation
-      // Include workspace screenshot for vision-aware builds when available
-      const geminiResult = await callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens, buildScreenshot)
-      logTiming('post-gemini')
-      if (geminiResult && geminiResult.length > 200) {
-        buildRace = { result: geminiResult, index: 2 }
-        console.log('[SinglePass] Gemini responded:', geminiResult.length, 'chars')
-      } else if (isPipelineTimedOut()) {
-        console.warn(`[SinglePass] Pipeline deadline reached after Gemini (${(pipelineElapsed() / 1000).toFixed(1)}s) — skipping fallbacks`)
-      } else {
-        // Gemini failed/empty — fall back to racing remaining providers
-        console.log('[SinglePass] Gemini failed, racing fallbacks')
+
+      // ── RETRY LOOP: try up to 3 times with backoff if rate limited ──
+      for (let attempt = 0; attempt < 3 && !buildRace && !isPipelineTimedOut(); attempt++) {
+        if (attempt > 0) {
+          const waitMs = attempt * 5000 // 5s, 10s backoff
+          console.log(`[SinglePass] Retry attempt ${attempt + 1}/3 — waiting ${waitMs / 1000}s...`)
+          await new Promise(r => setTimeout(r, waitMs))
+          if (isPipelineTimedOut()) break
+        }
+
+        // Try Gemini first
+        const geminiResult = await callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens, attempt === 0 ? buildScreenshot : undefined)
+        if (attempt === 0) logTiming('post-gemini')
+
+        if (geminiResult && geminiResult.length > 200) {
+          buildRace = { result: geminiResult, index: 2 }
+          console.log(`[SinglePass] Gemini responded (attempt ${attempt + 1}):`, geminiResult.length, 'chars')
+          break
+        }
+
+        if (isPipelineTimedOut()) break
+
+        // Gemini failed — try other providers
+        console.log(`[SinglePass] Gemini failed (attempt ${attempt + 1}), racing fallbacks`)
         buildRace = await raceNonNull(
           callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
           callOpenRouterChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
         )
+        if (buildRace) break
       }
     }
 
@@ -16389,6 +16402,16 @@ DAMAGE MODULE:
   if (aiMode === 'mesh' && intent !== 'mesh') {
     console.log(`[chat] aiMode=mesh overriding intent "${intent}" → "mesh"`)
     intent = 'mesh'
+  }
+  // Plan mode = conversation only, NO code generation. User must click Build when ready.
+  if (aiMode === 'plan' && intent !== 'gameplan' && intent !== 'conversation' && intent !== 'chat') {
+    console.log(`[chat] aiMode=plan overriding intent "${intent}" → "gameplan" (conversation-only)`)
+    intent = 'gameplan'
+  }
+  // Idea mode = brainstorming, NO code generation
+  if (aiMode === 'idea' && intent !== 'conversation' && intent !== 'chat') {
+    console.log(`[chat] aiMode=idea overriding intent "${intent}" → "conversation" (brainstorm-only)`)
+    intent = 'conversation'
   }
 
   // ── Multi-step build orchestration detection ─────────────────────────────

@@ -1,13 +1,13 @@
 /**
  * style-bible.ts — THE definitive art direction for ForjeGames builds.
  *
- * Every build the AI generates references this. It defines what "good" looks like
- * in Roblox and ensures our output matches top games like Adopt Me, Pet Simulator,
- * Brookhaven, and professional asset packs.
+ * Every build the AI generates references this. It defines what "good" looks like.
  *
- * THE CORE PRINCIPLE: Stylized low-poly with bright saturated colors,
- * clean geometric shapes, and atmospheric lighting. NOT realistic,
- * NOT default grey, NOT flat/boring.
+ * REALITY CHECK: Top Roblox games (Adopt Me, Pet Sim) use imported Blender meshes.
+ * We build with Instance.new("Part") — boxes, cylinders, balls, wedges.
+ * Our goal: the BEST possible Part-based builds. Clean, colorful, stylized.
+ * Think cartoon/toy aesthetic — chunky proportions, bright colors, clean geometry.
+ * NOT trying to replicate mesh-quality — embrace the blocky Part style and make it GOOD.
  */
 
 // ═══ DEFAULT STYLE: What EVERY build should look like unless told otherwise ═══
@@ -15,8 +15,10 @@
 export const DEFAULT_ART_DIRECTION = `
 === FORJE ART DIRECTION (MANDATORY FOR ALL BUILDS) ===
 
-You are building for ROBLOX — a platform where the best games use STYLIZED LOW-POLY art.
-Think Adopt Me, Pet Simulator, Brookhaven, Mega Mansion Tycoon. NOT default grey Studio blocks.
+You build with Instance.new("Part") — Box, Ball, Cylinder, Wedge shapes only.
+You CANNOT import meshes from Blender. Work WITH the blocky Part style, not against it.
+The goal: TOY-LIKE, CHUNKY, COLORFUL builds. Think cartoon/toy aesthetic.
+Embrace simple geometric shapes but make them LOOK GOOD through color, proportion, and detail.
 
 THE 10 COMMANDMENTS OF GOOD ROBLOX BUILDS:
 
@@ -131,54 +133,58 @@ STEAMPUNK:
 // ═══ EXAMPLE BUILDS: What the AI should COPY as its quality target ═══
 
 export const QUALITY_EXAMPLE_TREE = `
-=== QUALITY TARGET: Stylized Low-Poly Tree (18 parts) ===
--- This is the MINIMUM quality level for a tree. Copy this style.
-local m = Instance.new("Model") m.Name = "StylizedTree"
--- Grass patch at base (grounds the tree)
-local grass = Instance.new("Part") grass.Shape = Enum.PartType.Cylinder grass.Name = "GrassPatch"
-grass.Size = Vector3.new(0.3, 14, 14) grass.Anchored = true
-grass.CFrame = CFrame.new(0, 0.15, 0) * CFrame.Angles(0, 0, math.rad(90))
-grass.Material = Enum.Material.Grass grass.Color = Color3.fromRGB(65, 140, 50) grass.Parent = m
--- Shadow disc (subtle dark circle under tree)
-local shadow = Instance.new("Part") shadow.Shape = Enum.PartType.Cylinder shadow.Name = "Shadow"
-shadow.Size = Vector3.new(0.1, 12, 12) shadow.Anchored = true
-shadow.CFrame = CFrame.new(0, 0.05, 0) * CFrame.Angles(0, 0, math.rad(90))
-shadow.Material = Enum.Material.Grass shadow.Color = Color3.fromRGB(35, 80, 30) shadow.Parent = m
--- Chunky trunk (short and thick, NOT a tall thin pole)
-local trunk = Instance.new("Part") trunk.Shape = Enum.PartType.Cylinder trunk.Name = "Trunk"
-trunk.Size = Vector3.new(5, 3.5, 3.5) trunk.Anchored = true
-trunk.CFrame = CFrame.new(0, 2.5, 0) * CFrame.Angles(0, 0, math.rad(90))
-trunk.Material = Enum.Material.Wood trunk.Color = Color3.fromRGB(100, 67, 33) trunk.Parent = m
--- Canopy: 5 overlapping balls in VARIED greens (NOT a single ball)
-local canopyColors = {
-  Color3.fromRGB(50, 130, 45), Color3.fromRGB(60, 145, 50),
-  Color3.fromRGB(45, 120, 40), Color3.fromRGB(55, 135, 48), Color3.fromRGB(65, 150, 55)
-}
-local canopyData = {
-  {size=Vector3.new(10, 7, 10), pos=Vector3.new(0, 8, 0)},       -- center big
-  {size=Vector3.new(7, 5, 7), pos=Vector3.new(3, 7, 2)},         -- right
-  {size=Vector3.new(6, 5, 7), pos=Vector3.new(-3, 7.5, -1)},     -- left
-  {size=Vector3.new(8, 5, 8), pos=Vector3.new(0, 10, 0)},        -- top
-  {size=Vector3.new(5, 4, 6), pos=Vector3.new(1, 6.5, -3)},      -- front low
-}
-for i, data in ipairs(canopyData) do
-  local leaf = Instance.new("Part") leaf.Shape = Enum.PartType.Ball
-  leaf.Name = "Canopy_"..i leaf.Anchored = true
-  leaf.Size = data.size leaf.CFrame = CFrame.new(data.pos) * CFrame.Angles(0, math.rad(i*72), 0)
-  leaf.Material = Enum.Material.SmoothPlastic leaf.Color = canopyColors[i]
-  leaf.Parent = m
+=== QUALITY TARGET: Part-Based Stylized Tree (25+ parts) ===
+-- Best achievable with Instance.new("Part"). Chunky, colorful, toy-like.
+-- KEY: short thick trunk, visible branch arms, MANY overlapping canopy balls,
+-- each slightly different size/color/rotation. Ground context (grass, rocks).
+
+-- TRUNK: short and THICK — ratio 1:2 (width:height), NOT a thin pole
+-- Use 2-3 cylinder segments slightly offset for organic shape
+Cyl("Trunk_Base", CFrame.new(0,1.5,0), Vector3.new(4, 3, 4), "Wood", Color3.fromRGB(105,72,38))
+Cyl("Trunk_Mid", CFrame.new(0.3,4,0.2), Vector3.new(3, 2.5, 3), "Wood", Color3.fromRGB(95,65,33))
+-- BRANCH ARMS: 2-3 thick cylinders angled outward (visible, not hidden by canopy)
+Cyl("Branch_L", CFrame.new(-2.5,5.5,0)*CFrame.Angles(0,0,math.rad(35)), Vector3.new(1.5, 4, 1.5), "Wood", Color3.fromRGB(90,60,30))
+Cyl("Branch_R", CFrame.new(2,6,1)*CFrame.Angles(0,0,math.rad(-30)), Vector3.new(1.2, 3.5, 1.2), "Wood", Color3.fromRGB(98,67,35))
+-- ROOT BUMPS: 3 wedge/ball shapes at trunk base
+Ball("Root1", CFrame.new(1.5,0.5,1), Vector3.new(2,1.2,1.5), "Wood", Color3.fromRGB(85,58,28))
+Ball("Root2", CFrame.new(-1.2,0.4,-0.8), Vector3.new(1.8,1,1.3), "Wood", Color3.fromRGB(88,60,30))
+
+-- CANOPY: 7-10 overlapping balls, VARIED sizes (biggest 10-12 studs, smallest 4-5)
+-- Each gets a DIFFERENT green — spread across hue range, not one flat color
+-- Flatten Y slightly (size Y = size X * 0.7) for puffy cloud shape, not perfect sphere
+for i, d in ipairs({
+  {s=Vector3.new(11,7,10), p=Vector3.new(0,9,0), c=Color3.fromRGB(55,140,48)},
+  {s=Vector3.new(8,5.5,8), p=Vector3.new(4,8,2), c=Color3.fromRGB(65,155,52)},
+  {s=Vector3.new(7,5,8), p=Vector3.new(-4,8.5,-1), c=Color3.fromRGB(48,125,42)},
+  {s=Vector3.new(9,6,9), p=Vector3.new(0,11.5,0), c=Color3.fromRGB(58,145,50)},
+  {s=Vector3.new(6,4,6), p=Vector3.new(2,7,-3), c=Color3.fromRGB(70,160,55)},
+  {s=Vector3.new(5,3.5,5.5), p=Vector3.new(-3,10,2), c=Color3.fromRGB(52,135,45)},
+  {s=Vector3.new(4,3,4.5), p=Vector3.new(3,11,1), c=Color3.fromRGB(62,150,50)},
+}) do
+  Ball("Leaf_"..i, CFrame.new(d.p)*CFrame.Angles(0,math.rad(i*51),0), d.s, "SmoothPlastic", d.c)
 end
--- Small rocks at base for detail
+
+-- GROUND: grass disc + darker shadow disc + 2-3 rocks + small flower clusters
+Cyl("GrassPatch", CFrame.new(0,0.15,0)*CFrame.Angles(0,0,math.rad(90)), Vector3.new(0.3,16,16), "Grass", Color3.fromRGB(65,135,48))
+Cyl("Shadow", CFrame.new(0,0.05,0)*CFrame.Angles(0,0,math.rad(90)), Vector3.new(0.08,13,13), "Grass", Color3.fromRGB(40,85,30))
 for i = 1, 3 do
-  local rock = Instance.new("Part") rock.Shape = Enum.PartType.Ball rock.Name = "Rock_"..i
-  rock.Anchored = true
-  local sz = 0.8 + math.random() * 0.6
-  rock.Size = Vector3.new(sz, sz * 0.7, sz * 0.9)
-  rock.CFrame = CFrame.new(math.random(-4, 4), sz * 0.3, math.random(-4, 4))
-    * CFrame.Angles(0, math.rad(math.random(360)), math.rad(math.random(-10, 10)))
-  rock.Material = Enum.Material.Slate rock.Color = Color3.fromRGB(140 + math.random(-10,10), 135 + math.random(-10,10), 125 + math.random(-10,10))
-  rock.Parent = m
+  Ball("Rock_"..i, CFrame.new((i-2)*3.5, 0.4, math.random(-3,3))*CFrame.Angles(0,math.rad(i*120),math.rad(math.random(-8,8))),
+    Vector3.new(1+math.random()*0.8, 0.7+math.random()*0.4, 0.9+math.random()*0.6), "Slate",
+    Color3.fromRGB(135+math.random(-12,12), 130+math.random(-12,12), 120+math.random(-12,12)))
 end
+
+-- WHAT MAKES THIS GOOD:
+-- 1. Trunk is SHORT and THICK (not a telephone pole)
+-- 2. Visible branch arms break the silhouette
+-- 3. 7 canopy balls in VARIED greens (not 1 flat green ball)
+-- 4. Each ball is slightly FLAT (Y < X) for puffy cloud look
+-- 5. Slight rotation on each ball prevents grid-perfect look
+-- 6. Ground context: grass patch + shadow + rocks
+-- 7. Root bumps add character at the base
+-- Total: ~25 parts from compact loop code
+
+-- WHAT A BAD TREE LOOKS LIKE:
+-- 1 thin brown cylinder + 1 green ball = lollipop. NEVER do this.
 === END QUALITY TARGET ===
 `
 
