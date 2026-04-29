@@ -1,12 +1,14 @@
 /**
- * AI Request Queue — Prevents flooding AI APIs with concurrent requests.
+ * AI Request Queue — Key-aware queue for API calls.
  *
- * Problem: Complex builds (staged pipeline) fire 5-10 AI calls simultaneously.
- * Each hits rate limits → all fail → user gets "catching its breath".
+ * How it works:
+ * 1. User sends a message → request enters the queue
+ * 2. Queue checks if any API keys are available (not rate-limited)
+ * 3. If a key is free → process immediately
+ * 4. If all keys are busy → wait until one frees up (up to timeoutMs)
+ * 5. Frontend can poll /api/admin/queue-stats for position
  *
- * Solution: Queue requests with concurrency limit + priority + backoff.
- * High-priority requests (user-facing) jump the queue.
- * Low-priority requests (quality checks, retries) wait.
+ * This prevents "catching its breath" by WAITING instead of FAILING.
  */
 
 import 'server-only'
@@ -23,51 +25,47 @@ interface QueuedRequest<T> {
   timeoutMs: number
 }
 
-// Priority weights for sorting (higher = runs first)
 const PRIORITY_WEIGHT: Record<Priority, number> = {
-  critical: 100,
-  high: 50,
-  normal: 10,
-  low: 1,
+  critical: 100, high: 50, normal: 10, low: 1,
 }
 
 // ── Queue State ──────────────────────────────────────────────────────────────
 
 const queue: QueuedRequest<unknown>[] = []
 let activeCount = 0
-const MAX_CONCURRENT = 4 // Max simultaneous AI calls (across all providers)
-const MAX_QUEUE_SIZE = 50 // Reject if queue gets too long
+// Max concurrent = how many API keys we have available simultaneously
+// Gemini: 15 RPM per key. With 10 keys = we can handle ~10 concurrent.
+// But safe limit is lower to avoid bursts.
+const MAX_CONCURRENT = 6
+const MAX_QUEUE_SIZE = 30
 let totalProcessed = 0
 let totalFailed = 0
-let totalTimedOut = 0
+let totalQueued = 0
 let requestIdCounter = 0
 
-// ── Rate Limit Tracking ─────────────────────────────────────────────────────
+// Track per-request wait times for UX
+let avgWaitMs = 0
+let waitSamples = 0
 
-let lastRateLimitAt = 0
-let rateLimitCooldownMs = 0
-const RATE_LIMIT_BACKOFF_BASE = 3000 // Start with 3s cooldown
-const RATE_LIMIT_BACKOFF_MAX = 30000 // Max 30s cooldown
-let consecutiveRateLimits = 0
+// ── Rate Limit Cooldown ─────────────────────────────────────────────────────
 
-function isRateLimited(): boolean {
-  if (rateLimitCooldownMs === 0) return false
-  return Date.now() < lastRateLimitAt + rateLimitCooldownMs
+let globalCooldownUntil = 0 // unix ms — if ALL keys are limited
+let consecutiveFailures = 0
+
+function isInCooldown(): boolean {
+  return Date.now() < globalCooldownUntil
 }
 
 export function reportQueueRateLimit() {
-  lastRateLimitAt = Date.now()
-  consecutiveRateLimits++
-  rateLimitCooldownMs = Math.min(
-    RATE_LIMIT_BACKOFF_BASE * Math.pow(1.5, consecutiveRateLimits - 1),
-    RATE_LIMIT_BACKOFF_MAX
-  )
-  console.warn(`[ai-queue] Rate limit hit #${consecutiveRateLimits}, cooling down ${(rateLimitCooldownMs / 1000).toFixed(1)}s`)
+  consecutiveFailures++
+  // Exponential backoff: 2s, 4s, 8s, max 20s
+  const cooldownMs = Math.min(2000 * Math.pow(2, consecutiveFailures - 1), 20000)
+  globalCooldownUntil = Date.now() + cooldownMs
+  console.warn(`[ai-queue] Rate limit #${consecutiveFailures}, cooldown ${(cooldownMs / 1000).toFixed(1)}s`)
 }
 
-function clearRateLimit() {
-  consecutiveRateLimits = Math.max(0, consecutiveRateLimits - 1)
-  if (consecutiveRateLimits === 0) rateLimitCooldownMs = 0
+function clearCooldown() {
+  if (consecutiveFailures > 0) consecutiveFailures = Math.max(0, consecutiveFailures - 1)
 }
 
 // ── Queue Processing ────────────────────────────────────────────────────────
@@ -75,106 +73,94 @@ function clearRateLimit() {
 function processNext() {
   if (activeCount >= MAX_CONCURRENT) return
   if (queue.length === 0) return
-  if (isRateLimited()) {
-    // Schedule retry after cooldown
-    const waitMs = (lastRateLimitAt + rateLimitCooldownMs) - Date.now()
+
+  if (isInCooldown()) {
+    const waitMs = globalCooldownUntil - Date.now()
     setTimeout(processNext, Math.max(100, waitMs))
     return
   }
 
-  // Sort queue by priority (highest first), then by enqueue time (oldest first)
+  // Sort: highest priority first, then oldest first
   queue.sort((a, b) => {
     const pDiff = PRIORITY_WEIGHT[b.priority] - PRIORITY_WEIGHT[a.priority]
-    if (pDiff !== 0) return pDiff
-    return a.enqueuedAt - b.enqueuedAt
+    return pDiff !== 0 ? pDiff : a.enqueuedAt - b.enqueuedAt
   })
 
   const request = queue.shift()
   if (!request) return
 
-  // Check if request has timed out while waiting in queue
+  // Check timeout
   const waitTime = Date.now() - request.enqueuedAt
   if (waitTime > request.timeoutMs) {
-    totalTimedOut++
-    request.reject(new Error(`Queue timeout: waited ${(waitTime / 1000).toFixed(1)}s (limit: ${(request.timeoutMs / 1000).toFixed(0)}s)`))
+    request.reject(new Error(`Queue timeout after ${(waitTime / 1000).toFixed(1)}s`))
     processNext()
     return
   }
 
   activeCount++
-  const startTime = Date.now()
 
   request.execute()
     .then(result => {
-      clearRateLimit()
+      clearCooldown()
       totalProcessed++
+      // Track wait time
+      const totalWait = Date.now() - request.enqueuedAt
+      waitSamples++
+      avgWaitMs = avgWaitMs + (totalWait - avgWaitMs) / waitSamples
       request.resolve(result)
     })
     .catch(err => {
       totalFailed++
-      // Detect rate limit errors
       const errMsg = err instanceof Error ? err.message : String(err)
-      if (errMsg.includes('429') || errMsg.includes('rate limit') || errMsg.includes('quota')) {
+      if (errMsg.includes('429') || errMsg.includes('rate') || errMsg.includes('quota')) {
         reportQueueRateLimit()
       }
       request.reject(err)
     })
     .finally(() => {
       activeCount--
-      const elapsed = Date.now() - startTime
-      if (elapsed < 500) {
-        // Fast response — likely cached or error. Process next immediately.
-        processNext()
-      } else {
-        // Add tiny delay between requests to avoid bursts
-        setTimeout(processNext, 100)
-      }
+      // Small delay between requests to avoid burst
+      setTimeout(processNext, activeCount === 0 ? 0 : 150)
     })
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Queue an AI request with priority and timeout.
+ * Queue an AI request. Waits for a slot (API key availability) before executing.
  * Returns a Promise that resolves when the request completes.
  */
 export function enqueueAIRequest<T>(
   execute: () => Promise<T>,
-  opts: {
-    priority?: Priority
-    timeoutMs?: number
-    label?: string
-  } = {}
+  opts: { priority?: Priority; timeoutMs?: number; label?: string } = {}
 ): Promise<T> {
   const { priority = 'normal', timeoutMs = 55000, label = 'ai-call' } = opts
 
   if (queue.length >= MAX_QUEUE_SIZE) {
-    console.warn(`[ai-queue] Queue full (${queue.length}/${MAX_QUEUE_SIZE}), rejecting ${label}`)
-    return Promise.reject(new Error('AI request queue is full. Try again in a few seconds.'))
+    return Promise.reject(new Error('Build queue is full — try again in a few seconds.'))
   }
+
+  totalQueued++
 
   return new Promise<T>((resolve, reject) => {
     const id = `${label}-${++requestIdCounter}`
     queue.push({
-      id,
-      priority,
+      id, priority,
       execute: execute as () => Promise<unknown>,
-      resolve: resolve as (value: unknown) => void,
+      resolve: resolve as (v: unknown) => void,
       reject,
       enqueuedAt: Date.now(),
       timeoutMs,
     })
 
-    if (queue.length % 5 === 0 || priority === 'critical') {
-      console.log(`[ai-queue] ${id} queued (pos=${queue.length}, active=${activeCount}/${MAX_CONCURRENT}, priority=${priority})`)
-    }
-
+    console.log(`[ai-queue] ${id} queued (pos=${queue.length}, active=${activeCount}/${MAX_CONCURRENT})`)
     processNext()
   })
 }
 
 /**
- * Get queue stats for monitoring/admin dashboard.
+ * Get queue stats — exposed via /api/admin/queue-stats AND used by frontend
+ * to show queue position to users.
  */
 export function getQueueStats() {
   return {
@@ -183,20 +169,18 @@ export function getQueueStats() {
     maxConcurrent: MAX_CONCURRENT,
     totalProcessed,
     totalFailed,
-    totalTimedOut,
-    isRateLimited: isRateLimited(),
-    rateLimitCooldownMs,
-    consecutiveRateLimits,
+    totalQueued,
+    avgWaitMs: Math.round(avgWaitMs),
+    isInCooldown: isInCooldown(),
+    cooldownRemainingMs: Math.max(0, globalCooldownUntil - Date.now()),
+    estimatedWaitMs: queue.length === 0 ? 0 : Math.round(avgWaitMs * (queue.length / MAX_CONCURRENT)),
   }
 }
 
 /**
- * Wrap a function to automatically queue it.
- * Use this to wrap AI provider calls.
+ * Get a user's position in the queue (for frontend display).
+ * Returns 0 if processing, >0 if waiting.
  */
-export function withQueue<TArgs extends unknown[], TResult>(
-  fn: (...args: TArgs) => Promise<TResult>,
-  opts: { priority?: Priority; label?: string } = {}
-): (...args: TArgs) => Promise<TResult> {
-  return (...args: TArgs) => enqueueAIRequest(() => fn(...args), opts)
+export function getQueuePosition(): number {
+  return queue.length
 }

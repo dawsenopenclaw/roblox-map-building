@@ -1165,6 +1165,47 @@ export function useChat(options: UseChatOptions = {}) {
 
       setMessagesSync((prev) => [...prev, userMsg, statusMsg])
 
+      // ── Queue Status Poller: update status message if build takes >8s ──
+      let queuePollTimer: ReturnType<typeof setInterval> | null = null
+      const queuePollStart = Date.now()
+      queuePollTimer = setInterval(async () => {
+        const elapsed = Date.now() - queuePollStart
+        if (elapsed < 8000) return // Don't show queue status for first 8s
+
+        try {
+          const qRes = await fetch('/api/admin/queue-stats')
+          if (qRes.ok) {
+            const qData = await qRes.json() as { queueLength: number; activeRequests: number; maxConcurrent: number; estimatedWaitMs: number }
+            if (qData.queueLength > 0 || qData.activeRequests >= qData.maxConcurrent) {
+              const waitSec = Math.max(1, Math.round(qData.estimatedWaitMs / 1000))
+              setMessages((prev) => {
+                const idx = prev.findIndex((m) => m.id === statusMsgId)
+                if (idx === -1) return prev
+                const updated = [...prev]
+                updated[idx] = {
+                  ...updated[idx],
+                  content: `Forje is building... (${qData.queueLength} in queue, ~${waitSec}s wait)`,
+                }
+                messagesRef.current = updated
+                return updated
+              })
+            } else if (elapsed > 15000) {
+              setMessages((prev) => {
+                const idx = prev.findIndex((m) => m.id === statusMsgId)
+                if (idx === -1) return prev
+                const updated = [...prev]
+                updated[idx] = { ...updated[idx], content: 'Forje is working on your build... almost there' }
+                messagesRef.current = updated
+                return updated
+              })
+            }
+          }
+        } catch { /* non-blocking */ }
+      }, 5000)
+
+      // Clean up poller when response arrives (captured in finally block below)
+      const stopQueuePoll = () => { if (queuePollTimer) { clearInterval(queuePollTimer); queuePollTimer = null } }
+
       // ── Pre-Build Preview: show 3 concept options before full generation ──
       // Triggers when: user enabled preview mode OR confidence scoring says to
       // Only for build/script/terrain modes, not for selected blueprints
@@ -1987,6 +2028,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
         // the upgrade card can tell the user "Need 500 more" instead of a
         // generic "Upgrade your plan" message. The route returns JSON with
         // { error, balance, required } on 402.
+        stopQueuePoll() // Stop queue polling on any response
         if (chatRes.status === 402) {
           let balance: number | undefined
           let required: number | undefined
@@ -2045,6 +2087,7 @@ Output ONLY the Luau code in a \`\`\`lua block. Make it complete and paste-ready
         // We create the assistant message immediately (empty) then append chunks.
 
         if (chatRes.body) {
+          stopQueuePoll() // Response arrived — stop queue status polling
           const assistantMsgId = uid()
 
           // Accumulate raw stream content (including code blocks) in a ref so
