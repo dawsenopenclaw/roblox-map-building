@@ -94,6 +94,8 @@ import { classifyComplexity } from '@/lib/ai/script-pipeline'
 import { getContextualEnhancements } from '@/lib/ai/build-enhancer'
 import { saveBuildContext, getBuildContext, isModificationRequest, formatModificationPrompt } from '@/lib/ai/build-context'
 import { getStudioMechanicsKnowledge } from '@/lib/ai/studio-mechanics'
+import { selectRelevantKnowledge } from '@/lib/ai/knowledge-selector'
+import type { BuildTaskType } from '@/lib/ai/build-planner'
 import { moderateContent, getModerationMessage, MODERATION_SUGGESTIONS } from '@/lib/content-moderation'
 import {
   formatPreferencesForPrompt,
@@ -8012,10 +8014,38 @@ USE THIS DATA:
       }
     }
 
+    // ── BUILDING TEMPLATES: instant high-quality buildings from luau-templates-buildings.ts ──
+    // If user asks for a common building type, use our pre-built generator as reference code
+    let buildingTemplateCode: string | null = null
+    if (!isScriptIntent && isBuildIntent) {
+      try {
+        const buildings = await import('@/lib/ai/luau-templates-buildings')
+        const lower = message.toLowerCase()
+        if (/\b(house|home|cabin|cottage|villa)\b/.test(lower)) buildingTemplateCode = buildings.generateHouse({ style: /cabin/i.test(lower) ? 'cabin' : /victorian/i.test(lower) ? 'victorian' : 'suburban' })
+        else if (/\b(castle|fortress|keep)\b/.test(lower)) buildingTemplateCode = buildings.generateCastle({ size: /big|large|huge/i.test(lower) ? 'large' : 'medium' })
+        else if (/\b(shop|store|retail)\b/.test(lower)) buildingTemplateCode = buildings.generateShop({ type: /cloth/i.test(lower) ? 'clothing' : /grocer|food/i.test(lower) ? 'grocery' : /bake/i.test(lower) ? 'bakery' : 'general' })
+        else if (/\b(apartment|flat|condo)\b/.test(lower)) buildingTemplateCode = buildings.generateApartment({ floors: 4 })
+        else if (/\b(restaurant|diner|eatery)\b/.test(lower)) buildingTemplateCode = buildings.generateRestaurant({ type: /fast|burger/i.test(lower) ? 'fast_food' : /cafe|coffee/i.test(lower) ? 'cafe' : 'fine_dining' })
+        else if (/\b(office|skyscraper|corporate)\b/.test(lower)) buildingTemplateCode = buildings.generateOffice({ floors: 3 })
+        else if (/\b(warehouse|storage facility)\b/.test(lower)) buildingTemplateCode = buildings.generateWarehouse({})
+        else if (/\b(school|classroom|academy)\b/.test(lower)) buildingTemplateCode = buildings.generateSchool({})
+        else if (/\b(hospital|clinic|medical)\b/.test(lower)) buildingTemplateCode = buildings.generateHospital({})
+        else if (/\b(church|chapel|cathedral)\b/.test(lower)) buildingTemplateCode = buildings.generateChurch({})
+        else if (/\b(gas station|petrol|fuel station)\b/.test(lower)) buildingTemplateCode = buildings.generateGasStation({})
+        else if (/\b(barn|farmhouse|stable)\b/.test(lower)) buildingTemplateCode = buildings.generateBarn({})
+        else if (/\b(lighthouse|beacon)\b/.test(lower)) buildingTemplateCode = buildings.generateLighthouse({})
+        else if (/\b(prison|jail|penitentiary)\b/.test(lower)) buildingTemplateCode = buildings.generatePrison({})
+        else if (/\b(space station|orbital)\b/.test(lower)) buildingTemplateCode = buildings.generateSpaceStation({})
+        if (buildingTemplateCode) console.log(`[BuildingTemplate] Matched building type for: "${message.slice(0, 40)}"`)
+      } catch (btErr) {
+        console.warn('[BuildingTemplate] Non-blocking:', btErr instanceof Error ? btErr.message : btErr)
+      }
+    }
+
     const templateCode = scriptTemplate || fullGameTemplate
     const templateReference = templateCode
       ? `\n\n=== WORKING REFERENCE TEMPLATE (adapt to match user's request) ===\nThis is PROVEN WORKING CODE for this type of system. Use its structure, patterns, and API calls. Customize names, values, colors, and layout to match what the user asked for. Do NOT copy verbatim — adapt it.\n\`\`\`lua\n${templateCode.slice(0, 4000)}\n\`\`\`\n=== END REFERENCE ===`
-      : ''
+      : (buildingTemplateCode ? `\n\n=== BUILDING REFERENCE TEMPLATE (use this as your base, customize to match user's request) ===\nThis is a complete building with proper materials, colors, furniture, and lighting. Adapt it to the user's specific request.\n\`\`\`lua\n${buildingTemplateCode.slice(0, 5000)}\n\`\`\`\n=== END REFERENCE ===` : '')
 
     // Production reference game injection — complete game architectures from DevForum patterns
     // Smart slice: find last complete section boundary (double newline before "-- ") to avoid mid-code truncation
@@ -8654,6 +8684,24 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       }
     } catch (expErr) {
       console.warn('[ExperienceMemory] Failed in freeModelTwoPass (non-blocking):', expErr instanceof Error ? expErr.message : expErr)
+    }
+
+    // ── ENHANCED PROMPT PLAN: inject detailed build specs, blueprints, reference games ──
+    // This gives the AI a structured "architect blueprint" with exact materials, colors,
+    // section-by-section plans, and matching object blueprints from our library.
+    if (!isScriptIntent && isBuildIntent) {
+      try {
+        const plan = await enhancePrompt(message)
+        if (plan) {
+          const planContext = formatEnhancedPlanContext(plan)
+          if (planContext && canAddEnrichment(planContext)) {
+            enrichedCodePrompt += '\n\n' + planContext
+            console.log(`[EnhancedPlan] Injected architect blueprint (${planContext.length} chars, scale: ${plan.buildScale}, parts: ${plan.partTargets.target}, style: ${plan.styleModifiers?.mood || 'neutral'})`)
+          }
+        }
+      } catch (planErr) {
+        console.warn('[EnhancedPlan] Non-blocking error:', planErr instanceof Error ? planErr.message : planErr)
+      }
     }
 
     // Declare variables used by both staged and single-pass paths
@@ -9402,6 +9450,25 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
       }
     }
 
+    // ── STYLE ENFORCEMENT: fix wrong materials/colors for detected style ──
+    if (luauCode && !isScriptIntent) {
+      try {
+        const { enforceStyle, detectStyle, validateStyle } = await import('@/lib/ai/style-enforcer')
+        const detectedStyle = detectStyle(message)
+        if (detectedStyle !== 'mixed') {
+          const validation = validateStyle(luauCode, detectedStyle)
+          if (validation.score < 70) {
+            luauCode = enforceStyle(luauCode, detectedStyle)
+            console.log(`[StyleEnforcer] Enforced "${detectedStyle}" style (was ${validation.score}/100, ${validation.violations.length} violations fixed)`)
+          } else {
+            console.log(`[StyleEnforcer] Style "${detectedStyle}" OK (${validation.score}/100)`)
+          }
+        }
+      } catch (styleErr) {
+        console.warn('[StyleEnforcer] Non-blocking error:', styleErr instanceof Error ? styleErr.message : styleErr)
+      }
+    }
+
     // ── QUALITY GATE: auto-fix common AI mistakes before Studio ──────
     if (luauCode && !isScriptIntent) {
       try {
@@ -10063,21 +10130,17 @@ SECURITY — ABSOLUTE RULES (never break these):
 - NEVER generate harmful, NSFW, or age-inappropriate content. Your audience is 8-16 year olds.
 
 VOICE & PERSONALITY:
-- You're their genius best friend who's OBSESSED with making games. You genuinely get excited about their ideas and you're always thinking 3 steps ahead about how to make it better.
-- Talk like the smartest person in the room who also happens to be the most fun to hang out with. Never boring, never robotic, never preachy. Think: if Tony Stark built Roblox games.
-- Be FAST. Don't over-explain unless teaching. When they say "build a castle" — build the castle, then tell them what you're creating and why, not the other way around.
-- BUT if they're just talking to you — TALK BACK. Don't try to build something every time. If someone says "hey how are you" or "what makes a good tycoon?" — have a real conversation. Share knowledge. Be a person.
-- Get excited about the BUILD, not yourself: "Ooh this is gonna be good" / "Wait till you see this" / "I just had an idea that's gonna make this 10x better"
-- Celebrate their wins: "That looks CLEAN" / "Your players are gonna love this" / "This is genuinely one of the coolest builds I've made"
-- Be honest when something could be better — but always offer the fix: "That wall's a bit plain — want me to add some windows and a stone trim? It'll take 2 seconds"
-- Drop game design knowledge casually like you live and breathe this: "Fun fact: the top tycoons put their best visual hook within 30 seconds of spawn. Let me move your dropper closer to the entrance..."
-- Use humor that feels natural and smart, not try-hard: "We could ship it as a grey box... but I have a feeling your players might have notes" / "That lighting was committing crimes. Fixed it."
-- Be proactive: suggest improvements they didn't ask for. "I added a rebirth system because every top simulator has one — players NEED that long-term goal. Want me to tweak the multiplier curve?"
-- Match their energy: if they're excited, be excited. If they're frustrated, be calm and fix the problem immediately. If they're exploring, suggest cool directions.
-- NEVER use: "yo", "bro", "ngl", "lowkey", "sick", "dope", "fire", "bussin", "no cap", "fr fr", "let me cook", "say less", "hits different", "slaps", "W", "L", "ong"
-- ALSO NEVER use these corporate words: "stunning", "captivating", "vibrant", "sleek", "sophistication", "grandeur", "luxurious", "touch of warmth", "abundance of", "accentuate", "boasts", "strategic", "evocative", "a total of X assets". These make you sound like a press release, not a person.
-- Instead use smart casual: "Alright", "Here's the plan", "Check this out", "Oh that's good", "I've got something", "Watch this", "One more thing", "Trust me on this one"
-- You're not just building a game — you're building their DREAM. These are creators trying to make something real. Some are kids building their first game, some are devs trying to make money. Take both seriously.
+- Genius best friend OBSESSED with making games. Think: Tony Stark building Roblox games. Fast, fun, never boring or robotic.
+- Build first, explain second. When they say "build a castle" — build it, describe it like showing off to a friend.
+- If they're just chatting, CHAT BACK naturally. Don't force builds on every message.
+- Get excited about THEIR build: "Wait till you see this" / "Your players are gonna love this"
+- Be honest + offer the fix: "That wall's plain — want me to add windows and stone trim?"
+- Be proactive: add one surprise improvement they didn't ask for.
+- Match their energy: excited → excited. Frustrated → calm and fix immediately.
+- BANNED slang: yo, bro, ngl, lowkey, sick, dope, fire, bussin, no cap, fr fr, let me cook, say less
+- BANNED corporate: stunning, captivating, vibrant, sleek, sophistication, grandeur, luxurious, evocative
+- USE smart casual: "Alright", "Check this out", "Here's the plan", "Trust me on this one"
+- Audience is kids 8-16 building their dream game. Take every idea seriously.
 
 === CRITICAL: HOW TO DESCRIBE YOUR BUILDS ===
 NEVER say "I built" or "I've built" — you don't know if it landed in Studio yet. Say "Here's what I'm creating" or "Generating this for you" or "Sending this to your Studio".
@@ -16845,10 +16908,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       'performance', 'cleanup', 'default'].includes(intent)
     const recentCtxGroq = [...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')
     const gameKnowledgeGroq = buildGameKnowledgePrompt(recentCtxGroq)
+    const groqTaskType: BuildTaskType = (({ building: 'building', terrain: 'terrain', lighting: 'lighting', npc: 'npc', script: 'script', ui: 'ui' } as Record<string, BuildTaskType>)[intent]) || 'building'
+    const groqBibles = isBuildIntentGroq ? selectRelevantKnowledge(message, groqTaskType) : ''
     const sysPromptGroq = await enrichWithExperienceMemory(
       await buildRAGSystemPrompt(
         (isBuildIntentGroq
-          ? await getSpecializedPrompt(message) + gameKnowledgeGroq + cameraContext
+          ? await getSpecializedPrompt(message) + gameKnowledgeGroq + groqBibles + cameraContext
           : FORJEAI_CORE_PROMPT + gameKnowledgeGroq + cameraContext) + modePrefix,
         message,
       ),
@@ -16952,12 +17017,26 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         const matchMobile = /\b(mobile|phone|touch|tablet|joystick|swipe|pinch|tap|gesture|on\s?(my\s?)?(phone|mobile|tablet)|mobile\s?(controls?|button|ui|game)|small\s?screen|gamepad|console\s?controls?|cross\s?platform|safe\s?area)\b/i.test(msg)
         const matchWater = /\b(water|swim|ocean|sea|lake|river|pond|pool|underwater|diving|boat|ship|sail|float|buoyan|drown|wave|waterfall|fountain|splash|fish|fishing|submarine|beach|shore|dock|canal|stream|moat|swamp|lagoon)\b/i.test(msg)
 
+        // Map chat intent to BuildTaskType for knowledge selector
+        const intentToTaskType: Record<string, BuildTaskType> = {
+          building: 'building', terrain: 'terrain', fullgame: 'building',
+          lighting: 'lighting', npc: 'npc', script: 'script', debug: 'script',
+          datasave: 'script', networking: 'script', gamesystem: 'economy',
+          multiscript: 'script', vehicle: 'prop', particle: 'lighting',
+          weather: 'terrain', ui: 'ui', animate: 'prop', combat: 'script',
+          quest: 'economy', performance: 'script', cleanup: 'building',
+          modify: 'building', mesh: 'prop', default: 'building',
+        }
+        const taskType: BuildTaskType = intentToTaskType[intent] || 'building'
+
         // Priority-ordered knowledge sources: core first, specialized last
         const sources: Array<{ name: string; get: () => string }> = [
           { name: 'modifiers', get: () => modifiersToInstructions(extractModifiers(message)) },
           { name: 'focused', get: () => buildFocusedPrompt(message) },
           { name: 'roblox', get: () => buildRobloxContext(message) },
           { name: 'codegraph', get: () => formatGraphPrompt(message) },
+          // Bible knowledge — 24 specialized knowledge bibles, smart-selected by keyword relevance
+          { name: 'bibles', get: () => selectRelevantKnowledge(message, taskType) },
           { name: 'devforum', get: () => getRelevantBuildingKnowledge(message) },
           { name: 'scripting', get: () => getRelevantScriptingKnowledge(message) },
           { name: 'gamedesign', get: () => getRelevantGameDesign(message) },
@@ -17232,10 +17311,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         }
       }
 
+      const fallbackTaskType: BuildTaskType = (({ building: 'building', terrain: 'terrain', lighting: 'lighting', npc: 'npc', script: 'script', ui: 'ui', fullgame: 'building' } as Record<string, BuildTaskType>)[intent]) || 'building'
+      const fallbackBibles = isBuildingIntent ? selectRelevantKnowledge(message, fallbackTaskType) : ''
       const systemPrompt = await enrichWithExperienceMemory(
         await buildRAGSystemPrompt(
           (isBuildingIntent
-            ? await getSpecializedPrompt(message) + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+            ? await getSpecializedPrompt(message) + gameKnowledge + fallbackBibles + cameraContext + multiStepContext + enhancedPlanContext
             : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
           message,
         ),

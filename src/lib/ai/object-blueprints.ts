@@ -286,10 +286,28 @@ const BLUEPRINTS: Blueprint[] = [
 // QUERY FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Lazy-load expanded blueprints to avoid circular deps
+let _allBlueprints: Blueprint[] | null = null
+function getAllBlueprints(): Blueprint[] {
+  if (_allBlueprints) return _allBlueprints
+  _allBlueprints = [...BLUEPRINTS]
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const expanded = require('./object-blueprints-expanded') as { EXPANDED_BLUEPRINTS?: Blueprint[] }
+    if (expanded.EXPANDED_BLUEPRINTS) _allBlueprints.push(...expanded.EXPANDED_BLUEPRINTS)
+  } catch { /* file may not exist yet */ }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const rooms = require('./object-blueprints-rooms') as { ROOM_BLUEPRINTS?: Blueprint[] }
+    if (rooms.ROOM_BLUEPRINTS) _allBlueprints.push(...rooms.ROOM_BLUEPRINTS)
+  } catch { /* file may not exist yet */ }
+  return _allBlueprints
+}
+
 export function findBlueprints(prompt: string, max = 3): Blueprint[] {
   const lower = prompt.toLowerCase()
   const scored: { bp: Blueprint; score: number }[] = []
-  for (const bp of BLUEPRINTS) {
+  for (const bp of getAllBlueprints()) {
     let score = 0
     for (const kw of bp.keywords) {
       if (lower.includes(kw)) score += 2
@@ -319,4 +337,4 @@ export function formatBlueprintsForPrompt(blueprints: Blueprint[]): string {
   return lines.join('\n')
 }
 
-export function getBlueprintCount(): number { return BLUEPRINTS.length }
+export function getBlueprintCount(): number { return getAllBlueprints().length }

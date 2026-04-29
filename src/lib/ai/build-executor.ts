@@ -1208,13 +1208,34 @@ async function executeTask(
         console.warn(`[build-executor] Token spend failed for task ${task.id}:`, err)
       })
 
-      // Push to Studio if session is connected. Awaited so Vercel keeps
-      // the lambda alive until the command is actually enqueued.
-      if (sessionId && luauCode.length > 0) {
-        await pushToStudio(sessionId, task.id, luauCode)
+      // ── Post-processing: amplify + enforce style ──
+      let processedCode = luauCode
+      if (processedCode.length > 0 && !['script', 'ui'].includes(task.type)) {
+        try {
+          const { amplifyBuild } = await import('./build-amplifier')
+          const amplified = amplifyBuild(processedCode)
+          if (amplified.injections.length > 0 && amplified.injections[0] !== 'skipped — script code') {
+            processedCode = amplified.code
+            console.log(`[build-executor] Amplified task ${task.id}: ${amplified.injections.length} enhancements`)
+          }
+        } catch { /* non-blocking */ }
+        try {
+          const { enforceStyle, detectStyle } = await import('./style-enforcer')
+          const style = detectStyle(task.name)
+          if (style !== 'mixed') {
+            processedCode = enforceStyle(processedCode, style)
+            console.log(`[build-executor] Enforced "${style}" style on task ${task.id}`)
+          }
+        } catch { /* non-blocking */ }
       }
 
-      taskProgress.luauCode = luauCode
+      // Push to Studio if session is connected. Awaited so Vercel keeps
+      // the lambda alive until the command is actually enqueued.
+      if (sessionId && processedCode.length > 0) {
+        await pushToStudio(sessionId, task.id, processedCode)
+      }
+
+      taskProgress.luauCode = processedCode
       taskProgress.status = 'complete'
       taskProgress.completedAt = new Date().toISOString()
     }
