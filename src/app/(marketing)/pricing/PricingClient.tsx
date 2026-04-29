@@ -529,7 +529,15 @@ function CompareCell({
 // ---------------------------------------------------------------------------
 
 // slug map: display name → API slug
+// API slugs for checkout (must match subscription-tiers.ts TOKEN_PACKS slugs)
 const PACK_SLUGS: Record<string, string> = {
+  Boost: 'boost',
+  'Builder Pack': 'builder',
+  'Studio Pack': 'studio',
+}
+
+// Maps display name → billing config key (must match billing-config.ts tokenPacks keys)
+const PACK_CONFIG_KEYS: Record<string, string> = {
   Boost: 'starter',
   'Builder Pack': 'creator',
   'Studio Pack': 'pro',
@@ -652,7 +660,7 @@ function TokenPacksSection({
                   {pack.tokens} tokens
                 </p>
 
-                {packConfig[PACK_SLUGS[pack.name] as keyof typeof packConfig] ? (
+                {packConfig[PACK_CONFIG_KEYS[pack.name] as keyof typeof packConfig] ? (
                   <button
                     onClick={() => void handleBuyPack(pack.name)}
                     disabled={isLoading}
