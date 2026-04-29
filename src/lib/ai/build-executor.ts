@@ -11,7 +11,11 @@
 
 import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
-import { callAI } from './provider'
+import { callAI as _callAI } from './provider'
+import { enqueueAIRequest } from './request-queue'
+import type { AIMessage, AICallOptions } from './provider'
+const callAI = (system: string, messages: AIMessage[], opts?: AICallOptions) =>
+  enqueueAIRequest(() => _callAI(system, messages, opts), { priority: 'high', label: 'build-executor' })
 import { getKnowledgeForTaskType } from './deep-game-knowledge'
 import { analyzeLuau, autoFixLuau } from './static-analysis'
 import { validateBuild } from './build-validator'

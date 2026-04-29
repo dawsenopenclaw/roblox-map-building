@@ -21,8 +21,14 @@
  */
 
 import 'server-only'
-import { callAI } from './provider'
+import { callAI as _callAI } from './provider'
+import { enqueueAIRequest } from './request-queue'
 import { verifyLuauCode } from './luau-verifier'
+
+// Wrap callAI with queue to prevent flooding during multi-stage builds
+import type { AIMessage, AICallOptions } from './provider'
+const callAI = (system: string, messages: AIMessage[], opts?: AICallOptions) =>
+  enqueueAIRequest(() => _callAI(system, messages, opts), { priority: 'high', label: 'staged-pipeline' })
 import { scoreOutput, type QualityScore } from './quality-scorer'
 import { recordToEli } from '../eli/build-intelligence'
 import { detectCategory, detectBuildType } from './experience-memory'
