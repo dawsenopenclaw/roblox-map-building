@@ -6332,38 +6332,10 @@ async function freeModelTwoPass(
     }
   }
 
-  // ── INSTANT TEMPLATES: zero API calls, always works, <100ms ─────────────
-  // The #1 reliability fix. Common builds return pre-written Luau code
-  // so users NEVER see "models are busy" for basic requests.
-  // SKIP when user asks for something complex/large — let full AI pipeline handle it.
-  const wantsComplexBuild = /\b(massive|huge|giant|enormous|detailed|intricate|realistic|professional|multi|complex|full|complete|epic|grand|sprawling|big|large|with interior|furnished|insane|crazy|best|amazing|incredible|awesome|sick|advanced|perfect|proper|real|good)\b/i.test(message)
-  if (isBuildIntent && !wantsComplexBuild) {
-    const instantTemplate = getInstantTemplate(message)
-    if (instantTemplate) {
-      console.log(`[InstantTemplate] HIT for "${message}" → ${instantTemplate.name}`)
-      // Still send to Studio if connected
-      if (sessionId) {
-        try { await sendCodeToStudio(sessionId, instantTemplate.code) } catch {}
-        // Save build context so user can modify this template
-        saveBuildContext(sessionId, {
-          lastCode: instantTemplate.code,
-          lastPrompt: message,
-          buildCenter: 'camera forward 30 studs',
-          partCount: instantTemplate.partCount,
-          timestamp: Date.now(),
-        })
-      }
-      return {
-        conversationText: instantTemplate.response,
-        luauCode: instantTemplate.code,
-        executedInStudio: !!sessionId,
-        suggestions: instantTemplate.suggestions,
-        model: 'forje-instant',
-        qualityScore: 80,
-        buildPartCount: instantTemplate.partCount,
-      }
-    }
-  }
+  // ── INSTANT TEMPLATES DISABLED — every build is AI-generated ──────────
+  // Templates exist as internal reference only (used by knowledge system).
+  // Every user gets a unique, AI-generated build tailored to their request.
+  // No prefabs, no generic builds, no shortcuts.
 
   // ── BUILD CACHE: serve previously-generated builds instantly ─────────────
   if (isBuildIntent && history.length === 0) {
@@ -9571,12 +9543,12 @@ Minimum 60 parts for buildings, 15 for props. Use FOR LOOPS for repeated element
           const emergKey = getNextKey('GEMINI') || process.env.GEMINI_API_KEY
           if (emergKey) {
             const emergBody = {
-              system_instruction: { parts: [{ text: `You are a Roblox Luau code generator. Output ONLY code inside \`\`\`lua fences. Build for: "${message}". Use SmoothPlastic material with bright vibrant colors. Minimum 30 parts. Include Instance.new("Part"), model creation, Anchored=true, Color3.fromRGB with warm colors, and m.Parent = workspace.` }] },
+              system_instruction: { parts: [{ text: `You are a Roblox Luau code generator. Output ONLY code inside \`\`\`lua fences. Build for: "${message}". Use Concrete for clean surfaces, Wood/Brick for textured. NEVER SmoothPlastic. Bright saturated colors. Minimum 40 parts for buildings, 15 for props. Use FOR loops for repeated elements. Include P()/W()/Cyl()/Ball() helpers, model creation, Anchored=true, Color3.fromRGB, PointLights, and m.Parent = workspace.` }] },
               contents: [{ role: 'user', parts: [{ text: `Build: ${message}` }] }],
-              generationConfig: { maxOutputTokens: 16384, temperature: 0.7 },
+              generationConfig: { maxOutputTokens: 16384, temperature: 0.5 },
             }
             const emergRes = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${emergKey}`,
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${emergKey}`,
               { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(emergBody), signal: AbortSignal.timeout(45000) }
             )
             if (emergRes.ok) {
@@ -18331,7 +18303,7 @@ Set m.PrimaryPart to the base part. No explanation.`,
     } catch { /* second retry also failed */ }
 
     // Final fallback — helpful message, not "catching its breath"
-    const failMsg = `All AI models are busy right now. This usually clears up in under 30 seconds.\n\nHit **"Try again"** below, or try an instant build:\n\n[FOLLOWUP]\n- Try my prompt again\n- Build me a castle\n- Build me a spaceship\n\n[SUGGESTIONS]\n- Build me a house\n- Build me a robot\n- Plan a game with me`
+    const failMsg = `All AI servers are handling a lot of requests right now. This usually clears up in under 30 seconds.\n\n**Please send your message again** — it should go through on the next try.\n\nIf it keeps happening, try breaking your request into smaller pieces:\n- Instead of "make me a full RPG" → start with "build me a medieval castle"\n- Then "add NPCs inside" → "add a combat system" → build it up step by step\n\n[FOLLOWUP]\n- ${message.slice(0, 60)}\n- Let's plan my game first\n\n[SUGGESTIONS]\n- Retry my request\n- Help me plan a game`
     // Record the failure for learning
     void learnFromFailure(message, '', 0, ['All models failed to respond'], detectCategory(message)).catch(() => {})
     if (wantsStream) {
