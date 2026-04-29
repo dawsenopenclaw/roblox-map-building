@@ -81,6 +81,14 @@ import { ENVIRONMENT_TERRAIN_LIGHTING } from './crawled-knowledge/environment-te
 import { CHARACTERS_ANIMATION } from './crawled-knowledge/characters-animation'
 // ── Official Roblox Creator Hub: Monetization, Performance, Streaming, Chat (Apr 2026) ──
 import { MONETIZATION_PERFORMANCE } from './crawled-knowledge/monetization-performance'
+// ── DevForum Crawled: Game Loop Patterns — round system, wave spawner, respawn, lobby, teams (Apr 2026) ──
+import { GAME_LOOP_PATTERNS } from './crawled-knowledge/game-loop-patterns'
+// ── DevForum Crawled: Progression & Social — badges, daily rewards, leaderboard, ragdoll, tags, Parallel Luau, Streaming (Apr 2026) ──
+import { PROGRESSION_SOCIAL_SYSTEMS } from './crawled-knowledge/progression-social-systems'
+// ── Roblox Creator Docs: Advanced Services — CollectionService, ContentProvider, TextChatService, TeleportService, BadgeService, MessagingService, MemoryStoreService (Apr 2026) ──
+import { ENGINE_API_ADVANCED_SERVICES } from './crawled-knowledge/engine-api-advanced-services'
+// ── Roblox Creator Docs: Constraints, Motor6D, Attachment, ScreenGui, BillboardGui, SurfaceGui, Folder (Apr 2026) ──
+import { CONSTRAINTS_RIGGING_GUI } from './crawled-knowledge/constraints-rigging-gui'
 
 // ── Knowledge Section Registry ───────────────────────────────────────────────
 
@@ -463,11 +471,39 @@ const SECTIONS: KnowledgeSection[] = [
     getter: () => ENVIRONMENT_TERRAIN_LIGHTING,
     maxChars: 9000,
   },
+  // ── DevForum Crawled: Game Loop Patterns (Apr 2026) ─────────────────────────
+  {
+    id: 'game-loop-patterns-crawled',
+    keywords: ['round', 'round-based', 'round based', 'intermission', 'lobby', 'wave', 'wave spawner', 'wave system', 'waves', 'enemy wave', 'zombie wave', 'spawn enemies', 'boss wave', 'respawn', 'custom respawn', 'spectate', 'spectator', 'team assign', 'team assignment', 'auto balance', 'team balance', 'teleport system', 'reserved server', 'player count', 'min players', 'countdown', 'game state', 'state machine', 'game loop', 'round timer', 'round end', 'round start', 'kill', 'survivor', 'killer', 'game phase', 'difficulty scaling', 'escalating difficulty', 'spawn point', 'team spawn', 'sort teams', 'shuffle teams'],
+    getter: () => GAME_LOOP_PATTERNS,
+    maxChars: 10000,
+  },
+  // ── DevForum Crawled: Progression & Social Systems (Apr 2026) ───────────────
+  {
+    id: 'progression-social-crawled',
+    keywords: ['achievement', 'badge', 'badgeservice', 'award badge', 'custom badge', 'badge popup', 'daily reward', 'daily login', 'streak', 'login streak', 'reward calendar', 'login bonus', 'leaderboard', 'custom leaderboard', 'ordered datastore', 'top players', 'global leaderboard', 'rank display', 'ragdoll', 'ragdoll death', 'motor6d', 'ballsocketconstraint', 'ragdoll on death', 'physics death', 'collectionservice', 'collection service', 'addtag', 'gettag', 'gettagged', 'getinstanceaddedsignal', 'getinstanceremovedsignal', 'tag driven', 'tagging', 'parallel luau', 'parallel lua', 'actor', 'actors', 'task.desynchronize', 'task.synchronize', 'sharedtable', 'bindtomessage', 'worker pattern', 'multithreading', 'streamingenabled', 'streaming enabled', 'requeststreamaround', 'modelstreamingmode', 'waitforchild', 'stream', 'kill brick', 'checkpoint', 'progress save'],
+    getter: () => PROGRESSION_SOCIAL_SYSTEMS,
+    maxChars: 10000,
+  },
+  // ── Roblox Creator Docs: Advanced Services — tagging, preload, chat, cross-server, teleport, badges (Apr 2026) ──
+  {
+    id: 'engine-api-advanced-services',
+    keywords: ['collectionservice', 'addtag', 'removetag', 'hastag', 'gettagged', 'getinstanceaddedsignal', 'getinstanceremovedsignal', 'tag system', 'interactable tag', 'damage zone', 'checkpoint tag', 'contentprovider', 'preloadasync', 'loading screen', 'preload assets', 'asset preload', 'load progress', 'textchatservice', 'textchannel', 'textsource', 'textchatcommand', 'chat command', 'slash command', 'chat system', 'chat filter', 'onincominmessage', 'displayystemmessage', 'kill feed', 'chat prefix', 'colored chat', 'admin chat', 'teleportservice', 'teleportasync', 'teleportoptions', 'reserveserver', 'teleportparty', 'teleportinitfailed', 'reserved server', 'place teleport', 'hub world', 'minigame teleport', 'cross place', 'teleport data', 'badgeservice', 'awardbadge', 'userhasbadgeasync', 'getbadgeinfoasync', 'award badge', 'badge gated', 'vip badge', 'achievement badge', 'badge check', 'messagingservice', 'publishasync', 'subscribeasync', 'cross server', 'cross-server', 'global event', 'server broadcast', 'admin shutdown', 'global announce', 'memorystoreservice', 'getsortedmap', 'gethashmap', 'getqueue', 'memorystorehashmap', 'memorystoresortedmap', 'memorystorequeue', 'real-time leaderboard', 'realtime leaderboard', 'matchmaking queue', 'server activity', 'active servers', 'global leaderboard live'],
+    getter: () => ENGINE_API_ADVANCED_SERVICES,
+    maxChars: 10000,
+  },
+  // ── Roblox Creator Docs: Constraints, Rigging, GUI — hinges, springs, ragdoll, rope bridge, sliding doors, Motor6D, BillboardGui, SurfaceGui (Apr 2026) ──
+  {
+    id: 'constraints-rigging-gui',
+    keywords: ['hingeconstraint', 'hinge constraint', 'swinging door', 'rotating door', 'spinning wheel', 'windmill', 'lever', 'springconstraint', 'spring constraint', 'trampoline', 'suspension', 'bouncy', 'shock absorber', 'vehicle suspension', 'ballsocketconstraint', 'ball socket', 'ragdoll', 'ragdoll death', 'ragdoll physics', 'loose joints', 'floppy', 'prismaticconstraint', 'prismatic', 'sliding door', 'elevator physics', 'drawer', 'piston', 'ropeconstraint', 'rope constraint', 'rope bridge', 'hanging', 'chandelier', 'rope physics', 'chain', 'swing', 'weldconstraint', 'weld', 'weld model', 'rigid weld', 'attachment', 'motor6d', 'motor 6d', 'custom rig', 'animated joint', 'rig animation', 'robot arm', 'mechanical arm', 'npc rig', 'animate motor', 'screengui', 'screen gui', 'hud', 'health bar', 'player ui', 'player hud', 'billboardgui', 'billboard gui', 'floating label', 'overhead label', 'overhead health', 'npc health bar', 'waypoint marker', 'surfacegui', 'surface gui', 'in-world sign', 'wall sign', 'scoreboard wall', 'shop sign', 'computer screen', 'folder', 'workspace folder', 'organize workspace', 'model folder'],
+    getter: () => CONSTRAINTS_RIGGING_GUI,
+    maxChars: 10000,
+  },
 ]
 
 // ── Main Selector ────────────────────────────────────────────────────────────
 
-const MAX_TOTAL_CHARS = 20000
+const MAX_TOTAL_CHARS = 25000
 
 /**
  * Analyzes the task prompt and returns only the most relevant knowledge sections,
@@ -533,6 +569,16 @@ export function selectRelevantKnowledge(taskPrompt: string, taskType: BuildTaskT
     // Characters & animation crawled boosts
     if (taskType === 'npc' && section.id === 'characters-animation-crawled') score += 5
     if (taskType === 'script' && section.id === 'characters-animation-crawled') score += 2
+    // Advanced services boosts — tagging, preloading, chat, badges, cross-server, memory stores
+    if (taskType === 'script' && section.id === 'engine-api-advanced-services') score += 4
+    if (taskType === 'economy' && section.id === 'engine-api-advanced-services') score += 3
+    if (taskType === 'npc' && section.id === 'engine-api-advanced-services') score += 2
+    // Constraints, rigging, GUI boosts — doors, ragdoll, bridges, rigs, BillboardGui, SurfaceGui
+    if (taskType === 'building' && section.id === 'constraints-rigging-gui') score += 4
+    if (taskType === 'prop' && section.id === 'constraints-rigging-gui') score += 3
+    if (taskType === 'npc' && section.id === 'constraints-rigging-gui') score += 3
+    if (taskType === 'script' && section.id === 'constraints-rigging-gui') score += 2
+    if (taskType === 'ui' && section.id === 'constraints-rigging-gui') score += 2
     // Monetization, performance, streaming, teleport, chat crawled boosts
     if (taskType === 'economy' && section.id === 'monetization-performance-crawled') score += 5
     if (taskType === 'script' && section.id === 'monetization-performance-crawled') score += 3
@@ -547,6 +593,15 @@ export function selectRelevantKnowledge(taskPrompt: string, taskType: BuildTaskT
     if (taskType === 'lighting' && section.id === 'environment-terrain-lighting-crawled') score += 5
     if (taskType === 'building' && section.id === 'environment-terrain-lighting-crawled') score += 2
     if (taskType === 'script' && section.id === 'environment-terrain-lighting-crawled') score += 1
+    // Game loop patterns crawled boosts — round systems, wave spawners, lobby, teams, respawn
+    if (taskType === 'script' && section.id === 'game-loop-patterns-crawled') score += 5
+    if (taskType === 'npc' && section.id === 'game-loop-patterns-crawled') score += 3
+    if (taskType === 'economy' && section.id === 'game-loop-patterns-crawled') score += 2
+    // Progression & social systems crawled boosts — badges, streaks, leaderboard, ragdoll, tags, parallel luau
+    if (taskType === 'script' && section.id === 'progression-social-crawled') score += 5
+    if (taskType === 'economy' && section.id === 'progression-social-crawled') score += 4
+    if (taskType === 'npc' && section.id === 'progression-social-crawled') score += 3
+    if (taskType === 'ui' && section.id === 'progression-social-crawled') score += 2
 
     return { section, score }
   })
