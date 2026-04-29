@@ -9018,34 +9018,46 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       logTiming('pre-gemini')
       console.log(`[SinglePass] Gemini-first build gen for: "${message.slice(0, 50)}" | prompt: ${enrichedCodePrompt.length} chars (base: ${basePromptLength}, enriched: +${enrichmentChars})`)
 
-      // ── RETRY LOOP: try up to 3 times with backoff if rate limited ──
-      for (let attempt = 0; attempt < 3 && !buildRace && !isPipelineTimedOut(); attempt++) {
-        if (attempt > 0) {
-          const waitMs = attempt * 5000 // 5s, 10s backoff
-          console.log(`[SinglePass] Retry attempt ${attempt + 1}/3 — waiting ${waitMs / 1000}s...`)
+      // ── RETRY LOOP: keep trying for up to 60s before giving up ──
+      // Cycles through Gemini → Groq → OpenRouter, waits 5s between rounds.
+      // Users see "X in queue" via frontend poller while we retry.
+      const retryDeadline = Date.now() + 60_000
+      let attempt = 0
+      while (!buildRace && !isPipelineTimedOut() && Date.now() < retryDeadline) {
+        attempt++
+        if (attempt > 1) {
+          const waitMs = Math.min(5000, retryDeadline - Date.now())
+          if (waitMs < 1000) break // Less than 1s left, stop
+          console.log(`[SinglePass] Retry #${attempt} — waiting ${(waitMs / 1000).toFixed(0)}s (${Math.round((retryDeadline - Date.now()) / 1000)}s remaining)...`)
           await new Promise(r => setTimeout(r, waitMs))
-          if (isPipelineTimedOut()) break
+          if (isPipelineTimedOut() || Date.now() >= retryDeadline) break
         }
 
-        // Try Gemini first
-        const geminiResult = await callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens, attempt === 0 ? buildScreenshot : undefined)
-        if (attempt === 0) logTiming('post-gemini')
+        // Try Gemini
+        const geminiResult = await callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens, attempt === 1 ? buildScreenshot : undefined)
+        if (attempt === 1) logTiming('post-gemini')
 
         if (geminiResult && geminiResult.length > 200) {
           buildRace = { result: geminiResult, index: 2 }
-          console.log(`[SinglePass] Gemini responded (attempt ${attempt + 1}):`, geminiResult.length, 'chars')
+          console.log(`[SinglePass] Gemini OK (attempt ${attempt}):`, geminiResult.length, 'chars')
           break
         }
 
-        if (isPipelineTimedOut()) break
+        if (isPipelineTimedOut() || Date.now() >= retryDeadline) break
 
-        // Gemini failed — try other providers
-        console.log(`[SinglePass] Gemini failed (attempt ${attempt + 1}), racing fallbacks`)
+        // Gemini failed — race Groq + OpenRouter
+        console.log(`[SinglePass] Gemini failed (attempt ${attempt}), trying fallbacks`)
         buildRace = await raceNonNull(
           callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
           callOpenRouterChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), outputTokens),
         )
-        if (buildRace) break
+        if (buildRace) {
+          console.log(`[SinglePass] Fallback succeeded (attempt ${attempt})`)
+          break
+        }
+      }
+      if (!buildRace) {
+        console.warn(`[SinglePass] All ${attempt} attempts failed over ${Math.round((Date.now() - (retryDeadline - 60000)) / 1000)}s`)
       }
     }
 
@@ -9584,11 +9596,11 @@ Minimum 60 parts for buildings, 15 for props. Use FOR LOOPS for repeated element
         }
       }
 
-      // Still no code — inform user honestly
+      // Still no code after 60s of retrying — tell user to retry
       if (!luauCode) {
-        console.warn('[SinglePass] ALL models failed to generate code for:', message.slice(0, 50))
+        console.warn('[SinglePass] ALL attempts exhausted for:', message.slice(0, 50))
         model = 'failed'
-        conversationText = `I couldn't generate that build right now — the AI models are under heavy load. Here's what to try:\n\n1. **Simplify your prompt** — instead of "build a huge city game with tycoon mechanics and GUI", try "build a city block" first, then we add features one at a time.\n2. **Try again in 15 seconds** — the queue clears fast.\n3. **Use instant builds** — these always work: "build a tree", "build a house", "build a castle"\n\nComplex builds (full games, cities, maps) work best when built step-by-step!\n\n[FOLLOWUP]\n- Build me a city block\n- Build me a house\n- Let's plan the game first\n\n[SUGGESTIONS]\n- Build me a simple town\n- Build me a castle\n- Help me plan my game`
+        conversationText = `I tried for a full minute but couldn't get a response from the AI — all servers are slammed right now.\n\n**Please retry your prompt** — just send the same message again and it should go through. The queue usually clears within seconds.\n\nTip: If it keeps failing, try a simpler version first (like "build a house") and then add details after.\n\n[FOLLOWUP]\n- ${message.slice(0, 50)}\n- Build me a house\n- Let's plan the game first\n\n[SUGGESTIONS]\n- Retry: ${message.slice(0, 40)}\n- Build me a castle\n- Help me plan my game`
       }
     }
 

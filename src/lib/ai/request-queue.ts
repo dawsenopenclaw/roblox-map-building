@@ -134,7 +134,7 @@ export function enqueueAIRequest<T>(
   execute: () => Promise<T>,
   opts: { priority?: Priority; timeoutMs?: number; label?: string } = {}
 ): Promise<T> {
-  const { priority = 'normal', timeoutMs = 55000, label = 'ai-call' } = opts
+  const { priority = 'normal', timeoutMs = 60000, label = 'ai-call' } = opts
 
   if (queue.length >= MAX_QUEUE_SIZE) {
     return Promise.reject(new Error('Build queue is full — try again in a few seconds.'))
