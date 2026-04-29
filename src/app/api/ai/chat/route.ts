@@ -96,6 +96,7 @@ import { saveBuildContext, getBuildContext, isModificationRequest, formatModific
 import { getStudioMechanicsKnowledge } from '@/lib/ai/studio-mechanics'
 import { selectRelevantKnowledge } from '@/lib/ai/knowledge-selector'
 import type { BuildTaskType } from '@/lib/ai/build-planner'
+import { recordKnowledgeMetrics, startTracking, trackSection, trackInjectedSections } from '@/lib/ai/knowledge-metrics'
 import { moderateContent, getModerationMessage, MODERATION_SUGGESTIONS } from '@/lib/content-moderation'
 import {
   formatPreferencesForPrompt,
@@ -9301,6 +9302,22 @@ ${effectiveInstruction}`
         }).catch((err) => {
           console.warn('[LearningSystem] Failed to record build outcome:', err instanceof Error ? err.message : err)
         })
+        // Knowledge quality feedback — track what sections helped
+        try {
+          const { sections, totalChars } = trackInjectedSections()
+          if (sections.length > 0) {
+            recordKnowledgeMetrics({
+              prompt: message,
+              intent,
+              complexity: 'medium', // will be set properly when we have access to complexity var
+              sectionsInjected: sections,
+              charBudgetUsed: totalChars,
+              charBudgetTotal: 32000,
+              generatedCode: luauCode,
+              outputScore: finalVerificationScore,
+            })
+          }
+        } catch { /* non-blocking */ }
         // Cache high-quality builds for instant future serving
         if (finalVerificationScore >= 65 && partCount >= 30 && !isScriptIntent && model !== 'forje-cache') {
           try {
@@ -10158,25 +10175,12 @@ BAD (flat, boring, listing materials):
 GOOD (atmospheric, game-dev focused, makes the dev excited):
 "Alright here's your house — warm brick walls with a dark slate pitched roof that overhangs just enough to cast a shadow on the porch. Two big windows on the front so you can see the warm PointLight glow from outside at night. I gave it a proper front door with a gold knob and a welcome mat. Inside there's a living room with a couch facing a fireplace, a kitchen counter with stools, and a bedroom upstairs. The chimney has a subtle smoke effect. Your players are going to want to live here."
 
-MORE GOOD EXAMPLES — memorize this energy for ALL build types:
-User: "build me a tree" → "Here's a proper low-poly oak — short thick trunk, three branch arms at natural angles, and a big puffy canopy of 8 overlapping spheres in different greens so it looks full from every angle. Shadow disc at the base grounds it. This is the style you see in Pet Sim and Adopt Me. Want me to scatter a whole forest?"
-User: "make a trampoline" → "Here's a bouncy trampoline — metal frame legs, springy blue fabric mat, wired up so you actually BOUNCE when you land on it. Try it out!"
-User: "build a house" → "Alright, cozy two-story house — brick walls, dark roof with overhang, front porch with a warm light. Inside: living room, kitchen, bedroom upstairs. Your players are gonna want to live here."
-User: "build a castle" → "Here's your castle — thick stone walls with battlements you can walk along, two corner towers with spiral stairs inside, a main gate with a working drawbridge, and a courtyard with a well. I gave it torches that glow at night. Want me to add a moat?"
-User: "make a car" → "Here's a clean sports car — low body, four cylinder wheels with actual VehicleSeats so players can drive it. Neon headlights, glass windshield, even a license plate on the back. Take it for a spin!"
-User: "build a shop" → "Alright, here's a storefront — glass display windows showing the goods, a front door with a ProximityPrompt so players can enter, shelves with items inside, and a counter with a cash register. I threw in an awning and a hanging sign outside."
-User: "make a sword" → "Here's a proper sword — long metal blade with a slight taper, crossguard, leather-wrapped grip, and a pommel. I added a subtle glow effect on the blade edge. Want me to add a damage script so it actually works in combat?"
-User: "build a boat" → "Nice little sailboat here — wooden hull with a pointed bow, a mast with a fabric sail, a VehicleSeat at the helm, and I set up the buoyancy so it actually floats on water. Toss it in the ocean and let's see how it handles."
-User: "make a spaceship" → "Check this out — sleek hull with metal paneling, a glass cockpit up front, two engine pods on the sides with neon thrust glow, and an interior with a pilot seat, console, and cargo bay. It looks ready to launch."
-User: "build an obby" → "Here's a 10-stage obby — starts easy with simple jumps, gets harder with kill bricks, spinning platforms, and wall jumps. Every stage has a checkpoint so players don't rage quit. The finish line has a celebration effect."
-User: "make a tycoon" → "Here's your tycoon layout — spawn pad, dropper that generates cash every 2 seconds, conveyor belt carrying it to a collector, and upgrade buttons that unlock as you earn. I set up the whole economy so it actually works."
-User: "build a restaurant" → "Cozy restaurant with a brick exterior, neon OPEN sign, and a big window so players can see inside. Inside: booths along the wall, a kitchen behind the counter with an oven and fridge, and warm pendant lights hanging from the ceiling."
-User: "make a gun" → "Here's a blaster — metal body with a grip, barrel, and trigger guard. I added a muzzle flash particle effect and a PointLight that flashes when you fire. Want me to add the shooting script?"
-User: "build a park" → "Nice little park — walking paths through green grass, a few benches under trees, a fountain in the center with a water particle effect, flower beds along the edges, and street lamps that turn on at night."
-User: "make a robot" → "Here's a chunky robot — boxy metal body, cylinder arms with ball-joint shoulders, glowing visor eyes, and antenna on top. I gave it a slight idle bobbing animation so it feels alive."
-User: "build a prison" → "Here's the prison — reinforced concrete walls, guard towers at the corners with spotlights, rows of cells with barred doors, an exercise yard, and a cafeteria. The searchlights sweep back and forth."
-User: "make a bed" → "Here's a comfy bed — wooden frame with posts, a mattress pad, a pillow, and a blanket draped over with some wrinkles. I put a bedside table with a lamp next to it. Small details make it feel real."
-User: "build me a military base" → "Here's a military compound — chain-link perimeter fence with barbed wire, a guard checkpoint at the entrance, two barracks buildings, a vehicle depot with a tank and jeep, a helipad, and a command center with antenna arrays on the roof."
+KEY EXAMPLES — use this energy for ALL builds:
+"build a house" → "Cozy two-story — brick walls, dark slate roof with overhang, front porch with warm light. Living room, kitchen, bedroom upstairs. Your players are gonna want to live here."
+"build a castle" → "Thick stone walls with battlements, two corner towers with spiral stairs, main gate with drawbridge, courtyard with a well. Torches glow at night. Want me to add a moat?"
+"make a car" → "Clean sports car — low body, cylinder wheels with VehicleSeats so players can drive it. Neon headlights, glass windshield, license plate. Take it for a spin!"
+"make a sword" → "Proper sword — long metal blade with taper, crossguard, leather grip, pommel. Subtle glow on the blade edge. Want a damage script for combat?"
+"build a tycoon" → "Spawn pad, dropper generating cash every 2 seconds, conveyor to collector, upgrade buttons that unlock as you earn. Economy actually works."
 
 DESCRIBE THESE THINGS (pick 3-5 per build):
 - What mood/atmosphere it creates (cozy, eerie, epic, playful)
@@ -16997,9 +17001,33 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const gameKnowledge = buildGameKnowledgePrompt(recentContext)
 
       // ── KNOWLEDGE BRAIN INJECTION (all tiers, production-hardened) ─────────────
-      // Token budget: ~32K chars ≈ 8K tokens. Prioritized by relevance.
+      // Complexity-aware budget: simple tasks get less context, complex ones get more.
       // Error-safe: if any getter throws, we skip it and keep going.
-      const KNOWLEDGE_CHAR_BUDGET = 32000
+      const detectComplexity = (msg: string): 'simple' | 'medium' | 'complex' | 'game' => {
+        const lower = msg.toLowerCase()
+        const wordCount = lower.split(/\s+/).length
+        // Full game requests
+        if (/\b(full\s?game|complete\s?game|entire\s?game|whole\s?game|game\s?from\s?scratch)\b/i.test(lower)) return 'game'
+        if (intent === 'fullgame') return 'game'
+        // Complex: long prompts, multiple features, detailed descriptions
+        if (wordCount > 40) return 'complex'
+        if (/\b(with\s+a\s+.+\s+and\s+a\s+|multiple|several|detailed|intricate|massive|huge|complex)\b/i.test(lower)) return 'complex'
+        if ((lower.match(/\band\b/g) || []).length >= 3) return 'complex' // 3+ "and"s = multi-feature
+        // Simple: short prompts, single objects
+        if (wordCount <= 8) return 'simple'
+        if (/^(make|build|create|generate)\s+(me\s+)?(a\s+)?[\w\s]{1,15}$/i.test(lower.trim())) return 'simple'
+        return 'medium'
+      }
+      const complexity = detectComplexity(message)
+      const COMPLEXITY_BUDGETS: Record<string, number> = {
+        simple: 12000,   // ~3K tokens — just core knowledge + examples
+        medium: 24000,   // ~6K tokens — standard knowledge injection
+        complex: 36000,  // ~9K tokens — full knowledge + specialized bibles
+        game: 48000,     // ~12K tokens — everything available
+      }
+      const KNOWLEDGE_CHAR_BUDGET = COMPLEXITY_BUDGETS[complexity]
+      console.log(`[knowledge] complexity=${complexity} budget=${KNOWLEDGE_CHAR_BUDGET} intent=${intent}`)
+      startTracking() // Reset knowledge tracking for this request
       let knowledgeBrain = ''
       if (isBuildingIntent) {
         const safeGet = (fn: () => string, name: string): string => {
@@ -17059,11 +17087,15 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           if (totalChars + text.length > KNOWLEDGE_CHAR_BUDGET) {
             // Truncate last source to fit remaining budget
             const remaining = KNOWLEDGE_CHAR_BUDGET - totalChars
-            if (remaining > 500) parts.push(text.slice(0, remaining) + '\n[...truncated for context budget]')
+            if (remaining > 500) {
+              parts.push(text.slice(0, remaining) + '\n[...truncated for context budget]')
+              trackSection(source.name, remaining)
+            }
             break
           }
           parts.push(text)
           totalChars += text.length
+          trackSection(source.name, text.length)
         }
 
         // Build enhancer — inject contextual polish suggestions

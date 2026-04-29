@@ -56,6 +56,7 @@ import { EXTERIOR_CONSTRUCTION_BIBLE } from './exterior-construction-bible'
 import { SCRIPTING_PATTERNS_EXPANDED } from './scripting-patterns-expanded'
 import { INTERIOR_RESIDENTIAL_DEEP } from './interior-residential-deep'
 import { COMMERCIAL_INTERIORS_BIBLE } from './commercial-interiors-bible'
+import { EXAMPLE_BUILDS_BIBLE } from './example-builds-bible'
 
 // ── Knowledge Section Registry ───────────────────────────────────────────────
 
@@ -317,6 +318,12 @@ const SECTIONS: KnowledgeSection[] = [
     getter: () => COMMERCIAL_INTERIORS_BIBLE,
     maxChars: 5000,
   },
+  {
+    id: 'example-builds',
+    keywords: ['build', 'house', 'tree', 'sword', 'car', 'vehicle', 'weapon', 'make', 'create', 'generate', 'place', 'construct', 'example', 'show me', 'how to'],
+    getter: () => EXAMPLE_BUILDS_BIBLE,
+    maxChars: 8000,
+  },
 ]
 
 // ── Main Selector ────────────────────────────────────────────────────────────
@@ -363,6 +370,8 @@ export function selectRelevantKnowledge(taskPrompt: string, taskType: BuildTaskT
     if (taskType === 'prop' && ['weapon-tool-bible', 'interior-residential-deep', 'commercial-interiors-bible'].includes(section.id)) score += 2
     if (taskType === 'terrain' && section.id === 'world-design-bible') score += 1
     if (taskType === 'economy' && section.id === 'game-progression-bible') score += 2
+    // Example builds always relevant for any building/prop task
+    if (['building', 'prop', 'terrain'].includes(taskType) && section.id === 'example-builds') score += 3
 
     return { section, score }
   })
