@@ -111,6 +111,7 @@ import {
   type GameState,
 } from '@/lib/ai/user-memory'
 import { extractStyleFromCode, formatStyleConstraint } from '@/lib/ai/style-enforcer'
+import { DEFAULT_ART_DIRECTION, COLOR_PALETTES, GOOD_VS_BAD } from '@/lib/ai/style-bible'
 
 // ─── Auto-log conversation to DB (fire-and-forget) ──────────────────────────
 // Persists every user→assistant exchange so admin can review beta tester chats.
@@ -6624,7 +6625,9 @@ Tell me about your vision and I'll create a full build plan with estimated parts
 
   const studioMechanics = getStudioMechanicsKnowledge()
   const deepBuildKnowledge = isBuildIntent ? '\n\n--- DEEP BUILDING KNOWLEDGE (proportions, materials, variation) ---\n' + getTrimmedBuildingKnowledge(8000) + '\n--- END DEEP BUILDING KNOWLEDGE ---\n' : ''
-  const codePrompt = studioMechanics + specialistPrefix + userPreferencesPrompt + styleConstraintPrompt + gameStatePrompt + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + deepBuildKnowledge + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
+  // Style bible injected EARLY so the AI's art direction is set before everything else
+  const styleBibleContext = isBuildIntent ? '\n\n' + DEFAULT_ART_DIRECTION + '\n\n' + COLOR_PALETTES + '\n\n' + GOOD_VS_BAD : ''
+  const codePrompt = studioMechanics + styleBibleContext + specialistPrefix + userPreferencesPrompt + styleConstraintPrompt + gameStatePrompt + MARKETPLACE_ASSET_RULES + freeKnowledgeBrain + deepBuildKnowledge + gameKnowledge + `\n\nYou are Forje — a Roblox game builder and the user's creative partner. You're the friend who's insanely good at building games. When someone says "build me a tree" you just BUILD it and describe it like you're showing off your work to a friend.
 
 HOW TO TALK:
 - Talk like a real person. "Alright, check this out —" not "Create a detailed Roblox tree model with the following specifications:"
