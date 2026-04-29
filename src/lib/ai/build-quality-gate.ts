@@ -116,10 +116,10 @@ _autoLight.Parent = m:FindFirstChild("Floor") or m:GetChildren()[1]
 
   // 5. Check minimums for build intent
   const isBuild = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace', 'script'].includes(intent)
-  const passedGate = !isBuild || partCount >= 5
+  const passedGate = !isBuild || partCount >= 15
 
-  if (isBuild && partCount < 5) {
-    fixes.push(`Part count too low: ${partCount} (minimum 5 for builds)`)
+  if (isBuild && partCount < 15) {
+    fixes.push(`Part count too low: ${partCount} (minimum 15 for builds)`)
   }
 
   // 6. Fix missing finalize

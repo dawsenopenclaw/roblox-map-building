@@ -8580,6 +8580,25 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       return true
     }
 
+    // ── ENHANCED PROMPT PLAN: inject FIRST (highest priority for budget) ──────
+    // Gives the AI a structured "architect blueprint" with exact materials, colors,
+    // section-by-section plans, blueprint specs, and reference game context.
+    // Runs BEFORE templates/references so it gets first claim on the 15K budget.
+    if (!isScriptIntent && isBuildIntent) {
+      try {
+        const plan = await enhancePrompt(message)
+        if (plan) {
+          const planContext = formatEnhancedPlanContext(plan)
+          if (planContext && canAddEnrichment(planContext)) {
+            enrichedCodePrompt += '\n\n' + planContext
+            console.log(`[EnhancedPlan] Injected architect blueprint (${planContext.length} chars, scale: ${plan.buildScale}, parts: ${plan.partTargets.target}, style: ${plan.styleModifiers?.mood || 'neutral'})`)
+          }
+        }
+      } catch (planErr) {
+        console.warn('[EnhancedPlan] Non-blocking error:', planErr instanceof Error ? planErr.message : planErr)
+      }
+    }
+
     // Inject working template reference for ALL build intents (not just scripts)
     // "build me a tycoon" should get tycoon code patterns even as a 3D build request
     if (templateReference && canAddEnrichment(templateReference)) {
@@ -8685,24 +8704,6 @@ Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
       }
     } catch (expErr) {
       console.warn('[ExperienceMemory] Failed in freeModelTwoPass (non-blocking):', expErr instanceof Error ? expErr.message : expErr)
-    }
-
-    // ── ENHANCED PROMPT PLAN: inject detailed build specs, blueprints, reference games ──
-    // This gives the AI a structured "architect blueprint" with exact materials, colors,
-    // section-by-section plans, and matching object blueprints from our library.
-    if (!isScriptIntent && isBuildIntent) {
-      try {
-        const plan = await enhancePrompt(message)
-        if (plan) {
-          const planContext = formatEnhancedPlanContext(plan)
-          if (planContext && canAddEnrichment(planContext)) {
-            enrichedCodePrompt += '\n\n' + planContext
-            console.log(`[EnhancedPlan] Injected architect blueprint (${planContext.length} chars, scale: ${plan.buildScale}, parts: ${plan.partTargets.target}, style: ${plan.styleModifiers?.mood || 'neutral'})`)
-          }
-        }
-      } catch (planErr) {
-        console.warn('[EnhancedPlan] Non-blocking error:', planErr instanceof Error ? planErr.message : planErr)
-      }
     }
 
     // Declare variables used by both staged and single-pass paths
@@ -9200,7 +9201,11 @@ ${effectiveInstruction}`
       }
 
       // ── QUALITY FLOOR: auto-retry if score is below 40 ──────────────────
-      if (luauCode && finalVerificationScore < 40 && finalVerificationScore > 0 && !qualityRetried && !isScriptIntent && !isPipelineTimedOut()) {
+      // Note: finalVerificationScore starts at 0 and gets set by verifier/scorer.
+      // The > 0 check was blocking retries when only scoreOutput ran (clamped min to 0).
+      // Changed to track whether any quality check actually ran.
+      const qualityWasChecked = finalVerificationScore > 0 || (luauCode && luauCode.length > 500)
+      if (luauCode && finalVerificationScore < 40 && qualityWasChecked && !qualityRetried && !isScriptIntent && !isPipelineTimedOut()) {
         qualityRetried = true
         console.warn(`[QualityFloor] Score ${finalVerificationScore} < 40 — retrying with extra detail instructions`)
         try {
@@ -9236,7 +9241,7 @@ ${effectiveInstruction}`
           const audit = auditBuild(luauCode, conversationText, message)
           console.log(`[Audit] Detail score: ${audit.detailScore}/100, parts: ${audit.partCount}, claims: ${audit.claimedFeatures.length}, missing: ${audit.missingFeatures.length}`)
 
-          if (!audit.passed && finalVerificationScore >= 40 && !isPipelineTimedOut()) {
+          if (!audit.passed && finalVerificationScore >= 25 && !isPipelineTimedOut()) {
             // Build passed syntax checks but is INCOMPLETE — additive retry (build on existing code)
             console.warn(`[Audit] Build INCOMPLETE: ${audit.suggestions.slice(0, 3).join('; ')}`)
             // Use additive retry — keeps existing code, adds what's missing
@@ -9467,6 +9472,39 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
       }
     }
 
+    // ── ANTI-UGLY: string-level quality fixes on raw Luau code ──────────
+    if (luauCode && !isScriptIntent) {
+      try {
+        let fixes = 0
+        // Fix default grey (163,162,165) → contextual color
+        const defaultGreyRegex = /Color3\.fromRGB\(\s*16[0-6]\s*,\s*16[0-5]\s*,\s*16[2-8]\s*\)/g
+        if (defaultGreyRegex.test(luauCode)) {
+          luauCode = luauCode.replace(defaultGreyRegex, 'Color3.fromRGB(140, 130, 120)')
+          fixes++
+        }
+        // Fix SmoothPlastic → Concrete (redundant with quality gate but catches edge cases)
+        if (/Enum\.Material\.SmoothPlastic/i.test(luauCode)) {
+          luauCode = luauCode.replace(/Enum\.Material\.SmoothPlastic/gi, 'Enum.Material.Concrete')
+          fixes++
+        }
+        if (/Enum\.Material\.Plastic\b/i.test(luauCode)) {
+          luauCode = luauCode.replace(/Enum\.Material\.Plastic\b/gi, 'Enum.Material.Concrete')
+          fixes++
+        }
+        // Fix missing PointLight in interiors — if code has 'room' or 'interior' but zero PointLights
+        const hasRoomKeyword = /room|interior|bedroom|kitchen|bathroom|office|living/i.test(luauCode)
+        const pointLightCount = (luauCode.match(/PointLight/g) || []).length
+        if (hasRoomKeyword && pointLightCount === 0 && luauCode.includes('m.Parent = workspace')) {
+          const lightInjection = `\n-- Anti-ugly: auto-inject interior lighting\npcall(function() for _,p in m:GetDescendants() do if p:IsA("BasePart") and (p.Name:lower():find("ceil") or p.Name:lower():find("roof")) then local pl=Instance.new("PointLight") pl.Brightness=1.5 pl.Range=25 pl.Color=Color3.fromRGB(255,220,180) pl.Parent=p end end end)\n`
+          const insertPt = luauCode.indexOf('m.Parent = workspace')
+          if (insertPt !== -1) { luauCode = luauCode.slice(0, insertPt) + lightInjection + luauCode.slice(insertPt); fixes++ }
+        }
+        if (fixes > 0) console.log(`[AntiUgly] Applied ${fixes} string-level fixes`)
+      } catch (auErr) {
+        console.warn('[AntiUgly] Non-blocking:', auErr instanceof Error ? auErr.message : auErr)
+      }
+    }
+
     // ── STYLE ENFORCEMENT: fix wrong materials/colors for detected style ──
     if (luauCode && !isScriptIntent) {
       try {
@@ -9533,6 +9571,11 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
     if (luauCode && sessionId) {
       try {
         executedInStudio = await sendCodeToStudio(sessionId, luauCode)
+
+        // Increment generation counter on successful build
+        if (executedInStudio && userId) {
+          import('@/lib/generation-limits').then(m => m.incrementGenerationCounter(userId, 'build')).catch(() => {})
+        }
 
         // Build diagnostic: if code was generated but Studio didn't execute it, tell user why
         if (!executedInStudio && luauCode) {
@@ -15769,6 +15812,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       } catch {
         // Guard check failed — allow through (fail open for availability)
       }
+
+      // Per-tier generation limit (Free: 10/day, Starter: 15, Builder: 30, etc.)
+      try {
+        const { checkGenerationLimit } = await import('@/lib/generation-limits')
+        const genLimit = await checkGenerationLimit(authedUserId, 'build')
+        if (!genLimit.allowed) {
+          return NextResponse.json(
+            {
+              error: `You've used all ${genLimit.limit} builds for today! Resets at midnight UTC.\n\nUpgrade for more daily builds, or grab a token pack.\n\n**Remaining:** 0/${genLimit.limit}`,
+              code: 'GENERATION_LIMIT',
+              upgradeUrl: '/pricing',
+              tokensUrl: '/tokens',
+              resetsAt: genLimit.resetsAt,
+            },
+            { status: 429 },
+          )
+        }
+      } catch {
+        // Fail open — allow through if check fails
+      }
     } else {
       // Guest (unauthenticated) — enforce server-side IP rate limit so the
       // client-side GUEST_MESSAGE_LIMIT=3 cap cannot be bypassed via direct API calls.
@@ -17036,12 +17099,9 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
             return ''
           }
         }
-        // Pre-compiled regex matchers for natural language detection
+        // Regex matchers for conditional sources with unique content not in bibles
+        // UI/sound/animation/NPC now handled by bible keyword selection
         const msg = message.toLowerCase()
-        const matchUI = /\b(gui|ui|hud|menu|button|shop|inventory|health\s?bar|scoreboard|leaderboard|dialog|notification|screen|frame|on\s?(my\s?)?screen|display|show\s?(me|on|the)|pop\s?up|overlay|interface|prompt|tooltip|counter|timer|countdown|progress\s?bar|loading|lobby\s?screen|start\s?screen|death\s?screen|win\s?screen|game\s?over|main\s?menu|pause\s?menu|settings?\s?menu|title\s?screen|dashboard|stats?\s?(on|display)|coins?\s?(on|display|show|counter)|money\s?(on|display|show)|xp\s?(bar|display|show)|level\s?(display|show)|minimap|crosshair|hotbar|action\s?bar|ability\s?bar|skill\s?tree|upgrade\s?(menu|screen|ui)|crafting\s?(menu|screen|ui)|trading\s?(menu|screen|ui)|chat\s?(box|window)|popup|modal|tab|slot|icon|badge|nameplate|overhead|floating\s?text|damage\s?number|kill\s?feed|announcement|banner|toast|alert|loading\s?screen|quest\s?(log|tracker|list)|mission\s?(tracker|log)|objective|reward\s?(screen|popup)|loot|backpack|toolbar|dropdown|slider|toggle|scroll|navigation)\b/i.test(msg)
-        const matchSound = /\b(sound|audio|music|sfx|ambient|footstep|voice|hear|listen|volume|play\s?(a\s?)?sound|song|noise|echo|reverb|explosion|gunshot|whoosh|splash|thunder|rain\s?sound|wind\s?sound|engine\s?sound|horror\s?sound|scary\s?sound)\b/i.test(msg)
-        const matchAnim = /\b(animat|tween|motion|spin|rotate|bob|sway|cutscene|cinematic|camera\s?(shake|move|pan)|door\s?(open|close)|elevator|platform\s?move|slide|fade|bounce|spring|easing|lerp|moving|animated|motor6d|keyframe)\b/i.test(msg)
-        const matchNPC = /\b(npc|enemy|enemies|mob|boss|monster|creature|zombie|guard|villager|merchant|shopkeeper|quest\s?giver|follower|companion|patrol|wander|chase|pathfind|behavior|state\s?machine|dialogue|conversation|talk\s?to|spawn\s?(enemy|npc|mob|wave)|wave\s?system|attack\s?pattern|hostile|turret|sentry)\b/i.test(msg)
         const matchMobile = /\b(mobile|phone|touch|tablet|joystick|swipe|pinch|tap|gesture|on\s?(my\s?)?(phone|mobile|tablet)|mobile\s?(controls?|button|ui|game)|small\s?screen|gamepad|console\s?controls?|cross\s?platform|safe\s?area)\b/i.test(msg)
         const matchWater = /\b(water|swim|ocean|sea|lake|river|pond|pool|underwater|diving|boat|ship|sail|float|buoyan|drown|wave|waterfall|fountain|splash|fish|fishing|submarine|beach|shore|dock|canal|stream|moat|swamp|lagoon)\b/i.test(msg)
 
@@ -17057,23 +17117,17 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         }
         const taskType: BuildTaskType = intentToTaskType[intent] || 'building'
 
-        // Priority-ordered knowledge sources: core first, specialized last
+        // Priority-ordered knowledge sources: unique value only, no duplicates.
+        // Redundant sources (devforum, scripting, gamedesign, mastery, ui, sound, animation, npc)
+        // are SUPERSEDED by the 33-section bible system via selectRelevantKnowledge().
         const sources: Array<{ name: string; get: () => string }> = [
           { name: 'modifiers', get: () => modifiersToInstructions(extractModifiers(message)) },
           { name: 'focused', get: () => buildFocusedPrompt(message) },
           { name: 'roblox', get: () => buildRobloxContext(message) },
           { name: 'codegraph', get: () => formatGraphPrompt(message) },
-          // Bible knowledge — 24 specialized knowledge bibles, smart-selected by keyword relevance
+          // Bible knowledge — 33+ specialized sections, smart-selected by keyword + task type
           { name: 'bibles', get: () => selectRelevantKnowledge(message, taskType) },
-          { name: 'devforum', get: () => getRelevantBuildingKnowledge(message) },
-          { name: 'scripting', get: () => getRelevantScriptingKnowledge(message) },
-          { name: 'gamedesign', get: () => getRelevantGameDesign(message) },
-          { name: 'mastery', get: () => getRelevantBuildingMastery(message) },
-          // Conditional sources — only fetch if keywords match
-          ...(matchUI ? [{ name: 'ui', get: () => getRelevantUIKnowledge(message) }] : []),
-          ...(matchSound ? [{ name: 'sound', get: () => getRelevantSoundKnowledge(message) }] : []),
-          ...(matchAnim ? [{ name: 'animation', get: () => getRelevantAnimationKnowledge(message) }] : []),
-          ...(matchNPC ? [{ name: 'npc', get: () => getRelevantNPCKnowledge(message) }] : []),
+          // Conditional: unique content not yet in bibles
           ...(matchMobile ? [{ name: 'mobile', get: () => getRelevantMobileControlsKnowledge(message) }] : []),
           ...(matchWater ? [{ name: 'water', get: () => getRelevantWaterKnowledge(message) }] : []),
         ]
