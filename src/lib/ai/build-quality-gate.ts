@@ -62,6 +62,25 @@ function hasPointLight(code: string): boolean {
 // Main Quality Gate
 // ---------------------------------------------------------------------------
 
+/**
+ * Detect how ambitious the user's request is and return expected minimum parts.
+ */
+export function getExpectedMinParts(prompt: string, intent: string): number {
+  if (['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace', 'script'].includes(intent)) return 0
+  const lower = prompt.toLowerCase()
+
+  // Scale keywords → higher minimums
+  if (/\b(massive|huge|enormous|gigantic|epic|mega|grand|sprawling|expansive|palace|mansion|skyscraper|stadium|cathedral|fortress|compound|campus|resort|complex)\b/i.test(lower)) return 60
+  if (/\b(large|big|detailed|intricate|multi.?story|multi.?room|two.?story|three.?story|full|complete|realistic|professional)\b/i.test(lower)) return 40
+  if (/\b(small|tiny|little|simple|basic|quick|mini|starter)\b/i.test(lower)) return 12
+  // Building types that inherently need more parts
+  if (/\b(hotel|hospital|school|airport|mall|castle|mansion|warehouse|factory|office\s?building|apartment)\b/i.test(lower)) return 40
+  if (/\b(house|cabin|cottage|shop|restaurant|cafe|bar|church)\b/i.test(lower)) return 25
+  if (/\b(tree|bench|lamp|sign|table|chair|fence|rock|bush)\b/i.test(lower)) return 8
+
+  return 15 // default minimum
+}
+
 export function runQualityGate(code: string, intent: string): QualityGateResult {
   const fixes: string[] = []
   let fixed = code
@@ -114,7 +133,7 @@ _autoLight.Parent = m:FindFirstChild("Floor") or m:GetChildren()[1]
   // 4. Count parts
   const partCount = countParts(fixed)
 
-  // 5. Check minimums for build intent
+  // 5. Check minimums for build intent (scale-aware)
   const isBuild = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace', 'script'].includes(intent)
   const passedGate = !isBuild || partCount >= 15
 

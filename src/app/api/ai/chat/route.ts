@@ -6330,7 +6330,9 @@ async function freeModelTwoPass(
   // ── INSTANT TEMPLATES: zero API calls, always works, <100ms ─────────────
   // The #1 reliability fix. Common builds return pre-written Luau code
   // so users NEVER see "models are busy" for basic requests.
-  if (isBuildIntent) {
+  // SKIP when user asks for something complex/large — let full AI pipeline handle it.
+  const wantsComplexBuild = /\b(massive|huge|giant|enormous|detailed|intricate|realistic|professional|multi|complex|full|complete|epic|grand|sprawling|big|large|with interior|furnished|insane|crazy|best|amazing|incredible|awesome|sick|advanced|perfect|proper|real|good)\b/i.test(message)
+  if (isBuildIntent && !wantsComplexBuild) {
     const instantTemplate = getInstantTemplate(message)
     if (instantTemplate) {
       console.log(`[InstantTemplate] HIT for "${message}" → ${instantTemplate.name}`)
@@ -6653,8 +6655,30 @@ THEN output the COMPLETE Luau code inside \`\`\`lua fences.
 
 NEVER say "I built" or "I've built" — say "Here's what I'm setting up" or "Generating" or "Putting together".
 
-THE #1 RULE: YOUR CODE MUST ACTUALLY WORK WHEN PASTED INTO STUDIO.
-If the code errors, the user sees nothing. A working 15-part build is infinitely better than a broken 60-part build.
+=== CRITICAL: PART COUNT ENFORCEMENT ===
+Your code WILL BE REJECTED if it has too few parts. Minimums:
+- Props (tree, bench, lamp): 8+ parts
+- Furniture (table, bed, desk): 10+ parts
+- Small buildings (shed, booth): 20+ parts
+- Houses/shops: 40+ parts
+- Large buildings (hotel, school, hospital): 60+ parts
+- MASSIVE/HUGE/EPIC builds: 80+ parts
+- Full scenes/maps: 100+ parts
+
+USE FOR LOOPS to generate repeated elements efficiently:
+for i = 0, 5 do -- 6 windows
+  local win = Instance.new("Part") ...
+end
+
+A "massive hotel" with 10 parts WILL BE REJECTED. Generate 60-100+ parts.
+If the user says "massive", "huge", "large", "detailed" — DOUBLE your default part count.
+Every room needs walls + floor + ceiling + door + window + furniture + lighting.
+Every exterior needs foundation + walls + roof + windows + doors + trim + landscaping.
+
+THE #1 RULE: YOUR CODE MUST WORK AND HAVE ENOUGH DETAIL.
+Code must run without errors in Studio. But a 15-part stub is NOT acceptable — users expect DETAILED builds.
+Use FOR LOOPS to efficiently create many parts: one loop = 50+ parts from 3 lines of code.
+A house needs 80+ parts. A hotel needs 200+. A castle needs 150+. NEVER output fewer than the target.
 
 RULES FOR CODE:
 - Output ONLY Luau code inside the \`\`\`lua block
@@ -9531,16 +9555,59 @@ Minimum 40 parts for buildings, 8 for props. Use FOR LOOPS for repeated elements
     }
 
     // ── QUALITY GATE: auto-fix common AI mistakes before Studio ──────
+    // If build fails gate (too few parts), RETRY with enhanced prompt.
     if (luauCode && !isScriptIntent) {
       try {
-        const { runQualityGate } = await import('@/lib/ai/build-quality-gate')
+        const { runQualityGate, getExpectedMinParts } = await import('@/lib/ai/build-quality-gate')
         const gateResult = runQualityGate(luauCode, intent)
         luauCode = gateResult.code
         if (gateResult.fixes.length > 0) {
           console.log(`[QualityGate] Applied ${gateResult.fixes.length} fixes: ${gateResult.fixes.join(', ')}`)
         }
-        if (!gateResult.passedGate) {
-          console.warn(`[QualityGate] Build FAILED gate — only ${gateResult.partCount} parts`)
+        const expectedMin = getExpectedMinParts(message, intent)
+        const actualParts = gateResult.partCount
+        if (!gateResult.passedGate || actualParts < expectedMin) {
+          console.warn(`[QualityGate] Build INSUFFICIENT — ${actualParts} parts, expected ${expectedMin}+. RETRYING...`)
+
+          // Build a retry prompt that demands more parts
+          const retryPrompt = `CRITICAL RETRY: Your previous output only had ${actualParts} parts. The user asked for "${message}" which requires AT LEAST ${expectedMin} parts. This is a ${expectedMin >= 60 ? 'MASSIVE' : expectedMin >= 40 ? 'LARGE' : 'DETAILED'} build.
+
+REQUIREMENTS FOR THIS RETRY:
+- Generate AT LEAST ${expectedMin} parts using Instance.new("Part"), WedgePart, etc.
+- Include foundation, walls (all 4 sides), roof, doors, windows, interior rooms with furniture
+- Use loops for repeated elements (for i = 0, count do ... end)
+- Every wall needs windows. Every room needs furniture. Every exterior needs detail.
+- Use at least 6 different materials and 8 different colors
+- Include PointLights for interior/exterior lighting
+- Add a ground plane beneath the build
+- THIS MUST BE A REAL, DETAILED BUILD — not a placeholder.
+
+Here is your previous insufficient attempt for reference (DO NOT repeat this — build something much larger):
+${luauCode.slice(0, 1000)}...
+
+NOW GENERATE THE FULL ${expectedMin}+ PART BUILD for: "${message}"`
+
+          try {
+            const { callAI } = await import('@/lib/ai/provider')
+            const retrySystemPrompt = `You are a Roblox build generator. Output ONLY Luau code wrapped in \`\`\`lua fences. No explanations. Build detailed, multi-part Roblox models with proper CFrame positioning, materials, and colors. MINIMUM ${expectedMin} parts. Use loops for efficiency.`
+            const retryResponse = await callAI(retrySystemPrompt, [{ role: 'user' as const, content: retryPrompt }], { maxTokens: 16384, temperature: 0.7 })
+            if (retryResponse) {
+              // Extract code from retry response
+              const retryCodeMatch = retryResponse.match(/```(?:lua|luau)\s*\r?\n([\s\S]*?)```/)
+              if (retryCodeMatch?.[1]) {
+                const retryCode = retryCodeMatch[1].trim()
+                const retryGate = runQualityGate(retryCode, intent)
+                if (retryGate.partCount > actualParts) {
+                  console.log(`[QualityGate] Retry SUCCESS — ${retryGate.partCount} parts (was ${actualParts})`)
+                  luauCode = retryGate.code
+                } else {
+                  console.warn(`[QualityGate] Retry didn't improve (${retryGate.partCount} parts). Using original.`)
+                }
+              }
+            }
+          } catch (retryErr) {
+            console.warn('[QualityGate] Retry failed:', retryErr instanceof Error ? retryErr.message : retryErr)
+          }
         }
       } catch (gateErr) {
         console.warn('[QualityGate] Non-blocking error:', gateErr instanceof Error ? gateErr.message : gateErr)
