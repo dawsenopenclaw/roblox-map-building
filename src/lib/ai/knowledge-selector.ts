@@ -29,6 +29,17 @@ import {
 import { getKnowledgeForTaskType } from './deep-game-knowledge'
 import type { BuildTaskType } from './build-planner'
 
+// ── Bible Imports (9 existing) ──────────────────────────────────────────────
+import { VFX_FIRE, VFX_WATER, VFX_MAGIC, VFX_COMBAT, VFX_NATURE, VFX_MECHANICAL, VFX_UI_FEEDBACK, VFX_BEAMS_TRAILS } from './vfx-particle-bible'
+import { UI_UX_BIBLE } from './ui-ux-bible'
+import { SOUND_MUSIC_BIBLE } from './sound-music-bible'
+import { TERRAIN_LANDSCAPE_BIBLE } from './terrain-landscape-bible'
+import { GAME_ECONOMY_BIBLE } from './game-economy-bible'
+import { NPC_CHARACTER_BIBLE } from './npc-character-bible'
+import { INTERIOR_DESIGN_BIBLE } from './interior-design-bible'
+import { FURNITURE_LIVING } from './furniture-props-bible'
+import { ANIM_TWEEN_RECIPES, ANIM_EASING } from './animation-bible'
+
 // ── Knowledge Section Registry ───────────────────────────────────────────────
 
 interface KnowledgeSection {
@@ -141,6 +152,62 @@ const SECTIONS: KnowledgeSection[] = [
     getter: getEffectRecipes,
     maxChars: 4000,
   },
+
+  // ── Bible Knowledge Sections ────────────────────────────────────────────────
+  {
+    id: 'vfx-particle-bible',
+    keywords: ['fire', 'water', 'magic', 'combat', 'vfx', 'particle', 'emitter', 'beam', 'trail', 'nature', 'mechanical', 'sparkle', 'explosion', 'flame', 'smoke', 'rain', 'snow', 'lightning', 'spell', 'aura', 'glow', 'muzzle flash', 'impact'],
+    getter: () => VFX_FIRE + '\n' + VFX_WATER + '\n' + VFX_MAGIC + '\n' + VFX_COMBAT + '\n' + VFX_NATURE + '\n' + VFX_MECHANICAL + '\n' + VFX_UI_FEEDBACK + '\n' + VFX_BEAMS_TRAILS,
+    maxChars: 6000,
+  },
+  {
+    id: 'ui-ux-bible',
+    keywords: ['gui', 'menu', 'button', 'hud', 'screen gui', 'frame', 'udim2', 'textlabel', 'imagelabel', 'scrollingframe', 'layout', 'shop menu', 'inventory ui', 'health bar', 'hotbar', 'dialog', 'modal', 'settings menu', 'leaderboard', 'notification'],
+    getter: () => UI_UX_BIBLE,
+    maxChars: 6000,
+  },
+  {
+    id: 'sound-music-bible',
+    keywords: ['sound', 'audio', 'music', 'sfx', 'ambient', 'footstep', 'soundtrack', 'spatial audio', '3d sound', 'reverb', 'equalizer', 'volume', 'fade', 'loop', 'jingle', 'background music', 'sound effect', 'audio group'],
+    getter: () => SOUND_MUSIC_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'terrain-landscape-bible',
+    keywords: ['terrain', 'biome', 'landscape', 'voxel', 'grass', 'sand', 'rock', 'water terrain', 'mountain', 'valley', 'cliff', 'river', 'lake', 'ocean', 'forest', 'desert', 'snow', 'jungle', 'swamp', 'volcano', 'island', 'cave', 'path', 'road', 'waterfall', 'creek'],
+    getter: () => TERRAIN_LANDSCAPE_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'game-economy-bible',
+    keywords: ['economy', 'currency', 'coin', 'gem', 'gold', 'shop', 'store', 'buy', 'sell', 'price', 'upgrade', 'rebirth', 'prestige', 'multiplier', 'income', 'earning', 'loot', 'drop rate', 'rarity', 'gacha', 'crate', 'reward', 'daily reward'],
+    getter: () => GAME_ECONOMY_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'npc-character-bible',
+    keywords: ['npc', 'character', 'enemy', 'mob', 'boss', 'pet', 'companion', 'merchant', 'guard', 'villager', 'humanoid', 'rig', 'r15', 'r6', 'pathfinding', 'patrol', 'waypoint', 'dialog', 'quest giver', 'spawn', 'wave', 'aggro', 'behavior tree'],
+    getter: () => NPC_CHARACTER_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'interior-design-bible',
+    keywords: ['interior', 'room', 'furniture', 'bedroom', 'kitchen', 'bathroom', 'living room', 'office', 'restaurant', 'hospital', 'school', 'library', 'hotel', 'apartment', 'indoor', 'ceiling', 'floor tile', 'wall decor', 'carpet', 'curtain', 'lamp', 'couch', 'table', 'chair', 'shelf'],
+    getter: () => INTERIOR_DESIGN_BIBLE,
+    maxChars: 5000,
+  },
+  {
+    id: 'furniture-props-bible',
+    keywords: ['furniture', 'chair', 'table', 'bed', 'desk', 'sofa', 'bookshelf', 'lamp', 'dresser', 'cabinet', 'counter', 'stool', 'bench', 'couch', 'nightstand', 'wardrobe', 'tv', 'refrigerator', 'stove', 'prop', 'decoration'],
+    getter: () => FURNITURE_LIVING,
+    maxChars: 4000,
+  },
+  {
+    id: 'animation-bible',
+    keywords: ['animation', 'tween', 'tweenservice', 'easing', 'lerp', 'motion', 'camera animation', 'door animation', 'ui animation', 'bounce', 'slide', 'fade', 'spin', 'shake', 'typewriter', 'countdown'],
+    getter: () => ANIM_TWEEN_RECIPES + '\n' + ANIM_EASING,
+    maxChars: 4000,
+  },
 ]
 
 // ── Main Selector ────────────────────────────────────────────────────────────
@@ -172,7 +239,14 @@ export function selectRelevantKnowledge(taskPrompt: string, taskType: BuildTaskT
     if (taskType === 'lighting' && section.id === 'visual-effects') score += 3
     if (taskType === 'audio' && section.id === 'sound-design') score += 3
     if (taskType === 'economy' && section.id === 'game-economy') score += 3
-    if (taskType === 'prop' && ['building-anatomy', 'building-techniques'].includes(section.id)) score += 1
+    if (taskType === 'prop' && ['building-anatomy', 'building-techniques', 'furniture-props-bible'].includes(section.id)) score += 1
+    if (taskType === 'lighting' && section.id === 'vfx-particle-bible') score += 2
+    if (taskType === 'audio' && section.id === 'sound-music-bible') score += 2
+    if (taskType === 'terrain' && section.id === 'terrain-landscape-bible') score += 2
+    if (taskType === 'economy' && section.id === 'game-economy-bible') score += 2
+    if (taskType === 'npc' && section.id === 'npc-character-bible') score += 2
+    if (taskType === 'building' && ['interior-design-bible', 'furniture-props-bible'].includes(section.id)) score += 1
+    if (taskType === 'ui' && section.id === 'ui-ux-bible') score += 2
 
     return { section, score }
   })

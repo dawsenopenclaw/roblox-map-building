@@ -1068,7 +1068,273 @@ export function formatEnhancedPlanContext(plan: EnhancedPrompt): string {
   lines.push('')
   lines.push('IMPORTANT: The sections above are your INTERNAL blueprint. Do NOT show them to the user. Instead, describe the build in 3-5 casual sentences — paint the vibe, not the spec sheet. Then output the Luau code.')
   lines.push('REMEMBER: Use P()/W()/Cyl()/Ball() helpers. Use FOR loops for repeated elements. NEVER use SmoothPlastic. Hit the part target.')
+
+  // ── v4: Prompt expansion templates, blueprint injection, reference games ──
+
+  const expanded = expandPromptTemplate(plan.originalPrompt)
+  if (expanded) {
+    lines.push('')
+    lines.push('=== EXPANDED PROMPT SPECIFICATION ===')
+    lines.push('The user\'s prompt matched a known building type. Use this detailed spec as your build guide:')
+    lines.push(expanded)
+    lines.push('=== END EXPANDED SPEC ===')
+  }
+
+  const blueprintCtx = injectBlueprintContext(plan.originalPrompt)
+  if (blueprintCtx) {
+    lines.push('')
+    lines.push(blueprintCtx)
+  }
+
+  const refGame = injectReferenceGameContext(plan.originalPrompt)
+  if (refGame) {
+    lines.push('')
+    lines.push('=== REFERENCE GAME CONTEXT ===')
+    lines.push('This prompt matches a known game genre. Reference this for scripting patterns and structure:')
+    lines.push(refGame)
+    lines.push('=== END REFERENCE ===')
+  }
+
   lines.push('[/ARCHITECT_BLUEPRINT]')
 
   return lines.join('\n')
+}
+
+// ─── Prompt expansion templates ──────────────────────────────────────────────
+
+/**
+ * Checks if a raw prompt matches a common building/structure type and returns
+ * a MUCH more detailed expanded specification. Returns null if no match.
+ * Use this to give the AI very precise construction details for known types.
+ */
+export function expandPromptTemplate(rawPrompt: string): string | null {
+  const lower = rawPrompt.toLowerCase()
+
+  // Helper: check if any keyword appears in the prompt
+  const has = (...words: string[]) => words.some(w => lower.includes(w))
+
+  // ── RESIDENTIAL ──
+
+  if (has('house', 'home', 'suburb') && !has('tree', 'house') && !has('store')) {
+    return `Build a two-story suburban house. EXTERIOR: WoodPlanks siding walls (Color3.fromRGB(220,200,175)), Slate gable roof with 0.5-stud overhang (Color3.fromRGB(80,75,70)), 6 glass windows (2x3 each, Glass transparency 0.25, SpotLight behind Color 255,240,200 Brightness 0.8), front door (Wood Color3.fromRGB(100,60,30) with small knob Cyl), brick chimney on right side (Brick Color3.fromRGB(160,100,80)), rain gutters along roof edge (thin Metal parts), front porch with 4 Cyl columns (Wood), concrete front steps (3 steps Concrete 160,160,160). INTERIOR: living room (couch = 3 Parts Fabric 140,90,70, TV = flat black Part with Neon screen, coffee table = WoodPlanks), kitchen (counter L-shape WoodPlanks, stove = Metal box + Neon burners, fridge = tall white Metal Part), bedroom (bed = frame Wood + mattress Fabric 200,200,220, dresser 3 drawers, bedside lamp PointLight warm), bathroom (toilet Cyl+Box white, sink Box white, tub long Box), wooden staircase connecting floors (10 steps = loop, Wood WoodPlanks). LANDSCAPING: grass yard (Terrain FillBlock Grass), stone path to door (Cobblestone alternating tiles via loop), 2 round bushes (Ball Parts Grass 70,130,60), mailbox (WoodPlanks box + Cyl post), white picket fence perimeter (loop, Wood posts + horizontal rails). LIGHTING: warm PointLights (Color3.fromRGB(255,220,180) Brightness 0.6 Range 20) in every room, porch SpotLight, Atmosphere (Density 0.25, Color 200,210,220), Bloom (Intensity 0.3). Materials: WoodPlanks walls, Slate roof, Glass windows, Brick chimney, Concrete foundation. Minimum 80 parts.`
+  }
+
+  if (has('castle', 'fortress', 'medieval keep')) {
+    return `Build a medieval castle with: WALLS: 4 thick outer walls (Cobblestone Color3.fromRGB(130,125,120) 40x12x3 each), battlement crenellations via loop (alternating merlons 2x3x2 and gaps 2x3x1, 10 per wall side), wall-walk platform behind battlements. TOWERS: 4 corner towers (Cyl 5 stud radius, 16 studs tall, same Cobblestone), cone roofs on each (WedgeParts in octagonal arrangement, Slate 80,75,70), arrow-slit windows on each tower level (loop, small Glass openings). GATE: main gatehouse front-center, portcullis (Metal grid of Cyl bars, dark gray Color3.fromRGB(50,50,55)), drawbridge (Wood planks over moat, hinged look). MOAT: blue Glass water ring around base (Glass transparency 0.4 Color3.fromRGB(60,100,160)). COURTYARD: inner courtyard 30x30, central stone fountain (Cyl base + Cyl bowl + Cyl jet Part white), stone path to keep. KEEP: central 3-story tower building (Cobblestone 14x28x14), Slate roof, arched entrance. DETAILS: wall-mounted iron torches every 8 studs via loop (PointLight warm Color3.fromRGB(255,180,80) Range 15 Brightness 0.7), flying banner Parts on each tower top (Fabric red+gold), stone steps inside towers (loop). LIGHTING: ClockTime 14, dark stone atmosphere (Density 0.3 Color 160,165,170), Bloom (0.2). Minimum 100 parts.`
+  }
+
+  if (has('tycoon')) {
+    return `Build a tycoon starter plot with: BASE PLOT: flat concrete platform 60x60 studs (Concrete Color3.fromRGB(100,100,105)), bright boundary edge line (Neon Color3.fromRGB(50,200,255) 0.3 stud wide border via loop). COIN DROPPER: machine at back of plot (Metal box 4x6x4, conveyor belt Part on top = DiamondPlate, coin Parts spawning = small Cyl gold Color3.fromRGB(255,200,50), collection bin at end). UPGRADE BUTTONS: 5 ground-level pads in a row (Neon parts, each different color, SurfaceGui price label, ProximityPrompt "Buy" with cost icon), spacing 8 studs apart via loop. FACTORY SHELL (unlocks at upgrade 1): simple building facade (Metal walls, Glass windows, roll-up door frame), conveyor belt inside running along floor. STORAGE CONTAINER (upgrade 2): Metal container 8x4x4 at side of plot. WALLS: 4 plot boundary walls that unlock progressively (thin invisible Parts that become visible with Neon trim). AUTO-COLLECTOR (upgrade 3): floor vacuum pad (Neon green circle), income BillboardGui above it. REBIRTH PORTAL: at far end, glowing ring (Neon Cyl outline, ParticleEmitter sparkles, SurfaceGui "REBIRTH x2 income"). LIGHTING: Neon accents on all interactive parts, Atmosphere (Density 0.2), Bloom (Intensity 0.4, Size 30). Minimum 60 parts.`
+  }
+
+  if (has('obby', 'obstacle course')) {
+    return `Build an obstacle course (obby) with: START PLATFORM: large safe spawn platform (Concrete 20x2x20 bright Color3.fromRGB(80,160,80)), checkpoint sign SurfaceGui "START", welcome archway. SECTION 1 - GAPS: 8 jumping platforms (Neon + Concrete, varying sizes 4x1x4 to 2x1x2, increasing gaps from 4 to 8 studs, heights vary +2 studs each). SECTION 2 - SPINNER: horizontal spinning cylinder (Cyl 16 stud long, Neon red, script rotates CFrame at 120 deg/s), platforms to jump to on each side. SECTION 3 - DISAPPEARING: 6 platforms on timer (SurfaceGui countdown, TweenService transparency 0→1 loop, Concrete Color3.fromRGB(200,80,80)). SECTION 4 - LAVA FLOOR: narrow path over lava (Neon orange floor = kill brick, platforms 2 studs wide across, zigzag layout). SECTION 5 - TRUSS CLIMB: tall vertical truss (Truss Part 2x20x2) leading to next section, small landing at top. SECTION 6 - CONVEYOR: conveyor belt working against player (DiamondPlate, velocity -20 via BodyVelocity), must sprint. SECTION 7 - KILLBRICKS: alternating safe/kill checkered floor (loop, safe = Concrete green, kill = Neon red). FINISH: raised podium (Marble white), "FINISH" Neon text SurfaceGui, confetti ParticleEmitter (multi-color burst). CHECKPOINTS: flag Parts every 3 sections (loop, Color3 gold Neon). LIGHTING: colorful Bloom, bright ClockTime 14. Minimum 70 parts.`
+  }
+
+  if (has('cafe', 'coffee shop', 'coffeehouse')) {
+    return `Build a cozy cafe with: EXTERIOR: brick storefront (Brick Color3.fromRGB(160,110,80) 20x12x16 building), striped fabric awning over window (Fabric alternating brown/cream via loop), large display window (Glass transparency 0.2 with warm SpotLight glow Color3.fromRGB(255,230,190)), wooden front door with small bell Part overhead (Bell = Cyl gold), hanging sign SurfaceGui "CAFE" with coffee cup icon above door, window box with flower Parts (small colored Balls), outdoor bistro table + 2 chairs (Wood WoodPlanks). INTERIOR: service counter L-shape (WoodPlanks Color3.fromRGB(130,90,55) with Glass front), espresso machine (Metal box + Cyl spouts + Neon buttons), pastry display case (Glass box with small food Parts inside), cash register (Metal box + Neon screen SurfaceGui), menu chalkboard SurfaceGui on wall. SEATING AREA: 4 tables (round WoodPlanks) each with 2-4 chairs (Wood with Fabric seat cushions Color3.fromRGB(120,70,50)), hanging pendant lamps above each table (PointLight Color3.fromRGB(255,220,160) Brightness 0.5 Range 12), bookshelf on one wall (WoodPlanks shelves with small Part books). WALLS/FLOOR: exposed brick accent wall (Brick Color3.fromRGB(160,100,70)), WoodPlanks floor (warm brown Color3.fromRGB(140,90,50)), ceiling beams (WoodPlanks dark). LIGHTING: very warm atmosphere, Bloom Intensity 0.4, ColorCorrection TintColor (255,245,225). Minimum 75 parts.`
+  }
+
+  if (has('school', 'classroom', 'elementary') && !has('fish')) {
+    return `Build a school building with: EXTERIOR: red brick facade (Brick Color3.fromRGB(180,80,70) 50x14x30), flat roof with rooftop HVAC boxes (Metal gray), main entrance double doors (dark Wood with Glass panels), concrete steps (3 steps, loop), 12 classroom windows in 2 rows of 6 via loop (Glass transparency 0.25, SpotLight behind each, WoodPlanks frames), American flag on metal pole (Fabric red/white/blue layers), "SCHOOL" SurfaceGui sign above entrance, concrete foundation border (Concrete Color3.fromRGB(160,160,165)). CLASSROOMS (2): each room has rows of 5 desks (WoodPlanks desktop + Metal legs via inner loop), teacher's desk at front (larger WoodPlanks), chalkboard SurfaceGui on wall (dark green Part), globe prop (Ball Neon), bookshelf on side wall. HALLWAY: connecting hallway (Concrete floor, Metal locker row both sides via loop 10 lockers each, ceiling fluorescent lights = white flat Parts via loop). GYM BUILDING: attached box structure (Concrete 30x16x20), basketball hoop pair (Metal pole + Cyl ring), hardwood floor (WoodPlanks). CAFETERIA AREA: long tables with attached bench seats (WoodPlanks, Metal legs, 3 tables via loop), lunch counter at one end. EXTERIOR: playground with swing set (Metal frame + Fabric seat chains), slide (WedgePart Neon yellow), trees via loop (Cyl + Ball canopy). LIGHTING: bright fluorescent interior (white SpotLights), Atmosphere Density 0.2. Minimum 90 parts.`
+  }
+
+  if (has('hospital', 'clinic', 'medical center')) {
+    return `Build a hospital with: EXTERIOR: white concrete building (Concrete Color3.fromRGB(240,240,245) 50x18x35 main block), large red cross sign (Neon red Parts mounted on front), 3 floors of windows via loop (pale blue Glass transparency 0.3, each with metal frame), main entrance automatic door frame (Metal), "EMERGENCY" red awning on side entrance (Fabric red Color3.fromRGB(200,30,30)), concrete ramp + steps, flagpole with flag, parking lot stripes via loop. LOBBY: reception desk (white Marble counter, Metal frame), waiting chairs in rows (Metal legs + Fabric seat Color3.fromRGB(100,140,200) via loop x6), wall-mounted TV Part (flat black SurfaceGui), tiled floor (Concrete white + gray alternating via loop), overhead fluorescent lights (white flat Parts via loop). EXAM ROOM: exam table (white Metal + Fabric), wall equipment panel SurfaceGui, privacy curtain (thin Fabric Part), sink (white Ceramic Metal box). ER BAY: gurney (Metal frame + white Fabric), IV stand (thin Cyl Metal), monitor Part (SurfaceGui vitals). ROOFTOP: helipad (Concrete circle with H marking = flat Neon yellow Parts), rooftop AC units (Metal boxes), safety railing loop. AMBULANCE: simple vehicle parked outside (white Metal body, red Neon stripe, Cyl wheels). LIGHTING: clinical white interior lights, exterior Atmosphere Density 0.2, Bloom 0.2. Minimum 85 parts.`
+  }
+
+  if (has('police station', 'police') && has('station')) {
+    return `Build a police station with: EXTERIOR: gray concrete building (Concrete Color3.fromRGB(150,150,160) 40x12x30), blue accent horizontal stripe (Neon Color3.fromRGB(30,80,200) runs along facade), "POLICE" SurfaceGui above main entrance, flagpole, security camera Props on corners (small Cyl + box), parking lot with 2 police car models (white Metal body + blue Neon light bar + Cyl wheels). LOBBY: front desk (heavy Concrete counter), waiting bench (Metal + Fabric), cork board SurfaceGui on wall (wanted posters), tiled floor alternating loop, fluorescent ceiling lights loop. HOLDING CELLS: row of 3 cells (thick Metal bar door via loop of Cyl bars, Concrete walls, metal bench inside each, barred window). OFFICES: 4 desks (WoodPlanks) with computer screens (SurfaceGui flat Part), filing cabinets (Metal), partition walls between desks. ARMORY: locked metal door, gun rack (Metal frame), equipment lockers (Metal boxes via loop). BREAK ROOM: small table + chairs, coffee machine, fridge. GARAGE: attached 2-car garage bay (Concrete floor, Metal roll-up door frame, police car inside). RADIO TOWER: Metal tower on roof (Cyl mast + cross arms + Neon blink light). LIGHTING: interior white fluorescents, exterior spotlight on entrance, Atmosphere Density 0.25. Minimum 80 parts.`
+  }
+
+  if (has('fire station', 'firehouse')) {
+    return `Build a fire station with: EXTERIOR: classic red brick building (Brick Color3.fromRGB(190,60,50) 40x14x30), large white bay doors (3 bays, white Metal roll-up frames), "FIRE STATION" SurfaceGui sign on facade, brass pole visible inside (Cyl gold Color3.fromRGB(200,170,80) running from 2nd floor to bay), American flag + department flag on poles. GARAGE BAYS: 3 large bays (Concrete floor Color3.fromRGB(100,100,105)), fire truck model in center bay (red Metal body, Cyl wheels, ladder on top = Metal rungs via loop, Neon emergency lights), hose racks on wall (Cyl coiled Parts orange), equipment wall with axes, shovels (simple Parts). LIVING QUARTERS (2nd floor): kitchen (counter + stove + fridge WoodPlanks/Metal), dining table (Wood 8-seater, chairs Fabric), bunk beds (Wood frame + Fabric mattress, 4 bunks via loop), TV room with couch (Fabric). TRAINING AREA (yard): concrete practice pad, metal training tower (3 stories Metal frame + ladder), practice hose connection (Cyl hydrant red). POLE BAY: brass Cyl pole (Color3.fromRGB(200,170,80)) with platform opening on each floor. EXTERIOR: driveway apron (Concrete), trees flanking building (Cyl + Ball loop x4), fire hydrant (red Cyl + cap). LIGHTING: warm living quarters (PointLight 255,220,180), bright bay lights (white SpotLight), Atmosphere Density 0.2. Minimum 85 parts.`
+  }
+
+  if (has('restaurant', 'diner', 'eatery') && !has('cafe')) {
+    return `Build a restaurant with: EXTERIOR: brick lower half (Brick Color3.fromRGB(160,100,80)) and WoodPlanks upper half facade (WoodPlanks Color3.fromRGB(180,150,120)), large front window (Glass transparency 0.2, warm SpotLight glow), fabric awning (Fabric burgundy Color3.fromRGB(120,30,50)), hanging sign SurfaceGui, wooden front door, outdoor seating (2 tables, 4 chairs each, WoodPlanks with Metal legs), flower pots flanking door (Cyl terracotta + Ball green). DINING AREA: 6 tables (round WoodPlanks, tablecloth = thin white Fabric Part on top), 4 chairs each (Wood frame + Fabric seat Color3.fromRGB(80,40,30) via loop), wall sconce lamps (PointLight warm Color3.fromRGB(255,220,160) Brightness 0.4 Range 10), framed art Parts on walls (flat Parts with SurfaceGui), hardwood floor (WoodPlanks alternating plank direction), wainscoting trim at half-wall height. BAR AREA: long bar counter (dark WoodPlanks + Granite top), 6 bar stools (Cyl pedestal + Fabric seat via loop), shelves behind bar with bottle Parts (Cyl glass green/brown). KITCHEN (pass-through visible): stainless steel surfaces (Metal), grill/stove Parts, heat lamp over pass window. RESTROOMS: 2 doors labeled M/F SurfaceGui, tile floor (Concrete loop), sink + toilet per room. LIGHTING: warm mood interior, pendant lamps above tables (PointLight 255,200,150 Brightness 0.5 loop), candle Parts on tables (small Neon flame Parts), Bloom Intensity 0.35, ColorCorrection TintColor (255,240,220). Minimum 90 parts.`
+  }
+
+  if (has('apartment', 'apartment building', 'flats')) {
+    return `Build an apartment building with: EXTERIOR: 4-story concrete and brick building (Concrete Color3.fromRGB(200,195,190) main walls, Brick accent band Color3.fromRGB(160,110,80) at 1st floor), rows of balconies via loop (each balcony = WoodPlanks floor + Metal railing posts + horizontal rail), grid of windows via nested loop (4 floors x 6 units wide, Glass transparency 0.25, warm SpotLight behind each), main lobby entrance with Metal/Glass door, building number SurfaceGui above entrance, mailbox bank (12 small Metal boxes via loop). LOBBY: marble floor (Marble loop tiles), reception desk (Marble counter), elevator doors (Metal, 2 doors slide look), stairwell door. UNIT INTERIORS (show 1 sample unit): open plan living/kitchen (WoodPlanks floor), kitchen counter + fridge + stove (WoodPlanks/Metal), couch (Fabric gray) + TV (flat black SurfaceGui), bedroom (bed + dresser), bathroom (sink + toilet + tub). ROOF: accessible rooftop (Concrete), safety railing loop around perimeter, water tower (Cyl tank + Cyl supports), HVAC units (Metal boxes). EXTERIOR GROUNDS: concrete sidewalk, parking lot loop (white line stripes), trees via loop x4 (Cyl + Ball canopy), bike rack (Metal), dumpster enclosure (Concrete walls). LIGHTING: warm units (PointLight per unit window), lobby white fluorescents, exterior Atmosphere Density 0.25. Minimum 100 parts.`
+  }
+
+  if ((has('shop', 'store') || has('market')) && !has('stock')) {
+    return `Build a retail shop/store with: EXTERIOR: storefront (Brick Color3.fromRGB(175,120,90) 20x10x16), large display window (Glass transparency 0.15 with warm SpotLight), fabric awning in store color (Fabric Color3.fromRGB(50,100,160)), hanging sign above door (SurfaceGui store name), wooden door with bell prop, potted plants flanking entrance (Cyl terracotta + Ball Grass green), window decal SurfaceGui "OPEN". SALES FLOOR: product display shelves (4 WoodPlanks shelving units, 3 tiers each, small colored Part products on each shelf via loop), central product island display table (WoodPlanks), hanging clothing rack (Metal rod + Cyl hangers via loop if clothing store). COUNTER: checkout counter (WoodPlanks + Glass front display case), cash register (Metal + Neon SurfaceGui screen), credit card reader (small Metal Part), shelf behind counter with products. BACK ROOM: storage shelves (Metal industrial, boxes via loop), staff desk, back exit door. FITTING ROOM: 2 curtained booths (thin Fabric curtain Part + Metal rod). LIGHTING: bright retail lighting (white SpotLights in grid via loop), accent spotlights on display items (SpotLight Brightness 1.5), warm storefront window glow, Bloom Intensity 0.3. Minimum 70 parts.`
+  }
+
+  if (has('park') && !has('car') && !has('theme')) {
+    return `Build a public park with: TERRAIN: grass base (Terrain FillBlock Grass 100x1x100 Color3.fromRGB(90,160,75)), small hill mound (FillBall terrain). PATHS: cobblestone walking paths in X pattern (Cobblestone Color3.fromRGB(150,140,130) alternating tile via loop), brick border edging along paths (Brick Color3.fromRGB(160,100,80) thin border loop). FOUNTAIN: central fountain (Cyl base 8 stud Marble, Cyl bowl 6 stud Marble Color3.fromRGB(200,195,190), small Cyl center spout, water Part white Glass + ParticleEmitter water spray). TREES: 8 trees around perimeter via for loop (positions table, each = Cyl trunk Wood Color3.fromRGB(100,70,40) + 3 overlapping Ball canopies Grass varying greens). SEATING: 4 wooden benches along paths (WoodPlanks seat + back + Metal legs), 2 picnic tables (WoodPlanks). PLAYGROUND: swing set (Metal A-frame + Cyl top bar + 2 Fabric seat chains + seat), slide structure (Concrete platform + WedgePart slide Neon yellow + ladder rungs via loop). FLOWER BEDS: 4 flower beds (Pebble border, small colored Ball flower Parts clustered). LAMP POSTS: 6 along paths via for loop (Cyl Metal pole + box lamp head + PointLight Color3.fromRGB(255,220,180) Brightness 0.6 Range 20). FENCE: iron fence perimeter (Metal dark, vertical bar posts via loop + horizontal rails, gate entrance with archway). PARK SIGN: entrance sign SurfaceGui. LIGHTING: bright day, Atmosphere Density 0.2 Color (180,200,230), Bloom 0.3. Minimum 80 parts.`
+  }
+
+  if (has('gas station', 'petrol station', 'fuel station')) {
+    return `Build a gas station with: CANOPY: large flat-roof canopy over pumps (Metal white Color3.fromRGB(240,240,245) 30x5x20, supported by 4 Metal columns), "GAS" SurfaceGui sign mounted on canopy front, LED light strip under canopy edge (Neon white via loop). PUMPS: 3 pump islands (each island = Concrete base 2x0.5x1, pump machine = Metal box 1x4x0.5 with Neon price SurfaceGui, nozzle = small Cyl Parts, hose = thin Cyl), pump islands spaced 6 studs apart via loop. CONVENIENCE STORE: attached small building (Concrete Color3.fromRGB(240,240,245) 20x8x14), large window (Glass transparency 0.2 with SpotLight), glass door, refrigerator wall visible (Glass front, Neon blue interior light), counter + register, snack shelves (Metal shelves + small Parts). PARKING: concrete driveway (Concrete Color3.fromRGB(100,100,105) surrounding building), curb cuts, painted parking stripes (white flat Parts via loop). SIGNAGE: tall price sign pole (Cyl Metal + SurfaceGui price board), road sign at entrance. TRASH: outdoor trash can (Cyl dark Metal) + Recycle box. LIGHTING: bright overhead from canopy (white SpotLight pointing down per pump via loop), store interior warm, exterior Atmosphere Density 0.2, Bloom 0.3. Minimum 65 parts.`
+  }
+
+  if (has('library')) {
+    return `Build a library with: EXTERIOR: stone and brick building (Granite Color3.fromRGB(160,155,148) 40x12x30), neoclassical front columns (4 Cyl Marble Color3.fromRGB(230,225,220) tall, evenly spaced), wide stone steps (5 steps loop Granite), large arched window above entrance (Glass transparency 0.2 semicircle look), "LIBRARY" engraved SurfaceGui sign on facade, lamp posts flanking entrance (Metal + PointLight loop). MAIN READING ROOM: high ceiling (4 stud clear height), dark WoodPlanks floor, large tables with reading lamps (6 tables via loop, each WoodPlanks top + Metal legs + desk lamp PointLight warm), individual reading carrels along walls (WoodPlanks dividers + chair). BOOKSHELVES: tall shelving units lining walls (WoodPlanks 3 tiers, dark Color3.fromRGB(90,60,30) via loop x8), shelf-row dividers, small Part books of varying colors via inner loop. RECEPTION DESK: large curved wood counter (WoodPlanks Color3.fromRGB(100,65,35)), computer terminal SurfaceGui, return slot box, catalogue display. PERIODICAL SECTION: comfortable armchairs (Fabric warm brown + soft cushion Color3.fromRGB(150,100,70)), side tables with lamp. STUDY ROOMS: 2 small glass-walled rooms (Glass walls + Wood door). LIGHTING: warm reading light (PointLight Color3.fromRGB(255,230,190) Brightness 0.5 every table), ceiling pendant chandeliers (PointLight Brightness 0.4 Range 30), Bloom 0.3, ColorCorrection TintColor (255,245,225). Minimum 90 parts.`
+  }
+
+  if (has('church', 'chapel', 'cathedral')) {
+    return `Build a church with: EXTERIOR: stone Gothic facade (Granite Color3.fromRGB(170,165,158) 24x20x40 nave), pointed arch windows with stained glass look (Glass transparency 0.1 colored Parts = Neon blue/red/gold alternating via loop), tall bell tower on front-left (Granite 8x30x8), belfry with arched openings (4 sides, small arch frames), bell prop inside (Cyl bronze Color3.fromRGB(180,140,60)), cross on tower peak (2 Part Neon gold cross), double wooden front doors (dark Wood, ornate frame), stone steps 4 wide (loop), flying buttress Props on sides. NAVE INTERIOR: long central aisle (Marble floor Color3.fromRGB(230,225,215)), rows of wooden pews either side (WoodPlanks via nested loop x10 pairs), kneeling cushion Fabric per pew, columns along sides (Cyl Marble, loop). ALTAR AREA: raised platform (Marble), altar table (WoodPlanks + white Fabric cloth), cross centerpiece (Neon gold Parts), candle Parts (Cyl white + small Neon flame tip x6). ORGAN: pipe organ back wall (Metal pipes of varying height via loop, keyboard Part SurfaceGui). LIGHTING: colored Neon light shafts from stained glass (SpotLight behind each window, colored), chandelier (PointLight warm Color3.fromRGB(255,230,180) Brightness 0.4 hang center nave), Bloom Intensity 0.45, Atmosphere Density 0.3 Color (180,175,190). Minimum 100 parts.`
+  }
+
+  if (has('barn') && !has('dance')) {
+    return `Build a farm barn with: EXTERIOR: classic red barn (Brick Color3.fromRGB(180,50,50) 30x18x20), gambrel roof (WedgeParts + slope Parts, dark Wood Color3.fromRGB(90,55,30)), large double barn doors (center, Wood planks vertical, hinges = Metal cylinders), hayloft window (upper center, open square opening), weathervane on peak (Cyl post + Metal arrow + rooster Parts). INTERIOR (visible through doors): hay loft upper floor (WoodPlanks flooring, hay bale Props = Box Parts Fabric yellow Color3.fromRGB(220,180,80) stacked), ladder to loft (rungs via loop), wooden support posts (Cyl Wood Color3.fromRGB(100,65,30) x6 via loop). ANIMAL STALLS: 4 horse stalls (wooden partitions WoodPlanks, gate door on each, hay on floor), water trough (Wood box + Glass water surface). EQUIPMENT AREA: tractor model (Metal body + large Cyl wheels + Neon headlights), plow attachment, pitchfork/shovel Props (thin Cyl handles). SILO: attached cylindrical silo (Cyl Metal Color3.fromRGB(160,150,140) 8 stud radius 24 tall, cone top, metal hatch). FENCED PASTURE: wooden fence perimeter via loop (WoodPlanks horizontal rails + vertical posts), gate entrance. TERRAIN: FillBlock Grass base, muddy path to barn (Pebble/Sand). LIGHTING: hanging lanterns inside (PointLight warm Color3.fromRGB(255,200,130) Brightness 0.5 Range 18, Cyl lantern body), Atmosphere Density 0.3 Color (190,185,175), morning feel. Minimum 85 parts.`
+  }
+
+  if (has('lighthouse')) {
+    return `Build a lighthouse with: TOWER: cylindrical tower (Cyl Brick Color3.fromRGB(240,235,220) striped with red Brick Color3.fromRGB(200,50,50) bands every 5 studs alternating via loop, 4 stud radius, 40 studs tall), tapering slightly at top (slightly narrower radius at each band). LAMP ROOM: glass enclosure at top (Cyl Glass transparency 0.2 Color3.fromRGB(180,220,255), 4-5 stud radius, 4 tall), rotating Neon beam inside (SpotLight Neon Color3.fromRGB(255,255,200) Brightness 5 Range 200), lamp housing (Metal octagonal top above glass). GALLERY/BALCONY: wraparound walkway at lamp room base (WoodPlanks ring platform, Metal railing loop). SPIRAL STAIRCASE INSIDE: loop of ~20 Part steps winding up interior (WoodPlanks step + Metal handrail), positioned with math.sin/cos rotation. KEEPER'S COTTAGE: attached small stone cottage at base (Cobblestone Color3.fromRGB(150,145,138) 12x8x10), tiled roof (Slate), chimney (Brick), arched doorway, small windows Glass, flower garden border. DOCK: wooden dock extending to water (WoodPlanks planks via loop, Cyl pilings underneath via loop), moored small boat. TERRAIN: rocky cliff base (FillBall Terrain Stone, irregular rocks = Granite Parts), ocean water (FillBlock Water or blue Glass large Part). LIGHTING: animated rotating SpotLight, warm cottage PointLight, Atmosphere Density 0.3 ocean feel. Minimum 80 parts.`
+  }
+
+  if (has('prison', 'jail', 'penitentiary')) {
+    return `Build a prison with: PERIMETER WALLS: 4 tall concrete outer walls (Concrete Color3.fromRGB(150,148,145) 60x16x4 each), guard tower at each corner (square 6x12x6 Concrete box on top of wall section, Metal railing around top, searchlight SpotLight). MAIN BUILDING: 3-story concrete cellblock (Concrete Color3.fromRGB(140,138,135) 40x18x30), barred windows on each floor via loop (Metal bar Cyl grid in window opening). CELL BLOCK: interior corridor (Concrete floor), 2 rows of cells (metal bar doors per cell = Cyl bars loop, Concrete bunk beds inside each, toilet + sink white Parts, small barred window). GUARD STATION: elevated control room (Glass walls, SpotLight scanning, radio Parts). YARD: open concrete exercise yard (Concrete Color3.fromRGB(130,128,125) 40x1x40), basketball hoop (Metal pole + ring), bench seating around perimeter (Metal). ENTRANCE: main gatehouse (Concrete, double security door frame, guard booth). WATCHTOWERS: 4 perimeter towers (Concrete base Cyl, wooden platform top, searchlight SpotLight white Range 80 Brightness 2). RAZOR WIRE: Neon white thin wire Parts along wall tops via loop. LIGHTING: harsh overhead lights (white SpotLight grid via loop), searchlight animation, gray overcast atmosphere, Atmosphere Density 0.4 Color (130,130,140), ColorCorrection Saturation -0.2. Minimum 100 parts.`
+  }
+
+  if (has('space station')) {
+    return `Build a space station with: MAIN HABITAT MODULE: central Cyl tube (DiamondPlate Color3.fromRGB(180,182,190) 8 stud radius 30 long, horizontal), end caps on each side (flat Cyl discs). SIDE MODULES: 2 perpendicular habitat modules (Cyl DiamondPlate 6 stud radius 20 long) branching off main module via connector tunnels (smaller Cyl 3 stud radius 5 long = airlock nodes). SOLAR PANELS: 2 pairs of large flat solar array wings (DiamondPlate Color3.fromRGB(30,50,150) dark blue 20x0.3x8, supported by Cyl truss arms via loop, 4 panels per side). BRIDGE/COCKPIT MODULE: forward node (Metal sphere 8 stud Cyl, Neon windows Color3.fromRGB(0,180,255) on front, SurfaceGui control screens inside). AIRLOCK: external cylindrical hatch (Metal Cyl 3 stud radius, PointLight blue above it). DOCKING PORT: docking ring at one end (Neon ring outline, docking clamps = small Metal Parts via loop). EXTERIOR DETAILS: radiator fins (thin flat Metal Parts along hull via loop), antenna array (thin Cyl Parts + box receiver), thruster pods (Cyl blocks at corners with Neon blue ParticleEmitter). INTERIOR (one module): white curved walls Metal, Foil material floor, equipment rack SurfaceGui screens, 2 seat consoles (SurfaceGui), EVA suit lockers. LIGHTING: Neon edge strips on all module joints (Color3.fromRGB(0,160,255)), interior white SpotLights, no Atmosphere (space), stars backdrop (dark sky, no FillBlock). Minimum 80 parts.`
+  }
+
+  if (has('pirate ship') || (has('pirate') && has('ship'))) {
+    return `Build a pirate ship with: HULL: ship hull lower body (WedgeParts bow taper + flat sides, Wood Color3.fromRGB(100,65,30), 8x6x40 main body, curved bottom WedgeParts), barnacle detail Parts on lower hull (Pebble material small Parts). DECKS: 3 deck levels (flat WoodPlanks, dark Color3.fromRGB(110,75,40) each 8x1x36), railing posts via loop on each deck edge (thin Cyl Wood + horizontal rail). MASTS: 3 masts (tall Cyl Wood Color3.fromRGB(120,80,45) heights 30/35/30 studs), crow's nest on main mast (WoodPlanks circle platform + Cyl railing), rigging ropes (thin Cyl Parts diagonal connecting masts). SAILS: 3 main sails (Fabric Color3.fromRGB(235,225,200) billowed look via slight rotation, attached to horizontal Cyl yardarms), Jolly Roger flag (Fabric black Color3.fromRGB(20,20,20) + skull detail SurfaceGui). CAPTAIN'S CABIN: rear cabin structure (WoodPlanks Color3.fromRGB(120,80,40) 8x6x8), Glass stern windows with warm PointLight, door, interior table + captain's chair. CANNONS: 4 cannons per side via loop (Cyl dark Metal Color3.fromRGB(50,50,55) + 2-wheel carriage), cannon ports in hull sides. ANCHOR: Cyl chain links (loop) + anchor Part (Metal dark). BOW FIGUREHEAD: decorative carved Part WoodPlanks woman or monster at prow. BELOW DECK (visible if looking down): cargo hold with treasure chest Props (Metal + Fabric), barrel Props (Cyl WoodPlanks). LIGHTING: warm lantern PointLights on each mast (Color3.fromRGB(255,190,100) Brightness 0.5), ocean water FillBlock underneath, Atmosphere Density 0.3 oceanic. Minimum 90 parts.`
+  }
+
+  if (has('treehouse', 'tree house')) {
+    return `Build a treehouse with: MAIN TREE: massive oak trunk (Cyl Wood Color3.fromRGB(100,70,40) 6 stud radius 30 tall), 4 large branch Cyl Parts splitting from top (angles 30-45 degrees), exposed root Parts at base (WedgeParts angled outward), trunk bark detail WedgeParts. CANOPY: 7 overlapping Ball canopies (Grass material, varying greens Color3.fromRGB(60,130,55) to Color3.fromRGB(90,165,70), sizes 8-14 studs, clustered around upper branches). MAIN PLATFORM: treehouse floor (WoodPlanks Color3.fromRGB(140,100,60) 14x1x14, resting on branch with support brackets = Metal L-shapes), safety railing around edge (WoodPlanks posts via loop + horizontal rails). TREEHOUSE STRUCTURE: small cabin on platform (WoodPlanks walls 10x6x10, Thatch/WoodPlanks sloped roof, 2 windows Glass transparency 0.3, Dutch door wood). LADDER: rope ladder from ground to platform (Cyl post rungs via loop, thin side rails), or wooden ladder (WoodPlanks steps loop). ROPE BRIDGE: suspension bridge to second smaller platform (WoodPlanks plank steps via loop, Cyl rope rails sagging at center). SECOND PLATFORM: smaller observation deck (WoodPlanks 8x8), tire swing hanging from branch (Cyl tire black + Cyl rope). SLIDE: wooden slide from platform to ground (WedgePart WoodPlanks Color3.fromRGB(180,140,90) angled). INTERIOR: small sleeping loft inside cabin (Fabric mattress, WoodPlanks frame), window flower box, bunting decorations (small colored Fabric triangles loop). LIGHTING: warm lantern on platform (PointLight Color3.fromRGB(255,210,150) Range 15), Atmosphere Density 0.3 forest feel. Minimum 75 parts.`
+  }
+
+  if (has('underwater base', 'underwater lab', 'undersea')) {
+    return `Build an underwater base with: MAIN DOME: large hemisphere glass dome (Ball/Cyl Glass transparency 0.25 Color3.fromRGB(140,200,230) 20 stud radius), metal frame ribs on dome exterior (Metal dark bars via loop along dome surface). CONNECTOR TUNNELS: 3 cylindrical tunnels branching from main dome (Cyl Glass 4 stud radius transparency 0.3, Metal ribs), connecting to side modules. SIDE LABS: 3 smaller domes or Cyl modules (Glass + Metal, 10 stud radius), each with different interior = research lab (equipment Parts SurfaceGui), sleeping quarters (beds Fabric), control center (SurfaceGui screens). AIRLOCK: vertical cylindrical airlock shaft (Metal Cyl), inner + outer door frames (Metal rings), water fill/drain pipes (Cyl Metal). INTERIOR FLOORS: flat Metal/Concrete floors inside dome, blue ambient Neon lighting from floor (Neon strips along floor edge loop). OCEAN EXTERIOR: FillBlock Water/Glass large blue Part surrounding everything (Glass transparency 0.5 Color3.fromRGB(20,60,120) huge cube), ocean floor (Sand/Pebble Terrain), coral Props (Cyl + Ball Parts Neon pink/orange), fish ParticleEmitter (small white Parts slow drift), seaweed Parts (green WedgeParts swaying look). SUPPORT PILLARS: Metal support legs from dome base to ocean floor (Cyl Metal 2 stud radius via loop). EXTERIOR LIGHTS: green/teal Neon search lights pointing outward (SpotLight Color3.fromRGB(30,255,180) Range 40), SurfaceGui depth meter on exterior. LIGHTING: deep blue underwater atmosphere (ColorCorrection TintColor 100,150,220, Brightness -0.15), Bloom Intensity 0.5. Minimum 90 parts.`
+  }
+
+  if (has('wizard tower', 'mage tower', 'magic tower')) {
+    return `Build a wizard tower with: TOWER STRUCTURE: tall slim tower (Cobblestone Color3.fromRGB(90,85,100) 6 stud radius, 50 studs tall), slight taper at top, flying buttresses on lower third (WedgeParts Granite connecting to ground). EXTERIOR: moon/star motif carvings (flat Neon gold Color3.fromRGB(200,180,60) Parts embedded in wall, star shapes), arched wooden front door (dark Wood + iron knocker Cyl). SPIRAL FLOORS: 5 distinct levels (each 8-10 studs apart), spiral staircase connecting all (loop ~25 steps math.sin/cos CFrame). GROUND FLOOR: workshop (cauldron = Cyl Metal + Neon green bubbles Part + ParticleEmitter steam, workbench WoodPlanks with tool Parts, bookshelves round walls via loop). LEVEL 2 - LIBRARY: circular bookshelf (WoodPlanks shelves hugging curved wall via loop), large map/globe on table, rolling ladder (Cyl pole + rungs). LEVEL 3 - SLEEPING QUARTERS: round bed (Ball Fabric Color3.fromRGB(80,40,120)), constellation ceiling (Neon star Parts on ceiling via loop), telescope Part. LEVEL 4 - POTION LAB: Cyl flasks of different Neon colors (loop), shelf of ingredient jars, glowing crystal centerpiece (Ball Neon Color3.fromRGB(150,50,255) + PointLight). ROOFTOP: open parapet with Neon blue flame braziers (Cyl + ParticleEmitter blue fire), weather vane (Metal), owl perch (Wood). MAGICAL EFFECTS: ParticleEmitter sparkles throughout (Neon gold, slow rise), colored PointLights on each floor, crystal lights. LIGHTING: magical purple ambiance, Bloom Intensity 0.6 Size 40, ColorCorrection TintColor (180,150,220), Atmosphere Density 0.3. Minimum 85 parts.`
+  }
+
+  if (has('arena') || has('colosseum') || (has('stadium') && !has('sports'))) {
+    return `Build a combat arena/colosseum with: OUTER WALL: elliptical outer wall ring (Granite Color3.fromRGB(170,160,145) segmented via loop of Parts, 3 tiers of arched openings = small arch frame Parts via nested loop), overall 80x80 stud footprint. SEATING: tiered spectator seating in concentric rings (loop of WedgePart steps upward each row, Concrete Color3.fromRGB(160,155,148) seating Parts), crowd detail Props (small cylinder figures). ARENA FLOOR: sand fighting pit (Sand Color3.fromRGB(220,200,160) 40x0.5x40 ellipse), center drain grate (Metal grid). ENTRANCE TUNNELS: 2 dark tunnel archways opposite sides (Concrete/Stone, portcullis bars = Cyl Metal loop, SpotLight at tunnel exit). OBSTACLES: scattered stone pillar Props in arena (Cyl Granite, 4 of varying heights), crumbling wall section (Brick, irregular breakable look). LIGHTING RIGS: overhead wooden crane arms (Wood) with hanging torch basket Props (Cyl + PointLight orange Color3.fromRGB(255,160,60) Brightness 1 Range 25 via loop), dramatic downward SpotLights. CHAMPION'S PODIUM: raised stone dais on one end (Marble Color3.fromRGB(220,215,208)), throne chair (WoodPlanks + Fabric seat Color3.fromRGB(120,30,30)), trophy pedestal. SCOREBOARD: SurfaceGui billboard on arena wall. UNDERGROUND PASSAGE: below-ground tunnel (Concrete dark, cell doors). LIGHTING: dramatic ClockTime 15 sharp shadows, sand dust Atmosphere (Density 0.35 Color 200,190,170), Bloom 0.25, intense SpotLights. Minimum 100 parts.`
+  }
+
+  if (has('city') || has('downtown') || (has('town') && !has('ghost') && !has('old'))) {
+    return `Build a city block/town with: ROAD NETWORK: main street (Concrete Color3.fromRGB(80,80,85) 16 stud wide center, yellow center line Neon = flat loop, white edge lines, crosswalk stripes via loop), 2 side streets branching off. BUILDINGS (4 facades along street): building 1 = brick 3-story (Brick Color3.fromRGB(160,100,80), shop on ground floor, apartments above, windows via nested loop), building 2 = glass office tower (Metal + Glass), building 3 = restaurant (WoodPlanks facade, awning Fabric), building 4 = corner store (Brick smaller). SIDEWALKS: Concrete Color3.fromRGB(160,160,165) 6 stud wide both sides. STREET LAMPS: every 15 studs via loop (Cyl Metal pole 12 tall + box lamp head + PointLight Color3.fromRGB(255,230,190) Brightness 0.7 Range 25). STREET FURNITURE: fire hydrant (Cyl red loop x2), trash can (Cyl dark Metal loop x3), newspaper box (Metal box), bench x2 (Metal + WoodPlanks), bus stop shelter (Metal + Glass). VEHICLES: 3 parked car models along curb (simple Metal body + Cyl wheels, varying colors). CENTRAL SQUARE: small plaza 30x30 (Marble tile loop, central statue/monument, fountain). TREES: street trees every 20 studs via loop (Cyl trunk + Ball canopy x6). LIGHTING: city night feel (ClockTime 21, all street lamps on, neon signs Neon Parts on buildings, Atmosphere Density 0.4 Color 60,70,100), Bloom Intensity 0.5. Minimum 120 parts.`
+  }
+
+  if (has('village') && !has('city')) {
+    return `Build a small village with: CENTRAL WELL: stone well centerpiece (Cyl Cobblestone base 4 radius + Brick walls + Wood roof overhang + Cyl winch + Chain loop). VILLAGE SQUARE: cobblestone plaza (Cobblestone alternating tiles via loop 30x30), market stalls (3 stalls = WoodPlanks counter + Fabric color awning + items on display). SMALL HOUSES (4): each cottage (Brick walls Color3.fromRGB(180,150,130) 12x8x10, Thatch/Wood sloped roof, 2 windows Glass, wooden door, flower garden border, chimney Brick). PATHS: dirt paths connecting buildings (Pebble/Sand Color3.fromRGB(180,160,135) meandering, bordered by stones via loop). CHURCH/HALL: central community building (Cobblestone larger 20x12x16, small bell tower). BLACKSMITH: forge building (Metal + Brick, anvil prop Metal, furnace with fire ParticleEmitter red/orange, water bucket). POND: small decorative pond (Glass water transparency 0.4, Pebble/Sand shore, 2 ducks = white Ball + Wing WedgeParts). FENCE LINES: wooden fence connecting between houses (WoodPlanks posts + rails via loop). TREES: 6-8 oak trees scattered (Cyl trunk + Ball canopy loop, varying sizes). LAMP POSTS: 4 iron lamp posts at square corners (Cyl Metal + lantern PointLight Color3.fromRGB(255,200,140)). TERRAIN: FillBlock Grass base, small hill behind village. LIGHTING: cozy warm, Bloom 0.35, Atmosphere Density 0.3 Color (190,185,175), early evening feel. Minimum 90 parts.`
+  }
+
+  if (has('dungeon') && !has('master') && !has('dragon')) {
+    return `Build a dungeon with: ENTRANCE: dark staircase descending (stone WedgeParts loop, Cobblestone Color3.fromRGB(70,65,60)), iron gate at top (Cyl bar grid Metal), skull warning on wall SurfaceGui. MAIN CORRIDORS: 3 intersecting stone corridors (Cobblestone walls 4 stud wide 6 high 30 long + Slate floor Color3.fromRGB(55,52,48), torch brackets via loop = Metal arm + Cyl torch + PointLight Color3.fromRGB(255,160,60) Range 12 Brightness 0.7 flickering). ROOMS (4): room 1 = entry chamber (larger 20x20, crumbling pillars Cyl Cobblestone x4), room 2 = prisoner cells (bar doors loop Cyl Metal dark, skeleton Props, chains = Cyl links loop), room 3 = treasure vault (locked Metal door, chest Props = Metal/WoodPlanks with Neon gold glow, coins = small disc Parts Neon gold scattered), room 4 = boss chamber (raised platform Cobblestone, imposing throne Cobblestone/Metal, ritual circle Neon red). TRAPS: pressure plate floor tiles (Neon dark red alternating safe tiles), spike trap zone (thin WedgeParts pointing up Neon dark red). CEILING FEATURES: stalactites via loop (WedgeParts pointing down Cobblestone varying heights), cobwebs = thin white Parts crisscross corners. WATER HAZARD: shallow flooded passage (Glass water blue transparent, slows movement). GLOWING CRYSTALS: Neon crystal clusters (Ball Parts varying purple/blue/teal, PointLight matching color). LIGHTING: very dark, almost no ambient, rely on torch PointLights and crystal glow, Atmosphere Density 0.7 Color (20,15,25), ColorCorrection Brightness -0.2. Minimum 90 parts.`
+  }
+
+  if (has('spaceship') && !has('space station') && !has('launch')) {
+    return `Build a spaceship with: MAIN HULL: sleek fuselage (DiamondPlate Color3.fromRGB(185,190,200) 8x5x36 main body), WedgeParts for nose taper (front 3 WedgeParts narrowing to point), rear engine block (Metal 8x5x4). WINGS: 2 delta wings (WedgePart DiamondPlate each 14x1x18 sweeping back), winglet fins at tips (WedgeParts). ENGINE NACELLES: 2 engine pods under wings (Cyl Metal 3 stud radius 8 long), Neon blue engine glow interior (Neon Color3.fromRGB(0,150,255) disc inside nacelle + PointLight), ParticleEmitter thrust exhaust. COCKPIT: forward glass canopy (Ball/Cyl Glass transparency 0.15 Color3.fromRGB(120,180,255)), VehicleSeat inside at pilot position, SurfaceGui control dashboard panel. LANDING GEAR: 3 Cyl strut legs (Metal, 2 front + 1 rear) each with flat Cyl foot pad, retracted/deployed look. CARGO BAY DOORS: center-bottom pair of hinged door Parts (Metal, show outline). HULL DETAILS: panel line grooves = thin dark flat Parts on surface (loop, 0.1 stud protrusion), intake vents (Metal grill Parts), small Neon running lights along wing edge (loop). WEAPONS: 2 under-wing hardpoints (Metal mounting pylon + laser cannon Cyl). MARKINGS: Neon stripe along fuselage side (Color3.fromRGB(255,50,50)), hull number SurfaceGui. LIGHTING: Neon engine glow, running light Neons, exterior no atmosphere (space), dramatic directional light from "star". Minimum 75 parts.`
+  }
+
+  if (has('train station', 'railway station', 'train depot')) {
+    return `Build a train station with: MAIN TERMINAL BUILDING: Victorian brick facade (Brick Color3.fromRGB(170,115,85) 50x16x25), large arched windows (Glass transparency 0.2 with iron frame = Metal semicircle top, SpotLight behind each via loop), central clock tower (Brick square 10x10x24, SurfaceGui clock face all 4 sides, bell Cyl top), grand entrance archway (brick arch, double doors). PLATFORMS: 2 platform slabs (Concrete Color3.fromRGB(160,160,165) 60x0.8x10 each, with yellow safety edge line = Neon Color3.fromRGB(230,200,30) loop), platform canopy roof (Metal arched frame + Glass/Metal roof panels via loop for each bay). TRACKS: 2 railway tracks (Metal gray sleeper bars via loop + thin Metal rail lines x2 per track), ballast gravel (Pebble Parts scattered). TRAIN MODEL: locomotive (Metal Color3.fromRGB(30,30,35) engine + boiler Cyl + stack Cyl smoke ParticleEmitter + cab + tender car, headlight SpotLight white + red Neon tail light), 2 passenger cars (Metal box with windows via loop + WoodPlanks interior floor visible). WAITING AREA: wooden benches on platform (WoodPlanks loop x6), hanging pendant clocks (SurfaceGui), newsstand (small Metal + WoodPlanks kiosk). TICKET HALL INTERIOR: marble tile floor (Marble loop), ticket windows (small counter with Glass divider x4 via loop, SurfaceGui departure board above), departure board SurfaceGui main wall (trains list). LIGHTING: warm platform lamps (PointLight Color3.fromRGB(255,220,180) loop per bay), interior chandeliers, era-appropriate warm Atmosphere Density 0.25, Bloom 0.3. Minimum 100 parts.`
+  }
+
+  // No match
+  return null
+}
+
+// ─── Blueprint injection ──────────────────────────────────────────────────────
+
+/**
+ * Scans the prompt for object keywords that match blueprints from the
+ * object-blueprints library files and injects their build specs.
+ * Uses try/catch dynamic-require so it works even if blueprint files
+ * don't exist yet (returns empty string in that case).
+ * Maximum 5 blueprints injected to keep context size manageable.
+ */
+export function injectBlueprintContext(prompt: string): string {
+  const lower = prompt.toLowerCase()
+  const injected: { label: string; spec: string }[] = []
+
+  // We use a synchronous require-based approach since this function
+  // is called from a sync context inside formatEnhancedPlanContext.
+  // Each import is wrapped in try/catch — if the file doesn't exist yet,
+  // we silently skip it. The files can be populated incrementally.
+
+  type BlueprintMap = Record<string, { keywords: string[]; buildSpec: string }>
+
+  const sources: BlueprintMap[] = []
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('./object-blueprints') as { BLUEPRINTS?: BlueprintMap }
+    if (mod.BLUEPRINTS) sources.push(mod.BLUEPRINTS)
+  } catch {
+    // file doesn't exist yet — skip
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('./object-blueprints-expanded') as { EXPANDED_BLUEPRINTS?: BlueprintMap }
+    if (mod.EXPANDED_BLUEPRINTS) sources.push(mod.EXPANDED_BLUEPRINTS)
+  } catch {
+    // file doesn't exist yet — skip
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('./object-blueprints-rooms') as { ROOM_BLUEPRINTS?: BlueprintMap }
+    if (mod.ROOM_BLUEPRINTS) sources.push(mod.ROOM_BLUEPRINTS)
+  } catch {
+    // file doesn't exist yet — skip
+  }
+
+  if (sources.length === 0) return ''
+
+  for (const blueprintMap of sources) {
+    if (injected.length >= 5) break
+    for (const [label, entry] of Object.entries(blueprintMap)) {
+      if (injected.length >= 5) break
+      // Check if any of this blueprint's keywords appear in the prompt
+      const matched = entry.keywords.some((kw: string) => lower.includes(kw.toLowerCase()))
+      if (matched) {
+        // Avoid duplicate labels
+        if (!injected.some(i => i.label === label)) {
+          injected.push({ label, spec: entry.buildSpec })
+        }
+      }
+    }
+  }
+
+  if (injected.length === 0) return ''
+
+  const lines: string[] = []
+  lines.push('=== OBJECT BLUEPRINTS (use these exact specs) ===')
+  for (const { label, spec } of injected) {
+    lines.push(`[${label}]: ${spec}`)
+  }
+  lines.push('===')
+  return lines.join('\n')
+}
+
+// ─── Reference game injection ─────────────────────────────────────────────────
+
+/**
+ * If the prompt matches a known game type/genre, returns a trimmed excerpt
+ * from the reference game library for that genre (scripting patterns, layout,
+ * structure). Returns null if no match or if reference-games file doesn't exist.
+ */
+export function injectReferenceGameContext(prompt: string): string | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('./reference-games') as {
+      getReferenceGame?: (prompt: string) => string | null
+    }
+    if (typeof mod.getReferenceGame !== 'function') return null
+
+    const ref = mod.getReferenceGame(prompt)
+    if (!ref) return null
+
+    // Trim to first 3000 chars to keep context size manageable
+    return ref.length > 3000 ? ref.slice(0, 3000) + '\n...[trimmed]' : ref
+  } catch {
+    // reference-games file doesn't exist yet — skip
+    return null
+  }
 }

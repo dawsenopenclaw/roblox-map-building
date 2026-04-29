@@ -129,7 +129,7 @@ Lighting/Atmosphere:
   - TimeOfDay: "12:30:00"
 Skybox tint: bleached hot blue-white RGB(200,225,255)
 Vegetation: very sparse — cactus every 60-80 studs, dead scrub bush every 30 studs
-Dune generation: `height = 15 * math.sin(x/25) * math.cos(z/18) + 8 * math.sin(x/12)`
+Dune generation: height = 15 * math.sin(x/25) * math.cos(z/18) + 8 * math.sin(x/12)
 
 --- BIOME: TUNDRA / COLD DESERT ---
 Dominant terrain materials: Ground, Snow, Rock, Ice, Mud
